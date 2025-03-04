@@ -1,24 +1,16 @@
 plugins {
-    id("com.android.application")
+    id("com.android.library")
     kotlin("android")
     kotlin("plugin.serialization") version "2.1.10"
     kotlin("kapt")
 }
 
 android {
-    namespace = "com.arny.aipromptmaster"
+    namespace = "com.arny.aipromptmaster.feature_home"
     compileSdk = 35
-    val vMajor = 0
-    val vMinor = 0
-    val vBuild = 1
     defaultConfig {
-        applicationId = "com.arny.aipromptmaster"
         minSdk = 21
         targetSdk = 35
-        versionCode = vMajor * 100 + vMinor * 10 + vBuild
-        val name = "$vMajor" + ".${vMinor}" + ".${vBuild}"
-        versionName = "v$name($versionCode)"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -32,17 +24,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    // Configure APK file name
-    applicationVariants.all {
-        val variant = this
-        variant.outputs
-            .map { it as com.android.build.gradle.internal.api.BaseVariantOutputImpl }
-            .forEach { output ->
-                val outputFileName = "AiPromptMaster-${variant.baseName}-${variant.versionName}-${variant.versionCode}" +
-                        ".apk"
-                output.outputFileName = outputFileName
-            }
-    }
     buildFeatures {
         viewBinding = true
         buildConfig = true
@@ -53,15 +34,9 @@ android {
 }
 
 dependencies {
-    implementation(":domain")
-    implementation(":core")
+
     implementation(libs.kotlin.stdlib)
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
-    implementation(libs.material)
-    implementation(libs.androidx.recyclerview)
-    implementation(libs.androidx.activity)
-    implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.toasty)
     implementation(libs.navigation.fragment.ktx)

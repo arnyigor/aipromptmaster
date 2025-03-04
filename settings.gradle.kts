@@ -18,10 +18,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven { url =  URI("https://jitpack.io") }
+        maven { url = URI("https://jitpack.io") }
     }
 }
 
 rootProject.name = "AI Prompt Master"
-include(":app")
+include(":app", ":core", ":domain", ":data", ":feature-home")
  
