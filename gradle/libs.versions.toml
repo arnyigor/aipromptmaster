@@ -1,0 +1,75 @@
+[versions]
+agp = "8.3.0"
+jacksonDatabind = "2.14.1"
+materialDialogsCore = "3.3.0"
+drawerlayout = "1.2.0"
+glide = "4.11.0"
+jakewhartonTimber = "5.0.1"
+jodaTime = "2.12.7"
+kotlin = "2.1.10"
+coreKtx = "1.15.0"
+junit = "4.13.2"
+junitVersion = "1.2.1"
+espressoCore = "3.6.1"
+appcompat = "1.7.0"
+kotlinxSerializationJson = "1.8.0"
+material = "1.12.0"
+activity = "1.10.0"
+constraintlayout = "2.2.0"
+daggerCompiler = "2.55"
+lifecycleViewmodelKtx = "2.8.7"
+navigationFragmentKtx = "2.8.6"
+navigationSafeArgsGradlePlugin = "2.8.6"
+preferenceKtx = "1.2.1"
+recyclerview = "1.4.0"
+toasty = "1.5.2"
+legacySupportV4 = "1.0.0"
+lifecycleLivedataKtx = "2.8.7"
+fragmentKtx = "1.8.5"
+
+[libraries]
+androidx-recyclerview = { module = "androidx.recyclerview:recyclerview", version.ref = "recyclerview" }
+jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jacksonDatabind" }
+jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jacksonDatabind" }
+material-dialogs-bottomsheets = { module = "com.afollestad.material-dialogs:bottomsheets", version.ref = "materialDialogsCore" }
+material-dialogs-datetime = { module = "com.afollestad.material-dialogs:datetime", version.ref = "materialDialogsCore" }
+material-dialogs-color = { module = "com.afollestad.material-dialogs:color", version.ref = "materialDialogsCore" }
+material-dialogs-files = { module = "com.afollestad.material-dialogs:files", version.ref = "materialDialogsCore" }
+material-dialogs-input = { module = "com.afollestad.material-dialogs:input", version.ref = "materialDialogsCore" }
+material-dialogs-lifecycle = { module = "com.afollestad.material-dialogs:lifecycle", version.ref = "materialDialogsCore" }
+material-dialogs-core = { module = "com.afollestad.material-dialogs:core", version.ref = "materialDialogsCore" }
+dagger = { module = "com.google.dagger:dagger", version.ref = "daggerCompiler" }
+dagger-android = { module = "com.google.dagger:dagger-android", version.ref = "daggerCompiler" }
+dagger-android-support = { module = "com.google.dagger:dagger-android-support", version.ref = "daggerCompiler" }
+dagger-android-processor = { module = "com.google.dagger:dagger-android-processor", version.ref = "daggerCompiler" }
+dagger-compiler = { module = "com.google.dagger:dagger-compiler", version.ref = "daggerCompiler" }
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-drawerlayout = { module = "androidx.drawerlayout:drawerlayout", version.ref = "drawerlayout" }
+androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycleViewmodelKtx" }
+androidx-navigation-safe-args-gradle-plugin = { module = "androidx.navigation:navigation-safe-args-gradle-plugin", version.ref = "navigationSafeArgsGradlePlugin" }
+androidx-preference-ktx = { module = "androidx.preference:preference-ktx", version.ref = "preferenceKtx" }
+glide = { module = "com.github.bumptech.glide:glide", version.ref = "glide" }
+glide-okhttp3-integration = { module = "com.github.bumptech.glide:okhttp3-integration", version.ref = "glide" }
+glide-compiler = { module = "com.github.bumptech.glide:compiler", version.ref = "glide" }
+jakewharton-timber = { module = "com.jakewharton.timber:timber", version.ref = "jakewhartonTimber" }
+joda-time = { module = "joda-time:joda-time", version.ref = "jodaTime" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
+androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
+navigation-fragment-ktx = { module = "androidx.navigation:navigation-fragment-ktx", version.ref = "navigationFragmentKtx" }
+navigation-ui-ktx = { module = "androidx.navigation:navigation-ui-ktx", version.ref = "navigationFragmentKtx" }
+toasty = { module = "com.github.GrenderG:Toasty", version.ref = "toasty" }
+androidx-legacy-support-v4 = { group = "androidx.legacy", name = "legacy-support-v4", version.ref = "legacySupportV4" }
+androidx-lifecycle-livedata-ktx = { group = "androidx.lifecycle", name = "lifecycle-livedata-ktx", version.ref = "lifecycleLivedataKtx" }
+androidx-fragment-ktx = { group = "androidx.fragment", name = "fragment-ktx", version.ref = "fragmentKtx" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+
