@@ -23,5 +23,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "AI Prompt Master"
-include(":app", ":core", ":domain", ":data", ":feature-home")
+include(":app", ":core", ":domain", ":data", ":presentation")
  
