@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:id="@+id/menu_constructor"
+        android:id="@+id/nav_home"
         android:icon="@drawable/ic_palette"
         android:title="@string/menu_construct" />
     <item
@@ -13,9 +12,4 @@
         android:id="@+id/menu_history"
         android:icon="@drawable/ic_history"
         android:title="@string/menu_history" />
-    <item
-        android:id="@+id/menu_settings"
-        app:showAsAction="always"
-        android:icon="@drawable/ic_settings"
-        android:title="@string/menu_settings" />
 </menu>

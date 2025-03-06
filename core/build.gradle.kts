@@ -10,7 +10,6 @@ android {
     compileSdk = 35
     defaultConfig {
         minSdk = 21
-        targetSdk = 35
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -39,8 +38,6 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.toasty)
-    implementation(libs.navigation.fragment.ktx)
-    implementation(libs.navigation.ui.ktx)
     implementation(libs.joda.time)
     implementation(libs.jackson.databind)
     implementation(libs.jackson.module.kotlin)

@@ -3,6 +3,7 @@ plugins {
     kotlin("android")
     kotlin("plugin.serialization") version "2.1.10"
     kotlin("kapt")
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -10,7 +11,6 @@ android {
     compileSdk = 35
     defaultConfig {
         minSdk = 21
-        targetSdk = 35
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -34,13 +34,12 @@ android {
 }
 
 dependencies {
-
+    implementation(libs.androidx.room.runtime)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.room.ktx)
     implementation(libs.kotlin.stdlib)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
-    implementation(libs.toasty)
-    implementation(libs.navigation.fragment.ktx)
-    implementation(libs.navigation.ui.ktx)
     implementation(libs.joda.time)
     implementation(libs.jackson.databind)
     implementation(libs.jackson.module.kotlin)

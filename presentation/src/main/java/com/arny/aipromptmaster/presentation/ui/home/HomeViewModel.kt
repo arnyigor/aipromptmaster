@@ -1,4 +1,4 @@
-package com.arny.aipromptmaster.presentation.ui.ui.home
+package com.arny.aipromptmaster.presentation.ui.home
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData

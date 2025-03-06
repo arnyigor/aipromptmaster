@@ -22,6 +22,7 @@ navigationFragmentKtx = "2.8.6"
 navigationSafeArgsGradlePlugin = "2.8.6"
 preferenceKtx = "1.2.1"
 recyclerview = "1.4.0"
+roomRuntime = "2.6.1"
 toasty = "1.5.2"
 legacySupportV4 = "1.0.0"
 lifecycleLivedataKtx = "2.8.7"
@@ -29,6 +30,9 @@ fragmentKtx = "1.8.5"
 
 [libraries]
 androidx-recyclerview = { module = "androidx.recyclerview:recyclerview", version.ref = "recyclerview" }
+androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomRuntime" }
+androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "roomRuntime" }
+androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }
 jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jacksonDatabind" }
 jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jacksonDatabind" }
 material-dialogs-bottomsheets = { module = "com.afollestad.material-dialogs:bottomsheets", version.ref = "materialDialogsCore" }
