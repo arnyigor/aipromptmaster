@@ -34,6 +34,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":domain"))
     implementation(libs.androidx.room.runtime)
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.room.ktx)
@@ -41,9 +42,9 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.joda.time)
-    implementation(libs.jackson.databind)
-    implementation(libs.jackson.module.kotlin)
+    implementation(libs.androidx.preference.ktx)
     implementation(libs.dagger)
+    implementation(libs.gson)
     implementation(libs.dagger.android)
     implementation(libs.dagger.android.support)
     kapt(libs.dagger.android.processor)

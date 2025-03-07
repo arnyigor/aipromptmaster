@@ -35,9 +35,6 @@ android {
 dependencies {
 
     implementation(libs.kotlin.stdlib)
-    implementation(libs.joda.time)
-    implementation(libs.jackson.databind)
-    implementation(libs.jackson.module.kotlin)
     implementation(libs.dagger)
     implementation(libs.dagger.android)
     implementation(libs.dagger.android.support)

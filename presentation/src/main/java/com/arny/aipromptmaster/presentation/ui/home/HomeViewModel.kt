@@ -1,13 +1,21 @@
 package com.arny.aipromptmaster.presentation.ui.home
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.arny.aipromptmaster.domain.interactors.IPromptsInteractor
+import dagger.assisted.AssistedInject
+import kotlinx.coroutines.launch
 
-class HomeViewModel : ViewModel() {
-
-    private val _text = MutableLiveData<String>().apply {
-        value = "This is home Fragment"
+class HomeViewModel @AssistedInject constructor(
+    private val interactor: IPromptsInteractor,
+) : ViewModel() {
+    init {
+        loadPrompts()
     }
-    val text: LiveData<String> = _text
+
+    private fun loadPrompts() {
+        viewModelScope.launch {
+            interactor
+        }
+    }
 }

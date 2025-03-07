@@ -34,6 +34,7 @@ android {
 
 dependencies {
 
+    implementation(project(":core"))
     implementation(project(":domain"))
     implementation(libs.androidx.activity)
     implementation(libs.androidx.activity.ktx)

@@ -66,6 +66,17 @@
         <!-- Добавить другие категории -->
     </com.google.android.material.chip.ChipGroup>
 
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabCreate"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="@dimen/fab_margin"
+        android:layout_marginBottom="@dimen/fab_margin"
+        android:contentDescription="@null"
+        android:src="@drawable/ic_plus"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
     <!-- Список промптов -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/prompts_list"
@@ -78,15 +89,5 @@
         app:layout_constraintTop_toBottomOf="@id/filter_chip_group"
         tools:listitem="@layout/item_prompt" />
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fabCreate"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="@dimen/fab_margin"
-        android:layout_marginBottom="@dimen/fab_margin"
-        android:contentDescription="@null"
-        android:src="@drawable/ic_plus"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

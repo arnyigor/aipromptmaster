@@ -1,13 +1,14 @@
 package com.arny.aipromptmaster.core.di
 
+import android.app.Application
 import android.content.Context
+import dagger.Binds
 import dagger.Module
-import dagger.Provides
 import javax.inject.Singleton
 
 @Module
-class CoreModule(private val context: Context) {
-    @Provides
+abstract class CoreModule {
+    @Binds
     @Singleton
-    fun provideContext(): Context = context
+    abstract fun provideContext(application: Application): Context
 }
