@@ -1,0 +1,15 @@
+DALL-E 3
+Dreamstudio.ai
+Midjourney
+GPT-4o
+YandexGPT
+Gemini
+Writesonic
+Gerwin AI
+Recraft
+Ultralytics YOLO
+ViTs (Трансформаторы зрения)
+Квантовые нейросети
+Craftum AI
+Runway
+Veed.io

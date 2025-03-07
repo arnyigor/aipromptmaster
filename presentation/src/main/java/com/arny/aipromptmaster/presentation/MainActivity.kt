@@ -15,7 +15,7 @@ import androidx.navigation.ui.setupWithNavController
 import com.arny.aipromptmaster.presentation.databinding.ActivityMainBinding
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import es.dmoral.toasty.Toasty
+import com.google.android.material.snackbar.Snackbar
 
 class MainActivity : AppCompatActivity() {
 
@@ -32,16 +32,11 @@ class MainActivity : AppCompatActivity() {
         val navController = findNavController(R.id.nav_host_fragment_activity_main)
         appBarConfiguration = AppBarConfiguration(
             setOf(
-                R.id.navigation_home, R.id.navigation_library, R.id.navigation_history
+                R.id.nav_home, R.id.nav_library, R.id.nav_history
             )
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
-        navController.addOnDestinationChangedListener { _, destination, _ ->
-            navView.menu.forEach { item ->
-                item.isChecked = item.itemId == destination.id
-            }
-        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -52,7 +47,11 @@ class MainActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.action_settings -> {
-                Toasty.info(this, getString(R.string.not_implemented_yet))
+                Snackbar.make(
+                    binding.root,
+                    getString(R.string.not_implemented_yet),
+                    Snackbar.LENGTH_SHORT
+                ).show()
                 true
             }
 

@@ -15,6 +15,7 @@ import com.arny.aipromptmaster.domain.PromptBlock
 import com.arny.aipromptmaster.domain.PromptBlock.ParamType
 import com.arny.aipromptmaster.domain.PromptBlock.ParameterBlock
 import com.arny.aipromptmaster.domain.PromptBlock.TextBlock
+import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.FragmentHomeBinding
 import com.google.android.material.snackbar.Snackbar
 
@@ -39,13 +40,13 @@ class HomeFragment : Fragment() {
             Toast.makeText(requireContext(), data, Toast.LENGTH_SHORT).show()
         }
 
-        binding.addBlockButton.setOnClickListener {
+        binding.fabCreate.setOnClickListener {
             Snackbar.make(it, "Add new Prompt", Snackbar.LENGTH_LONG)
-                .setAction("Action", {
+                .setAction("Action") {
                     Toast.makeText(requireContext(), "Action Callback", Toast.LENGTH_SHORT).show()
-                })
+                }
                 .apply {
-                    anchorView = binding.addBlockButton
+                    anchorView = binding.fabCreate
                     show()
                 }
         }

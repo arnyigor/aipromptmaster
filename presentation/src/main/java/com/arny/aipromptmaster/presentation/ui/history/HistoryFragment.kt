@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.FragmentHistoryBinding
 
 class HistoryFragment : Fragment() {
@@ -26,6 +27,7 @@ class HistoryFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        requireActivity().title = getString(R.string.title_history)
         viewModel.text.observe(viewLifecycleOwner) { data ->
             Toast.makeText(requireContext(), data, Toast.LENGTH_SHORT).show()
         }

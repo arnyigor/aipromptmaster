@@ -9,7 +9,6 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="@string/title_activity_home"
             android:theme="@style/Theme.AIPromptMaster.NoActionBar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
