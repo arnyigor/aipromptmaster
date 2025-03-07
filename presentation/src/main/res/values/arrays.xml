@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="prompt_search_items">
+        <item>Изображение</item>
+        <item>Текст</item>
+        <item>Видео</item>
+        <item>Генерация</item>
+        <item>Редактирование</item>
+        <item>Идеи</item>
+        <item>Шаблоны</item>
+        <item>История</item>
+        <item>Избранное</item>
+        <item>Сообщество</item>
+    </string-array>
+</resources>

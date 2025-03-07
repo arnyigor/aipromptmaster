@@ -8,6 +8,8 @@ import android.text.style.ForegroundColorSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
+import android.widget.MultiAutoCompleteTextView.CommaTokenizer
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -36,10 +38,16 @@ class HomeFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        viewModel.text.observe(viewLifecycleOwner) { data ->
-            Toast.makeText(requireContext(), data, Toast.LENGTH_SHORT).show()
-        }
+        initUI()
+        initListeners()
+        observeData()
+    }
 
+    private fun initUI() {
+        initAutoCompletePrompts()
+    }
+
+    private fun initListeners() {
         binding.fabCreate.setOnClickListener {
             Snackbar.make(it, "Add new Prompt", Snackbar.LENGTH_LONG)
                 .setAction("Action") {
@@ -50,6 +58,55 @@ class HomeFragment : Fragment() {
                     show()
                 }
         }
+    }
+
+    private fun observeData() {
+        viewModel.text.observe(viewLifecycleOwner) { data ->
+            Toast.makeText(requireContext(), data, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun initAutoCompletePrompts() {
+        val baseList = arrayOf(
+            "Изображение",
+            "Текст",
+            "Видео",
+            "Генерация",
+            "Редактирование",
+            "Идеи",
+            "Шаблоны",
+            "История",
+            "Избранное",
+            "Сообщество"
+        )
+        val modelsList = arrayOf(
+            "MidJourney",
+            "Stable Diffusion",
+            "ChatGPT",
+            "DALL·E",
+            "SDXL",
+            "Pixar-стиль",
+            "3D-моделирование",
+        )
+        val requestsList = arrayOf(
+            "Сценарий",
+            "Резюме",
+            "Стихи",
+            "Бизнес-идеи",
+            "Обучение",
+            "Перевод",
+            "Создать диалог",
+            "Генерация заголовков"
+        )
+        val adapter =
+            ArrayAdapter(
+                requireContext(),
+                R.layout.prompts_item_dropdown,
+                baseList + modelsList + requestsList
+            )
+        binding.multiAutoCompleteTextView.setAdapter(adapter)
+        // установка запятой в качестве разделителя
+        binding.multiAutoCompleteTextView.setTokenizer(CommaTokenizer())
     }
 
     fun generatePrompt(blocks: List<PromptBlock>): CharSequence {

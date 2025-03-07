@@ -1,79 +1,93 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="8dp"
-    app:cardCornerRadius="8dp"
+    android:clickable="true"
+    android:focusable="true"
+    app:cardCornerRadius="12dp"
     app:cardElevation="4dp">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:background="@drawable/card_bg"
         android:padding="16dp">
 
-        <!-- Текст промпта с подсветкой параметров -->
-        <TextView
+        <com.google.android.material.textview.MaterialTextView
             android:id="@+id/tv_prompt_text"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
             android:textSize="16sp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            tools:text="prompt text" />
+            tools:text="@tools:sample/lorem[10]" />
 
         <!-- Модель (MidJourney, Stable Diffusion) -->
-        <TextView
+        <com.google.android.material.textview.MaterialTextView
             android:id="@+id/tv_model"
+            android:textSize="24sp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/purple_700"
+            android:layout_marginTop="@dimen/margin_8"
+            android:textColor="@color/colorAccent"
             android:textStyle="bold"
-            app:layout_constraintBottom_toTopOf="@id/chip_group_tags"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/tv_prompt_text"
-            tools:text="@sample/ai_models.txt"/>
+            tools:text="@sample/ai_models.txt" />
+
+        <!-- Рейтинг -->
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/rating_bar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/margin_8"
+            android:progressBackgroundTint="@color/colorPrimaryDark"
+            android:textColor="@color/colorAccent"
+            app:layout_constraintStart_toEndOf="@+id/tv_model"
+            app:layout_constraintTop_toTopOf="@+id/tv_model"
+            tools:text="@sample/numbers.txt" />
 
         <!-- Теги (хэштеги) -->
         <com.google.android.material.chip.ChipGroup
             android:id="@+id/chip_group_tags"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            app:layout_constraintEnd_toStartOf="@id/rating_bar"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tv_model"
+            app:layout_constraintTop_toBottomOf="@+id/tv_model"
             app:singleLine="true">
 
             <com.google.android.material.chip.Chip
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                tools:text="#text" />
+                tools:text="#tag1" />
+
+            <com.google.android.material.chip.Chip
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                tools:text="#tag2" />
+
+            <com.google.android.material.chip.Chip
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                tools:text="#tag3" />
         </com.google.android.material.chip.ChipGroup>
 
-        <!-- Рейтинг -->
-        <RatingBar
-            android:id="@+id/rating_bar"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:numStars="5"
-            tools:rating="@sample/numbers.txt"
-            android:stepSize="1.0"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tv_model" />
 
         <!-- Дата создания -->
-        <TextView
+        <com.google.android.material.textview.MaterialTextView
             android:id="@+id/tv_created_at"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/purple_200"
-            android:textSize="12sp"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent" />
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/chip_group_tags"
+            tools:text="@tools:sample/date/ddmmyy" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
-</androidx.cardview.widget.CardView>
+</com.google.android.material.card.MaterialCardView>

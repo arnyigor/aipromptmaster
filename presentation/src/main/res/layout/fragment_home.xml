@@ -9,41 +9,59 @@
         android:id="@+id/tilSearch"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:hint="@string/prompts_search"
+        android:textColorHint="@color/textColorPrimary"
+        app:endIconMode="clear_text"
+        app:endIconTint="@color/textColorPrimary"
+        app:helperTextTextColor="@color/textColorPrimary"
+        app:hintTextColor="@color/textColorPrimary"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toTopOf="parent"
+        app:startIconContentDescription="@null"
+        app:startIconDrawable="@android:drawable/ic_menu_search"
+        app:startIconTint="@color/textColorPrimary">
 
-        <com.google.android.material.textfield.TextInputEditText
+        <MultiAutoCompleteTextView
+            android:id="@+id/multiAutoCompleteTextView"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/prompts_search" />
+            android:layout_height="match_parent"
+            tools:text="@tools:sample/lorem[10]" />
     </com.google.android.material.textfield.TextInputLayout>
     <!-- Фильтры -->
     <com.google.android.material.chip.ChipGroup
         android:id="@+id/filter_chip_group"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/margin_8"
         android:columnCount="3"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tilSearch"
-        app:singleLine="true">
+        app:singleLine="true"
+        app:singleSelection="true">
 
         <com.google.android.material.chip.Chip
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:backgroundTint="@color/colorPrimary"
             android:checked="true"
-            android:text="@string/prompt_type_all" />
+            android:text="@string/prompt_type_all"
+            android:textColor="@color/textColorPrimary" />
 
         <com.google.android.material.chip.Chip
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/prompt_type_images" />
+            android:backgroundTint="@color/colorSecondary"
+            android:text="@string/prompt_type_images"
+            android:textColor="@color/textColorPrimary" />
 
         <com.google.android.material.chip.Chip
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/prompt_type_text" />
+            android:backgroundTint="@color/colorPrimary"
+            android:text="@string/prompt_type_text"
+            android:textColor="@color/textColorPrimary" />
 
         <!-- Добавить другие категории -->
     </com.google.android.material.chip.ChipGroup>
@@ -53,6 +71,7 @@
         android:id="@+id/prompts_list"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:layout_marginTop="@dimen/margin_8"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -65,6 +84,7 @@
         android:layout_height="wrap_content"
         android:layout_marginEnd="@dimen/fab_margin"
         android:layout_marginBottom="@dimen/fab_margin"
+        android:contentDescription="@null"
         android:src="@drawable/ic_plus"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
