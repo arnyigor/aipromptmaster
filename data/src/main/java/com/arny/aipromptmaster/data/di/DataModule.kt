@@ -5,7 +5,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.arny.aipromptmaster.data.db.AppDatabase
-import com.arny.aipromptmaster.data.db.PromptDao
+import com.arny.aipromptmaster.data.db.daos.PromptDao
 import com.arny.aipromptmaster.data.prefs.Prefs
 import com.arny.aipromptmaster.data.repositories.PromptsRepositoryImpl
 import com.arny.aipromptmaster.domain.repositories.IPromptsRepository
@@ -46,6 +46,10 @@ interface DataModule {
         @Provides
         @Singleton
         fun provideMoviesDao(db: AppDatabase): PromptDao = db.promptDao()
+
+        @Provides
+        @Singleton
+        fun provideDispatcher(): CoroutineDispatcher = Dispatchers.IO
 
         /*@Provides
         @Singleton

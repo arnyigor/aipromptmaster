@@ -5,7 +5,6 @@ import com.arny.aipromptmaster.core.di.CoreModule
 import com.arny.aipromptmaster.data.di.DataModule
 import com.arny.aipromptmaster.di.modules.AppModule
 import com.arny.aipromptmaster.di.modules.UiModule
-import com.arny.mobilecinema.domain.di.DomainModule
 import dagger.BindsInstance
 import dagger.Component
 import dagger.android.AndroidInjector

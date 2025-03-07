@@ -53,6 +53,14 @@
         <item name="colorControlNormal">@color/colorAccent</item>
     </style>
 
+    <style name="PromptTag" parent="Widget.Material3.Chip.Suggestion">
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
+        <item name="chipMinHeight">24dp</item>
+        <item name="chipStartPadding">8dp</item>
+        <item name="chipEndPadding">8dp</item>
+    </style>
+
     <style name="DialogTextViewStyle" parent="android:Widget.TextView">
         <item name="android:textColor">@color/textColorPrimary</item>
     </style>

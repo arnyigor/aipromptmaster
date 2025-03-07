@@ -16,4 +16,6 @@
     <string name="prompt_type_all">Все</string>
     <string name="prompt_type_images">Изображения</string>
     <string name="prompt_type_text">Текст</string>
+    <string name="action_add">Добавить</string>
+    <string name="erro_load_prompts">Ошибка загрузки промптов</string>
 </resources>

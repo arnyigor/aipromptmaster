@@ -5,15 +5,16 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="8dp"
+    android:background="?attr/selectableItemBackgroundBorderless"
     android:clickable="true"
     android:focusable="true"
     app:cardCornerRadius="12dp"
     app:cardElevation="4dp">
 
     <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/clTextBlock"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/card_bg"
         android:padding="16dp">
 
         <com.google.android.material.textview.MaterialTextView
@@ -22,20 +23,31 @@
             android:layout_height="wrap_content"
             android:ellipsize="end"
             android:maxLines="1"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="16sp"
-            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/favoriteButton"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             tools:text="@tools:sample/lorem[10]" />
 
+        <!-- Кнопка избранного -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/favoriteButton"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            app:icon="@drawable/ic_favorite"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
         <!-- Модель (MidJourney, Stable Diffusion) -->
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/tv_model"
-            android:textSize="24sp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/margin_8"
             android:textColor="@color/colorAccent"
+            android:textSize="24sp"
             android:textStyle="bold"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/tv_prompt_text"
@@ -51,7 +63,7 @@
             android:textColor="@color/colorAccent"
             app:layout_constraintStart_toEndOf="@+id/tv_model"
             app:layout_constraintTop_toTopOf="@+id/tv_model"
-            tools:text="@sample/numbers.txt" />
+            tools:text="@sample/rating_numbers.txt" />
 
         <!-- Теги (хэштеги) -->
         <com.google.android.material.chip.ChipGroup
@@ -63,27 +75,30 @@
             app:singleLine="true">
 
             <com.google.android.material.chip.Chip
+                style="@style/PromptTag"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 tools:text="#tag1" />
 
             <com.google.android.material.chip.Chip
+                style="@style/PromptTag"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 tools:text="#tag2" />
 
             <com.google.android.material.chip.Chip
+                style="@style/PromptTag"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 tools:text="#tag3" />
         </com.google.android.material.chip.ChipGroup>
-
 
         <!-- Дата создания -->
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/tv_created_at"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:textColor="?attr/colorOnSurface"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/chip_group_tags"

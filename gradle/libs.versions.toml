@@ -1,6 +1,9 @@
 [versions]
 agp = "8.3.0"
+coil = "3.1.0"
+groupie = "2.10.1"
 gson = "2.11.0"
+iconicsCore = "5.4.0"
 jacksonDatabind = "2.14.1"
 materialDialogsCore = "3.3.0"
 drawerlayout = "1.2.0"
@@ -34,7 +37,13 @@ androidx-recyclerview = { module = "androidx.recyclerview:recyclerview", version
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomRuntime" }
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "roomRuntime" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }
+coil = { module = "io.coil-kt.coil3:coil", version.ref = "coil" }
+coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
+groupie = { module = "com.github.lisawray.groupie:groupie", version.ref = "groupie" }
+groupie-viewbinding = { module = "com.github.lisawray.groupie:groupie-viewbinding", version.ref = "groupie" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+iconics-core = { module = "com.mikepenz:iconics-core", version.ref = "iconicsCore" }
+iconics-views = { module = "com.mikepenz:iconics-views", version.ref = "iconicsCore" }
 jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jacksonDatabind" }
 jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jacksonDatabind" }
 material-dialogs-bottomsheets = { module = "com.afollestad.material-dialogs:bottomsheets", version.ref = "materialDialogsCore" }

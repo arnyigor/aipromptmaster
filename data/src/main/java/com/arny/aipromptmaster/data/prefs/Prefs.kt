@@ -2,11 +2,8 @@ package com.arny.aipromptmaster.data.prefs
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.preference.PreferenceManager.getDefaultSharedPreferences
 import androidx.preference.PreferenceManager
-import androidx.preference.PreferenceManager.getDefaultSharedPreferences
 import com.arny.aipromptmaster.data.utils.SingletonHolder
-import com.arny.mobilecinema.data.utils.SingletonHolder
 
 class Prefs private constructor(context: Context) {
     val settings: SharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)

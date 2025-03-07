@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Основные цвета -->
-    <color name="colorPrimary">#7435FD</color>         <!-- Глубокий фиолетовый -->
-    <color name="colorPrimaryDark">#08081E</color>    <!-- Темный фон -->
-    <color name="colorSecondary">#C381E7</color>       <!-- Светлый фиолетовый -->
-    <color name="textColorSecondary">#9A98A3</color>  <!-- Серый текст -->
-    <color name="textColorPrimary">#FFFFFF</color>           <!-- Белый текст -->
-    <color name="colorOverlay">#66000000</color>  <!-- Половинчатая темная плашка -->
-    <color name="colorSeparator">#1E1E1E</color>  <!-- Цвет разделителей -->
+    <color name="colorPrimary">#7435FD</color>
+    <color name="colorPrimaryDark">#08081E</color>
+    <color name="colorSecondary">#C381E7</color>
+    <color name="textColorSecondary">#9A98A3</color>
+    <color name="textColorPrimary">#FFFFFF</color>
+    <color name="colorOverlay">#66000000</color>
+    <color name="colorSeparator">#1E1E1E</color>
 
     <!-- Стилизация элементов -->
-    <color name="colorIcon">#FFFFFF</color>       <!-- Иконки в белом -->
-    <color name="colorAccent">#ffc107</color>     <!-- Акцентный цвет -->
+    <color name="colorIcon">#FFFFFF</color>
+    <color name="colorAccent">#7435FD</color>
 </resources>

@@ -1,33 +1,54 @@
 package com.arny.aipromptmaster.data.mappers
 
-import com.arny.aipromptmaster.data.db.PromptEntity
+import com.arny.aipromptmaster.data.db.entities.PromptEntity
 import com.arny.aipromptmaster.domain.models.Prompt
-import com.google.gson.Gson
 
 object PromptMapper {
-    // Преобразование из БД в домен
-    fun mapFromEntity(entity: PromptEntity): Prompt {
-        val tags = Gson().fromJson(entity.tagsJson, Array<String>::class.java).toList()
-        return Prompt(
-            id = entity.id,
-            text = entity.text,
-            model = entity.model,
-            createdAt = entity.createdAt,
+    fun toEntity(domain: Prompt): PromptEntity = with(domain) {
+        PromptEntity(
+            id = id,
+            title = title,
+            description = description,
+            template = template,
+            variables = variables,
+            aiModel = aiModel,
+            category = category,
+            language = language,
             tags = tags,
-            rating = entity.rating
+            isPrivate = isPrivate,
+            rating = rating,
+            successRate = successRate,
+            status = status,
+            settings = settings,
+            authorId = authorId,
+            createdAt = createdAt,
+            modifiedAt = modifiedAt,
+            parentId = parentId,
+            version = version
         )
     }
 
-    // Преобразование из домена в БД
-    fun mapToEntity(domain: Prompt): PromptEntity {
-        val tagsJson = Gson().toJson(domain.tags)
-        return PromptEntity(
-            id = domain.id,
-            text = domain.text,
-            model = domain.model,
-            createdAt = domain.createdAt,
-            tagsJson = tagsJson,
-            rating = domain.rating
+    fun toDomain(entity: PromptEntity): Prompt = with(entity) {
+        Prompt(
+            id = id,
+            title = title,
+            description = description,
+            template = template,
+            variables = variables ?: emptyMap(),
+            aiModel = aiModel,
+            category = category,
+            language = language,
+            tags = tags,
+            isPrivate = isPrivate,
+            rating = rating,
+            successRate = successRate,
+            status = status,
+            settings = settings ?: emptyMap(),
+            authorId = authorId,
+            createdAt = createdAt,
+            modifiedAt = modifiedAt,
+            parentId = parentId,
+            version = version
         )
     }
 }

@@ -1,4 +1,4 @@
-package com.arny.aipromptmaster.data.db
+package com.arny.aipromptmaster.data.db.entities
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
