@@ -2,62 +2,83 @@ package com.arny.aipromptmaster.data.db.entities
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.arny.aipromptmaster.domain.models.PromptCategory
-import com.arny.aipromptmaster.domain.models.PromptStatus
 import java.util.Date
 import java.util.UUID
 
-@Entity(tableName = "prompts")
+@Entity(
+    tableName = "prompts",
+    indices = [
+        Index(value = ["title"]),
+        Index(value = ["category"]),
+        Index(value = ["status"]),
+        Index(value = ["is_favorite"]),
+        Index(value = ["is_local"]),
+    ]
+)
 data class PromptEntity(
     @PrimaryKey
+    @ColumnInfo(name = "_id")
     val id: String = UUID.randomUUID().toString(),
 
+    @ColumnInfo(name = "title")
     val title: String,
 
     @ColumnInfo(name = "description")
     val description: String?,
 
-    val template: String,
+    @ColumnInfo(name = "content_ru")
+    val contentRu: String = "",
 
-    @ColumnInfo(name = "variables")
-    val variables: Map<String, String>?,
+    @ColumnInfo(name = "content_en")
+    val contentEn: String = "",
 
-    @ColumnInfo(name = "ai_model")
-    val aiModel: String,
+    @ColumnInfo(name = "variables_json")
+    val variablesJson: String = "{}",
 
-    val category: PromptCategory,
+    @ColumnInfo(name = "compatible_models")
+    val compatibleModels: String = "",
 
-    val language: String = "",
+    @ColumnInfo(name = "category")
+    val category: String = "",
 
-    val tags: List<String> = emptyList(),
+    @ColumnInfo(name = "tags")
+    val tags: String = "",
 
-    @ColumnInfo(name = "is_private")
-    val isPrivate: Boolean = false,
+    @ColumnInfo(name = "is_local")
+    val isLocal: Boolean = true,
 
     @ColumnInfo(name = "is_favorite")
     val isFavorite: Boolean = false,
 
+    @ColumnInfo(name = "rating")
     val rating: Float = 0f,
 
-    @ColumnInfo(name = "success_rate")
-    val successRate: Float? = null,
+    @ColumnInfo(name = "rating_votes")
+    val ratingVotes: Int = 0,
 
-    val status: PromptStatus,
+    @ColumnInfo(name = "status")
+    val status: String,
 
-    val settings: Map<String, Any>?,
+    @ColumnInfo(name = "author")
+    val author: String = "",
 
     @ColumnInfo(name = "author_id")
-    val authorId: String?,
+    val authorId: String = "",
+
+    @ColumnInfo(name = "source")
+    val source: String = "",
+
+    @ColumnInfo(name = "notes")
+    val notes: String = "",
+
+    @ColumnInfo(name = "version")
+    val version: String = "1.0.0",
 
     @ColumnInfo(name = "created_at")
     val createdAt: Date = Date(),
 
     @ColumnInfo(name = "modified_at")
-    val modifiedAt: Date = Date(),
-
-    @ColumnInfo(name = "parent_id")
-    val parentId: String?,
-
-    val version: Int = 1
+    val modifiedAt: Date = Date()
 )

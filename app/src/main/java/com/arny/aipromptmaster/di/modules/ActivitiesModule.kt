@@ -1,6 +1,7 @@
 package com.arny.aipromptmaster.di.modules
 
 import com.arny.aipromptmaster.core.di.scopes.ActivityScope
+import com.arny.aipromptmaster.di.HistoryFragmentModule
 import com.arny.aipromptmaster.di.HomeFragmentModule
 import com.arny.aipromptmaster.presentation.MainActivity
 import dagger.Module
@@ -12,6 +13,7 @@ abstract class ActivitiesModule {
     @ContributesAndroidInjector(
         modules = [
             HomeFragmentModule::class,
+            HistoryFragmentModule::class,
         ]
     )
     abstract fun bindMainActivity(): MainActivity

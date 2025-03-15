@@ -1,13 +1,25 @@
 package com.arny.aipromptmaster.presentation.ui.history
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.arny.aipromptmaster.presentation.utils.strings.IWrappedString
+import dagger.assisted.AssistedInject
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 
-class HistoryViewModel : ViewModel() {
+class HistoryViewModel @AssistedInject constructor(
+) : ViewModel() {
 
-    private val _text = MutableLiveData<String>().apply {
-        value = "This is notifications Fragment"
+    private val _error = MutableSharedFlow<IWrappedString?>()
+    val error = _error.asSharedFlow()
+
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading = _isLoading.asStateFlow()
+
+    init {
     }
-    val text: LiveData<String> = _text
+
+    companion object {
+    }
 }

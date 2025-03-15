@@ -3,6 +3,7 @@ package com.arny.aipromptmaster.di
 import com.arny.aipromptmaster.AiPromptMasterApp
 import com.arny.aipromptmaster.core.di.CoreModule
 import com.arny.aipromptmaster.data.di.DataModule
+import com.arny.aipromptmaster.data.di.NetworkModule
 import com.arny.aipromptmaster.di.modules.AppModule
 import com.arny.aipromptmaster.di.modules.UiModule
 import dagger.BindsInstance
@@ -19,6 +20,7 @@ import javax.inject.Singleton
         UiModule::class,
         CoreModule::class,
         DataModule::class,
+        NetworkModule::class,
     ]
 )
 interface AppComponent : AndroidInjector<AiPromptMasterApp> {

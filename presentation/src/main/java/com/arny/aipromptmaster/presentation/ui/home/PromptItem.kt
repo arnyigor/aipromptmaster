@@ -11,7 +11,7 @@ class PromptItem(
 ) : BindableItem<ItemPromptBinding>() {
     override fun bind(viewBinding: ItemPromptBinding, position: Int) = with(viewBinding) {
         tvPromptText.text = prompt.title
-        tvModel.text = prompt.aiModel
+        tvModel.text = prompt.compatibleModels.joinToString()
     }
 
     override fun getLayout(): Int = R.layout.item_prompt

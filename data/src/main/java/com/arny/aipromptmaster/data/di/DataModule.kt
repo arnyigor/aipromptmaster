@@ -6,8 +6,12 @@ import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.arny.aipromptmaster.data.db.AppDatabase
 import com.arny.aipromptmaster.data.db.daos.PromptDao
+import com.arny.aipromptmaster.data.db.daos.PromptHistoryDao
+import com.arny.aipromptmaster.data.models.GitHubConfig
 import com.arny.aipromptmaster.data.prefs.Prefs
 import com.arny.aipromptmaster.data.repositories.PromptsRepositoryImpl
+import com.arny.aipromptmaster.data.sync.PromptSynchronizerImpl
+import com.arny.aipromptmaster.domain.repositories.IPromptSynchronizer
 import com.arny.aipromptmaster.domain.repositories.IPromptsRepository
 import dagger.Binds
 import dagger.Module
@@ -28,6 +32,14 @@ interface DataModule {
         @Singleton
         fun providesIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
 
+        @Provides
+        @Singleton
+        fun provideGitHubConfig(): GitHubConfig = GitHubConfig(
+            owner = "arnyigor",
+            repo = "aiprompts",
+            branch = "master",
+            promptsPath = "prompts"
+        )
 
         @Provides
         @Singleton
@@ -45,31 +57,22 @@ interface DataModule {
 
         @Provides
         @Singleton
-        fun provideMoviesDao(db: AppDatabase): PromptDao = db.promptDao()
+        fun providePromptDao(db: AppDatabase): PromptDao = db.promptDao()
+
+        @Provides
+        @Singleton
+        fun provideHistoryDao(db: AppDatabase): PromptHistoryDao = db.promptHistoryDao()
 
         @Provides
         @Singleton
         fun provideDispatcher(): CoroutineDispatcher = Dispatchers.IO
-
-        /*@Provides
-        @Singleton
-        fun provideFirebaseApp(context: Context): FirebaseApp =
-            FirebaseApp.initializeApp(context) as FirebaseApp
-
-        @Provides
-        @Singleton
-        fun provideFirebaseDatabase(firebaseApp: FirebaseApp): FirebaseDatabase {
-            val firebaseDatabase = FirebaseDatabase.getInstance(firebaseApp)
-            firebaseDatabase.setPersistenceEnabled(true)
-            if (BuildConfig.DEBUG) firebaseDatabase.setLogLevel(Logger.Level.DEBUG)
-
-            return firebaseDatabase
-        }*/
-
     }
 
     @Binds
     @Singleton
     fun bindRepository(impl: PromptsRepositoryImpl): IPromptsRepository
 
+    @Binds
+    @Singleton
+    fun bindPromptSynchronizer(impl: PromptSynchronizerImpl): IPromptSynchronizer
 }

@@ -18,4 +18,6 @@
     <string name="prompt_type_text">Текст</string>
     <string name="action_add">Добавить</string>
     <string name="erro_load_prompts">Ошибка загрузки промптов</string>
+    <string name="restore_version">Восстановить версию</string>
+    <string name="no_history">История пуста</string>
 </resources>
