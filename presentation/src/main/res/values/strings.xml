@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name" translatable="false">AI Prompt Master</string>
     <string name="action_settings">Настройки</string>
@@ -5,6 +6,7 @@
     <string name="menu_library">Библиотека</string>
     <string name="menu_history">История</string>
     <string name="menu_feedback">Обратная связь</string>
+    <string name="menu_sync">Синхронизировать</string>
     <string name="send_feedback_question">Вы хотите отправить обратную связь?</string>
     <string name="review_current_issues_on_github">Просмотрите текущие issues. Возможно уже подобная проблема или вопросы уже обсуждался</string>
     <string name="github_issues_link" translatable="false">https://github.com/arnyigor/aipromptmaster/issues</string>
@@ -20,4 +22,31 @@
     <string name="erro_load_prompts">Ошибка загрузки промптов</string>
     <string name="restore_version">Восстановить версию</string>
     <string name="no_history">История пуста</string>
+    <string name="search_prompts">Поиск промптов</string>
+    <string name="no_prompts_found">Промпты не найдены</string>
+    <string name="retry">Повторить</string>
+    <string name="all">Все</string>
+    <string name="favorites">Избранное</string>
+    <string name="add_prompt">Добавить промпт</string>
+    <string name="sync_success">Синхронизация завершена. Обновлено промптов: %d</string>
+    <string name="sync_conflicts_found">Найдены конфликты синхронизации</string>
+    <string name="error_loading_prompts">Ошибка загрузки промптов</string>
+    <string name="home_search">Поиск</string>
+    <string name="sync_conflicts_title">Конфликты синхронизации</string>
+    <string name="sync_conflicts_message">Найдено %d конфликтов. Хотите разрешить их сейчас?</string>
+    <string name="resolve_conflicts">Разрешить конфликты</string>
+    <string name="prompt_text">Текст промпта</string>
+    <string name="compatible_models">Совместимые модели</string>
+    <string name="copy_prompt">Копировать промпт</string>
+    <string name="prompt_copied">Промпт скопирован</string>
+    <string name="sync_error">Ошибка синхронизации: %s</string>
+    <string name="sync_no_prompts_found">Не найдены промпты в репозитории. Проверьте структуру директорий.</string>
+    <string name="sync_directory_error">Не удалось получить содержимое директории %s. Проверьте права доступа.</string>
+    <string name="sync_processing_error">Ошибка при обработке файлов: %s</string>
+    <string name="prompt_details">Просмотр промпта</string>
+
+    <string-array name="prompt_options">
+        <item>Редактировать</item>
+        <item>Удалить</item>
+    </string-array>
 </resources>

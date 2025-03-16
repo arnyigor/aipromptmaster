@@ -4,7 +4,6 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import java.util.Date
 import java.util.UUID
 
 @Entity(
@@ -77,8 +76,8 @@ data class PromptEntity(
     val version: String = "1.0.0",
 
     @ColumnInfo(name = "created_at")
-    val createdAt: Date = Date(),
+    val createdAt: String = "",
 
     @ColumnInfo(name = "modified_at")
-    val modifiedAt: Date = Date()
+    val modifiedAt: String = "",
 )

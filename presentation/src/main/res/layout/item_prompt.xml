@@ -4,105 +4,60 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="8dp"
-    android:background="?attr/selectableItemBackgroundBorderless"
-    android:clickable="true"
-    android:focusable="true"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="4dp">
+    android:layout_marginHorizontal="8dp"
+    android:layout_marginVertical="4dp"
+    style="@style/Widget.App.CardView">
 
     <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/clTextBlock"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:padding="16dp">
 
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/tv_prompt_text"
+        <TextView
+            android:id="@+id/tvTitle"
+            style="@style/PromptItemText"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textColor="?attr/colorOnSurface"
-            android:textSize="16sp"
-            app:layout_constraintEnd_toStartOf="@+id/favoriteButton"
+            android:layout_marginEnd="8dp"
+            app:layout_constraintEnd_toStartOf="@+id/ivFavorite"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            tools:text="@tools:sample/lorem[10]" />
+            tools:text="Prompt Title" />
 
-        <!-- Кнопка избранного -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/favoriteButton"
-            style="@style/Widget.Material3.Button.IconButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            app:icon="@drawable/ic_favorite"
+        <TextView
+            android:id="@+id/tvDescription"
+            style="@style/PromptItemTextSecondary"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:ellipsize="end"
+            android:maxLines="2"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/tvTitle"
+            tools:text="Prompt description" />
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chipGroupTags"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/tvDescription" />
+
+        <ImageView
+            android:id="@+id/ivFavorite"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_favorite_selector"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            app:tint="@color/colorAccent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <!-- Модель (MidJourney, Stable Diffusion) -->
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/tv_model"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/margin_8"
-            android:textColor="@color/colorAccent"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tv_prompt_text"
-            tools:text="@sample/ai_models.txt" />
-
-        <!-- Рейтинг -->
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/rating_bar"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="@dimen/margin_8"
-            android:progressBackgroundTint="@color/colorPrimaryDark"
-            android:textColor="@color/colorAccent"
-            app:layout_constraintStart_toEndOf="@+id/tv_model"
-            app:layout_constraintTop_toTopOf="@+id/tv_model"
-            tools:text="@sample/rating_numbers.txt" />
-
-        <!-- Теги (хэштеги) -->
-        <com.google.android.material.chip.ChipGroup
-            android:id="@+id/chip_group_tags"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/tv_model"
-            app:singleLine="true">
-
-            <com.google.android.material.chip.Chip
-                style="@style/PromptTag"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                tools:text="#tag1" />
-
-            <com.google.android.material.chip.Chip
-                style="@style/PromptTag"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                tools:text="#tag2" />
-
-            <com.google.android.material.chip.Chip
-                style="@style/PromptTag"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                tools:text="#tag3" />
-        </com.google.android.material.chip.ChipGroup>
-
-        <!-- Дата создания -->
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/tv_created_at"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="?attr/colorOnSurface"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/chip_group_tags"
-            tools:text="@tools:sample/date/ddmmyy" />
-
     </androidx.constraintlayout.widget.ConstraintLayout>
+
 </com.google.android.material.card.MaterialCardView>

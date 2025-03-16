@@ -32,7 +32,6 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageView
-import android.widget.SearchView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
@@ -41,6 +40,7 @@ import androidx.annotation.ColorRes
 import androidx.annotation.DrawableRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.content.res.AppCompatResources
+import androidx.appcompat.widget.SearchView
 import androidx.appcompat.widget.Toolbar
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -55,6 +55,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import coil3.load
 import com.arny.aipromptmaster.presentation.utils.strings.IWrappedString
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import java.io.File
 import kotlin.math.roundToInt
 import kotlin.properties.ReadOnlyProperty
@@ -409,11 +410,11 @@ fun Context.unbind(connection: ServiceConnection) {
 }
 
 fun Fragment.launchWhenCreated(block: suspend CoroutineScope.() -> Unit) {
-    viewLifecycleOwner.lifecycleScope.launchWhenCreated { block.invoke(this) }
+    viewLifecycleOwner.lifecycleScope.launch { block.invoke(this) }
 }
 
 fun Fragment.launchWhenStarted(block: suspend CoroutineScope.() -> Unit) {
-    viewLifecycleOwner.lifecycleScope.launchWhenStarted { block.invoke(this) }
+    viewLifecycleOwner.lifecycleScope.launch { block.invoke(this) }
 }
 
 fun Context.sendBroadcast(action: String, extras: Bundle.() -> Unit = {}) {
@@ -469,7 +470,6 @@ fun Fragment.setupSearchView(
     onMenuCollapse: () -> Unit = {}
 ): SearchView {
     val searchView = menuItem.actionView as SearchView
-    searchView.isIconifiedByDefault = true
     searchView.isFocusable = true
     searchView.isIconified = false
     searchView.requestFocusFromTouch()

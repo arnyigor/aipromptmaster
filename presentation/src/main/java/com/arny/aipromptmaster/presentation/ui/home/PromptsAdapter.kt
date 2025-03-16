@@ -3,61 +3,64 @@ package com.arny.aipromptmaster.presentation.ui.home
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.paging.PagingDataAdapter
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.arny.aipromptmaster.domain.models.Prompt
-import com.arny.aipromptmaster.presentation.databinding.ItemHistoryBinding
-import com.arny.aipromptmaster.presentation.utils.AdapterUtils
-import java.text.SimpleDateFormat
-import java.util.Locale
+import com.arny.aipromptmaster.presentation.databinding.ItemPromptBinding
+import com.arny.aipromptmaster.presentation.utils.addTags
 
 class PromptsAdapter(
-    private val onItemClick: (Prompt) -> Unit,
-    private val onRestoreClick: (Prompt) -> Unit
-) : PagingDataAdapter<Prompt, PromptsAdapter.ViewHolder>(
-    AdapterUtils.diffItemCallback(
-        itemsTheSame = { old, new -> old.id == new.id && old.modifiedAt == new.modifiedAt }
-    )
-) {
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        return ViewHolder(
-            ItemHistoryBinding.inflate(
+    private val onPromptClick: (Prompt) -> Unit,
+    private val onPromptLongClick: (Prompt) -> Unit,
+    private val onFavoriteClick: (Prompt) -> Unit
+) : PagingDataAdapter<Prompt, PromptsAdapter.PromptViewHolder>(PromptComparator) {
+
+    override fun onBindViewHolder(holder: PromptViewHolder, position: Int) {
+        getItem(position)?.let { holder.bind(it) }
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PromptViewHolder {
+        return PromptViewHolder(
+            ItemPromptBinding.inflate(
                 LayoutInflater.from(parent.context),
                 parent,
                 false
-            )
+            ),
+            onPromptClick,
+            onPromptLongClick,
+            onFavoriteClick
         )
     }
 
-    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        getItem(position)?.let { prompt ->
-            holder.bind(prompt)
+    class PromptViewHolder(
+        private val binding: ItemPromptBinding,
+        private val onPromptClick: (Prompt) -> Unit,
+        private val onPromptLongClick: (Prompt) -> Unit,
+        private val onFavoriteClick: (Prompt) -> Unit
+    ) : RecyclerView.ViewHolder(binding.root) {
+
+        fun bind(prompt: Prompt) {
+            with(binding) {
+                tvTitle.text = prompt.title
+                chipGroupTags.addTags(root.context, prompt.tags)
+                ivFavorite.isSelected = prompt.isFavorite
+                ivFavorite.setOnClickListener { onFavoriteClick(prompt) }
+                root.setOnClickListener { onPromptClick(prompt) }
+                root.setOnLongClickListener { 
+                    onPromptLongClick(prompt)
+                    true
+                }
+            }
         }
     }
 
-    inner class ViewHolder(
-        private val binding: ItemHistoryBinding
-    ) : RecyclerView.ViewHolder(binding.root) {
-        private val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
+    object PromptComparator : DiffUtil.ItemCallback<Prompt>() {
+        override fun areItemsTheSame(oldItem: Prompt, newItem: Prompt): Boolean {
+            return oldItem.id == newItem.id
+        }
 
-        fun bind(item: Prompt) {
-            binding.apply {
-                // Основная информация
-                tvTitle.text = item.title
-                tvContent.text = when {
-                    item.content.ru.isNotBlank() -> item.content.ru
-                    item.content.en.isNotBlank() -> item.content.en
-                    else -> ""
-                }
-                tvDate.text = dateFormat.format(item.modifiedAt)
-
-                // Чипы с категорией и статусом
-                chipCategory.text = item.category
-                chipStatus.text = item.status
-
-                // Обработчики нажатий
-                root.setOnClickListener { onItemClick(item) }
-                buttonRestore.setOnClickListener { onRestoreClick(item) }
-            }
+        override fun areContentsTheSame(oldItem: Prompt, newItem: Prompt): Boolean {
+            return oldItem == newItem
         }
     }
 } 

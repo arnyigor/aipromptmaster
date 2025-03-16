@@ -1,5 +1,7 @@
 package com.arny.aipromptmaster.data.sync
 
+import android.content.Context
+import android.util.Log
 import com.arny.aipromptmaster.data.api.GitHubService
 import com.arny.aipromptmaster.data.mappers.toDomain
 import com.arny.aipromptmaster.data.models.GitHubConfig
@@ -9,13 +11,17 @@ import com.arny.aipromptmaster.data.repositories.PromptsRepositoryImpl
 import com.arny.aipromptmaster.domain.models.Prompt
 import com.arny.aipromptmaster.domain.models.SyncConflict
 import com.arny.aipromptmaster.domain.repositories.IPromptSynchronizer
+import com.arny.aipromptmaster.domain.repositories.SyncResult
 import com.google.gson.Gson
+import com.google.gson.JsonParseException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import java.io.IOException
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.util.Date
+import java.util.zip.ZipInputStream
 import javax.inject.Inject
 
 class PromptSynchronizerImpl @Inject constructor(
@@ -23,74 +29,193 @@ class PromptSynchronizerImpl @Inject constructor(
     private val promptsRepository: PromptsRepositoryImpl,
     private val prefs: Prefs,
     private val gson: Gson,
-    private val okHttpClient: OkHttpClient,
-    private val config: GitHubConfig
+    private val config: GitHubConfig,
+    private val context: Context
 ) : IPromptSynchronizer {
 
     companion object {
         private const val LAST_SYNC_KEY = "last_sync_timestamp"
+        private const val TAG = "PromptSynchronizer"
     }
 
-    override suspend fun synchronize(): IPromptSynchronizer.SyncResult = withContext(Dispatchers.IO) {
+    override suspend fun synchronize(): SyncResult = withContext(Dispatchers.IO) {
         try {
-            // Получаем список файлов из репозитория
-            val response = githubService.getContents(config.owner, config.repo, config.promptsPath)
-            if (!response.isSuccessful) {
-                return@withContext IPromptSynchronizer.SyncResult.Error(
-                    "Failed to fetch contents: ${response.message()}"
-                )
-            }
-
-            val contents = response.body() ?: return@withContext IPromptSynchronizer.SyncResult.Error("Empty response")
-            val jsonFiles = contents.filter { it.name.endsWith(".json") }
-
-            // Загружаем и обрабатываем каждый файл
             val remotePrompts = mutableListOf<Prompt>()
             val conflicts = mutableListOf<SyncConflict>()
+            val errors = mutableListOf<String>()
 
-            for (file in jsonFiles) {
-                val downloadUrl = file.downloadUrl ?: continue
-                val jsonContent = downloadFile(downloadUrl)
-                val promptJson = gson.fromJson(jsonContent, PromptJson::class.java)
-                val remotePrompt = promptJson.toDomain()
-                remotePrompts.add(remotePrompt)
+            // Загружаем архив репозитория
+            val response = githubService.downloadArchive(
+                owner = config.owner,
+                repo = config.repo,
+                ref = config.branch
+            )
 
-                // Проверяем конфликты
-                val localPrompt = promptsRepository.getPromptById(remotePrompt.id)
-                if (localPrompt != null) {
-                    val conflict = checkConflict(localPrompt, remotePrompt)
-                    if (conflict != null) {
-                        conflicts.add(conflict)
-                        continue
-                    }
-                }
+            if (!response.isSuccessful) {
+                Log.e(TAG, "Failed to download archive: ${response.message()}")
+                return@withContext SyncResult.Error("Не удалось загрузить архив репозитория")
             }
 
-            // Обрабатываем удаленные промпты
-            handleDeletedPrompts(remotePrompts)
+            // Создаем временную директорию для распаковки
+            val tempDir = createTempDirectory()
+            val zipFile = File(tempDir, "repo.zip")
 
-            // Сохраняем промпты без конфликтов
-            val promptsToSave = remotePrompts.filter { prompt ->
-                conflicts.none { conflict ->
-                    when (conflict) {
-                        is SyncConflict.LocalNewer -> conflict.remote.id == prompt.id
-                        is SyncConflict.RemoteNewer -> conflict.remote.id == prompt.id
-                        is SyncConflict.ContentMismatch -> conflict.remote.id == prompt.id
+            try {
+                // Сохраняем архив
+                response.body()?.byteStream()?.use { input ->
+                    FileOutputStream(zipFile).use { output ->
+                        input.copyTo(output)
                     }
                 }
-            }
-            promptsRepository.savePrompts(promptsToSave)
 
-            // Обновляем время последней синхронизации
-            setLastSyncTime(Date().time)
+                // Распаковываем архив
+                unzipFile(zipFile, tempDir)
 
-            if (conflicts.isEmpty()) {
-                IPromptSynchronizer.SyncResult.Success(promptsToSave)
-            } else {
-                IPromptSynchronizer.SyncResult.Conflicts(conflicts)
+                // Ищем директорию prompts в распакованном архиве
+                val promptsDir = findPromptsDirectory(tempDir)
+                    ?: return@withContext SyncResult.Error("Директория prompts не найдена в архиве")
+
+                // Обрабатываем JSON файлы рекурсивно
+                processDirectory(promptsDir, remotePrompts, conflicts, errors)
+
+                // Очищаем временные файлы
+                tempDir.deleteRecursively()
+
+                if (remotePrompts.isEmpty() && errors.isEmpty()) {
+                    Log.w(TAG, "No prompts found in archive")
+                    return@withContext SyncResult.Error("Не найдены промпты в репозитории")
+                }
+
+                if (errors.isNotEmpty()) {
+                    Log.w(TAG, "Sync completed with errors: ${errors.joinToString()}")
+                    return@withContext SyncResult.Error(
+                        "Синхронизация завершена с ошибками:\n${errors.joinToString("\n")}"
+                    )
+                }
+
+                // Обрабатываем удаленные промпты
+                try {
+                    handleDeletedPrompts(remotePrompts)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error handling deleted prompts", e)
+                    return@withContext SyncResult.Error(
+                        "Ошибка при обработке удаленных промптов: ${e.message}"
+                    )
+                }
+
+                // Сохраняем промпты без конфликтов
+                val promptsToSave = remotePrompts.filter { prompt ->
+                    conflicts.none { conflict ->
+                        when (conflict) {
+                            is SyncConflict.LocalNewer -> conflict.remote.id == prompt.id
+                            is SyncConflict.RemoteNewer -> conflict.remote.id == prompt.id
+                            is SyncConflict.ContentMismatch -> conflict.remote.id == prompt.id
+                        }
+                    }
+                }
+
+                try {
+                    promptsRepository.savePrompts(promptsToSave)
+                    setLastSyncTime(Date().time)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error saving prompts", e)
+                    return@withContext SyncResult.Error(
+                        "Ошибка при сохранении промптов: ${e.message}"
+                    )
+                }
+
+                if (conflicts.isEmpty()) {
+                    Log.i(TAG, "Sync completed successfully, saved ${promptsToSave.size} prompts")
+                    SyncResult.Success(promptsToSave)
+                } else {
+                    Log.i(TAG, "Sync completed with ${conflicts.size} conflicts")
+                    SyncResult.Conflicts(conflicts)
+                }
+            } finally {
+                // Убеждаемся, что временные файлы удалены
+                tempDir.deleteRecursively()
             }
         } catch (e: Exception) {
-            IPromptSynchronizer.SyncResult.Error("Sync failed: ${e.message}")
+            Log.e(TAG, "Unexpected error during sync", e)
+            SyncResult.Error("Непредвиденная ошибка: ${e.message}")
+        }
+    }
+
+    private fun createTempDirectory(): File {
+        val tempDir = File(context.cacheDir, "aipromptmaster_${System.currentTimeMillis()}")
+        tempDir.mkdirs()
+        return tempDir
+    }
+
+    private fun unzipFile(zipFile: File, destDir: File) {
+        ZipInputStream(FileInputStream(zipFile)).use { zis ->
+            var entry = zis.nextEntry
+            while (entry != null) {
+                val file = File(destDir, entry.name)
+                if (entry.isDirectory) {
+                    file.mkdirs()
+                } else {
+                    file.parentFile?.mkdirs()
+                    FileOutputStream(file).use { fos ->
+                        zis.copyTo(fos)
+                    }
+                }
+                entry = zis.nextEntry
+            }
+        }
+    }
+
+    private fun findPromptsDirectory(dir: File): File? {
+        if (dir.name == "prompts") return dir
+        dir.listFiles()?.forEach { file ->
+            if (file.isDirectory) {
+                val found = findPromptsDirectory(file)
+                if (found != null) return found
+            }
+        }
+        return null
+    }
+
+    private suspend fun processDirectory(
+        dir: File,
+        remotePrompts: MutableList<Prompt>,
+        conflicts: MutableList<SyncConflict>,
+        errors: MutableList<String>
+    ) {
+        dir.listFiles()?.forEach { file ->
+            when {
+                file.isDirectory -> {
+                    processDirectory(file, remotePrompts, conflicts, errors)
+                }
+                file.name.endsWith(".json") -> {
+                    try {
+                        val jsonContent = file.readText()
+                        val promptJson = try {
+                            gson.fromJson(jsonContent, PromptJson::class.java)
+                        } catch (e: JsonParseException) {
+                            Log.e(TAG, "Failed to parse JSON from ${file.name}", e)
+                            errors.add("Ошибка парсинга файла ${file.name}: ${e.message}")
+                            return@forEach
+                        }
+
+                        val remotePrompt = promptJson.toDomain()
+                        remotePrompts.add(remotePrompt)
+
+                        // Проверяем конфликты
+                        val localPrompt = promptsRepository.getPromptById(remotePrompt.id)
+                        if (localPrompt != null) {
+                            val conflict = checkConflict(localPrompt, remotePrompt)
+                            if (conflict != null) {
+                                conflicts.add(conflict)
+                                return@forEach
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error processing file ${file.name}", e)
+                        errors.add("Ошибка обработки файла ${file.name}: ${e.message}")
+                    }
+                }
+            }
         }
     }
 
@@ -120,18 +245,5 @@ class PromptSynchronizerImpl @Inject constructor(
 
     override suspend fun setLastSyncTime(timestamp: Long) = withContext(Dispatchers.IO) {
         prefs.put(LAST_SYNC_KEY, timestamp)
-    }
-
-    private suspend fun downloadFile(url: String): String = withContext(Dispatchers.IO) {
-        val request = okhttp3.Request.Builder()
-            .url(url)
-            .build()
-
-        val response = okHttpClient.newCall(request).execute()
-        if (!response.isSuccessful) {
-            throw IOException("Failed to download file: ${response.message}")
-        }
-
-        response.body?.string() ?: throw IOException("Empty response body")
     }
 } 

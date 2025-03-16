@@ -1,27 +1,26 @@
 package com.arny.aipromptmaster.domain.interactors
 
-import com.arny.aipromptmaster.domain.models.Pageable
 import com.arny.aipromptmaster.domain.models.Prompt
-import com.arny.aipromptmaster.domain.repositories.IPromptSynchronizer
-import kotlinx.coroutines.flow.Flow
+import com.arny.aipromptmaster.domain.repositories.SyncResult
 
 interface IPromptsInteractor {
-    // Основные операции с промптами
-    fun getPrompts(): Flow<List<Prompt>>
+    suspend fun getPrompts(
+        query: String = "",
+        category: String? = null,
+        status: String? = null,
+        tags: List<String> = emptyList(),
+        offset: Int = 0,
+        limit: Int = DEFAULT_PAGE_SIZE
+    ): List<Prompt>
+
     suspend fun getPromptById(id: String): Prompt?
     suspend fun savePrompt(prompt: Prompt): Long
     suspend fun updatePrompt(prompt: Prompt)
     suspend fun deletePrompt(promptId: String)
-    
-    // Поиск и фильтрация
-    fun searchPrompts(
-        query: String = "",
-        category: String? = null,
-        status: String? = null,
-        tags: List<String> = emptyList()
-    ): Pageable<Prompt>
-    
-    // Синхронизация
-    suspend fun synchronize(): IPromptSynchronizer.SyncResult
-    suspend fun getLastSyncTime(): Long
+    suspend fun synchronize(): SyncResult
+    suspend fun getLastSyncTime(): Long?
+
+    companion object {
+        const val DEFAULT_PAGE_SIZE = 20
+    }
 }

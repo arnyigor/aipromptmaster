@@ -1,20 +1,27 @@
 package com.arny.aipromptmaster.data.models
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+
+@Serializable
 data class PromptJson(
-    val id: String,
-    val title: String,
-    val version: String,
-    val status: String,
-    val isLocal: Boolean,
-    val isFavorite: Boolean,
-    val description: String?,
-    val content: Map<String, String>,
-    val compatibleModels: List<String>,
-    val category: String,
-    val tags: List<String>,
-    val variables: List<Variable>,
-    val metadata: Map<String, Any>,
-    val rating: Rating,
-    val createdAt: String,
-    val updatedAt: String
+
+    @SerialName("id") var id: String? = null,
+    @SerialName("title") var title: String? = null,
+    @SerialName("version") var version: String? = null,
+    @SerialName("status") var status: String? = null,
+    @SerialName("is_local") var isLocal: Boolean = false,
+    @SerialName("is_favorite") var isFavorite: Boolean = false,
+    @SerialName("description") var description: String? = null,
+    @SerialName("content") var content: Map<String, String> = emptyMap(),
+    @SerialName("compatible_models") var compatibleModels: List<String> = emptyList(),
+    @SerialName("category") var category: String? = null,
+    @SerialName("tags") var tags: List<String> = emptyList(),
+    @SerialName("variables") var variables: List<Variable> = emptyList(),
+    @SerialName("metadata") var metadata: Metadata? = Metadata(),
+    @SerialName("rating") var rating: Rating? = Rating(),
+    @SerialName("created_at") var createdAt: String? = null,
+    @SerialName("updated_at") var updatedAt: String? = null
+
 )

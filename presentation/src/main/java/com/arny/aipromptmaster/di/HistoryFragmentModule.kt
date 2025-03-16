@@ -8,9 +8,6 @@ import dagger.android.ContributesAndroidInjector
 @Module
 interface HistoryFragmentModule {
     @FragmentScope
-    @ContributesAndroidInjector(
-        modules = [
-        ]
-    )
+    @ContributesAndroidInjector
     fun contributeFragmentInjector(): HistoryFragment
 } 

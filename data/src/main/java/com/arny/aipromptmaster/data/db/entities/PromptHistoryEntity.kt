@@ -1,12 +1,6 @@
 package com.arny.aipromptmaster.data.db.entities
 
-import androidx.room.ColumnInfo
-import androidx.room.Entity
-import androidx.room.ForeignKey
-import androidx.room.Index
-import androidx.room.PrimaryKey
-import java.util.Date
-
+/*
 @Entity(
     tableName = "prompt_history",
     foreignKeys = [
@@ -85,8 +79,8 @@ data class PromptHistoryEntity(
     val version: String = "1.0.0",
 
     @ColumnInfo(name = "created_at")
-    val createdAt: Date = Date(),
+    val createdAt: String = "",
 
     @ColumnInfo(name = "modified_at")
-    val modifiedAt: Date = Date()
-)
+    val modifiedAt: String = "",
+)*/

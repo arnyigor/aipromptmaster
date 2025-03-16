@@ -1,26 +1,19 @@
 package com.arny.aipromptmaster.data.api
 
-import com.arny.aipromptmaster.data.models.GitHubCommit
-import com.arny.aipromptmaster.data.models.GitHubContent
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.GET
+import retrofit2.http.Headers
 import retrofit2.http.Path
-import retrofit2.http.Query
+import retrofit2.http.Streaming
 
 interface GitHubService {
-    @GET("repos/{owner}/{repo}/contents/{path}")
-    suspend fun getContents(
+    @GET("repos/{owner}/{repo}/zipball/{ref}")
+    @Streaming
+    @Headers("Accept: application/vnd.github.v3+json")
+    suspend fun downloadArchive(
         @Path("owner") owner: String,
         @Path("repo") repo: String,
-        @Path("path") path: String,
-        @Query("ref") ref: String = "main"
-    ): Response<List<GitHubContent>>
-
-    @GET("repos/{owner}/{repo}/commits")
-    suspend fun getCommits(
-        @Path("owner") owner: String,
-        @Path("repo") repo: String,
-        @Path("path") path: String,
-        @Query("since") since: String? = null
-    ): Response<List<GitHubCommit>>
-} 
+        @Path("ref") ref: String
+    ): Response<ResponseBody>
+}

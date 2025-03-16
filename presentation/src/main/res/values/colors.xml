@@ -1,15 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Основные цвета -->
-    <color name="colorPrimary">#7435FD</color>
-    <color name="colorPrimaryDark">#08081E</color>
-    <color name="colorSecondary">#C381E7</color>
-    <color name="textColorSecondary">#9A98A3</color>
-    <color name="textColorPrimary">#FFFFFF</color>
+    <color name="colorPrimary">#6200EE</color>
+    <color name="colorPrimaryDark">#3700B3</color>
+    <color name="colorSecondary">#03DAC5</color>
+    <color name="textColorSecondary">#99FFFFFF</color>
+    <color name="textColorPrimary">#E6FFFFFF</color>
     <color name="colorOverlay">#66000000</color>
-    <color name="colorSeparator">#1E1E1E</color>
+    <color name="colorSeparator">#2C2C2C</color>
 
     <!-- Стилизация элементов -->
-    <color name="colorIcon">#FFFFFF</color>
-    <color name="colorAccent">#7435FD</color>
+    <color name="colorIcon">#E6FFFFFF</color>
+    <color name="colorAccent">#BB86FC</color>
+    
+    <!-- Цвета карточек -->
+    <color name="card_background">#1E1E1E</color>
+    <color name="card_stroke">#3D3D3D</color>
 </resources>

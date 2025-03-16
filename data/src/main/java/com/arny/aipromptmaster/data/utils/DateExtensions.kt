@@ -9,7 +9,7 @@ private val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS", Locale.
     timeZone = TimeZone.getTimeZone("UTC")
 }
 
-fun String.toDate(): Date = try {
+fun String.toIsoDate(): Date = try {
     isoFormat.parse(this) ?: Date()
 } catch (e: Exception) {
     Date()
