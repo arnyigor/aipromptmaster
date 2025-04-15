@@ -9,7 +9,6 @@ import com.arny.aipromptmaster.data.models.PromptJson
 import com.arny.aipromptmaster.data.prefs.Prefs
 import com.arny.aipromptmaster.data.repositories.PromptsRepositoryImpl
 import com.arny.aipromptmaster.domain.models.Prompt
-import com.arny.aipromptmaster.domain.models.SyncConflict
 import com.arny.aipromptmaster.domain.repositories.IPromptSynchronizer
 import com.arny.aipromptmaster.domain.repositories.SyncResult
 import com.google.gson.Gson
@@ -20,7 +19,6 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.util.Date
 import java.util.zip.ZipInputStream
 import javax.inject.Inject
 
@@ -41,7 +39,6 @@ class PromptSynchronizerImpl @Inject constructor(
     override suspend fun synchronize(): SyncResult = withContext(Dispatchers.IO) {
         try {
             val remotePrompts = mutableListOf<Prompt>()
-            val conflicts = mutableListOf<SyncConflict>()
             val errors = mutableListOf<String>()
 
             // Загружаем архив репозитория
@@ -76,7 +73,7 @@ class PromptSynchronizerImpl @Inject constructor(
                     ?: return@withContext SyncResult.Error("Директория prompts не найдена в архиве")
 
                 // Обрабатываем JSON файлы рекурсивно
-                processDirectory(promptsDir, remotePrompts, conflicts, errors)
+                processDirectory(promptsDir, remotePrompts, errors)
 
                 // Очищаем временные файлы
                 tempDir.deleteRecursively()
@@ -103,33 +100,23 @@ class PromptSynchronizerImpl @Inject constructor(
                     )
                 }
 
-                // Сохраняем промпты без конфликтов
-                val promptsToSave = remotePrompts.filter { prompt ->
-                    conflicts.none { conflict ->
-                        when (conflict) {
-                            is SyncConflict.LocalNewer -> conflict.remote.id == prompt.id
-                            is SyncConflict.RemoteNewer -> conflict.remote.id == prompt.id
-                            is SyncConflict.ContentMismatch -> conflict.remote.id == prompt.id
-                        }
-                    }
-                }
-
+                // Сохраняем все полученные с сервера промпты.
+                // Предполагается, что promptsRepository.savePrompts выполняет "upsert"
+                // (обновляет существующие по ID или вставляет новые).
                 try {
-                    promptsRepository.savePrompts(promptsToSave)
-                    setLastSyncTime(Date().time)
+                    promptsRepository.savePrompts(remotePrompts)
+                    setLastSyncTime(System.currentTimeMillis())
+                    Log.i(
+                        TAG,
+                        "Sync completed successfully, processed ${remotePrompts.size} prompts from remote"
+                    )
+                    // Возвращаем все обработанные удаленные промпты как успешный результат
+                    SyncResult.Success(remotePrompts)
                 } catch (e: Exception) {
                     Log.e(TAG, "Error saving prompts", e)
                     return@withContext SyncResult.Error(
                         "Ошибка при сохранении промптов: ${e.message}"
                     )
-                }
-
-                if (conflicts.isEmpty()) {
-                    Log.i(TAG, "Sync completed successfully, saved ${promptsToSave.size} prompts")
-                    SyncResult.Success(promptsToSave)
-                } else {
-                    Log.i(TAG, "Sync completed with ${conflicts.size} conflicts")
-                    SyncResult.Conflicts(conflicts)
                 }
             } finally {
                 // Убеждаемся, что временные файлы удалены
@@ -176,17 +163,17 @@ class PromptSynchronizerImpl @Inject constructor(
         return null
     }
 
-    private suspend fun processDirectory(
+    private fun processDirectory(
         dir: File,
         remotePrompts: MutableList<Prompt>,
-        conflicts: MutableList<SyncConflict>,
         errors: MutableList<String>
     ) {
         dir.listFiles()?.forEach { file ->
             when {
                 file.isDirectory -> {
-                    processDirectory(file, remotePrompts, conflicts, errors)
+                    processDirectory(file, remotePrompts, errors)
                 }
+
                 file.name.endsWith(".json") -> {
                     try {
                         val jsonContent = file.readText()
@@ -198,33 +185,13 @@ class PromptSynchronizerImpl @Inject constructor(
                             return@forEach
                         }
 
-                        val remotePrompt = promptJson.toDomain()
-                        remotePrompts.add(remotePrompt)
-
-                        // Проверяем конфликты
-                        val localPrompt = promptsRepository.getPromptById(remotePrompt.id)
-                        if (localPrompt != null) {
-                            val conflict = checkConflict(localPrompt, remotePrompt)
-                            if (conflict != null) {
-                                conflicts.add(conflict)
-                                return@forEach
-                            }
-                        }
+                        remotePrompts.add(promptJson.toDomain())
                     } catch (e: Exception) {
                         Log.e(TAG, "Error processing file ${file.name}", e)
                         errors.add("Ошибка обработки файла ${file.name}: ${e.message}")
                     }
                 }
             }
-        }
-    }
-
-    private fun checkConflict(local: Prompt, remote: Prompt): SyncConflict? {
-        return when {
-            local.modifiedAt > remote.modifiedAt -> SyncConflict.LocalNewer(local, remote)
-            local.modifiedAt < remote.modifiedAt -> SyncConflict.RemoteNewer(local, remote)
-            local.content != remote.content -> SyncConflict.ContentMismatch(local, remote)
-            else -> null
         }
     }
 
