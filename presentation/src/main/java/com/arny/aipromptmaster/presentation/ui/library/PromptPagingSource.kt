@@ -1,4 +1,4 @@
-package com.arny.aipromptmaster.presentation.ui.home
+package com.arny.aipromptmaster.presentation.ui.library
 
 import androidx.paging.PagingSource
 import androidx.paging.PagingState

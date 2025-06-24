@@ -32,9 +32,4 @@
             android:name="promptId"
             app:argType="string" />
     </fragment>
-    <fragment
-        android:id="@+id/nav_llm_interaction"
-        android:name="com.arny.aipromptmaster.presentation.ui.llm.LLMInteractionFragment"
-        android:label="@string/title_llm_interaction"
-        tools:layout="@layout/fragment_llm_interaction" />
 </navigation>

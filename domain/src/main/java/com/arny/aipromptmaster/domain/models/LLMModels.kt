@@ -28,3 +28,10 @@ data class Usage(
     val completionTokens: Int,
     val totalTokens: Int
 )
+
+data class LLMModel(
+    val id: String,
+    val name: String,
+    val description: String,
+    val contextLength: Int,
+)

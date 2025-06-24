@@ -1,4 +1,4 @@
-package com.arny.aipromptmaster.presentation.ui.llm
+package com.arny.aipromptmaster.presentation.ui.home
 
 sealed class LLMUIState {
     data class Content(

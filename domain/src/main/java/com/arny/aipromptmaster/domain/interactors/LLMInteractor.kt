@@ -1,5 +1,6 @@
 package com.arny.aipromptmaster.domain.interactors
 
+import com.arny.aipromptmaster.domain.models.LLMModel
 import com.arny.aipromptmaster.domain.models.Message
 import com.arny.aipromptmaster.domain.repositories.IOpenRouterRepository
 import com.arny.aipromptmaster.domain.results.LLMResult
@@ -16,7 +17,6 @@ class LLMInteractor @Inject constructor(
         userMessage: String
     ): Flow<LLMResult<String>> = flow {
         emit(LLMResult.Loading())
-
         try {
             val messages = listOf(
                 Message("user", userMessage)
@@ -32,6 +32,28 @@ class LLMInteractor @Inject constructor(
                     } else {
                         emit(LLMResult.Error(Exception("Empty response")))
                     }
+                },
+                onFailure = { exception ->
+                    emit(LLMResult.Error(exception))
+                }
+            )
+        } catch (e: Exception) {
+            emit(LLMResult.Error(e))
+        }
+    }
+
+
+    override suspend fun getModels(): Flow<LLMResult<List<LLMModel>>> = flow {
+        emit(LLMResult.Loading())
+        try {
+            val result = repository.getModels()
+
+            result.fold(
+                onSuccess = { models ->
+                    val freeModels = models.filter {
+                        it.name.endsWith(":free", ignoreCase = true)
+                    }
+                    emit(LLMResult.Success(freeModels))
                 },
                 onFailure = { exception ->
                     emit(LLMResult.Error(exception))
