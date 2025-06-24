@@ -4,23 +4,20 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/mobile_navigation"
     app:startDestination="@+id/nav_home">
-
     <fragment
         android:id="@+id/nav_home"
         android:name="com.arny.aipromptmaster.presentation.ui.home.HomeFragment"
         android:label="@string/title_home"
-        tools:layout="@layout/fragment_home" >
+        tools:layout="@layout/fragment_home">
         <action
             android:id="@+id/action_nav_home_to_promptViewFragment"
             app:destination="@id/promptViewFragment" />
     </fragment>
-
     <fragment
         android:id="@+id/nav_library"
         android:name="com.arny.aipromptmaster.presentation.ui.library.LibraryFragment"
         android:label="@string/title_library"
         tools:layout="@layout/fragment_library" />
-
     <fragment
         android:id="@+id/nav_history"
         android:name="com.arny.aipromptmaster.presentation.ui.history.HistoryFragment"
@@ -28,11 +25,16 @@
         tools:layout="@layout/fragment_history" />
     <fragment
         android:id="@+id/promptViewFragment"
-        android:label="@string/prompt_details"
         android:name="com.arny.aipromptmaster.presentation.ui.view.PromptViewFragment"
-        tools:layout="@layout/fragment_prompt_view" >
+        android:label="@string/prompt_details"
+        tools:layout="@layout/fragment_prompt_view">
         <argument
             android:name="promptId"
             app:argType="string" />
     </fragment>
+    <fragment
+        android:id="@+id/nav_llm_interaction"
+        android:name="com.arny.aipromptmaster.presentation.ui.llm.LLMInteractionFragment"
+        android:label="@string/title_llm_interaction"
+        tools:layout="@layout/fragment_llm_interaction" />
 </navigation>

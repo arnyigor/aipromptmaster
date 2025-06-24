@@ -44,6 +44,8 @@
     <string name="sync_directory_error">Не удалось получить содержимое директории %s. Проверьте права доступа.</string>
     <string name="sync_processing_error">Ошибка при обработке файлов: %s</string>
     <string name="prompt_details">Просмотр промпта</string>
+    <string name="title_llm_interaction">ИИ-ассистент</string>
+    <string name="menu_llm_interaction">ИИ</string>
 
     <string-array name="prompt_options">
         <item>Редактировать</item>
