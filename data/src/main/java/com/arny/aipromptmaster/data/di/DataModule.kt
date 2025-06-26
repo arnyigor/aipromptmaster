@@ -35,13 +35,6 @@ interface DataModule {
 
         @Provides
         @Singleton
-        fun provideSecurePrefs(
-            context: Context,
-            cryptoHelper: CryptoHelper
-        ): SecurePrefs = SecurePrefs(context, cryptoHelper)
-
-        @Provides
-        @Singleton
         fun providesIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
 
         @Provides
