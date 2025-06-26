@@ -34,6 +34,7 @@ toasty = "1.5.2"
 legacySupportV4 = "1.0.0"
 lifecycleLivedataKtx = "2.8.7"
 fragmentKtx = "1.8.5"
+securityCrypto = "1.0.0"
 
 [libraries]
 androidx-paging-runtime-ktx = { module = "androidx.paging:paging-runtime-ktx", version.ref = "pagingRuntimeKtx" }
@@ -93,6 +94,7 @@ toasty = { module = "com.github.GrenderG:Toasty", version.ref = "toasty" }
 androidx-legacy-support-v4 = { group = "androidx.legacy", name = "legacy-support-v4", version.ref = "legacySupportV4" }
 androidx-lifecycle-livedata-ktx = { group = "androidx.lifecycle", name = "lifecycle-livedata-ktx", version.ref = "lifecycleLivedataKtx" }
 androidx-fragment-ktx = { group = "androidx.fragment", name = "fragment-ktx", version.ref = "fragmentKtx" }
+androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

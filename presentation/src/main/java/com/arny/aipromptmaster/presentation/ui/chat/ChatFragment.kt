@@ -11,6 +11,7 @@ import android.view.ViewGroup
 import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.arny.aipromptmaster.core.di.scopes.viewModelFactory
 import com.arny.aipromptmaster.presentation.R
@@ -29,14 +30,14 @@ class ChatFragment : Fragment() {
 
     @AssistedFactory
     internal interface ViewModelFactory {
-        fun create(): LibraryViewModel
+        fun create(): ChatViewModel
     }
 
     private val groupAdapter by autoClean { GroupieAdapter() }
 
     @Inject
     internal lateinit var viewModelFactory: ViewModelFactory
-    private val viewModel: LibraryViewModel by viewModelFactory { viewModelFactory.create() }
+    private val viewModel: ChatViewModel by viewModelFactory { viewModelFactory.create() }
 
     override fun onAttach(context: Context) {
         AndroidSupportInjection.inject(this)
@@ -66,10 +67,7 @@ class ChatFragment : Fragment() {
 
     private fun initMenu() {
         requireActivity().addMenuProvider(object : MenuProvider {
-            override fun onPrepareMenu(menu: Menu) {
-                // Всегда показываем поиск
-                menu.findItem(R.id.action_search)?.isVisible = true
-            }
+            override fun onPrepareMenu(menu: Menu) {}
 
             override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
                 menuInflater.inflate(R.menu.home_menu, menu)
@@ -77,7 +75,10 @@ class ChatFragment : Fragment() {
 
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean =
                 when (menuItem.itemId) {
-                    R.id.action_feedback -> {
+                    R.id.action_settings -> {
+                        findNavController().navigate(
+                            ChatFragmentDirections.actionNavChatToSettingsFragment()
+                        )
                         true
                     }
 
@@ -111,7 +112,7 @@ class ChatFragment : Fragment() {
         launchWhenCreated {
             viewModel.uiState.collectLatest { state ->
                 when (state) {
-                    is LLMUIState.Content -> {
+                    is ChatUIState.Content -> {
                         state.messages.lastOrNull()?.let { message ->
                             groupAdapter.add(LLMMessageItem(message))
                             binding.rvChat.smoothScrollToPosition(groupAdapter.itemCount - 1)

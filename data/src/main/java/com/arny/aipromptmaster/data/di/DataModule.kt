@@ -9,11 +9,15 @@ import com.arny.aipromptmaster.data.db.daos.PromptDao
 import com.arny.aipromptmaster.data.models.GitHubConfig
 import com.arny.aipromptmaster.data.openrouter.OpenRouterRepositoryImpl
 import com.arny.aipromptmaster.data.prefs.Prefs
+import com.arny.aipromptmaster.data.prefs.SecurePrefs
 import com.arny.aipromptmaster.data.repositories.PromptsRepositoryImpl
+import com.arny.aipromptmaster.data.repositories.SettingsRepositoryImpl
 import com.arny.aipromptmaster.data.sync.PromptSynchronizerImpl
+import com.arny.aipromptmaster.data.utils.CryptoHelper
 import com.arny.aipromptmaster.domain.repositories.IOpenRouterRepository
 import com.arny.aipromptmaster.domain.repositories.IPromptSynchronizer
 import com.arny.aipromptmaster.domain.repositories.IPromptsRepository
+import com.arny.aipromptmaster.domain.repositories.ISettingsRepository
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -28,6 +32,13 @@ interface DataModule {
         @Provides
         @Singleton
         fun providePreferences(context: Context): Prefs = Prefs.getInstance(context)
+
+        @Provides
+        @Singleton
+        fun provideSecurePrefs(
+            context: Context,
+            cryptoHelper: CryptoHelper
+        ): SecurePrefs = SecurePrefs(context, cryptoHelper)
 
         @Provides
         @Singleton
@@ -72,4 +83,8 @@ interface DataModule {
     @Binds
     @Singleton
     fun bindPromptSynchronizer(impl: PromptSynchronizerImpl): IPromptSynchronizer
+
+    @Binds
+    @Singleton
+    fun bindSettingsRepository(impl: SettingsRepositoryImpl): ISettingsRepository
 }

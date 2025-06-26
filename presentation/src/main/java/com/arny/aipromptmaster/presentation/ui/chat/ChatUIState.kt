@@ -1,11 +1,11 @@
 package com.arny.aipromptmaster.presentation.ui.chat
 
-sealed class LLMUIState {
+sealed class ChatUIState {
     data class Content(
         val messages: List<String>,
         val isLoading: Boolean = false,
         val error: Throwable? = null
-    ) : LLMUIState()
+    ) : ChatUIState()
 
     companion object {
         val Initial = Content(emptyList())

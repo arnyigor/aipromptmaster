@@ -519,8 +519,6 @@ fun Fragment.toastMessage(string: IWrappedString?) {
     }
 }
 
-fun isOlder(version: Int): Boolean = Build.VERSION.SDK_INT >= version
-
 fun Context.getDP(value: Int) = TypedValue.applyDimension(
     TypedValue.COMPLEX_UNIT_DIP, value.toFloat(),
     resources.displayMetrics

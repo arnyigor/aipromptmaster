@@ -8,9 +8,9 @@ plugins {
 
 android {
     namespace = "com.arny.aipromptmaster.data"
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig {
-        minSdk = 21
+        minSdk = 23
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -58,6 +58,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.material.dialogs.core)
     implementation(libs.material.dialogs.input)
+    implementation(libs.androidx.security.crypto)
     kapt(libs.dagger.android.processor)
     kapt(libs.dagger.compiler)
     ksp(libs.androidx.room.compiler)

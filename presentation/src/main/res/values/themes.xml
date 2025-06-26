@@ -41,7 +41,7 @@
         <item name="boxBackgroundColor">@color/colorPrimaryDark</item>
         <item name="colorControlNormal">@color/textColorPrimary</item>
         <item name="colorControlActivated">@color/textColorPrimary</item>
-        <item name="hintTextColor">@color/textColorPrimary</item>
+        <item name="hintTextColor">@color/hintTextColor</item>
         <item name="boxStrokeColor">@color/text_input_box_stroke</item>
     </style>
 

@@ -5,6 +5,7 @@ import com.arny.aipromptmaster.di.HistoryFragmentModule
 import com.arny.aipromptmaster.di.HomeFragmentModule
 import com.arny.aipromptmaster.di.LibraryFragmentModule
 import com.arny.aipromptmaster.di.PromptViewFragmentModule
+import com.arny.aipromptmaster.di.SettingsFragmentModule
 import com.arny.aipromptmaster.presentation.MainActivity
 import dagger.Module
 import dagger.android.ContributesAndroidInjector
@@ -18,6 +19,7 @@ abstract class ActivitiesModule {
             PromptViewFragmentModule::class,
             HistoryFragmentModule::class,
             LibraryFragmentModule::class,
+            SettingsFragmentModule::class,
         ]
     )
     abstract fun bindMainActivity(): MainActivity

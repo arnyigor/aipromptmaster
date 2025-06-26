@@ -17,12 +17,24 @@
         android:id="@+id/nav_history"
         android:name="com.arny.aipromptmaster.presentation.ui.chathistory.ChatHistoryFragment"
         android:label="@string/title_history"
-        tools:layout="@layout/fragment_history" />
+        tools:layout="@layout/fragment_history">
+        <action
+            android:id="@+id/action_nav_history_to_nav_chat"
+            app:destination="@id/nav_chat" />
+    </fragment>
     <fragment
         android:id="@+id/nav_chat"
         android:name="com.arny.aipromptmaster.presentation.ui.chat.ChatFragment"
-        android:label="@string/title_library"
-        tools:layout="@layout/fragment_chat" />
+        android:label="@string/title_llm_interaction"
+        tools:layout="@layout/fragment_chat">
+        <argument
+            android:name="chatid"
+            app:argType="string"
+            app:nullable="true" />
+        <action
+            android:id="@+id/action_nav_chat_to_settingsFragment"
+            app:destination="@id/settingsFragment" />
+    </fragment>
     <fragment
         android:id="@+id/promptViewFragment"
         android:name="com.arny.aipromptmaster.presentation.ui.view.PromptViewFragment"
@@ -32,4 +44,8 @@
             android:name="promptId"
             app:argType="string" />
     </fragment>
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.arny.aipromptmaster.presentation.ui.settings.SettingsFragment"
+        android:label="@string/ai_settings" />
 </navigation>

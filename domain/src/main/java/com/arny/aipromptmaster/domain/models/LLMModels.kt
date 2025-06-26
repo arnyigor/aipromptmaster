@@ -1,12 +1,5 @@
 package com.arny.aipromptmaster.domain.models
 
-data class ChatCompletionRequest(
-    val model: String,
-    val messages: List<Message>,
-    val maxTokens: Int? = null,
-    val temperature: Double? = null
-)
-
 data class Message(
     val role: String, // "user", "assistant", "system"
     val content: String

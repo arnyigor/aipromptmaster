@@ -11,8 +11,11 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.DefaultItemAnimator
 import com.arny.aipromptmaster.core.di.scopes.viewModelFactory
+import com.arny.aipromptmaster.domain.models.Chat
+import com.arny.aipromptmaster.domain.results.DataResult
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.FragmentHistoryBinding
 import com.arny.aipromptmaster.presentation.utils.autoClean
@@ -66,7 +69,6 @@ class ChatHistoryFragment : Fragment() {
     }
 
     private fun initUI() {
-        Log.d("ChatHistory", "Initializing UI")
         binding.chatRecyclerView.itemAnimator = DefaultItemAnimator().apply {
             addDuration = 250
             removeDuration = 250
@@ -84,7 +86,9 @@ class ChatHistoryFragment : Fragment() {
             /* bottom = */ resources.getDimensionPixelSize(R.dimen.bottom_nav_height)
         )
         binding.newChatFab.setOnClickListener {
-            // Handle new chat creation
+            findNavController().navigate(
+                ChatHistoryFragmentDirections.actionNavHistoryToNavChat(null)
+            )
         }
     }
 
@@ -96,15 +100,19 @@ class ChatHistoryFragment : Fragment() {
                         is ChatHistoryUIState.Loading -> {
                             binding.swipeRefresh.isRefreshing = true
                         }
+
                         is ChatHistoryUIState.Success -> {
                             binding.swipeRefresh.isRefreshing = false
-                            binding.emptyView.visibility = if (state.chats.isEmpty()) View.VISIBLE else View.GONE
-                            binding.chatRecyclerView.visibility = if (state.chats.isNotEmpty()) View.VISIBLE else View.GONE
+                            binding.emptyView.visibility =
+                                if (state.chats.isEmpty()) View.VISIBLE else View.GONE
+                            binding.chatRecyclerView.visibility =
+                                if (state.chats.isNotEmpty()) View.VISIBLE else View.GONE
                             adapter.updateAsync(createItems(state.chats))
                         }
+
                         is ChatHistoryUIState.Error -> {
                             binding.swipeRefresh.isRefreshing = false
-                            toastMessage(SimpleString(state.message))
+                            toastMessage(state.message)
                             binding.emptyView.visibility = View.VISIBLE
                         }
                     }
@@ -114,10 +122,8 @@ class ChatHistoryFragment : Fragment() {
     }
 
     private fun createItems(chats: List<Chat>): List<ChatItem> {
-        Log.d("ChatHistory", "Creating items for ${chats.size} chats")
         return chats.map { chat ->
             ChatItem(chat) { clickedChat ->
-                Log.d("ChatHistory", "Chat clicked: ${clickedChat.name}")
                 toastMessage(SimpleString(clickedChat.name))
             }
         }

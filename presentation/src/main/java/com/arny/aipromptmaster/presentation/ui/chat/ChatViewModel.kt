@@ -14,15 +14,15 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
-class LibraryViewModel @AssistedInject constructor(
+class ChatViewModel @AssistedInject constructor(
     private val interactor: ILLMInteractor,
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow<LLMUIState>(LLMUIState.Initial)
-    val uiState: StateFlow<LLMUIState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow<ChatUIState>(ChatUIState.Initial)
+    val uiState: StateFlow<ChatUIState> = _uiState.asStateFlow()
 
     private val messages = mutableListOf<String>()
 
-    private val _modelsState = MutableStateFlow<DataResult<List<LLMModel>>>(DataResult.Loading())
+    private val _modelsState = MutableStateFlow<DataResult<List<LLMModel>>>(DataResult.Loading)
     val modelsState: StateFlow<DataResult<List<LLMModel>>> = _modelsState.asStateFlow()
 
     init {
@@ -53,7 +53,7 @@ class LibraryViewModel @AssistedInject constructor(
                         }
 
                         is DataResult.Loading -> {
-                            updateState(isLoading = result.isLoading)
+                            updateState(isLoading = true)
                         }
                     }
                 }
@@ -68,7 +68,7 @@ class LibraryViewModel @AssistedInject constructor(
         isLoading: Boolean = false,
         error: Throwable? = null
     ) {
-        _uiState.value = LLMUIState.Content(
+        _uiState.value = ChatUIState.Content(
             messages = messages.toList(),
             isLoading = isLoading,
             error = error

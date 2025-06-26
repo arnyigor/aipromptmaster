@@ -7,9 +7,9 @@ plugins {
 
 android {
     namespace = "com.arny.aipromptmaster.core"
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig {
-        minSdk = 21
+        minSdk = 23
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

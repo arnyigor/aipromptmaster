@@ -7,14 +7,14 @@ plugins {
 
 android {
     namespace = "com.arny.aipromptmaster"
-    compileSdk = 35
+    compileSdk = 36
     val vMajor = 0
     val vMinor = 0
     val vBuild = 1
     defaultConfig {
         applicationId = "com.arny.aipromptmaster"
-        minSdk = 21
-        targetSdk = 35
+        minSdk = 23
+        targetSdk = 36
         versionCode = vMajor * 100 + vMinor * 10 + vBuild
         val name = "$vMajor" + ".${vMinor}" + ".${vBuild}"
         versionName = "v$name($versionCode)"

@@ -14,4 +14,10 @@
         android:icon="@android:drawable/ic_popup_sync"
         android:title="@string/menu_sync"
         app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_feedback"
+        android:icon="@drawable/outline_feedback_24_white"
+        android:title="@string/menu_feedback"
+        app:showAsAction="ifRoom" />
 </menu>

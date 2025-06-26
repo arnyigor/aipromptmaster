@@ -5,8 +5,6 @@ import com.arny.aipromptmaster.data.mappers.ChatMapper
 import com.arny.aipromptmaster.data.mappers.toDomain
 import com.arny.aipromptmaster.data.models.ChatCompletionRequestDTO
 import com.arny.aipromptmaster.data.models.MessageDTO
-import com.arny.aipromptmaster.data.prefs.Prefs
-import com.arny.aipromptmaster.data.prefs.PrefsConstants
 import com.arny.aipromptmaster.domain.models.ChatCompletionResponse
 import com.arny.aipromptmaster.domain.models.LLMModel
 import com.arny.aipromptmaster.domain.models.Message
@@ -18,7 +16,6 @@ import javax.inject.Inject
 
 class OpenRouterRepositoryImpl @Inject constructor(
     private val service: OpenRouterService,
-    private val prefs: Prefs,
 ) : IOpenRouterRepository {
 
     @Volatile
@@ -27,6 +24,7 @@ class OpenRouterRepositoryImpl @Inject constructor(
     override suspend fun getChatCompletion(
         model: String,
         messages: List<Message>,
+        apiKey: String,
         maxTokens: Int?
     ): Result<ChatCompletionResponse> = withContext(Dispatchers.IO) {
         try {
@@ -35,7 +33,6 @@ class OpenRouterRepositoryImpl @Inject constructor(
                 messages = messages.map { MessageDTO(it.role, it.content) },
                 maxTokens = maxTokens
             )
-            val apiKey = prefs.get<String>(PrefsConstants.OR_API_KEY)
 
             val response = service.getChatCompletion(
                 authorization = "Bearer $apiKey",

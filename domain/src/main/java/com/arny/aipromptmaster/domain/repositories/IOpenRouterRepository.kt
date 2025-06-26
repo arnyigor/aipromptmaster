@@ -9,6 +9,7 @@ interface IOpenRouterRepository {
     suspend fun getChatCompletion(
         model: String,
         messages: List<Message>,
+        apiKey: String,
         maxTokens: Int? = null
     ): Result<ChatCompletionResponse>
 

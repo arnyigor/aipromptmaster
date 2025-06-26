@@ -1,6 +1,7 @@
 package com.arny.aipromptmaster.presentation.ui.chathistory
 
 import android.view.View
+import com.arny.aipromptmaster.domain.models.Chat
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.ItemChatBinding
 import com.xwray.groupie.viewbinding.BindableItem

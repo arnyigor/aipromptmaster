@@ -10,7 +10,7 @@ class LLMMessageItem(private val message: String) : BindableItem<ItemLlmmessageB
     override fun bind(viewBinding: ItemLlmmessageBinding, position: Int) {
         viewBinding.tvMessage.apply {
             text = message
-            movementMethod = LinkMovementMethod.getInstance() // Для кликабельных ссылок
+            movementMethod = LinkMovementMethod.getInstance()
         }
     }
 

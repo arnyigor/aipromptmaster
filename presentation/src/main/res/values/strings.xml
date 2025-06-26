@@ -11,7 +11,6 @@
     <string name="review_current_issues_on_github">Просмотрите текущие issues. Возможно уже подобная проблема или вопросы уже обсуждался</string>
     <string name="github_issues_link" translatable="false">https://github.com/arnyigor/aipromptmaster/issues</string>
     <string name="title_home">Главная</string>
-    <string name="title_library">Библиотека</string>
     <string name="title_history">История</string>
     <string name="not_implemented_yet">Пока не готово</string>
     <string name="prompts_search">Поиск промптов</string>
@@ -47,6 +46,10 @@
     <string name="title_llm_interaction">ИИ-ассистент</string>
     <string name="enter_message">Введите сообщение…</string>
     <string name="no_chats_found">Нет активных чатов\nНажмите + чтобы начать новый</string>
+    <string name="save">Сохранить</string>
+    <string name="api_key_hint">OpenRouter Api KEY</string>
+    <string name="ai_settings">Настройки ИИ-асистента</string>
+    <string name="error_empty_string">Ошибка, пустая строка</string>
 
     <string-array name="prompt_options">
         <item>Редактировать</item>

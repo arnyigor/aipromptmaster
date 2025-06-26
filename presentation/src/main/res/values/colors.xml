@@ -4,7 +4,7 @@
     <color name="colorPrimary">#7E67E0</color>  <!-- Сохраняет фиолетовую тему, но более мягкий -->
     <color name="colorPrimaryDark">#55447E</color>  <!-- Более глубокий и теплый тон -->
     <color name="colorSecondary">#80DEE2</color>  <!-- Приглушенный бирюзовый для лучшей сочетаемости -->
-    <color name="textColorSecondary">#B3F5F5F5</color>  <!-- Улучшенная читаемость -->
+    <color name="textColorSecondary">#FFF5F5F5</color>  <!-- Яркий текст подсказки -->
     <color name="textColorPrimary">#F5F5F5</color>  <!-- Сохраняем текущий -->
     <color name="colorOverlay">#80333333</color>  <!-- Более естественный оверлей -->
     <color name="colorSeparator">#404040</color>  <!-- Оптимальный контраст -->
@@ -16,4 +16,5 @@
     <!-- Цвета карточек -->
     <color name="card_background">#2A2A2A</color>  <!-- Лучший фон для текста -->
     <color name="card_stroke">#454545</color>  <!-- Хорошо выделяется на фоне -->
+    <color name="hintTextColor">#FFFFFF</color>  <!-- Белый цвет для подсказки -->
 </resources>

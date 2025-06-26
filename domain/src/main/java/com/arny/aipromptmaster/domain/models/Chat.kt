@@ -1,4 +1,4 @@
-package com.arny.aipromptmaster.presentation.ui.chathistory
+package com.arny.aipromptmaster.domain.models
 
 data class Chat(
     val id: String,
