@@ -51,10 +51,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import coil3.load
 import com.arny.aipromptmaster.presentation.utils.strings.IWrappedString
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.io.File
 import kotlin.math.roundToInt
@@ -410,11 +412,18 @@ fun Context.unbind(connection: ServiceConnection) {
 }
 
 fun Fragment.launchWhenCreated(block: suspend CoroutineScope.() -> Unit) {
-    viewLifecycleOwner.lifecycleScope.launch { block.invoke(this) }
+    viewLifecycleOwner.lifecycleScope.launch {
+        repeatOnLifecycle(Lifecycle.State.CREATED) {
+            block.invoke(this)
+        }
+    }
 }
-
 fun Fragment.launchWhenStarted(block: suspend CoroutineScope.() -> Unit) {
-    viewLifecycleOwner.lifecycleScope.launch { block.invoke(this) }
+    viewLifecycleOwner.lifecycleScope.launch {
+        repeatOnLifecycle(Lifecycle.State.STARTED) {
+            block.invoke(this)
+        }
+    }
 }
 
 fun Context.sendBroadcast(action: String, extras: Bundle.() -> Unit = {}) {

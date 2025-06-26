@@ -13,12 +13,16 @@ import com.arny.aipromptmaster.domain.models.Message
 import com.arny.aipromptmaster.domain.repositories.IOpenRouterRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 class OpenRouterRepositoryImpl @Inject constructor(
     private val service: OpenRouterService,
     private val prefs: Prefs,
 ) : IOpenRouterRepository {
+
+    @Volatile
+    private var cachedModels: List<LLMModel>? = null
 
     override suspend fun getChatCompletion(
         model: String,
@@ -58,23 +62,26 @@ class OpenRouterRepositoryImpl @Inject constructor(
     }
 
 
-    override suspend fun getModels(): Result<List<LLMModel>> = withContext(Dispatchers.IO) {
+    override suspend fun getModels(fresh: Boolean): Result<List<LLMModel>> = withContext(Dispatchers.IO) {
         try {
+            // Возвращаем кеш, если он актуален и не запрошены свежие данные
+            if (!fresh && cachedModels != null) {
+                return@withContext Result.success(cachedModels!!)
+            }
+
             val response = service.getModels()
-            when {
-                response.isSuccessful && response.body() != null -> {
-                    val models = response.body()?.models.orEmpty()
-                        .map { it.toDomain() }
-                    Result.success(models)
-                }
-                else -> {
-                    val errorMessage = response.errorBody()?.string()
-                        ?: "API Error: ${response.code()}"
-                    Result.failure(Exception(errorMessage))
-                }
+            if (response.isSuccessful && response.body() != null) {
+                val models = response.body()!!.models.map { it.toDomain() }
+                cachedModels = models
+                Result.success(models)
+            } else {
+                // Возвращаем кеш, если есть
+                cachedModels?.let { Result.success(it) }
+                    ?: Result.failure(Exception("Failed to fetch models"))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            cachedModels?.let { Result.success(it) }
+                ?: Result.failure(e)
         }
     }
 }

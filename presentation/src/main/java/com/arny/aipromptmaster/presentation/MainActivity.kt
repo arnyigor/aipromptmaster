@@ -1,6 +1,7 @@
 package com.arny.aipromptmaster.presentation
 
 import android.os.Bundle
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
@@ -36,11 +37,25 @@ class MainActivity : AppCompatActivity(), HasAndroidInjector {
         val navController = findNavController(R.id.nav_host_fragment_activity_main)
         appBarConfiguration = AppBarConfiguration(
             setOf(
-                R.id.nav_home, R.id.nav_library, R.id.nav_history
+                R.id.nav_home, R.id.nav_history
             )
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
+
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            when (destination.id) {
+                R.id.nav_home,
+                R.id.nav_history
+                    -> {
+                    navView.visibility = View.VISIBLE
+                }
+
+                else -> {
+                    navView.visibility = View.GONE
+                }
+            }
+        }
     }
 
     override fun onSupportNavigateUp(): Boolean {

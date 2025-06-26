@@ -1,4 +1,4 @@
-package com.arny.aipromptmaster.presentation.ui.home
+package com.arny.aipromptmaster.presentation.ui.chat
 
 sealed class LLMUIState {
     data class Content(

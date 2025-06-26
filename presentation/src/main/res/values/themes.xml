@@ -49,7 +49,7 @@
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
-        <item name="android:background">@color/colorPrimaryDark</item>
+        <item name="android:background">@drawable/dialog_background</item>
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:textViewStyle">@style/DialogTextViewStyle</item>
         <item name="windowFixedWidthMajor">90%</item>
@@ -100,10 +100,10 @@
     </style>
 
     <style name="Widget.App.Chip" parent="Widget.Material3.Chip.Filter">
-        <item name="chipBackgroundColor">@color/colorSeparator</item>
+        <item name="chipBackgroundColor">@color/card_background</item>
         <item name="android:textColor">@color/textColorPrimary</item>
         <item name="chipStrokeWidth">1dp</item>
-        <item name="chipStrokeColor">@color/colorAccent</item>
-        <item name="rippleColor">@color/colorAccent</item>
+        <item name="chipStrokeColor">@color/colorSeparator</item>
+        <item name="rippleColor">@color/colorPrimary</item>
     </style>
 </resources>

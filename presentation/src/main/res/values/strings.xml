@@ -45,7 +45,8 @@
     <string name="sync_processing_error">Ошибка при обработке файлов: %s</string>
     <string name="prompt_details">Просмотр промпта</string>
     <string name="title_llm_interaction">ИИ-ассистент</string>
-    <string name="menu_llm_interaction">ИИ</string>
+    <string name="enter_message">Введите сообщение…</string>
+    <string name="no_chats_found">Нет активных чатов\nНажмите + чтобы начать новый</string>
 
     <string-array name="prompt_options">
         <item>Редактировать</item>

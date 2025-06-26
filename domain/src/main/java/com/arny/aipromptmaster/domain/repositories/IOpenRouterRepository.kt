@@ -12,5 +12,5 @@ interface IOpenRouterRepository {
         maxTokens: Int? = null
     ): Result<ChatCompletionResponse>
 
-    suspend fun getModels(): Result<List<LLMModel>>
+    suspend fun getModels(fresh: Boolean = false): Result<List<LLMModel>>
 }

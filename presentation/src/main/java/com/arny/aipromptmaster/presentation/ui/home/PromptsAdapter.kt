@@ -1,4 +1,4 @@
-package com.arny.aipromptmaster.presentation.ui.library
+package com.arny.aipromptmaster.presentation.ui.home
 
 import android.view.LayoutInflater
 import android.view.ViewGroup

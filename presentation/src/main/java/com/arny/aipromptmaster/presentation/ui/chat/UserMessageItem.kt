@@ -1,4 +1,4 @@
-package com.arny.aipromptmaster.presentation.ui.home
+package com.arny.aipromptmaster.presentation.ui.chat
 
 import android.view.View
 import com.arny.aipromptmaster.presentation.R

@@ -1,4 +1,4 @@
-package com.arny.aipromptmaster.presentation.ui.home
+package com.arny.aipromptmaster.presentation.ui.chat
 
 import android.text.method.LinkMovementMethod
 import android.view.View
