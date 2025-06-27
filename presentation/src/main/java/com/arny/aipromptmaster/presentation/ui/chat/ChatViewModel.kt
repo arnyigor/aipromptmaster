@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 class ChatViewModel @AssistedInject constructor(
     private val interactor: ILLMInteractor,
@@ -20,7 +21,7 @@ class ChatViewModel @AssistedInject constructor(
     private val _uiState = MutableStateFlow<ChatUIState>(ChatUIState.Initial)
     val uiState: StateFlow<ChatUIState> = _uiState.asStateFlow()
 
-    private val messages = mutableListOf<String>()
+    private val messages = mutableListOf<AiChatMessage>()
 
     private val _modelsState = MutableStateFlow<DataResult<List<LLMModel>>>(DataResult.Loading)
     val modelsState: StateFlow<DataResult<List<LLMModel>>> = _modelsState.asStateFlow()
@@ -39,39 +40,71 @@ class ChatViewModel @AssistedInject constructor(
     }
 
     fun sendMessage(model: String, message: String) {
+        val userMessage = AiChatMessage(
+            id = UUID.randomUUID().toString(),
+            content = message,
+            type = AiChatMessageType.USER
+        )
+        messages.add(userMessage)
+        updateState()
+
+        val assistantMessage = AiChatMessage(
+            id = UUID.randomUUID().toString(),
+            content = "",
+            type = AiChatMessageType.ASSISTANT
+        )
+        messages.add(assistantMessage)
+        updateState()
+
         viewModelScope.launch {
             interactor.sendMessage(model, message)
                 .onEach { result ->
                     when (result) {
                         is DataResult.Success -> {
-                            messages.add(result.data)
+                            val lastIndex = messages.lastIndex
+                            messages[lastIndex] = messages[lastIndex].copy(
+                                content = messages[lastIndex].content + result.data
+                            )
                             updateState()
                         }
 
                         is DataResult.Error -> {
-                            updateState(error = result.exception)
+                            val lastIndex = messages.lastIndex
+                            messages[lastIndex] = messages[lastIndex].copy(
+                                type = AiChatMessageType.ERROR,
+                                content = result.exception?.message ?: "Unknown error"
+                            )
+                            updateState()
                         }
 
                         is DataResult.Loading -> {
-                            updateState(isLoading = true)
+                            val lastIndex = messages.lastIndex
+                            messages[lastIndex] = messages[lastIndex].copy(
+                                type = AiChatMessageType.LOADING
+                            )
+                            updateState()
                         }
                     }
                 }
                 .catch { e ->
-                    updateState(error = e)
+                    val lastIndex = messages.lastIndex
+                    messages[lastIndex] = messages[lastIndex].copy(
+                        type = AiChatMessageType.ERROR,
+                        content = e.message ?: "Unknown error"
+                    )
+                    updateState()
                 }
                 .collect()
         }
     }
 
-    private fun updateState(
-        isLoading: Boolean = false,
-        error: Throwable? = null
-    ) {
+    private fun updateState() {
         _uiState.value = ChatUIState.Content(
             messages = messages.toList(),
-            isLoading = isLoading,
-            error = error
+            isLoading = messages.any { it.type == AiChatMessageType.LOADING },
+            error = messages.firstOrNull { it.type == AiChatMessageType.ERROR }?.content?.let {
+                Exception(it)
+            }
         )
     }
 }
