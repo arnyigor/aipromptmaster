@@ -2,9 +2,9 @@ package com.arny.aipromptmaster.presentation.ui.chathistory
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.arny.aipromptmaster.domain.models.Chat
 import com.arny.aipromptmaster.presentation.utils.strings.SimpleString
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -19,22 +19,8 @@ class ChatHistoryViewModel @AssistedInject constructor() : ViewModel() {
         viewModelScope.launch {
             try {
                 _uiState.value = ChatHistoryUIState.Loading
-                // Здесь должна быть реальная загрузка данных
-                val testChats = listOf(
-                    Chat(
-                        id = UUID.randomUUID().toString(),
-                        name = "Техподдержка",
-                        lastMessage = "Как я могу вам помочь?",
-                        timestamp = System.currentTimeMillis() - 3600000
-                    ),
-                    Chat(
-                        id = UUID.randomUUID().toString(),
-                        name = "Код ревью",
-                        lastMessage = "Здесь нужно улучшить производительность...",
-                        timestamp = System.currentTimeMillis() - 7200000
-                    )
-                )
-                _uiState.value = ChatHistoryUIState.Success(testChats)
+                delay(1000)
+                _uiState.value = ChatHistoryUIState.Success(emptyList())
             } catch (e: Exception) {
                 _uiState.value =
                     ChatHistoryUIState.Error(SimpleString(e.message ?: "Ошибка загрузки чатов"))
