@@ -10,7 +10,7 @@ import retrofit2.http.Header
 import retrofit2.http.Headers
 import retrofit2.http.POST
 
-interface OpenRouterService {
+interface OpenRouterApi {
     @POST("chat/completions")
     @Headers("Content-Type: application/json")
     suspend fun getChatCompletion(

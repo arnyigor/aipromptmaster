@@ -1,8 +1,8 @@
 package com.arny.aipromptmaster.domain.interactors
 
 import com.arny.aipromptmaster.domain.models.LLMModel
-import com.arny.aipromptmaster.domain.models.Message
-import com.arny.aipromptmaster.domain.repositories.IOpenRouterRepository
+import com.arny.aipromptmaster.domain.models.ChatMessage
+import com.arny.aipromptmaster.domain.repositories.ILLmRepository
 import com.arny.aipromptmaster.domain.repositories.ISettingsRepository
 import com.arny.aipromptmaster.domain.results.DataResult
 import kotlinx.coroutines.flow.Flow
@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
 
 class LLMInteractor @Inject constructor(
-    private val repository: IOpenRouterRepository,
+    private val repository: ILLmRepository,
     private val settingsRepository: ISettingsRepository
 ) : ILLMInteractor {
 
@@ -21,7 +21,7 @@ class LLMInteractor @Inject constructor(
         emit(DataResult.Loading)
         try {
             val messages = listOf(
-                Message("user", userMessage)
+                ChatMessage("user", userMessage)
             )
             val apiKey = settingsRepository.getApiKey()
             if (apiKey.isNullOrEmpty()) {

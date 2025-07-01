@@ -5,8 +5,12 @@ import com.google.gson.annotations.SerializedName
 data class ChatCompletionRequestDTO(
     val model: String,
     val messages: List<MessageDTO>,
-    @SerializedName("max_tokens") val maxTokens: Int? = null,
-    val temperature: Double? = null
+    val stream: Boolean = false,
+    val temperature: Float = 0.7f,
+    @SerializedName("max_tokens")
+    val maxTokens: Int? = null,
+    @SerializedName("top_p")
+    val topP: Float? = null
 )
 
 data class MessageDTO(
@@ -15,9 +19,11 @@ data class MessageDTO(
 )
 
 data class ChatCompletionResponseDTO(
-    val id: String,
+    val id: String? = null,
     val choices: List<ChoiceDTO>,
-    val usage: UsageDTO?
+    val usage: UsageDTO? = null,
+    val model: String? = null,
+    val created: Long? = null
 )
 
 data class ChoiceDTO(

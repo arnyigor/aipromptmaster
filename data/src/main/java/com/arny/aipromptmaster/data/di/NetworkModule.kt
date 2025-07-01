@@ -1,7 +1,7 @@
 package com.arny.aipromptmaster.data.di
 
 import com.arny.aipromptmaster.data.api.GitHubService
-import com.arny.aipromptmaster.data.api.OpenRouterService
+import com.arny.aipromptmaster.data.api.OpenRouterApi
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import dagger.Module
@@ -64,8 +64,8 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOpenRouterService(@OpenRouterRetrofit retrofit: Retrofit): OpenRouterService {
-        return retrofit.create(OpenRouterService::class.java)
+    fun provideOpenRouterService(@OpenRouterRetrofit retrofit: Retrofit): OpenRouterApi {
+        return retrofit.create(OpenRouterApi::class.java)
     }
 }
 
