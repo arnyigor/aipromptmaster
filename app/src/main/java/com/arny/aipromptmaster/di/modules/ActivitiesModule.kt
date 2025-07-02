@@ -4,6 +4,7 @@ import com.arny.aipromptmaster.core.di.scopes.ActivityScope
 import com.arny.aipromptmaster.di.HistoryFragmentModule
 import com.arny.aipromptmaster.di.HomeFragmentModule
 import com.arny.aipromptmaster.di.LibraryFragmentModule
+import com.arny.aipromptmaster.di.ModelsFragmentModule
 import com.arny.aipromptmaster.di.PromptViewFragmentModule
 import com.arny.aipromptmaster.di.SettingsFragmentModule
 import com.arny.aipromptmaster.presentation.MainActivity
@@ -20,6 +21,7 @@ abstract class ActivitiesModule {
             HistoryFragmentModule::class,
             LibraryFragmentModule::class,
             SettingsFragmentModule::class,
+            ModelsFragmentModule::class,
         ]
     )
     abstract fun bindMainActivity(): MainActivity

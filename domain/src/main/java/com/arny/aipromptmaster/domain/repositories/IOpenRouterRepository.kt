@@ -14,4 +14,6 @@ interface IOpenRouterRepository {
     ): Result<ChatCompletionResponse>
 
     suspend fun getModels(fresh: Boolean = false): Result<List<LLMModel>>
+    fun setSelectedModelId(id: String)
+    fun getSelectedModelId(): String?
 }

@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:background="@color/card_background">
 
-    <!-- RecyclerView для сообщений -->
+    <!-- RecyclerView для сообщений (без изменений) -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_chat"
         android:layout_width="match_parent"
@@ -19,7 +19,7 @@
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
         tools:listitem="@layout/item_user_message" />
 
-    <!-- Блок ввода сообщения -->
+    <!-- Блок ввода сообщения (обновлен) -->
     <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -32,8 +32,46 @@
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:padding="8dp">
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp">
 
+            <!-- НОВАЯ ИКОНКА: Настройки выбора модели -->
+            <ImageButton
+                android:id="@+id/btn_model_settings"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/select_model_button_description"
+                android:src="@drawable/outline_discover_tune_24"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:tint="@color/colorIcon" />
+
+            <!-- Поле ввода (ИЗМЕНЕНО) -->
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_user_input"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
+                android:background="@android:color/transparent"
+                android:hint="@string/enter_message"
+                android:inputType="textMultiLine|textCapSentences"
+                android:maxLines="4"
+                android:minHeight="48dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:textColor="@color/textColorPrimary"
+                android:textColorHint="@color/textColorSecondary"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/btn_send"
+                app:layout_constraintStart_toEndOf="@id/btn_model_settings"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <!-- Кнопка отправки (без изменений в constraints) -->
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/btn_send"
                 android:layout_width="wrap_content"
@@ -42,26 +80,24 @@
                 android:src="@android:drawable/ic_menu_send"
                 app:backgroundTint="@color/colorPrimary"
                 app:fabCustomSize="40dp"
-                app:layout_constraintBottom_toBottomOf="@id/et_user_input"
+                app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="@id/et_user_input"
+                app:layout_constraintTop_toTopOf="parent"
                 app:tint="@color/textColorPrimary" />
 
-            <!-- Поле ввода -->
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/et_user_input"
-                android:layout_width="0dp"
+            <ProgressBar
+                android:id="@+id/progress_bar_send"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:hint="@string/enter_message"
-                android:inputType="textMultiLine|textCapSentences"
-                android:maxLines="4"
-                android:minLines="1"
-                android:textColor="@color/textColorPrimary"
-                android:textColorHint="@color/textColorSecondary"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toStartOf="@id/btn_send"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+                android:elevation="8dp"
+                android:indeterminateTint="@color/colorAccent"
+                android:visibility="gone"
+                app:layout_constraintBottom_toBottomOf="@id/btn_send"
+                app:layout_constraintEnd_toEndOf="@id/btn_send"
+                app:layout_constraintStart_toStartOf="@id/btn_send"
+                app:layout_constraintTop_toTopOf="@id/btn_send"
+                tools:visibility="visible" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </com.google.android.material.card.MaterialCardView>

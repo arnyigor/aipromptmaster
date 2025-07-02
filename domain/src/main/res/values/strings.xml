@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="empty_models_list">Список моделей пуст</string>
+    <string name="selected_model_not_found">Выбранная модель не найдена</string>
+</resources>

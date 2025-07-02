@@ -45,11 +45,14 @@
     <string name="prompt_details">Просмотр промпта</string>
     <string name="title_llm_interaction">ИИ-ассистент</string>
     <string name="enter_message">Введите сообщение…</string>
-    <string name="no_chats_found">Нет активных чатов\nСкоро эта функция появится в ближайших обновлениях</string>
+    <string name="no_chats_found">Нет активных чатов\nНажмите + чтобы начать новый</string>
     <string name="save">Сохранить</string>
     <string name="api_key_hint">OpenRouter Api KEY</string>
     <string name="ai_settings">Настройки ИИ-асистента</string>
     <string name="error_empty_string">Ошибка, пустая строка</string>
+    <string name="choose_model">Выберите модель</string>
+    <string name="ai_models">ИИ модели</string>
+    <string name="select_model_button_description">настрока моделей</string>
 
     <string-array name="prompt_options">
         <item>Редактировать</item>

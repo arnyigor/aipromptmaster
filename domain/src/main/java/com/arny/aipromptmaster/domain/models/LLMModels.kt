@@ -26,5 +26,6 @@ data class LLMModel(
     val id: String,
     val name: String,
     val description: String,
+    val isSelected: Boolean,
     val contextLength: Int,
 )

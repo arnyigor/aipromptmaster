@@ -1,6 +1,7 @@
 package com.arny.aipromptmaster.presentation.ui.chat
 
 import android.content.Context
+import android.graphics.PorterDuff
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.Menu
@@ -8,12 +9,14 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.arny.aipromptmaster.core.di.scopes.viewModelFactory
+import com.arny.aipromptmaster.domain.results.DataResult
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.FragmentChatBinding
 import com.arny.aipromptmaster.presentation.utils.autoClean
@@ -70,7 +73,7 @@ class ChatFragment : Fragment() {
             override fun onPrepareMenu(menu: Menu) {}
 
             override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-                menuInflater.inflate(R.menu.home_menu, menu)
+                menuInflater.inflate(R.menu.chat_menu, menu)
             }
 
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean =
@@ -103,8 +106,29 @@ class ChatFragment : Fragment() {
                 // Очищаем поле ввода
                 binding.etUserInput.text?.clear()
                 // Отправляем сообщение в ViewModel
-                viewModel.sendMessage("deepseek/deepseek-r1:free", message)
+                viewModel.sendMessage(message)
+                showSendingState(true)
             }
+        }
+
+        binding.btnModelSettings.setOnClickListener {
+            findNavController().navigate(
+                ChatFragmentDirections.actionNavChatToModelsFragment()
+            )
+        }
+    }
+
+    private fun showSendingState(isSending: Boolean) {
+        if (isSending) {
+            // Начало отправки
+            binding.btnSend.isEnabled = false
+            binding.btnSend.visibility = View.INVISIBLE // Скрываем, но оставляем занимаемое место
+            binding.progressBarSend.visibility = View.VISIBLE
+        } else {
+            // Окончание отправки
+            binding.btnSend.isEnabled = true
+            binding.btnSend.visibility = View.VISIBLE
+            binding.progressBarSend.visibility = View.GONE
         }
     }
 
@@ -113,6 +137,7 @@ class ChatFragment : Fragment() {
             viewModel.uiState.collectLatest { state ->
                 when (state) {
                     is ChatUIState.Content -> {
+                        showSendingState(false)
                         state.messages.lastOrNull()?.let { message ->
                             groupAdapter.add(LLMMessageItem(message))
                             binding.rvChat.smoothScrollToPosition(groupAdapter.itemCount - 1)
@@ -120,6 +145,32 @@ class ChatFragment : Fragment() {
                     }
                 }
             }
+        }
+        launchWhenCreated {
+            viewModel.selectedModelResult.collectLatest { modelResult ->
+                when (modelResult) {
+                    is DataResult.Error<*> -> {
+                        binding.btnSend.isEnabled = false
+                        setErrorColor(true)
+                    }
+
+                    DataResult.Loading -> {}
+                    is DataResult.Success<*> -> {
+                        binding.btnSend.isEnabled = true
+                        setErrorColor(false)
+                        showSendingState(true)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun setErrorColor(isError: Boolean) {
+        if (isError) {
+            val redColor = ContextCompat.getColor(requireContext(), R.color.icon_active_red)
+            binding.btnModelSettings.setColorFilter(redColor, PorterDuff.Mode.SRC_IN)
+        } else {
+            binding.btnModelSettings.clearColorFilter()
         }
     }
 

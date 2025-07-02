@@ -9,5 +9,6 @@ fun ModelDTO.toDomain(): LLMModel {
         name = name,
         description = description,
         contextLength = contextLength,
+        isSelected = false
     )
 }

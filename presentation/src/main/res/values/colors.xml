@@ -17,4 +17,6 @@
     <color name="card_background">#2A2A2A</color>  <!-- Лучший фон для текста -->
     <color name="card_stroke">#454545</color>  <!-- Хорошо выделяется на фоне -->
     <color name="hintTextColor">#FFFFFF</color>  <!-- Белый цвет для подсказки -->
+    <color name="red">#FFFFFF</color>  <!-- Белый цвет для подсказки -->
+    <color name="icon_active_red">#E53935</color> <!-- Пример яркого красного цвета -->
 </resources>

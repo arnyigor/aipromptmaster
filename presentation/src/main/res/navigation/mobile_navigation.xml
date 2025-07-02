@@ -21,6 +21,9 @@
         <action
             android:id="@+id/action_nav_history_to_nav_chat"
             app:destination="@id/nav_chat" />
+        <action
+            android:id="@+id/action_nav_history_to_modelsFragment"
+            app:destination="@id/modelsFragment" />
     </fragment>
     <fragment
         android:id="@+id/nav_chat"
@@ -34,6 +37,9 @@
         <action
             android:id="@+id/action_nav_chat_to_settingsFragment"
             app:destination="@id/settingsFragment" />
+        <action
+            android:id="@+id/action_nav_chat_to_modelsFragment"
+            app:destination="@id/modelsFragment" />
     </fragment>
     <fragment
         android:id="@+id/promptViewFragment"
@@ -48,4 +54,12 @@
         android:id="@+id/settingsFragment"
         android:name="com.arny.aipromptmaster.presentation.ui.settings.SettingsFragment"
         android:label="@string/ai_settings" />
+    <fragment
+        android:id="@+id/modelsFragment"
+        android:name="com.arny.aipromptmaster.presentation.ui.models.ModelsFragment"
+        android:label="@string/ai_models" >
+        <action
+            android:id="@+id/action_modelsFragment_to_settingsFragment"
+            app:destination="@id/settingsFragment" />
+    </fragment>
 </navigation>

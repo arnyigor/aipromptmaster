@@ -11,7 +11,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 
 class ChatViewModel @AssistedInject constructor(
@@ -22,47 +24,71 @@ class ChatViewModel @AssistedInject constructor(
 
     private val messages = mutableListOf<String>()
 
-    private val _modelsState = MutableStateFlow<DataResult<List<LLMModel>>>(DataResult.Loading)
-    val modelsState: StateFlow<DataResult<List<LLMModel>>> = _modelsState.asStateFlow()
+    private val _selectedModel = MutableStateFlow<DataResult<LLMModel>>(DataResult.Loading)
+    val selectedModelResult: StateFlow<DataResult<LLMModel>> = _selectedModel.asStateFlow()
 
     init {
-        loadModels()
+        loadSelectedModel()
     }
 
-    private fun loadModels() {
+    private fun loadSelectedModel() {
         viewModelScope.launch {
-            interactor.getModels()
+            interactor.getSelectedModel()
+                .catch { e ->
+                    _selectedModel.value = DataResult.Error(e)
+                }
                 .collect { result ->
-                    _modelsState.value = result
+                    _selectedModel.value = result
                 }
         }
     }
 
-    fun sendMessage(model: String, message: String) {
-        viewModelScope.launch {
-            interactor.sendMessage(model, message)
-                .onEach { result ->
-                    when (result) {
-                        is DataResult.Success -> {
-                            messages.add(result.data)
-                            updateState()
-                        }
 
-                        is DataResult.Error -> {
-                            updateState(error = result.exception)
-                        }
+    // Внутри ChatViewModel
+    fun sendMessage(message: String) {
+        // 3. Получаем текущее состояние модели из StateFlow
+        val modelResult = _selectedModel.value
 
-                        is DataResult.Loading -> {
-                            updateState(isLoading = true)
+        // 4. Проверяем, что модель успешно загружена
+        if (modelResult is DataResult.Success) {
+            val modelId = modelResult.data.id // Получаем ID модели
+
+            viewModelScope.launch {
+                interactor.sendMessage(modelId, message)
+                    .onStart {
+                        updateState(isLoading = true)
+                    }
+                    .onEach { result ->
+                        when (result) {
+                            is DataResult.Success -> {
+                                messages.add(result.data)
+                                updateState()
+                            }
+
+                            is DataResult.Error -> {
+                                updateState(error = result.exception)
+                            }
+
+                            is DataResult.Loading -> {
+                                // Этот блок может быть не нужен, если вы используете onStart
+                            }
                         }
                     }
-                }
-                .catch { e ->
-                    updateState(error = e)
-                }
-                .collect()
+                    .catch { e ->
+                        updateState(error = e)
+                    }
+                    .onCompletion {
+                        // Скрываем индикатор загрузки после завершения потока
+                        updateState(isLoading = false)
+                    }
+                    .collect() // Запускаем сбор данных
+            }
+        } else {
+            // Обработка случая, когда модель не выбрана или произошла ошибка загрузки
+            updateState(error = IllegalStateException("Модель не выбрана или не удалось её загрузить."))
         }
     }
+
 
     private fun updateState(
         isLoading: Boolean = false,
