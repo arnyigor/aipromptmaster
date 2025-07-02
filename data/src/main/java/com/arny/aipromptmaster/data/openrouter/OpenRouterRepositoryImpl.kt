@@ -10,9 +10,8 @@ import com.arny.aipromptmaster.domain.models.LLMModel
 import com.arny.aipromptmaster.domain.models.Message
 import com.arny.aipromptmaster.domain.repositories.IOpenRouterRepository
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 class OpenRouterRepositoryImpl @Inject constructor(
@@ -22,76 +21,17 @@ class OpenRouterRepositoryImpl @Inject constructor(
     @Volatile
     private var cachedModels: List<LLMModel>? = null
 
-    override fun getChatCompletion(
+    override suspend fun getChatCompletion(
         model: String,
         messages: List<Message>,
         apiKey: String,
-        maxTokens: Int?,
-        stream: Boolean
-    ): Flow<ChatCompletionResponse> = flow {
-        withContext(Dispatchers.IO) {
-            if (!stream) {
-                try {
-                    val request = ChatCompletionRequestDTO(
-                        model = model,
-                        messages = messages.map { MessageDTO(it.role, it.content) },
-                        maxTokens = maxTokens,
-                        stream = false
-                    )
-
-                    val response = service.getChatCompletion(
-                        authorization = "Bearer $apiKey",
-                        referer = "aiprompts",
-                        title = "AI Chat App",
-                        request = request
-                    )
-
-                    when {
-                        response.isSuccessful && response.body() != null -> {
-                            val domainResponse = ChatMapper.toDomain(response.body()!!)
-                            emit(domainResponse)
-                        }
-                        else -> {
-                            val errorMessage = response.errorBody()?.string()
-                                ?: "API Error: ${response.code()}"
-                            throw Exception(errorMessage)
-                        }
-                    }
-                } catch (e: Exception) {
-                    throw e
-                }
-            } else {
-                try {
-                    val request = ChatCompletionRequestDTO(
-                        model = model,
-                        messages = messages.map { MessageDTO(it.role, it.content) },
-                        maxTokens = maxTokens,
-                        stream = true
-                    )
-
-                    service.getStreamChatCompletion(
-                        authorization = "Bearer $apiKey",
-                        referer = "aiprompts",
-                        title = "AI Chat App",
-                        request = request
-                    ).collect { chunk ->
-                        val domainResponse = ChatMapper.toDomain(chunk)
-                        emit(domainResponse)
-                    }
-                } catch (e: Exception) {
-                    throw e
-                }
-            }
-        }
-    }.catch { e ->
-        throw e
-    }
+        maxTokens: Int?
+    ): Result<ChatCompletionResponse> = withContext(Dispatchers.IO) {
         try {
             val request = ChatCompletionRequestDTO(
                 model = model,
                 messages = messages.map { MessageDTO(it.role, it.content) },
-                maxTokens = maxTokens,
-                stream = false
+                maxTokens = maxTokens
             )
 
             val response = service.getChatCompletion(

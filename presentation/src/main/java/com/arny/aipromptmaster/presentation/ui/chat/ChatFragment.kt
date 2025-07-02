@@ -18,10 +18,10 @@ import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.FragmentChatBinding
 import com.arny.aipromptmaster.presentation.utils.autoClean
 import com.arny.aipromptmaster.presentation.utils.launchWhenCreated
+import com.xwray.groupie.GroupieAdapter
 import dagger.android.support.AndroidSupportInjection
 import dagger.assisted.AssistedFactory
 import kotlinx.coroutines.flow.collectLatest
-import java.util.UUID
 import javax.inject.Inject
 
 class ChatFragment : Fragment() {
@@ -33,18 +33,7 @@ class ChatFragment : Fragment() {
         fun create(): ChatViewModel
     }
 
-    private val chatAdapter by autoClean {
-        AiChatAdapter { message ->
-            // Обработка кликов по сообщениям
-            when (message.type) {
-                AiChatMessageType.ASSISTANT -> showMessageActions(message)
-                else -> Unit
-            }
-        }.apply {
-            // Включаем анимации
-            setHasStableIds(true)
-        }
-    }
+    private val groupAdapter by autoClean { GroupieAdapter() }
 
     @Inject
     internal lateinit var viewModelFactory: ViewModelFactory
@@ -101,22 +90,16 @@ class ChatFragment : Fragment() {
     private fun setupViews() {
         binding.rvChat.apply {
             layoutManager = LinearLayoutManager(context)
-            adapter = chatAdapter
-            itemAnimator = androidx.recyclerview.widget.DefaultItemAnimator()
+            adapter = groupAdapter
         }
 
         binding.btnSend.setOnClickListener {
             val message = binding.etUserInput.text.toString()
             if (message.isNotBlank()) {
                 // Добавляем сообщение пользователя
-                chatAdapter.submitList(
-                    chatAdapter.currentList + AiChatMessage(
-                        id = UUID.randomUUID().toString(),
-                        content = message,
-                        type = AiChatMessageType.USER
-                    )
-                )
-                binding.rvChat.smoothScrollToPosition(chatAdapter.itemCount - 1)
+                groupAdapter.add(UserMessageItem(message))
+                // Прокручиваем к последнему сообщению
+                binding.rvChat.smoothScrollToPosition(groupAdapter.itemCount - 1)
                 // Очищаем поле ввода
                 binding.etUserInput.text?.clear()
                 // Отправляем сообщение в ViewModel
@@ -131,12 +114,8 @@ class ChatFragment : Fragment() {
                 when (state) {
                     is ChatUIState.Content -> {
                         state.messages.lastOrNull()?.let { message ->
-                            val newList = chatAdapter.currentList.toMutableList().apply {
-                                removeAll { it.type == AiChatMessageType.LOADING }
-                                add(message)
-                            }
-                            chatAdapter.submitList(newList)
-                            binding.rvChat.smoothScrollToPosition(chatAdapter.itemCount - 1)
+                            groupAdapter.add(LLMMessageItem(message))
+                            binding.rvChat.smoothScrollToPosition(groupAdapter.itemCount - 1)
                         }
                     }
                 }
