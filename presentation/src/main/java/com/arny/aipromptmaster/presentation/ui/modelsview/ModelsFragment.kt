@@ -1,4 +1,4 @@
-package com.arny.aipromptmaster.presentation.ui.models
+package com.arny.aipromptmaster.presentation.ui.modelsview
 
 import android.content.Context
 import android.os.Bundle
@@ -8,18 +8,20 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import androidx.appcompat.widget.SearchView
 import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
-import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.arny.aipromptmaster.core.di.scopes.viewModelFactory
 import com.arny.aipromptmaster.domain.models.LlmModel
 import com.arny.aipromptmaster.domain.results.DataResult
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.FragmentModelsBinding
+import com.arny.aipromptmaster.presentation.ui.models.FilterState
 import com.arny.aipromptmaster.presentation.utils.autoClean
+import com.arny.aipromptmaster.presentation.utils.hideKeyboard
 import com.arny.aipromptmaster.presentation.utils.launchWhenCreated
 import com.arny.aipromptmaster.presentation.utils.strings.ResourceString
 import com.arny.aipromptmaster.presentation.utils.strings.SimpleString
@@ -33,6 +35,9 @@ class ModelsFragment : Fragment() {
 
     private var _binding: FragmentModelsBinding? = null
     private val binding get() = _binding!!
+
+    private var searchView: SearchView? = null
+    private var searchMenuItem: MenuItem? = null
 
     @AssistedFactory
     internal interface ViewModelFactory {
@@ -71,24 +76,54 @@ class ModelsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         initMenu()
-        setupViews()
+        setupFragmentResultListener()
         observeViewModel()
+        setupViews()
     }
 
     private fun initMenu() {
         requireActivity().addMenuProvider(object : MenuProvider {
-            override fun onPrepareMenu(menu: Menu) {}
+            override fun onPrepareMenu(menu: Menu) {
+                // Всегда показываем поиск
+                menu.findItem(R.id.action_search)?.isVisible = true
+            }
 
             override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-                menuInflater.inflate(R.menu.chat_menu, menu)
+                menuInflater.inflate(R.menu.models_menu, menu)
+                searchMenuItem = menu.findItem(R.id.action_search)
+                searchView = searchMenuItem?.actionView as? SearchView
+                searchView?.let { searchView ->
+                    searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+                        override fun onQueryTextSubmit(query: String?): Boolean {
+                            viewModel.filterModels(query.orEmpty())
+                            return true
+                        }
+
+                        override fun onQueryTextChange(newText: String?): Boolean {
+                            viewModel.filterModels(newText.orEmpty())
+                            return true
+                        }
+                    })
+
+                    searchMenuItem?.setOnActionExpandListener(object :
+                        MenuItem.OnActionExpandListener {
+                        override fun onMenuItemActionExpand(item: MenuItem): Boolean = true
+
+                        override fun onMenuItemActionCollapse(item: MenuItem): Boolean {
+                            viewModel.filterModels("")
+                            requireActivity().hideKeyboard()
+                            return true
+                        }
+                    })
+                }
             }
 
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean =
                 when (menuItem.itemId) {
-                    R.id.action_settings -> {
-                        findNavController().navigate(
-                            ModelsFragmentDirections.actionModelsFragmentToSettingsFragment()
-                        )
+                    R.id.action_search -> true
+
+                    R.id.action_filter -> {
+                        showFilterDialog()
                         true
                     }
 
@@ -132,6 +167,30 @@ class ModelsFragment : Fragment() {
                 }
             }
         }
+    }
+
+    private fun setupFragmentResultListener() {
+        // Используем childFragmentManager, так как мы вызываем диалог из фрагмента
+        childFragmentManager.setFragmentResultListener(
+            FilterBottomSheetDialogFragment.REQUEST_KEY,
+            viewLifecycleOwner // Привязка к жизненному циклу фрагмента
+        ) { requestKey, bundle ->
+            // Получаем результат
+            val result = bundle.getParcelable<FilterState>(FilterBottomSheetDialogFragment.RESULT_KEY)
+            if (result != null) {
+                // Передаем новые фильтры в ViewModel
+//                viewModel.applyFilters(result)
+            }
+        }
+    }
+
+    private fun showFilterDialog() {
+        // Получаем текущее состояние фильтров из ViewModel
+        val currentFilters = FilterState() //viewModel.currentFilters.value
+
+        // Создаем и показываем диалог через фабричный метод
+        val dialog = FilterBottomSheetDialogFragment.newInstance(currentFilters)
+        dialog.show(childFragmentManager, FilterBottomSheetDialogFragment.TAG)
     }
 
     override fun onDestroyView() {

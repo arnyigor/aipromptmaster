@@ -53,6 +53,9 @@
     <string name="choose_model">Выберите модель</string>
     <string name="ai_models">ИИ модели</string>
     <string name="select_model_button_description">настрока моделей</string>
+    <string name="filter">Фильтр</string>
+    <string name="created">Created</string>
+    <string name="context">Context</string>
 
     <string-array name="prompt_options">
         <item>Редактировать</item>

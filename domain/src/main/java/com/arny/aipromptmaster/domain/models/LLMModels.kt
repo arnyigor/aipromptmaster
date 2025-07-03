@@ -1,5 +1,6 @@
 package com.arny.aipromptmaster.domain.models
 
+import java.math.BigDecimal
 import java.util.UUID
 
 data class Message(
@@ -29,5 +30,12 @@ data class LlmModel(
     val id: String,
     val name: String,
     val description: String,
+    val created: Long,
+    val contextLength: BigDecimal,
+    val pricingPrompt: BigDecimal,
+    val pricingCompletion: BigDecimal,
+    val pricingImage: BigDecimal,
+    val inputModalities: List<String>,
+    val outputModalities: List<String>,
     val isSelected: Boolean,
 )

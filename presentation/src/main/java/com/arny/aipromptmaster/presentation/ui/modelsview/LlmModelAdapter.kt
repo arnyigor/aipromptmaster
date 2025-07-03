@@ -1,4 +1,4 @@
-package com.arny.aipromptmaster.presentation.ui.models
+package com.arny.aipromptmaster.presentation.ui.modelsview
 
 // LlmModelAdapter.kt
 import android.os.Bundle
@@ -7,10 +7,12 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.arny.aipromptmaster.domain.models.LlmModel
-import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.ItemModelBinding
-import com.arny.aipromptmaster.presentation.ui.models.LlmModelAdapter.LlmModelViewHolder
+import com.arny.aipromptmaster.presentation.ui.models.formatDescription
+import com.arny.aipromptmaster.presentation.ui.models.getModelIconUrlWithFallback
+import com.arny.aipromptmaster.presentation.ui.modelsview.LlmModelAdapter.LlmModelViewHolder
 import com.arny.aipromptmaster.presentation.utils.AdapterUtils
+import com.arny.aipromptmaster.presentation.utils.setImgFromUrl
 
 class LlmModelAdapter(
     private val onItemClick: (modelId: String) -> Unit
@@ -76,9 +78,9 @@ class LlmModelAdapter(
             val item: LlmModel = payloads ?: getItem(bindingAdapterPosition)
             with(binding) {
                 tvModelName.text = item.name
-                tvModelProvider.text = item.description
+                tvModelProvider.text = item.formatDescription(binding.root.context)
                 switchModelActive.isChecked = item.isSelected
-                ivProviderIcon.setImageResource(R.drawable.ic_deepseek_model)
+                ivProviderIcon.setImgFromUrl(getModelIconUrlWithFallback(item.id))
                 clContainer.setOnClickListener {
                     onItemClick(item.id)
                 }

@@ -56,7 +56,7 @@
         android:label="@string/ai_settings" />
     <fragment
         android:id="@+id/modelsFragment"
-        android:name="com.arny.aipromptmaster.presentation.ui.models.ModelsFragment"
+        android:name="com.arny.aipromptmaster.presentation.ui.modelsview.ModelsFragment"
         android:label="@string/ai_models" >
         <action
             android:id="@+id/action_modelsFragment_to_settingsFragment"
