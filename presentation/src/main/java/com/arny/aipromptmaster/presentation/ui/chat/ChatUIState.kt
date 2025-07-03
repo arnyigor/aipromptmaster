@@ -1,13 +1,11 @@
 package com.arny.aipromptmaster.presentation.ui.chat
 
-sealed class ChatUIState {
-    data class Content(
-        val messages: List<String>,
-        val isLoading: Boolean = false,
-        val error: Throwable? = null
-    ) : ChatUIState()
+import com.arny.aipromptmaster.domain.models.LlmModel
+import com.arny.aipromptmaster.domain.models.Message
 
-    companion object {
-        val Initial = Content(emptyList())
-    }
-}
+data class ChatUiState(
+    val messages: List<Message> = emptyList(),
+    val isLoading: Boolean = false,
+    val error: Throwable? = null,
+    val selectedModel: LlmModel? = null
+)

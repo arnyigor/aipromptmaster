@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.preference.PreferenceManager
 import com.arny.aipromptmaster.data.utils.SingletonHolder
+import androidx.core.content.edit
 
 class Prefs private constructor(context: Context) {
     val settings: SharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -19,15 +20,15 @@ class Prefs private constructor(context: Context) {
     }
 
     fun put(key: String?, value: Any?) {
-        settings.edit().put(key, value).apply()
+        settings.edit { put(key, value) }
     }
 
     fun remove(vararg key: String) {
-        val edit = settings.edit()
-        for (k in key) {
-            edit?.remove(k)
+        settings.edit {
+            for (k in key) {
+                this.remove(k)
+            }
         }
-        edit?.apply()
     }
 
     private fun SharedPreferences.Editor.put(key: String?, value: Any?): SharedPreferences.Editor {

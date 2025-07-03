@@ -1,6 +1,7 @@
 package com.arny.aipromptmaster.data.prefs
 
 import android.content.Context
+import android.content.SharedPreferences
 import javax.inject.Inject
 import androidx.core.content.edit
 import androidx.security.crypto.EncryptedSharedPreferences
@@ -21,11 +22,34 @@ class SecurePrefs @Inject constructor(
         EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
     )
 
-    fun setOpenRouterApiKey(apiKey: String) {
-        prefs.edit { putString(PrefsConstants.OR_API_KEY, apiKey) }
+
+    inline fun <reified T> get(key: String): T? {
+        return prefs.all[key] as? T
     }
 
-    fun getOpenRouterApiKey(): String? {
-        return prefs.getString(PrefsConstants.OR_API_KEY, null)
+    fun getAll(): Map<String, *>? = prefs.all
+
+    fun put(key: String?, value: Any?) {
+        prefs.edit { put(key, value) }
+    }
+
+    fun remove(vararg key: String) {
+        prefs.edit {
+            for (k in key) {
+                this.remove(k)
+            }
+        }
+    }
+
+    private fun SharedPreferences.Editor.put(key: String?, value: Any?): SharedPreferences.Editor {
+        when (value) {
+            is Int -> putInt(key, value)
+            is Long -> putLong(key, value)
+            is Float -> putFloat(key, value)
+            is Double -> putFloat(key, value.toFloat())
+            is String -> putString(key, value)
+            is Boolean -> putBoolean(key, value)
+        }
+        return this
     }
 }

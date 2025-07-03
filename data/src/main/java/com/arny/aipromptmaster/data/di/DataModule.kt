@@ -9,11 +9,11 @@ import com.arny.aipromptmaster.data.db.daos.PromptDao
 import com.arny.aipromptmaster.data.models.GitHubConfig
 import com.arny.aipromptmaster.data.openrouter.OpenRouterRepositoryImpl
 import com.arny.aipromptmaster.data.prefs.Prefs
-import com.arny.aipromptmaster.data.prefs.SecurePrefs
+import com.arny.aipromptmaster.data.repositories.ChatHistoryRepositoryImpl
 import com.arny.aipromptmaster.data.repositories.PromptsRepositoryImpl
 import com.arny.aipromptmaster.data.repositories.SettingsRepositoryImpl
 import com.arny.aipromptmaster.data.sync.PromptSynchronizerImpl
-import com.arny.aipromptmaster.data.utils.CryptoHelper
+import com.arny.aipromptmaster.domain.repositories.IChatHistoryRepository
 import com.arny.aipromptmaster.domain.repositories.IOpenRouterRepository
 import com.arny.aipromptmaster.domain.repositories.IPromptSynchronizer
 import com.arny.aipromptmaster.domain.repositories.IPromptsRepository
@@ -67,7 +67,11 @@ interface DataModule {
 
     @Binds
     @Singleton
-    fun bindRepository(impl: PromptsRepositoryImpl): IPromptsRepository
+    fun bindPromptsRepository(impl: PromptsRepositoryImpl): IPromptsRepository
+
+    @Binds
+    @Singleton
+    fun bindHistoryRepository(impl: ChatHistoryRepositoryImpl): IChatHistoryRepository
 
     @Binds
     @Singleton

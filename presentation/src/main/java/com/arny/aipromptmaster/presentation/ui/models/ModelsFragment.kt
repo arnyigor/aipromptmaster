@@ -15,17 +15,15 @@ import androidx.lifecycle.Lifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.arny.aipromptmaster.core.di.scopes.viewModelFactory
-import com.arny.aipromptmaster.domain.models.LLMModel
+import com.arny.aipromptmaster.domain.models.LlmModel
 import com.arny.aipromptmaster.domain.results.DataResult
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.FragmentModelsBinding
-import com.arny.aipromptmaster.presentation.ui.chat.ChatFragmentDirections
 import com.arny.aipromptmaster.presentation.utils.autoClean
 import com.arny.aipromptmaster.presentation.utils.launchWhenCreated
 import com.arny.aipromptmaster.presentation.utils.strings.ResourceString
 import com.arny.aipromptmaster.presentation.utils.strings.SimpleString
 import com.arny.aipromptmaster.presentation.utils.toastMessage
-import com.xwray.groupie.GroupieAdapter
 import dagger.android.support.AndroidSupportInjection
 import dagger.assisted.AssistedFactory
 import kotlinx.coroutines.flow.collectLatest
@@ -41,7 +39,11 @@ class ModelsFragment : Fragment() {
         fun create(): ModelsViewModel
     }
 
-    private val modelsAdapter by autoClean { GroupieAdapter() }
+    private val modelsAdapter by autoClean {
+        LlmModelAdapter { modelId ->
+            viewModel.selectModel(modelId)
+        }
+    }
 
     @Inject
     internal lateinit var viewModelFactory: ViewModelFactory
@@ -123,19 +125,11 @@ class ModelsFragment : Fragment() {
                         binding.progressBar.isVisible = true
                     }
 
-                    is DataResult.Success<List<LLMModel>> -> {
+                    is DataResult.Success<List<LlmModel>> -> {
+                        modelsAdapter.submitList(state.data)
                         binding.progressBar.isVisible = false
-                        modelsAdapter.updateAsync(createItems(state.data))
                     }
                 }
-            }
-        }
-    }
-
-    private fun createItems(data: List<LLMModel>): List<ModelItem> {
-       return data.map { model ->
-            ModelItem(model) { m ->
-                viewModel.selectModel(m)
             }
         }
     }

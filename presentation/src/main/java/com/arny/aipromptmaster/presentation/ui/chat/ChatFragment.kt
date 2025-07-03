@@ -3,14 +3,17 @@ package com.arny.aipromptmaster.presentation.ui.chat
 import android.content.Context
 import android.graphics.PorterDuff
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.core.view.MenuProvider
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.fragment.findNavController
@@ -24,6 +27,7 @@ import com.arny.aipromptmaster.presentation.utils.launchWhenCreated
 import com.xwray.groupie.GroupieAdapter
 import dagger.android.support.AndroidSupportInjection
 import dagger.assisted.AssistedFactory
+import es.dmoral.toasty.Toasty
 import kotlinx.coroutines.flow.collectLatest
 import javax.inject.Inject
 
@@ -119,6 +123,7 @@ class ChatFragment : Fragment() {
     }
 
     private fun showSendingState(isSending: Boolean) {
+        Log.i(this::class.java.simpleName, "showSendingState: isSending:$isSending")
         if (isSending) {
             // Начало отправки
             binding.btnSend.isEnabled = false
@@ -135,17 +140,36 @@ class ChatFragment : Fragment() {
     private fun observeViewModel() {
         launchWhenCreated {
             viewModel.uiState.collectLatest { state ->
-                when (state) {
-                    is ChatUIState.Content -> {
-                        showSendingState(false)
-                        state.messages.lastOrNull()?.let { message ->
-                            groupAdapter.add(LLMMessageItem(message))
-                            binding.rvChat.smoothScrollToPosition(groupAdapter.itemCount - 1)
-                        }
+                // 1. Обновляем весь список целиком. Groupie/ListAdapter сам найдет разницу.
+                // Это надежнее, чем groupAdapter.add()
+                groupAdapter.update(state.messages.map { UserMessageItem(it.content) })
+                showSendingState(false)
+
+                // Прокручиваем к последнему сообщению, если список изменился
+                if (groupAdapter.itemCount > 0) {
+                    binding.rvChat.smoothScrollToPosition(groupAdapter.itemCount - 1)
+                }
+
+                // 2. Показываем/скрываем ProgressBar
+                binding.progressBarSend.isVisible = state.isLoading
+
+                // 3. Показываем ошибку (например, в SnackBar)
+                state.error?.let { error ->
+                    // Создаем сообщение для пользователя
+                    val errorMessage = when (error) {
+                        is IllegalArgumentException -> "Ошибка: Неверный API ключ. Проверьте настройки."
+                        else -> error.message ?: "Произошла неизвестная ошибка"
                     }
+
+                    Toasty.error(requireContext(), errorMessage, Toast.LENGTH_LONG).show()
+
+                    // СРАЗУ ЖЕ сообщаем ViewModel, что ошибка показана.
+                    // Это предотвратит повторный показ SnackBar при каждом незначительном обновлении стейта.
+                    viewModel.errorShown()
                 }
             }
         }
+
         launchWhenCreated {
             viewModel.selectedModelResult.collectLatest { modelResult ->
                 when (modelResult) {
@@ -158,7 +182,7 @@ class ChatFragment : Fragment() {
                     is DataResult.Success<*> -> {
                         binding.btnSend.isEnabled = true
                         setErrorColor(false)
-                        showSendingState(true)
+                        showSendingState(false)
                     }
                 }
             }

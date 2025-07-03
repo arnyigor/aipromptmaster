@@ -10,7 +10,5 @@ class SettingsInteractorImpl @Inject constructor(
         settingsRepository.saveApiKey(apiKey)
     }
 
-    override fun getApiKey(): String? {
-        return settingsRepository.getApiKey()
-    }
+    override fun getApiKey(): String? = settingsRepository.getApiKey()
 }

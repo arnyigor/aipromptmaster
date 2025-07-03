@@ -1,122 +1,147 @@
 package com.arny.aipromptmaster.domain.interactors
 
+// LLMInteractor.kt
 import com.arny.aipromptmaster.domain.R
-import com.arny.aipromptmaster.domain.models.AppConstants.ERROR_MODEL_NOT_FOUND
-import com.arny.aipromptmaster.domain.models.LLMModel
+import com.arny.aipromptmaster.domain.models.LlmModel
 import com.arny.aipromptmaster.domain.models.Message
+import com.arny.aipromptmaster.domain.repositories.IChatHistoryRepository
 import com.arny.aipromptmaster.domain.repositories.IOpenRouterRepository
 import com.arny.aipromptmaster.domain.repositories.ISettingsRepository
 import com.arny.aipromptmaster.domain.results.DataResult
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import javax.inject.Inject
 
 class LLMInteractor @Inject constructor(
-    private val repository: IOpenRouterRepository,
-    private val settingsRepository: ISettingsRepository
+    private val modelsRepository: IOpenRouterRepository,
+    private val settingsRepository: ISettingsRepository,
+    private val historyRepository: IChatHistoryRepository
 ) : ILLMInteractor {
 
-    override suspend fun sendMessage(
-        model: String,
-        userMessage: String
-    ): Flow<DataResult<String>> = flow {
-        emit(DataResult.Loading)
-        try {
-            val messages = listOf(
-                Message("user", userMessage)
-            )
-            val apiKey = settingsRepository.getApiKey()
-            if (apiKey.isNullOrEmpty()) {
-                throw IllegalArgumentException("API key is required")
+    override fun sendMessage(model: String, userMessage: String): Flow<DataResult<String>> =
+        flow {
+            emit(DataResult.Loading)
+            try {
+                // 1. Получаем текущую историю чата. `first()` берет последнее значение из Flow.
+                val currentHistory = historyRepository.getHistoryFlow().first()
+
+                // 2. Создаем сообщение пользователя и сразу добавляем его в историю.
+                historyRepository.addMessages(listOf(Message(role = "user", content = userMessage)))
+
+                // 3. Формируем полный контекст для API.
+                // Берем историю (которая уже включает новое сообщение) и передаем в репозиторий.
+                val messagesForApi = historyRepository.getHistoryFlow().first()
+
+                // 4. Проверяем API ключ
+                val apiKey = settingsRepository.getApiKey()?.trim()
+                if (apiKey.isNullOrEmpty()) {
+                    emit(DataResult.Error(IllegalArgumentException("API key is required")))
+                    return@flow
+                }
+
+                // 5. Выполняем запрос с полным контекстом
+                val result = modelsRepository.getChatCompletion(model, messagesForApi, apiKey)
+
+                result.fold(
+                    onSuccess = { response ->
+                        val content = response.choices.firstOrNull()?.message?.content
+                        if (content != null) {
+                            // 6. При успехе добавляем ответ модели в историю
+                            val modelMessage = Message(role = "assistant", content = content)
+                            historyRepository.addMessages(listOf(modelMessage))
+                            emit(DataResult.Success(content))
+                        } else {
+                            emit(DataResult.Error(Exception("Empty response from API")))
+                        }
+                    },
+                    onFailure = { exception -> emit(DataResult.Error(exception)) }
+                )
+            } catch (e: Exception) {
+                emit(DataResult.Error(e))
             }
-
-            val result = repository.getChatCompletion(model, messages, apiKey)
-
-            result.fold(
-                onSuccess = { response ->
-                    val content = response.choices.firstOrNull()?.message?.content
-                    if (content != null) {
-                        emit(DataResult.Success(content))
-                    } else {
-                        emit(DataResult.Error(Exception("Empty response")))
-                    }
-                },
-                onFailure = { exception ->
-                    emit(DataResult.Error(exception))
-                }
-            )
-        } catch (e: Exception) {
-            emit(DataResult.Error(e))
         }
+
+    // НОВЫЙ МЕТОД для получения истории для UI
+    override fun getChatHistoryFlow(): Flow<List<Message>> = historyRepository.getHistoryFlow()
+
+    // НОВЫЙ МЕТОД для очистки истории
+    override suspend fun clearChat() {
+        historyRepository.clearHistory()
     }
 
-
-    override suspend fun getModels(): Flow<DataResult<List<LLMModel>>> = flow {
-        emit(DataResult.Loading)
-        try {
-            val result = repository.getModels() // пока что берем всегда кешированные модели
-
-            result.fold(
-                onSuccess = { models ->
-                    emit(DataResult.Success(models))
-                },
-                onFailure = { exception ->
-                    emit(DataResult.Error(exception))
+    /**
+     * Предоставляет поток со списком моделей, обогащенным состоянием выбора.
+     */
+    override fun getModels(): Flow<DataResult<List<LlmModel>>> {
+        val selectedIdFlow: Flow<String?> = settingsRepository.getSelectedModelId()
+        val modelsListFlow: Flow<List<LlmModel>> = modelsRepository.getModelsFlow()
+        return combine(selectedIdFlow, modelsListFlow) { selectedId, modelsList ->
+            // Эта лямбда будет выполняться каждый раз, когда меняется ID или список моделей.
+            if (modelsList.isEmpty()) {
+                DataResult.Loading
+            } else {
+                val mappedList = modelsList.map { model ->
+                    model.copy(isSelected = model.id == selectedId)
                 }
-            )
-        } catch (e: Exception) {
-            emit(DataResult.Error(e))
-        }
-    }
-
-    override suspend fun getSelectedModel(): Flow<DataResult<LLMModel>> = flow {
-        try {
-            // 1. Сначала получаем ID. Это быстрая операция.
-            val modelId = repository.getSelectedModelId()
-
-            // 2. Используем "guard clause" (ранний выход). Если ID нет,
-            // сразу же эмитим ошибку и прекращаем выполнение.
-            if (modelId == null) {
-                emit(DataResult.Error(exception = Throwable(ERROR_MODEL_NOT_FOUND)))
-                return@flow // Важно: завершаем работу flow-билдера
+                DataResult.Success(mappedList)
             }
+        }.onStart { emit(DataResult.Loading) } // Начинаем с Loading в любом случае.
+    }
 
-            // 3. Только если ID существует, загружаем полный список моделей.
-            // Предположим, что getModels() возвращает Result<List<LLMModel>>
-            val modelsResult = repository.getModels()
-
-            modelsResult.fold(
-                onSuccess = { llmModels ->
-                    if (llmModels.isEmpty()) {
-                        emit(DataResult.Error(
-                            exception = null,
-                            messageRes = R.string.empty_models_list
-                        ))
-                        return@fold
-                    }
-
-                    // 4. Ищем модель и используем оператор Elvis для обработки случая, когда модель не найдена
-                    val foundModel = llmModels.find { it.id == modelId }
-
-                    if (foundModel != null) {
-                        emit(DataResult.Success(foundModel))
+    /**
+     * Возвращает реактивный поток с деталями только одной выбранной модели.
+     */
+    override fun getSelectedModel(): Flow<DataResult<LlmModel>> {
+        return getModels().map { dataResult ->
+            when (dataResult) {
+                is DataResult.Success -> {
+                    val selected = dataResult.data.find { it.isSelected }
+                    if (selected != null) {
+                        DataResult.Success(selected)
                     } else {
-                        emit(DataResult.Error(
-                            exception = null,
-                            messageRes = R.string.selected_model_not_found
-                        ))
+                        DataResult.Error(null, R.string.selected_model_not_found)
                     }
-                },
-                onFailure = { exception ->
-                    emit(DataResult.Error(exception))
                 }
-            )
-        } catch (e: Exception) {
-            emit(DataResult.Error(e))
+
+                is DataResult.Error -> DataResult.Error(dataResult.exception)
+                is DataResult.Loading -> dataResult
+            }
         }
     }
 
-    override suspend fun setSelectedModelId(id: String) {
-        repository.setSelectedModelId(id)
+
+    /**
+     * Сохраняет выбор пользователя в репозитории настроек.
+     */
+    override suspend fun selectModel(id: String) {
+        settingsRepository.setSelectedModelId(id)
+    }
+
+    /**
+     * Запускает принудительное обновление списка моделей.
+     */
+    override suspend fun refreshModels(): Result<Unit> = modelsRepository.refreshModels()
+
+    /**
+     * НОВЫЙ МЕТОД: Обрабатывает клик, решая, выбрать или отменить выбор.
+     */
+    override suspend fun toggleModelSelection(clickedModelId: String) {
+        // 1. Получаем ТЕКУЩИЙ выбранный ID.
+        //    Используем `first()` чтобы получить однократное значение из потока.
+        val currentlySelectedId = settingsRepository.getSelectedModelId().firstOrNull()
+
+        // 2. Принимаем решение
+        if (currentlySelectedId == clickedModelId) {
+            // Если кликнули на уже выбранную модель -> отменяем выбор
+            settingsRepository.setSelectedModelId(null)
+        } else {
+            // Если кликнули на другую модель -> выбираем ее
+            settingsRepository.setSelectedModelId(clickedModelId)
+        }
     }
 }
