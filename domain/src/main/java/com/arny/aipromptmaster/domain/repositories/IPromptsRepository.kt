@@ -18,4 +18,6 @@ interface IPromptsRepository {
         offset: Int,
         limit: Int
     ): List<Prompt>
+
+    suspend fun deletePromptsByIds(promptIds: List<String>)
 }

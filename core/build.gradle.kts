@@ -52,6 +52,15 @@ dependencies {
     implementation(libs.material.dialogs.core)
     implementation(libs.material.dialogs.input)
     implementation(libs.toasty)
+    api(libs.markwon.core)
+    api(libs.markwon.linkify)
+    api(libs.markwon.image.coil)
+    api(libs.markwon.strikethrough)
+    api(libs.markwon.tables)
+    api(libs.markwon.html)
+    api(libs.markwon.syntax.highlight){
+        exclude(group = "org.jetbrains", module = "annotations-java5")
+    }
     kapt(libs.dagger.android.processor)
     kapt(libs.dagger.compiler)
 

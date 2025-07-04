@@ -2,7 +2,7 @@ package com.arny.aipromptmaster.di.modules
 
 import com.arny.aipromptmaster.core.di.scopes.ActivityScope
 import com.arny.aipromptmaster.di.HistoryFragmentModule
-import com.arny.aipromptmaster.di.HomeFragmentModule
+import com.arny.aipromptmaster.di.PromptsFragmentModule
 import com.arny.aipromptmaster.di.LibraryFragmentModule
 import com.arny.aipromptmaster.di.ModelsFragmentModule
 import com.arny.aipromptmaster.di.PromptViewFragmentModule
@@ -16,7 +16,7 @@ abstract class ActivitiesModule {
     @ActivityScope
     @ContributesAndroidInjector(
         modules = [
-            HomeFragmentModule::class,
+            PromptsFragmentModule::class,
             PromptViewFragmentModule::class,
             HistoryFragmentModule::class,
             LibraryFragmentModule::class,

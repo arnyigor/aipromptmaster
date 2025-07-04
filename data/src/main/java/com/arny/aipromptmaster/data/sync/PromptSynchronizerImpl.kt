@@ -196,13 +196,22 @@ class PromptSynchronizerImpl @Inject constructor(
     }
 
     private suspend fun handleDeletedPrompts(remotePrompts: List<Prompt>) {
+        // 1. Получаем локальные промпты
         val localPrompts = promptsRepository.getAllPrompts().first()
+
+        // 2. Создаем Set ID удаленных промптов для быстрого поиска
         val remoteIds = remotePrompts.map { it.id }.toSet()
-        val deletedPrompts = localPrompts.filter {
-            !it.isLocal && it.id !in remoteIds
-        }
-        for (prompt in deletedPrompts) {
-            promptsRepository.deletePrompt(prompt.id)
+
+        // 3. Фильтруем, чтобы найти ID для удаления (ваша логика)
+        val idsToDelete = localPrompts
+            .filter { !it.isLocal && it.id !in remoteIds }
+            .map { it.id } // Сразу преобразуем в список ID
+
+        // 4. Если есть что удалять, выполняем ОДНУ пакетную операцию
+        if (idsToDelete.isNotEmpty()) {
+            Log.i(TAG, "Deleting ${idsToDelete.size} prompts that are no longer on remote.")
+            // Вызываем метод репозитория, который внутри вызовет DAO с пакетным удалением
+            promptsRepository.deletePromptsByIds(idsToDelete)
         }
     }
 

@@ -18,7 +18,16 @@ interface PromptDao {
             modified_at DESC
     """
     )
-    fun getAllPrompts(): Flow<List<PromptEntity>>
+    fun getAllPromptsFlow(): Flow<List<PromptEntity>>
+
+    @Query("SELECT * FROM prompts")
+    fun getAllPrompts(): List<PromptEntity>
+
+    @Query("SELECT _id FROM prompts")
+    fun getAllPromptIds(): List<String>
+
+    @Query("DELETE FROM prompts WHERE _id IN (:ids)")
+    suspend fun deletePromptsByIds(ids: List<String>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPrompt(prompt: PromptEntity): Long

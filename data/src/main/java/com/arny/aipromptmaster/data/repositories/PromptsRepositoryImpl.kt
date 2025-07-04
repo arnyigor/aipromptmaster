@@ -1,5 +1,6 @@
 package com.arny.aipromptmaster.data.repositories
 
+import android.util.Log
 import com.arny.aipromptmaster.data.db.daos.PromptDao
 import com.arny.aipromptmaster.data.mappers.toDomain
 import com.arny.aipromptmaster.data.mappers.toEntity
@@ -17,7 +18,7 @@ class PromptsRepositoryImpl @Inject constructor(
 ) : IPromptsRepository {
 
     override suspend fun getAllPrompts(): Flow<List<Prompt>> = promptDao
-        .getAllPrompts()
+        .getAllPromptsFlow()
         .map { entities -> entities.map { it.toDomain() } }
 
     override suspend fun getPromptById(promptId: String): Prompt? = withContext(dispatcher) {
@@ -38,9 +39,34 @@ class PromptsRepositoryImpl @Inject constructor(
         promptDao.delete(promptId)
     }
 
+    override suspend fun deletePromptsByIds(promptIds: List<String>) = withContext(dispatcher) {
+        promptDao.deletePromptsByIds(promptIds)
+    }
+
     override suspend fun savePrompts(prompts: List<Prompt>) = withContext(dispatcher) {
-        prompts.forEach { prompt ->
-            val entity = prompt.toEntity()
+        // 1. Получаем все локальные промпты из базы ОДНИМ запросом.
+        val localPrompts = promptDao.getAllPrompts().associateBy { it.id }
+
+        // 2. Создаем "слитый" список.
+        val mergedPrompts = prompts.map { remotePrompt ->
+            // Ищем соответствующий локальный промпт.
+            val localPrompt = localPrompts[remotePrompt.id]
+
+            // Если локальный промпт существует и он избранный,
+            // то мы создаем копию удаленного промпта, но с флагом isFavorite = true.
+            if (localPrompt != null && localPrompt.isFavorite) {
+                remotePrompt.copy(isFavorite = true)
+            } else {
+                // Иначе просто берем промпт с сервера как есть.
+                remotePrompt
+            }
+        }
+
+        // 3. Сохраняем "слитый" список в базу.
+        // OnConflictStrategy.REPLACE теперь работает правильно: он заменяет данные,
+        // но флаг isFavorite мы уже сохранили.
+        val entitiesToSave = mergedPrompts.map { it.toEntity() }
+        entitiesToSave.forEach { entity ->
             promptDao.insertPrompt(entity)
         }
     }

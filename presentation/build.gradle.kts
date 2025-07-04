@@ -3,7 +3,7 @@ plugins {
     kotlin("android")
     kotlin("plugin.serialization") version "2.1.10"
     kotlin("kapt")
-    id ("androidx.navigation.safeargs.kotlin")
+    id("androidx.navigation.safeargs.kotlin")
     id("kotlin-parcelize")
 }
 
@@ -18,7 +18,10 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
     compileOptions {
@@ -57,10 +60,10 @@ dependencies {
     implementation(libs.kotlin.stdlib)
     implementation(libs.coil)
     implementation(libs.coil.network.okhttp)
-    implementation (libs.iconics.core)
-    implementation (libs.iconics.views)
-    implementation (libs.groupie)
-    implementation (libs.groupie.viewbinding)
+    implementation(libs.iconics.core)
+    implementation(libs.iconics.views)
+    implementation(libs.groupie)
+    implementation(libs.groupie.viewbinding)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.material)
     implementation(libs.material.dialogs.core)

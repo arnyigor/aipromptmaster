@@ -30,13 +30,13 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 
-class HomeViewModel @AssistedInject constructor(
+class PromptsViewModel @AssistedInject constructor(
     private val interactor: IPromptsInteractor,
 ) : ViewModel() {
     private val _error = MutableSharedFlow<IWrappedString>()
     val error = _error.asSharedFlow()
 
-    private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Initial)
+    private val _uiState = MutableStateFlow<PromptsUiState>(PromptsUiState.Initial)
     val uiState = _uiState.asStateFlow()
 
     private val _searchState = MutableStateFlow(SearchState())
@@ -77,10 +77,10 @@ class HomeViewModel @AssistedInject constructor(
         val isEmpty = loadStates.refresh is LoadState.NotLoading && itemCount == 0
 
         _uiState.value = when {
-            isError -> HomeUiState.Error((loadStates.refresh as LoadState.Error).error)
-            isLoading -> HomeUiState.Loading
-            isEmpty -> HomeUiState.Empty
-            else -> HomeUiState.Content
+            isError -> PromptsUiState.Error((loadStates.refresh as LoadState.Error).error)
+            isLoading -> PromptsUiState.Loading
+            isEmpty -> PromptsUiState.Empty
+            else -> PromptsUiState.Content
         }
     }
 
@@ -124,7 +124,7 @@ class HomeViewModel @AssistedInject constructor(
         }
     }
 
-    fun refresh() {
+    private fun refresh() {
         viewModelScope.launch {
             searchTrigger.emit(Unit)
         }
@@ -132,30 +132,30 @@ class HomeViewModel @AssistedInject constructor(
 
     fun synchronize() {
         viewModelScope.launch {
-            _uiState.value = HomeUiState.SyncInProgress
+            _uiState.value = PromptsUiState.SyncInProgress
             try {
                 when (val result = interactor.synchronize()) {
                     is SyncResult.Success -> {
-                        _uiState.value = HomeUiState.SyncSuccess(result.updatedPrompts.size)
+                        _uiState.value = PromptsUiState.SyncSuccess(result.updatedPrompts.size)
                         loadPrompts(resetAll = true)
                     }
 
                     is SyncResult.Error -> {
                         Log.e(
-                            HomeViewModel::class.java.simpleName,
+                            PromptsViewModel::class.java.simpleName,
                             "synchronize: Error:${result.message}"
                         )
-                        _uiState.value = HomeUiState.SyncError
+                        _uiState.value = PromptsUiState.SyncError
                         _error.tryEmit(ResourceString(R.string.sync_error, result.message))
                     }
 
                     is SyncResult.Conflicts -> {
-                        _uiState.value = HomeUiState.SyncConflicts(result.conflicts)
+                        _uiState.value = PromptsUiState.SyncConflicts(result.conflicts)
                     }
                 }
             } catch (e: Exception) {
                 handleError(e)
-                _uiState.value = HomeUiState.SyncError
+                _uiState.value = PromptsUiState.SyncError
             }
         }
     }

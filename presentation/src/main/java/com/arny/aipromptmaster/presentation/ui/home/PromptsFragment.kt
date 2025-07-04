@@ -32,19 +32,19 @@ import dagger.assisted.AssistedFactory
 import kotlinx.coroutines.flow.collectLatest
 import javax.inject.Inject
 
-class HomeFragment : Fragment() {
+class PromptsFragment : Fragment() {
 
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
 
     @AssistedFactory
     internal interface ViewModelFactory {
-        fun create(): HomeViewModel
+        fun create(): PromptsViewModel
     }
 
     @Inject
     internal lateinit var viewModelFactory: ViewModelFactory
-    private val viewModel: HomeViewModel by viewModelFactory { viewModelFactory.create() }
+    private val viewModel: PromptsViewModel by viewModelFactory { viewModelFactory.create() }
 
     private var searchView: SearchView? = null
     private var searchMenuItem: MenuItem? = null
@@ -210,7 +210,7 @@ class HomeFragment : Fragment() {
             .show()
     }
 
-    private fun updateUiState(state: HomeUiState) {
+    private fun updateUiState(state: PromptsUiState) {
         with(binding) {
             // Сначала скрываем все состояния
             recyclerView.isVisible = false
@@ -220,47 +220,47 @@ class HomeFragment : Fragment() {
             swipeRefresh.isRefreshing = false
 
             when (state) {
-                is HomeUiState.Initial -> {
+                is PromptsUiState.Initial -> {
                     recyclerView.isVisible = true
                 }
 
-                is HomeUiState.Loading -> {
+                is PromptsUiState.Loading -> {
                     recyclerView.isVisible = true
                     swipeRefresh.isRefreshing = true
                 }
 
-                is HomeUiState.Content -> {
+                is PromptsUiState.Content -> {
                     recyclerView.isVisible = true
                 }
 
-                is HomeUiState.Empty -> {
+                is PromptsUiState.Empty -> {
                     tvEmpty.isVisible = true
                 }
 
-                is HomeUiState.Error -> {
+                is PromptsUiState.Error -> {
                     errorView.isVisible = true
                     tvError.text = state.error.message
                 }
 
-                is HomeUiState.SyncInProgress -> {
+                is PromptsUiState.SyncInProgress -> {
                     recyclerView.isVisible = true
                     progressSync.isVisible = true
                     requireActivity().invalidateOptionsMenu()
                 }
 
-                is HomeUiState.SyncError -> {
+                is PromptsUiState.SyncError -> {
                     errorView.isVisible = true
                     tvError.text = getString(R.string.sync_error)
                     requireActivity().invalidateOptionsMenu()
                 }
 
-                is HomeUiState.SyncSuccess -> {
+                is PromptsUiState.SyncSuccess -> {
                     recyclerView.isVisible = true
                     showMessage(getString(R.string.sync_success, state.updatedCount))
                     requireActivity().invalidateOptionsMenu()
                 }
 
-                is HomeUiState.SyncConflicts -> {
+                is PromptsUiState.SyncConflicts -> {
                     recyclerView.isVisible = true
                     showSyncConflictsDialog(state.conflicts)
                     requireActivity().invalidateOptionsMenu()
@@ -271,7 +271,7 @@ class HomeFragment : Fragment() {
 
     private fun showPromptDetails(prompt: Prompt) {
         findNavController().navigate(
-            HomeFragmentDirections.actionNavHomeToPromptViewFragment(prompt.id)
+            PromptsFragmentDirections.actionNavHomeToPromptViewFragment(prompt.id)
         )
     }
 
@@ -280,7 +280,7 @@ class HomeFragment : Fragment() {
             .setTitle(prompt.title)
             .setItems(R.array.prompt_options) { _, which ->
                 when (which) {
-                    0 -> { /* TODO: Edit */
+                    0 -> {
                     }
 
                     1 -> viewModel.deletePrompt(prompt.id)

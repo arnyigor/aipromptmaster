@@ -20,6 +20,7 @@ import com.google.android.material.chip.Chip
 import com.google.android.material.snackbar.Snackbar
 import dagger.android.support.AndroidSupportInjection
 import dagger.assisted.AssistedFactory
+import io.noties.markwon.Markwon
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -32,6 +33,10 @@ class PromptViewFragment : Fragment() {
     internal interface ViewModelFactory {
         fun create(id: String): PromptViewViewModel
     }
+
+    // Инжектируем наш синглтон Markwon
+    @Inject
+    lateinit var markwon: Markwon
 
     @Inject
     internal lateinit var viewModelFactory: ViewModelFactory
@@ -65,7 +70,7 @@ class PromptViewFragment : Fragment() {
             btnCopyRu.setOnClickListener {
                 copyToClipboard(tvPromptRu.text.toString())
             }
-            
+
             // Копирование английского текста
             btnCopyEn.setOnClickListener {
                 copyToClipboard(tvPromptEn.text.toString())
@@ -106,10 +111,10 @@ class PromptViewFragment : Fragment() {
                 is PromptViewUiState.Content -> {
                     val prompt = state.prompt
                     tvTitle.text = prompt.title
-                    tvPromptRu.text = prompt.content.ru
-                    tvPromptEn.text = prompt.content.en
+                    tvPromptRu.text = markwon.toMarkdown(prompt.content.ru)
+                    tvPromptEn.text = markwon.toMarkdown(prompt.content.en)
                     btnFavorite.isSelected = prompt.isFavorite
-                    
+
                     // Очищаем и добавляем теги
                     chipGroupTags.removeAllViews()
                     prompt.tags.forEach { tag ->
@@ -120,7 +125,7 @@ class PromptViewFragment : Fragment() {
                         }
                         chipGroupTags.addView(chip)
                     }
-                    
+
                     // Очищаем и добавляем модели
                     chipGroupModels.removeAllViews()
                     prompt.compatibleModels.forEach { model ->
@@ -143,7 +148,8 @@ class PromptViewFragment : Fragment() {
     }
 
     private fun copyToClipboard(text: String) {
-        val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clipboard =
+            requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText("prompt", text)
         clipboard.setPrimaryClip(clip)
         showMessage(getString(R.string.prompt_copied))
@@ -155,7 +161,7 @@ class PromptViewFragment : Fragment() {
             message,
             Snackbar.LENGTH_SHORT
         ).setAnchorView(binding.fabCopy)
-        .show()
+            .show()
     }
 
     private fun showError(message: String) {
