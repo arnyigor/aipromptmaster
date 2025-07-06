@@ -13,61 +13,42 @@ import com.arny.aipromptmaster.domain.interactors.IPromptsInteractor
 import com.arny.aipromptmaster.domain.models.Prompt
 import com.arny.aipromptmaster.domain.repositories.SyncResult
 import com.arny.aipromptmaster.presentation.R
-import com.arny.aipromptmaster.presentation.utils.strings.IWrappedString
 import com.arny.aipromptmaster.presentation.utils.strings.ResourceString
 import com.arny.aipromptmaster.presentation.utils.strings.SimpleString
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.merge
-import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class PromptsViewModel @AssistedInject constructor(
     private val interactor: IPromptsInteractor,
 ) : ViewModel() {
-    private val _error = MutableSharedFlow<IWrappedString>()
-    val error = _error.asSharedFlow()
 
     private val _uiState = MutableStateFlow<PromptsUiState>(PromptsUiState.Initial)
     val uiState = _uiState.asStateFlow()
 
+    // ИЗМЕНЕНИЕ 2: Создаем поток для UI-событий
+    private val _event = MutableSharedFlow<PromptsUiEvent>()
+    val event = _event.asSharedFlow()
+
+    // ИЗМЕНЕНИЕ 3: SearchState - единственный источник правды для поиска
     private val _searchState = MutableStateFlow(SearchState())
-    private val searchTrigger = MutableSharedFlow<Unit>()
+    val searchState = _searchState.asStateFlow()
 
-    private var queryString: String = ""
-    private val trigger = MutableSharedFlow<Unit>()
-    private val actionStateFlow = MutableSharedFlow<UiAction>()
-
-    val promptsFlow: Flow<PagingData<Prompt>> = listOf(
-        trigger.map { UiAction.Refresh },
-        actionStateFlow
-            .distinctUntilChanged()
-            .debounce(350)
-    )
-        .merge()
-        .onStart { emit(UiAction.Refresh) }
-        .flatMapLatest { action ->
-            when (action) {
-                is UiAction.Search -> {
-                    _searchState.value = _searchState.value.copy(
-                        query = action.query,
-                        category = action.category,
-                        status = action.status,
-                        tags = action.tags
-                    )
-                }
-
-                is UiAction.Refresh -> {}
-            }
-            createPager(_searchState.value).flow
+    // ИЗМЕНЕНИЕ 4: `promptsFlow` стал намного проще. Он просто реагирует на `_searchState`.
+    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
+    val promptsFlow: Flow<PagingData<Prompt>> = _searchState
+        .debounce(350) // Дебаунс прямо на потоке состояния
+        .flatMapLatest { state ->
+            createPager(state).flow
         }
         .cachedIn(viewModelScope)
 
@@ -84,78 +65,81 @@ class PromptsViewModel @AssistedInject constructor(
         }
     }
 
-    private fun createPager(searchState: SearchState): Pager<Int, Prompt> {
-        return Pager(
-            config = PagingConfig(
-                pageSize = IPromptsInteractor.DEFAULT_PAGE_SIZE,
-                enablePlaceholders = false,
-                initialLoadSize = IPromptsInteractor.DEFAULT_PAGE_SIZE
-            ),
-            pagingSourceFactory = {
-                PromptPagingSource(
-                    interactor = interactor,
-                    query = searchState.query,
-                    category = searchState.category,
-                    status = searchState.status,
-                    tags = searchState.tags
-                )
-            }
-        )
+    private fun createPager(searchState: SearchState): Pager<Int, Prompt> = Pager(
+        config = PagingConfig(
+            pageSize = IPromptsInteractor.DEFAULT_PAGE_SIZE,
+            enablePlaceholders = false,
+            initialLoadSize = IPromptsInteractor.DEFAULT_PAGE_SIZE
+        ),
+        pagingSourceFactory = {
+            PromptPagingSource(
+                interactor = interactor,
+                query = searchState.query,
+                category = searchState.category,
+                status = searchState.status,
+                tags = searchState.tags
+            )
+        }
+    )
+
+    fun search(query: String) {
+        _searchState.update { it.copy(query = query) }
     }
 
-    fun search(
-        query: String = "",
-        category: String? = null,
-        status: String? = null,
-        tags: List<String> = emptyList()
+    fun applyFilters(
+        category: String? = searchState.value.category,
+        status: String? = searchState.value.status,
+        tags: List<String> = searchState.value.tags,
     ) {
-        viewModelScope.launch {
-            actionStateFlow.emit(
-                UiAction.Search(
-                    query = query,
-                    category = category,
-                    status = when (status) {
-                        "favorite" -> "favorite"
-                        else -> null
-                    },
-                    tags = tags
-                )
+        _searchState.update { currentState ->
+            currentState.copy(
+                category = category,
+                status = when (status) {
+                    "favorite" -> "favorite"
+                    else -> null
+                },
+                tags = tags
             )
         }
     }
 
-    private fun refresh() {
-        viewModelScope.launch {
-            searchTrigger.emit(Unit)
-        }
+    fun resetSearchAndFilters() {
+        _searchState.value = SearchState()
     }
 
     fun synchronize() {
         viewModelScope.launch {
-            _uiState.value = PromptsUiState.SyncInProgress
+            _event.emit(PromptsUiEvent.SyncInProgress) // Используем event-поток
             try {
-                when (val result = interactor.synchronize()) {
+                val result = interactor.synchronize()
+                Log.i(this::class.java.simpleName, "synchronize: result: $result")
+                when (result) {
                     is SyncResult.Success -> {
-                        _uiState.value = PromptsUiState.SyncSuccess(result.updatedPrompts.size)
-                        loadPrompts(resetAll = true)
+                        _event.emit(PromptsUiEvent.SyncSuccess(result.updatedPrompts.size))
+                        // После успешной синхронизации PagingDataAdapter сам должен будет обновиться
+
+                        _searchState.value = SearchState()
                     }
 
                     is SyncResult.Error -> {
-                        Log.e(
-                            PromptsViewModel::class.java.simpleName,
-                            "synchronize: Error:${result.message}"
+                        _event.emit(PromptsUiEvent.SyncError)
+                        _event.emit(
+                            PromptsUiEvent.ShowError(
+                                ResourceString(
+                                    R.string.sync_error,
+                                    result.message
+                                )
+                            )
                         )
-                        _uiState.value = PromptsUiState.SyncError
-                        _error.tryEmit(ResourceString(R.string.sync_error, result.message))
                     }
 
                     is SyncResult.Conflicts -> {
-                        _uiState.value = PromptsUiState.SyncConflicts(result.conflicts)
+                        _event.emit(PromptsUiEvent.SyncConflicts(result.conflicts))
                     }
                 }
             } catch (e: Exception) {
                 handleError(e)
-                _uiState.value = PromptsUiState.SyncError
+                _event.emit(PromptsUiEvent.SyncError)
             }
         }
     }
@@ -164,7 +148,6 @@ class PromptsViewModel @AssistedInject constructor(
         viewModelScope.launch {
             try {
                 interactor.deletePrompt(promptId)
-                refresh()
             } catch (e: Exception) {
                 handleError(e)
             }
@@ -174,12 +157,8 @@ class PromptsViewModel @AssistedInject constructor(
     fun toggleFavorite(promptId: String) {
         viewModelScope.launch {
             try {
-                val prompt = interactor.getPromptById(promptId)
-                if (prompt != null) {
-                    val updatedPrompt = prompt.copy(isFavorite = !prompt.isFavorite)
-                    interactor.updatePrompt(updatedPrompt)
-                    refresh()
-                }
+                interactor.toggleFavorite(promptId)
+                _event.emit(PromptsUiEvent.PromptUpdated)
             } catch (e: Exception) {
                 handleError(e)
             }
@@ -187,31 +166,17 @@ class PromptsViewModel @AssistedInject constructor(
     }
 
     private suspend fun handleError(error: Throwable) {
-        _error.emit(SimpleString(error.message ?: "Unknown error"))
+        _event.emit(PromptsUiEvent.ShowError(SimpleString(error.message ?: "Unknown error")))
     }
 
-    fun loadPrompts(
-        query: String = "",
-        resetAll: Boolean = false
-    ) {
+    fun updateFavorite(promptId: String?) {
         viewModelScope.launch {
-            queryString = query
-            when {
-                resetAll -> {
-                    _searchState.value = SearchState()
-                    actionStateFlow.emit(UiAction.Search())
+            try {
+                if (!promptId.isNullOrBlank()) {
+                    _event.emit(PromptsUiEvent.PromptUpdated)
                 }
-
-                else -> {
-                    actionStateFlow.emit(
-                        UiAction.Search(
-                            query = query,
-                            category = _searchState.value.category,
-                            status = _searchState.value.status,
-                            tags = _searchState.value.tags
-                        )
-                    )
-                }
+            } catch (e: Exception) {
+                handleError(e)
             }
         }
     }

@@ -34,7 +34,7 @@ data class LlmModel(
     val contextLength: BigDecimal,
     val pricingPrompt: BigDecimal,
     val pricingCompletion: BigDecimal,
-    val pricingImage: BigDecimal,
+    val pricingImage: BigDecimal?,
     val inputModalities: List<String>,
     val outputModalities: List<String>,
     val isSelected: Boolean,

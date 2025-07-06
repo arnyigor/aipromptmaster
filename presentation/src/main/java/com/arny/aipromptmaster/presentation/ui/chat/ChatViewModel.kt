@@ -32,7 +32,6 @@ class ChatViewModel @AssistedInject constructor(
             messages = messages,
             selectedModel = selectedModel,
             isLoading = sendingState.isLoading,
-            // Ошибка отправки имеет приоритет над ошибкой загрузки модели
             error = sendingState.error ?: modelError
         )
     }.stateIn(
@@ -77,7 +76,6 @@ class ChatViewModel @AssistedInject constructor(
     fun sendMessage(userMessageText: String) {
         if (userMessageText.isBlank()) return
 
-        // Теперь мы берем модель прямо из текущего состояния uiState
         val selectedModelId = uiState.value.selectedModel?.id
         if (selectedModelId == null) {
             _sendingState.value = SendingState(error = IllegalStateException("Модель не выбрана"))

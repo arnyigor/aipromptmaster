@@ -140,6 +140,7 @@ class ChatFragment : Fragment() {
     private fun observeViewModel() {
         launchWhenCreated {
             viewModel.uiState.collectLatest { state ->
+                Log.d(this::class.java.simpleName, "observeViewModel: state=$state")
                 // 1. Обновляем весь список целиком. Groupie/ListAdapter сам найдет разницу.
                 // Это надежнее, чем groupAdapter.add()
                 groupAdapter.update(state.messages.map { UserMessageItem(it.content) })
@@ -172,6 +173,7 @@ class ChatFragment : Fragment() {
 
         launchWhenCreated {
             viewModel.selectedModelResult.collectLatest { modelResult ->
+                Log.d(this::class.java.simpleName, "observeViewModel: modelResult:$modelResult")
                 when (modelResult) {
                     is DataResult.Error<*> -> {
                         binding.btnSend.isEnabled = false

@@ -2,6 +2,7 @@ package com.arny.aipromptmaster.presentation.ui.modelsview
 
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
@@ -142,16 +143,19 @@ class ModelsFragment : Fragment() {
     private fun observeViewModel() {
         launchWhenCreated {
             viewModel.uiState.collectLatest { state ->
+                Log.i(this::class.java.simpleName, "observeViewModel: state: $state")
                 when (state) {
                     is DataResult.Error<*> -> {
                         binding.progressBar.isVisible = false
+                        val exception = state.exception
+                        val messageRes = state.messageRes
                         when {
-                            state.exception != null -> {
-                                toastMessage(SimpleString(state.exception!!.message))
+                            exception != null -> {
+                                toastMessage(SimpleString(exception.message))
                             }
 
-                            state.messageRes != null -> {
-                                toastMessage(ResourceString(state.messageRes!!))
+                            messageRes != null -> {
+                                toastMessage(ResourceString(messageRes))
                             }
                         }
                     }

@@ -28,6 +28,13 @@ class PromptsInteractorImpl @Inject constructor(
 
     override suspend fun getPromptById(id: String): Prompt? = repository.getPromptById(id)
 
+    override suspend fun toggleFavorite(promptId: String) {
+        val prompt = repository.getPromptById(promptId)
+        if (prompt != null) {
+            repository.updatePrompt(prompt.copy(isFavorite = !prompt.isFavorite))
+        }
+    }
+
     override suspend fun savePrompt(prompt: Prompt): Long = repository.insertPrompt(prompt)
 
     override suspend fun updatePrompt(prompt: Prompt) = repository.updatePrompt(prompt)

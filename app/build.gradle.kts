@@ -10,7 +10,7 @@ android {
     compileSdk = 36
     val vMajor = 0
     val vMinor = 0
-    val vBuild = 2
+    val vBuild = 3
     defaultConfig {
         applicationId = "com.arny.aipromptmaster"
         minSdk = 23

@@ -24,6 +24,7 @@
         <!-- Material 3 attributes -->
         <item name="materialCardViewStyle">@style/Widget.App.CardView</item>
         <item name="chipStyle">@style/Widget.App.Chip</item>
+
     </style>
 
     <style name="ItemMenuTextAppearance">

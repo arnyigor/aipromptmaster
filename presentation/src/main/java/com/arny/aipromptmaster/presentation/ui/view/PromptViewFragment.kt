@@ -8,20 +8,20 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
+import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
+import androidx.fragment.app.setFragmentResult
 import androidx.navigation.fragment.navArgs
 import com.arny.aipromptmaster.core.di.scopes.viewModelFactory
+import com.arny.aipromptmaster.domain.models.AppConstants
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.FragmentPromptViewBinding
+import com.arny.aipromptmaster.presentation.utils.launchWhenCreated
 import com.google.android.material.chip.Chip
 import com.google.android.material.snackbar.Snackbar
 import dagger.android.support.AndroidSupportInjection
 import dagger.assisted.AssistedFactory
 import io.noties.markwon.Markwon
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 class PromptViewFragment : Fragment() {
@@ -91,15 +91,28 @@ class PromptViewFragment : Fragment() {
             // Избранное
             btnFavorite.setOnClickListener {
                 viewModel.toggleFavorite()
+
             }
         }
     }
 
     private fun observeViewModel() {
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.uiState.collect { state ->
-                    updateUiState(state)
+        launchWhenCreated {
+            viewModel.uiState.collect { state ->
+                updateUiState(state)
+            }
+        }
+        launchWhenCreated {
+            viewModel.uiEvent.collect { event ->
+                when (event) {
+                    is PromptViewUiEvent.PromptUpdated -> {
+                        val resultBundle = bundleOf(AppConstants.REQ_KEY_PROMPT_ID to event.id)
+                        setFragmentResult(AppConstants.REQ_KEY_PROMPT_VIEW_FAV, resultBundle)
+                    }
+
+                    is PromptViewUiEvent.ShowError -> {
+                        showMessage(event.message?.toString(requireContext()).orEmpty())
+                    }
                 }
             }
         }
@@ -139,7 +152,7 @@ class PromptViewFragment : Fragment() {
                 }
 
                 is PromptViewUiState.Error -> {
-                    showError(state.message)
+                    showMessage(state.message)
                 }
 
                 else -> Unit
@@ -162,10 +175,6 @@ class PromptViewFragment : Fragment() {
             Snackbar.LENGTH_SHORT
         ).setAnchorView(binding.fabCopy)
             .show()
-    }
-
-    private fun showError(message: String) {
-        showMessage(message)
     }
 
     override fun onDestroyView() {

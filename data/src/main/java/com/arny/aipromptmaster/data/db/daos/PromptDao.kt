@@ -74,10 +74,7 @@ interface PromptDao {
     AND (:tags = '' OR LOWER(tags) LIKE LOWER('%' || :tags || '%'))
     /* Сортировка по релевантности и дате модификации */
     ORDER BY 
-        CASE 
-            WHEN :status = 'favorite' THEN is_favorite
-            ELSE 0
-        END DESC,
+        is_favorite DESC,
         relevance DESC, 
         modified_at DESC
     LIMIT :limit OFFSET :offset

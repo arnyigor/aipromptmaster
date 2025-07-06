@@ -6,5 +6,5 @@ import java.math.BigDecimal
 data class ModelPricing(
     @SerializedName("prompt") val prompt: BigDecimal,
     @SerializedName("completion") val completion: BigDecimal,
-    @SerializedName("image") val image: BigDecimal,
+    @SerializedName("image") val image: BigDecimal?,
 )
