@@ -56,6 +56,7 @@
     <string name="filter">Фильтр</string>
     <string name="created">Created</string>
     <string name="context">Context</string>
+    <string name="sync_success_updated_count">Обновлено промптов:%d</string>
 
     <string-array name="prompt_options">
         <item>Редактировать</item>
