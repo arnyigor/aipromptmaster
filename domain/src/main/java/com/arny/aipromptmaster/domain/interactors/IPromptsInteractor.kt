@@ -21,6 +21,7 @@ interface IPromptsInteractor {
     suspend fun deletePrompt(promptId: String)
     suspend fun synchronize(): SyncResult
     suspend fun getLastSyncTime(): Long?
+    suspend fun toggleFavorite(promptId: String)
 
     companion object {
         const val DEFAULT_PAGE_SIZE = 20

@@ -119,7 +119,7 @@ fun LlmModel.formatDescription(context: Context): String {
 
 fun Long.toReadableDate(): String {
     val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-    return sdf.format(Date(this))
+    return sdf.format(Date(this*1000))
 }
 
 /**

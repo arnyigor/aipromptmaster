@@ -1,6 +1,7 @@
 package com.arny.aipromptmaster.domain.interactors
 
 // LLMInteractor.kt
+import android.util.Log
 import com.arny.aipromptmaster.domain.R
 import com.arny.aipromptmaster.domain.models.LlmModel
 import com.arny.aipromptmaster.domain.models.Message
@@ -81,6 +82,7 @@ class LLMInteractor @Inject constructor(
         val selectedIdFlow: Flow<String?> = settingsRepository.getSelectedModelId()
         val modelsListFlow: Flow<List<LlmModel>> = modelsRepository.getModelsFlow()
         return combine(selectedIdFlow, modelsListFlow) { selectedId, modelsList ->
+            Log.i(this::class.java.simpleName, "getModels: selectedId: $selectedId, modelsList: ${modelsList.size}")
             // Эта лямбда будет выполняться каждый раз, когда меняется ID или список моделей.
             if (modelsList.isEmpty()) {
                 DataResult.Loading

@@ -18,6 +18,7 @@ import androidx.fragment.app.setFragmentResultListener
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.fragment.findNavController
 import com.arny.aipromptmaster.core.di.scopes.viewModelFactory
+import com.arny.aipromptmaster.domain.models.AppConstants
 import com.arny.aipromptmaster.domain.models.Prompt
 import com.arny.aipromptmaster.domain.models.SyncConflict
 import com.arny.aipromptmaster.presentation.R
@@ -27,6 +28,8 @@ import com.arny.aipromptmaster.presentation.utils.getParcelableCompat
 import com.arny.aipromptmaster.presentation.utils.hideKeyboard
 import com.arny.aipromptmaster.presentation.utils.launchWhenCreated
 import com.arny.aipromptmaster.presentation.utils.strings.IWrappedString
+import com.arny.aipromptmaster.presentation.utils.strings.ResourceString
+import com.arny.aipromptmaster.presentation.utils.toastMessage
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import dagger.android.support.AndroidSupportInjection
@@ -57,7 +60,7 @@ class PromptsFragment : Fragment() {
             onPromptLongClick = { showPromptOptions(it) },
             onFavoriteClick = { prompt ->
                 viewModel.toggleFavorite(prompt.id)
-            }
+            },
         )
     }
 
@@ -82,6 +85,10 @@ class PromptsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        setFragmentResultListener(AppConstants.REQ_KEY_PROMPT_VIEW_FAV) { key, bundle ->
+            val promptId = bundle.getString(AppConstants.REQ_KEY_PROMPT_ID)
+            viewModel.updateFavorite(promptId)
+        }
         initMenu()
         observeViewModel()
         listenForFilterResults()
@@ -98,12 +105,7 @@ class PromptsFragment : Fragment() {
                 promptsAdapter.refresh()
             }
 
-            chipGroupFilters.setOnCheckedChangeListener { _, checkedId ->
-                when (checkedId) {
-                    R.id.chipAll -> viewModel.search()
-                    R.id.chipFavorites -> viewModel.search(status = "favorite")
-                }
-            }
+            updateChipGroup()
 
             fabAdd.setOnClickListener {
                 // TODO: Navigate to add prompt screen
@@ -123,22 +125,90 @@ class PromptsFragment : Fragment() {
         }
     }
 
+    private fun FragmentHomeBinding.updateChipGroup() {
+        chipGroupFilters.setOnCheckedChangeListener { group, checkedId ->
+            // Получаем текущий поисковый запрос, чтобы не потерять его
+            // Это не самый лучший подход, лучше, чтобы ViewModel сама его хранила,
+            // но для быстрого исправления подойдет. В идеале UI не должен знать о деталях состояния.
+            // В нашей новой ViewModel это уже так, поэтому мы можем просто вызвать applyFilters.
+
+            when (checkedId) {
+                // Если выбраны "Все", мы сбрасываем фильтр по статусу
+                R.id.chipAll -> viewModel.applyFilters(
+                    category = viewModel.searchState.value.category, // Сохраняем другие фильтры
+                    status = null, // Сбрасываем только статус
+                    tags = viewModel.searchState.value.tags
+                )
+                // Если выбраны "Избранные", устанавливаем фильтр по статусу
+                R.id.chipFavorites -> viewModel.applyFilters(
+                    category = viewModel.searchState.value.category,
+                    status = "favorite", // Устанавливаем статус
+                    tags = viewModel.searchState.value.tags
+                )
+                // Если ни один чип не выбран (пользователь снял выбор)
+                View.NO_ID -> viewModel.applyFilters(
+                    category = viewModel.searchState.value.category,
+                    status = null,
+                    tags = viewModel.searchState.value.tags
+                )
+            }
+        }
+    }
+
     private fun observeViewModel() {
         launchWhenCreated {
             viewModel.promptsFlow.collectLatest { pagingData ->
                 promptsAdapter.submitData(pagingData)
             }
         }
-
         launchWhenCreated {
             viewModel.uiState.collect { state ->
                 updateUiState(state)
             }
         }
-
         launchWhenCreated {
-            viewModel.error.collect { error ->
-                showError(error)
+            viewModel.event.collect { event ->
+                updateEvent(event)
+            }
+        }
+    }
+
+    private fun updateEvent(event: PromptsUiEvent) {
+        with(binding) {
+            when (event) {
+                is PromptsUiEvent.ShowError -> {
+                    showError(event.message)
+                }
+
+                is PromptsUiEvent.SyncConflicts -> {
+                    recyclerView.isVisible = true
+                    showSyncConflictsDialog(event.conflicts)
+                    requireActivity().invalidateOptionsMenu()
+                }
+
+                PromptsUiEvent.SyncError -> {
+                    errorView.isVisible = true
+                    tvError.text = getString(R.string.sync_error)
+                    requireActivity().invalidateOptionsMenu()
+                }
+
+                PromptsUiEvent.SyncInProgress -> {
+                    recyclerView.isVisible = true
+                    progressSync.isVisible = true
+                    requireActivity().invalidateOptionsMenu()
+                }
+
+                is PromptsUiEvent.SyncSuccess -> {
+                    recyclerView.isVisible = true
+                    progressSync.isVisible = false
+                    showMessage(getString(R.string.sync_success, event.updatedCount))
+                    requireActivity().invalidateOptionsMenu()
+                    toastMessage(ResourceString(R.string.sync_success_updated_count, event.updatedCount))
+                }
+
+                is PromptsUiEvent.PromptUpdated -> {
+                    adapterRefresh()
+                }
             }
         }
 
@@ -174,12 +244,16 @@ class PromptsFragment : Fragment() {
                 searchView?.let { searchView ->
                     searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
                         override fun onQueryTextSubmit(query: String?): Boolean {
-                            viewModel.loadPrompts(query.orEmpty())
-                            return true
+                            // Поиск уже происходит в onQueryTextChange.
+                            // Здесь можно просто скрыть клавиатуру для лучшего UX.
+                            requireActivity().hideKeyboard()
+                            return false // Возвращаем false, чтобы система сама скрыла клавиатуру
                         }
 
                         override fun onQueryTextChange(newText: String?): Boolean {
-                            viewModel.loadPrompts(newText.orEmpty())
+                            // Используем новый, сфокусированный метод.
+                            // Он просто обновляет состояние в ViewModel, а Flow реагирует на это.
+                            viewModel.search(newText.orEmpty())
                             return true
                         }
                     })
@@ -189,7 +263,10 @@ class PromptsFragment : Fragment() {
                         override fun onMenuItemActionExpand(item: MenuItem): Boolean = true
 
                         override fun onMenuItemActionCollapse(item: MenuItem): Boolean {
-                            viewModel.loadPrompts(resetAll = true)
+                            // Используем новый метод для полного сброса поиска и фильтров.
+                            // ViewModel сбросит SearchState, и Flow автоматически загрузит полный список.
+                            viewModel.resetSearchAndFilters()
+                            // Прятать клавиатуру здесь тоже полезно, хотя система часто делает это сама.
                             requireActivity().hideKeyboard()
                             return true
                         }
@@ -263,30 +340,6 @@ class PromptsFragment : Fragment() {
                     errorView.isVisible = true
                     tvError.text = state.error.message
                 }
-
-                is PromptsUiState.SyncInProgress -> {
-                    recyclerView.isVisible = true
-                    progressSync.isVisible = true
-                    requireActivity().invalidateOptionsMenu()
-                }
-
-                is PromptsUiState.SyncError -> {
-                    errorView.isVisible = true
-                    tvError.text = getString(R.string.sync_error)
-                    requireActivity().invalidateOptionsMenu()
-                }
-
-                is PromptsUiState.SyncSuccess -> {
-                    recyclerView.isVisible = true
-                    showMessage(getString(R.string.sync_success, state.updatedCount))
-                    requireActivity().invalidateOptionsMenu()
-                }
-
-                is PromptsUiState.SyncConflicts -> {
-                    recyclerView.isVisible = true
-                    showSyncConflictsDialog(state.conflicts)
-                    requireActivity().invalidateOptionsMenu()
-                }
             }
         }
     }
@@ -305,10 +358,17 @@ class PromptsFragment : Fragment() {
                     0 -> {
                     }
 
-                    1 -> viewModel.deletePrompt(prompt.id)
+                    1 -> {
+                        viewModel.deletePrompt(prompt.id)
+                        adapterRefresh()
+                    }
                 }
             }
             .show()
+    }
+
+    private fun adapterRefresh() {
+        promptsAdapter.refresh()
     }
 
     private fun showError(error: IWrappedString) {
