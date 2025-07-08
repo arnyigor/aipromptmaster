@@ -13,7 +13,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 
-class FilterSettingsBottomSheet : BottomSheetDialogFragment() {
+class PromptsFilterSettingsBottomSheet : BottomSheetDialogFragment() {
     private var _binding: PromptsBottomSheetFiltersBinding? = null
     private val binding get() = _binding!!
 
@@ -93,8 +93,8 @@ class FilterSettingsBottomSheet : BottomSheetDialogFragment() {
         fun newInstance(
             sortData: SortData,
             currentFilters: CurrentFilters
-        ): FilterSettingsBottomSheet {
-            return FilterSettingsBottomSheet().apply {
+        ): PromptsFilterSettingsBottomSheet {
+            return PromptsFilterSettingsBottomSheet().apply {
                 arguments = bundleOf(
                     ARG_SORT_DATA to sortData,
                     ARG_CURRENT_FILTERS to currentFilters

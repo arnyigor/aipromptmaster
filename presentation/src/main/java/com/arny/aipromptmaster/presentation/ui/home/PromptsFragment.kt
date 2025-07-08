@@ -167,6 +167,11 @@ class PromptsFragment : Fragment() {
             }
         }
         launchWhenCreated {
+            viewModel.sortDataState.collect { sortData ->
+                binding.btnSort.isVisible = sortData != null
+            }
+        }
+        launchWhenCreated {
             viewModel.event.collect { event ->
                 updateEvent(event)
             }
@@ -203,29 +208,24 @@ class PromptsFragment : Fragment() {
                     progressSync.isVisible = false
                     showMessage(getString(R.string.sync_success, event.updatedCount))
                     requireActivity().invalidateOptionsMenu()
-                    toastMessage(ResourceString(R.string.sync_success_updated_count, event.updatedCount))
+                    toastMessage(
+                        ResourceString(
+                            R.string.sync_success_updated_count,
+                            event.updatedCount
+                        )
+                    )
+                }
+
+                is PromptsUiEvent.OpenSortScreenEvent -> {
+                    PromptsFilterSettingsBottomSheet.newInstance(
+                        event.sortData,
+                        event.currentFilters
+                    ).show(childFragmentManager, PromptsFilterSettingsBottomSheet.TAG)
                 }
 
                 is PromptsUiEvent.PromptUpdated -> {
                     adapterRefresh()
                 }
-            }
-        }
-
-        launchWhenCreated {
-            viewModel.eventChannel.collect { event ->
-                processEvents(event)
-            }
-        }
-    }
-
-    private fun processEvents(event: PromptsUiEvents) {
-        when (event) {
-            is PromptsUiEvents.OpenSortScreenEvent -> {
-                FilterSettingsBottomSheet.newInstance(
-                    event.sortData,
-                    event.currentFilters
-                ).show(childFragmentManager, FilterSettingsBottomSheet.TAG)
             }
         }
     }
@@ -409,9 +409,9 @@ class PromptsFragment : Fragment() {
     }
 
     private fun listenForFilterResults() {
-        setFragmentResultListener(FilterSettingsBottomSheet.REQUEST_KEY) { requestKey, bundle ->
+        setFragmentResultListener(PromptsFilterSettingsBottomSheet.REQUEST_KEY) { requestKey, bundle ->
             val result =
-                bundle.getParcelableCompat<FilterSettings>(FilterSettingsBottomSheet.BUNDLE_KEY)
+                bundle.getParcelableCompat<FilterSettings>(PromptsFilterSettingsBottomSheet.BUNDLE_KEY)
             result?.let {
                 viewModel.applyFilters(
                     categories = it.categories,

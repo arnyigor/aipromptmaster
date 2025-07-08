@@ -22,7 +22,6 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
@@ -35,19 +34,15 @@ class PromptsViewModel @AssistedInject constructor(
 ) : ViewModel() {
 
     private val _sortDataState = MutableStateFlow<PromptsSortData?>(null)
+    val sortDataState = _sortDataState.asStateFlow()
     private val _currentSortDataState = MutableStateFlow<PromptsSortData?>(null)
-
-    private val _eventChannel = MutableSharedFlow<PromptsUiEvents>()
-    val eventChannel: SharedFlow<PromptsUiEvents> = _eventChannel.asSharedFlow()
 
     private val _uiState = MutableStateFlow<PromptsUiState>(PromptsUiState.Initial)
     val uiState = _uiState.asStateFlow()
 
-    // ИЗМЕНЕНИЕ 2: Создаем поток для UI-событий
     private val _event = MutableSharedFlow<PromptsUiEvent>()
     val event = _event.asSharedFlow()
 
-    // ИЗМЕНЕНИЕ 3: SearchState - единственный источник правды для поиска
     private val _searchState = MutableStateFlow(SearchState())
     val searchState = _searchState.asStateFlow()
 
@@ -66,9 +61,9 @@ class PromptsViewModel @AssistedInject constructor(
     private fun loadSortData() {
         viewModelScope.launch {
             try {
-                // Загружаем данные и помещаем их в StateFlow
                 _sortDataState.value = interactor.getPromptsSortData()
             } catch (e: Exception) {
+                e.printStackTrace()
                 // Обработка ошибки, если нужна
                 // Например, показать Toast или записать в лог
             }
@@ -76,17 +71,18 @@ class PromptsViewModel @AssistedInject constructor(
     }
 
     fun onSortButtonClicked() {
-        val availableFilters = _sortDataState.value
-        if (availableFilters != null) {
-            val event = PromptsUiEvents.OpenSortScreenEvent(
-                sortData = SortData(availableFilters.categories, availableFilters.tags),
-                currentFilters = CurrentFilters(
-                    _currentSortDataState.value?.categories.orEmpty(),
-                    _currentSortDataState.value?.tags.orEmpty()
-                ),
-            )
-            viewModelScope.launch {
-                _eventChannel.emit(event)
+        viewModelScope.launch {
+            val availableFilters = _sortDataState.value
+            if (availableFilters != null) {
+                _event.emit(
+                    PromptsUiEvent.OpenSortScreenEvent(
+                        sortData = SortData(availableFilters.categories, availableFilters.tags),
+                        currentFilters = CurrentFilters(
+                            _currentSortDataState.value?.categories.orEmpty(),
+                            _currentSortDataState.value?.tags.orEmpty()
+                        ),
+                    )
+                )
             }
         }
     }

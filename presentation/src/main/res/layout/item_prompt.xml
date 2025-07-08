@@ -52,6 +52,7 @@
             android:id="@+id/ivFavorite"
             android:layout_width="24dp"
             android:layout_height="24dp"
+            android:src="@drawable/ic_favorite_selector"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:clickable="true"
             android:focusable="true"
