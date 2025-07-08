@@ -172,11 +172,11 @@ class ModelsFragment : Fragment() {
     private fun setupFragmentResultListener() {
         // Используем childFragmentManager, так как мы вызываем диалог из фрагмента
         childFragmentManager.setFragmentResultListener(
-            FilterBottomSheetDialogFragment.REQUEST_KEY,
+            ModelsFilterBottomSheetDialogFragment.REQUEST_KEY,
             viewLifecycleOwner // Привязка к жизненному циклу фрагмента
         ) { requestKey, bundle ->
             // Получаем результат
-            val result = bundle.getParcelable<FilterState>(FilterBottomSheetDialogFragment.RESULT_KEY)
+            val result = bundle.getParcelable<FilterState>(ModelsFilterBottomSheetDialogFragment.RESULT_KEY)
             if (result != null) {
                 // Передаем новые фильтры в ViewModel
 //                viewModel.applyFilters(result)
@@ -185,12 +185,9 @@ class ModelsFragment : Fragment() {
     }
 
     private fun showFilterDialog() {
-        // Получаем текущее состояние фильтров из ViewModel
         val currentFilters = FilterState() //viewModel.currentFilters.value
-
-        // Создаем и показываем диалог через фабричный метод
-        val dialog = FilterBottomSheetDialogFragment.newInstance(currentFilters)
-        dialog.show(childFragmentManager, FilterBottomSheetDialogFragment.TAG)
+        val dialog = ModelsFilterBottomSheetDialogFragment.newInstance(currentFilters)
+        dialog.show(childFragmentManager, ModelsFilterBottomSheetDialogFragment.TAG)
     }
 
     override fun onDestroyView() {

@@ -1,6 +1,7 @@
 package com.arny.aipromptmaster.domain.interactors
 
 import com.arny.aipromptmaster.domain.models.Prompt
+import com.arny.aipromptmaster.domain.models.PromptsSortData
 import com.arny.aipromptmaster.domain.repositories.SyncResult
 
 interface IPromptsInteractor {
@@ -13,6 +14,7 @@ interface IPromptsInteractor {
         limit: Int = DEFAULT_PAGE_SIZE
     ): List<Prompt>
 
+    suspend fun getPromptsSortData(): PromptsSortData
     suspend fun getPromptById(id: String): Prompt?
     suspend fun savePrompt(prompt: Prompt): Long
     suspend fun updatePrompt(prompt: Prompt)

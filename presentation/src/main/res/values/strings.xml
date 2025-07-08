@@ -56,6 +56,11 @@
     <string name="filter">Фильтр</string>
     <string name="created">Created</string>
     <string name="context">Context</string>
+    <string name="filters_and_sort">Фильтры и сортировка</string>
+    <string name="categories">Категории</string>
+    <string name="tags">Теги</string>
+    <string name="apply">Применить</string>
+    <string name="add_to_favorites">Добавить в избранное</string>
 
     <string-array name="prompt_options">
         <item>Редактировать</item>

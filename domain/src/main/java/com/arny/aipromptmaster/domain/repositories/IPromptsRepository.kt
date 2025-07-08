@@ -1,6 +1,7 @@
 package com.arny.aipromptmaster.domain.repositories
 
 import com.arny.aipromptmaster.domain.models.Prompt
+import com.arny.aipromptmaster.domain.models.PromptsSortData
 import kotlinx.coroutines.flow.Flow
 
 interface IPromptsRepository {
@@ -20,4 +21,9 @@ interface IPromptsRepository {
     ): List<Prompt>
 
     suspend fun deletePromptsByIds(promptIds: List<String>)
+    suspend fun getUniqueCategories(): List<String>
+    suspend fun getUniqueTags(): List<String>
+    fun invalidateSortDataCache()
+    suspend fun getCacheSortData(): PromptsSortData?
+    fun cacheSortData(sortData: PromptsSortData)
 }

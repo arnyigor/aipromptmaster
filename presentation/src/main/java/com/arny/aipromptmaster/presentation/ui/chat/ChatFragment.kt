@@ -23,7 +23,9 @@ import com.arny.aipromptmaster.domain.results.DataResult
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.FragmentChatBinding
 import com.arny.aipromptmaster.presentation.utils.autoClean
+import com.arny.aipromptmaster.presentation.utils.getColorFromAttr
 import com.arny.aipromptmaster.presentation.utils.launchWhenCreated
+import com.arny.aipromptmaster.presentation.utils.setTextColorRes
 import com.xwray.groupie.GroupieAdapter
 import dagger.android.support.AndroidSupportInjection
 import dagger.assisted.AssistedFactory
@@ -191,10 +193,11 @@ class ChatFragment : Fragment() {
 
     private fun setErrorColor(isError: Boolean) {
         if (isError) {
-            val redColor = ContextCompat.getColor(requireContext(), R.color.icon_active_red)
-            binding.btnModelSettings.setColorFilter(redColor, PorterDuff.Mode.SRC_IN)
+            binding.btnModelSettings.setTextColorRes(R.color.red_error)
         } else {
-            binding.btnModelSettings.clearColorFilter()
+            val attr =
+                requireContext().getColorFromAttr(com.google.android.material.R.attr.colorOnSurfaceVariant)
+            binding.btnModelSettings.setTextColor(attr)
         }
     }
 

@@ -1,0 +1,36 @@
+<!-- res/values-night/themes.xml -->
+<resources>
+    <style name="Base.Theme.App" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Цветовая схема Material 3 для ТЕМНОЙ темы -->
+        <item name="colorPrimary">@color/purple_light_accent</item>
+        <item name="colorOnPrimary">@color/purple_dark</item>
+        <item name="colorPrimaryContainer">@color/purple_primary</item>
+        <item name="colorOnPrimaryContainer">@color/neutral_white</item>
+
+        <item name="colorSecondary">@color/blue_secondary_dark</item>
+        <item name="colorOnSecondary">@color/blue_on_secondary_container_text_light</item>
+        <item name="colorSecondaryContainer">@color/blue_secondary_container_dark</item>
+        <item name="colorOnSecondaryContainer">@color/blue_on_secondary_container_text_dark</item>
+
+        <item name="colorError">@color/red_error</item>
+        <item name="colorOnError">@color/neutral_white</item>
+
+        <!-- Цвет фона приложения -->
+        <item name="android:colorBackground">@color/neutral_dark_gray_2</item>
+        <item name="colorOnBackground">@color/neutral_light_gray</item>
+
+        <!-- Цвет поверхностей (карточки, диалоги, меню) -->
+        <item name="colorSurface">@color/neutral_dark_gray_1</item>
+        <item name="colorOnSurface">@color/neutral_light_gray</item>
+
+        <!-- Варианты цвета поверхностей -->
+        <item name="colorSurfaceVariant">@color/neutral_dark_gray_3</item>
+        <item name="colorOnSurfaceVariant">#CAC4D0</item>
+        <item name="colorOutline">#938F99</item>
+
+        <!-- Статус-бар и навигационный бар -->
+        <item name="android:statusBarColor">?attr/colorSurface</item>
+        <item name="android:windowLightStatusBar">false</item> <!-- Иконки статус-бара будут светлыми -->
+        <item name="android:navigationBarColor">?attr/colorSurface</item>
+    </style>
+</resources>

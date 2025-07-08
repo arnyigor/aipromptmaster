@@ -1,22 +1,25 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Основные цвета -->
-    <color name="colorPrimary">#7E67E0</color>  <!-- Сохраняет фиолетовую тему, но более мягкий -->
-    <color name="colorPrimaryDark">#55447E</color>  <!-- Более глубокий и теплый тон -->
-    <color name="colorSecondary">#80DEE2</color>  <!-- Приглушенный бирюзовый для лучшей сочетаемости -->
-    <color name="textColorSecondary">#FFF5F5F5</color>  <!-- Яркий текст подсказки -->
-    <color name="textColorPrimary">#F5F5F5</color>  <!-- Сохраняем текущий -->
-    <color name="colorOverlay">#80333333</color>  <!-- Более естественный оверлей -->
-    <color name="colorSeparator">#404040</color>  <!-- Оптимальный контраст -->
+    <!-- Основная палитра (фиолетовая) -->
+    <color name="purple_primary">#7E67E0</color>
+    <color name="purple_dark">#55447E</color>
+    <color name="purple_light_accent">#9C8AFA</color>
 
-    <!-- Стилизация элементов -->
-    <color name="colorIcon">#E6F5F5F5</color>  <!-- Сохраняем текущий -->
-    <color name="colorAccent">#9C8AFA</color>  <!-- Менее агрессивный акцент -->
+    <!-- НОВАЯ СИНЯЯ ПАЛИТРА ДЛЯ АКЦЕНТОВ -->
+    <color name="blue_secondary">#4285F4</color>
+    <color name="blue_secondary_container_light">#D8E2FF</color>
+    <color name="blue_on_secondary_container_text_light">#001B3F</color>
+    <!-- Для темной темы -->
+    <color name="blue_secondary_dark">#ADC6FF</color>
+    <color name="blue_secondary_container_dark">#004494</color>
+    <color name="blue_on_secondary_container_text_dark">#D8E2FF</color>
 
-    <!-- Цвета карточек -->
-    <color name="card_background">#2A2A2A</color>  <!-- Лучший фон для текста -->
-    <color name="card_stroke">#454545</color>  <!-- Хорошо выделяется на фоне -->
-    <color name="hintTextColor">#FFFFFF</color>  <!-- Белый цвет для подсказки -->
-    <color name="red">#FFFFFF</color>  <!-- Белый цвет для подсказки -->
-    <color name="icon_active_red">#E53935</color> <!-- Пример яркого красного цвета -->
+    <!-- Нейтральные цвета -->
+    <color name="neutral_white">#FFFFFF</color>
+    <color name="neutral_light_gray">#F5F5F5</color>
+    <color name="neutral_dark_gray_1">#2A2A2A</color>
+    <color name="neutral_dark_gray_2">#404040</color>
+    <color name="neutral_dark_gray_3">#454545</color>
+
+    <!-- Функциональные цвета -->
+    <color name="red_error">#E53935</color>
 </resources>

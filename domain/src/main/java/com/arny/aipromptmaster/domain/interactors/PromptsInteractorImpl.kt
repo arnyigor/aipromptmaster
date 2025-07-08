@@ -1,9 +1,12 @@
 package com.arny.aipromptmaster.domain.interactors
 
 import com.arny.aipromptmaster.domain.models.Prompt
+import com.arny.aipromptmaster.domain.models.PromptsSortData
 import com.arny.aipromptmaster.domain.repositories.IPromptSynchronizer
 import com.arny.aipromptmaster.domain.repositories.IPromptsRepository
 import com.arny.aipromptmaster.domain.repositories.SyncResult
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import javax.inject.Inject
 
 class PromptsInteractorImpl @Inject constructor(
@@ -25,6 +28,22 @@ class PromptsInteractorImpl @Inject constructor(
         offset = offset,
         limit = limit
     )
+
+    override suspend fun getPromptsSortData(): PromptsSortData =
+        repository.getCacheSortData() ?: loadAndCacheSortData()
+
+    private suspend fun loadAndCacheSortData(): PromptsSortData {
+        return coroutineScope {
+            val categoriesDeferred = async { repository.getUniqueCategories() }
+            val tagsDeferred = async { repository.getUniqueTags() }
+            val newSortData = PromptsSortData(
+                categories = categoriesDeferred.await(),
+                tags = tagsDeferred.await()
+            )
+            repository.cacheSortData(newSortData)
+            newSortData
+        }
+    }
 
     override suspend fun getPromptById(id: String): Prompt? = repository.getPromptById(id)
 

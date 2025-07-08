@@ -14,6 +14,7 @@ import androidx.core.net.toUri
 import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.setFragmentResultListener
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.fragment.findNavController
 import com.arny.aipromptmaster.core.di.scopes.viewModelFactory
@@ -22,6 +23,7 @@ import com.arny.aipromptmaster.domain.models.SyncConflict
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.FragmentHomeBinding
 import com.arny.aipromptmaster.presentation.utils.autoClean
+import com.arny.aipromptmaster.presentation.utils.getParcelableCompat
 import com.arny.aipromptmaster.presentation.utils.hideKeyboard
 import com.arny.aipromptmaster.presentation.utils.launchWhenCreated
 import com.arny.aipromptmaster.presentation.utils.strings.IWrappedString
@@ -81,8 +83,9 @@ class PromptsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         initMenu()
-        setupViews()
         observeViewModel()
+        listenForFilterResults()
+        setupViews()
     }
 
     private fun setupViews() {
@@ -91,7 +94,6 @@ class PromptsFragment : Fragment() {
                 adapter = promptsAdapter
             }
 
-            // Setup SwipeRefreshLayout
             swipeRefresh.setOnRefreshListener {
                 promptsAdapter.refresh()
             }
@@ -110,8 +112,11 @@ class PromptsFragment : Fragment() {
             btnRetry.setOnClickListener {
                 viewModel.synchronize()
             }
-        }
 
+            btnSort.setOnClickListener {
+                viewModel.onSortButtonClicked()
+            }
+        }
         // Handle adapter load states
         promptsAdapter.addLoadStateListener { loadStates ->
             viewModel.handleLoadStates(loadStates, promptsAdapter.itemCount)
@@ -134,6 +139,23 @@ class PromptsFragment : Fragment() {
         launchWhenCreated {
             viewModel.error.collect { error ->
                 showError(error)
+            }
+        }
+
+        launchWhenCreated {
+            viewModel.eventChannel.collect { event ->
+                processEvents(event)
+            }
+        }
+    }
+
+    private fun processEvents(event: PromptsUiEvents) {
+        when (event) {
+            is PromptsUiEvents.OpenSortScreenEvent -> {
+                FilterSettingsBottomSheet.newInstance(
+                    event.sortData,
+                    event.currentFilters
+                ).show(childFragmentManager, FilterSettingsBottomSheet.TAG)
             }
         }
     }
@@ -324,6 +346,19 @@ class PromptsFragment : Fragment() {
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
+    }
+
+    private fun listenForFilterResults() {
+        setFragmentResultListener(FilterSettingsBottomSheet.REQUEST_KEY) { requestKey, bundle ->
+            val result =
+                bundle.getParcelableCompat<FilterSettings>(FilterSettingsBottomSheet.BUNDLE_KEY)
+            result?.let {
+                viewModel.applyFilters(
+                    categories = it.categories,
+                    tags = it.tags,
+                )
+            }
+        }
     }
 
     override fun onDestroyView() {

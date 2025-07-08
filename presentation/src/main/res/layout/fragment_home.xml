@@ -11,10 +11,9 @@
 
         <com.google.android.material.chip.ChipGroup
             android:id="@+id/chipGroupFilters"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:padding="8dp"
-            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:singleSelection="true">
@@ -35,6 +34,19 @@
                 android:text="@string/favorites" />
 
         </com.google.android.material.chip.ChipGroup>
+
+        <ImageButton
+            android:id="@+id/btn_sort"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="@dimen/margin_16"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@null"
+            android:src="@android:drawable/ic_menu_sort_by_size"
+            app:layout_constraintBottom_toTopOf="@+id/swipeRefresh"
+            app:layout_constraintStart_toEndOf="@+id/chipGroupFilters"
+            app:layout_constraintTop_toTopOf="parent" />
+
 
         <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
             android:id="@+id/swipeRefresh"

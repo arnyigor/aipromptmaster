@@ -20,6 +20,7 @@ import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Parcelable
 import android.os.PowerManager
 import android.provider.Settings
 import android.util.DisplayMetrics
@@ -35,6 +36,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
+import androidx.annotation.AttrRes
 import androidx.annotation.ColorInt
 import androidx.annotation.ColorRes
 import androidx.annotation.DrawableRes
@@ -70,6 +72,35 @@ fun Cursor.getStringOrDefault(
     return if (index >= 0) {
         this.getStringOrNull(index) ?: default
     } else default
+}
+
+// Хелпер для совместимости с разными версиями Android
+inline fun <reified T : Parcelable> Bundle.getParcelableCompat(key: String): T? =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        getParcelable(key, T::class.java)
+    } else {
+        @Suppress("DEPRECATION")
+        getParcelable(key) as? T
+    }
+
+/**
+ * Получает цвет из атрибута текущей темы.
+ *
+ * @param attrRes ID атрибута цвета (например, com.google.android.material.R.attr.colorPrimary).
+ * @return Int значение цвета.
+ * @throws IllegalArgumentException если атрибут не найден в теме.
+ */
+@ColorInt
+fun Context.getColorFromAttr(
+    @AttrRes attrRes: Int
+): Int {
+    val typedValue = TypedValue()
+    // theme.resolveAttribute возвращает true, если атрибут найден в теме
+    if (theme.resolveAttribute(attrRes, typedValue, true)) {
+        return typedValue.data
+    }
+    // Если мы здесь, значит атрибут не был найден. Это ошибка конфигурации темы.
+    throw IllegalArgumentException("Attribute not found in theme: $attrRes")
 }
 
 fun Context.getDrawableCompat(@DrawableRes drawableRes: Int): Drawable? =
@@ -371,7 +402,7 @@ fun Activity.sendServiceMessage(
     action: String,
     extras: Bundle.() -> Unit = {},
 ) {
-  sendMessageService(intent, action, extras)
+    sendMessageService(intent, action, extras)
 }
 
 fun Fragment.sendServiceMessage(
@@ -417,6 +448,7 @@ fun Fragment.launchWhenCreated(block: suspend CoroutineScope.() -> Unit) {
         }
     }
 }
+
 fun Fragment.launchWhenStarted(block: suspend CoroutineScope.() -> Unit) {
     viewLifecycleOwner.lifecycleScope.launch {
         repeatOnLifecycle(Lifecycle.State.STARTED) {

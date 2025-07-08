@@ -121,7 +121,6 @@ class PromptViewFragment : Fragment() {
                         val chip = Chip(requireContext()).apply {
                             text = tag
                             isClickable = false
-                            setTextColor(ContextCompat.getColor(context, R.color.textColorPrimary))
                         }
                         chipGroupTags.addView(chip)
                     }
@@ -132,7 +131,6 @@ class PromptViewFragment : Fragment() {
                         val chip = Chip(requireContext()).apply {
                             text = model
                             isClickable = false
-                            setTextColor(ContextCompat.getColor(context, R.color.textColorPrimary))
                         }
                         chipGroupModels.addView(chip)
                     }

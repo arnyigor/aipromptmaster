@@ -15,7 +15,6 @@
 
         <TextView
             android:id="@+id/tvTitle"
-            style="@style/PromptItemText"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginEnd="8dp"
@@ -26,7 +25,6 @@
 
         <TextView
             android:id="@+id/tvDescription"
-            style="@style/PromptItemTextSecondary"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
@@ -54,7 +52,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:clickable="true"
             android:focusable="true"
-            app:tint="@color/colorAccent"
+            app:tint="?attr/colorAccent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 

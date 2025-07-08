@@ -92,4 +92,9 @@ interface PromptDao {
         offset: Int
     ): List<PromptEntity>
 
+    @Query("SELECT DISTINCT category FROM prompts WHERE category IS NOT NULL AND category != ''")
+    suspend fun getCategories(): List<String>
+
+    @Query("SELECT tags FROM prompts")
+    suspend fun getTags(): List<String>
 }

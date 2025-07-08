@@ -11,15 +11,19 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.arny.aipromptmaster.domain.interactors.IPromptsInteractor
 import com.arny.aipromptmaster.domain.models.Prompt
+import com.arny.aipromptmaster.domain.models.PromptsSortData
 import com.arny.aipromptmaster.domain.repositories.SyncResult
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.utils.strings.IWrappedString
 import com.arny.aipromptmaster.presentation.utils.strings.ResourceString
 import com.arny.aipromptmaster.presentation.utils.strings.SimpleString
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
@@ -36,16 +40,26 @@ class PromptsViewModel @AssistedInject constructor(
     private val _error = MutableSharedFlow<IWrappedString>()
     val error = _error.asSharedFlow()
 
+    private val _sortDataState = MutableStateFlow<PromptsSortData?>(null)
+    private val _currentSortDataState = MutableStateFlow<PromptsSortData?>(null)
+
+    private val _eventChannel = MutableSharedFlow<PromptsUiEvents>()
+    val eventChannel: SharedFlow<PromptsUiEvents> = _eventChannel.asSharedFlow()
+
     private val _uiState = MutableStateFlow<PromptsUiState>(PromptsUiState.Initial)
     val uiState = _uiState.asStateFlow()
 
     private val _searchState = MutableStateFlow(SearchState())
     private val searchTrigger = MutableSharedFlow<Unit>()
-
     private var queryString: String = ""
     private val trigger = MutableSharedFlow<Unit>()
     private val actionStateFlow = MutableSharedFlow<UiAction>()
 
+    init {
+        loadSortData()
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
     val promptsFlow: Flow<PagingData<Prompt>> = listOf(
         trigger.map { UiAction.Refresh },
         actionStateFlow
@@ -70,6 +84,34 @@ class PromptsViewModel @AssistedInject constructor(
             createPager(_searchState.value).flow
         }
         .cachedIn(viewModelScope)
+
+    private fun loadSortData() {
+        viewModelScope.launch {
+            try {
+                // Загружаем данные и помещаем их в StateFlow
+                _sortDataState.value = interactor.getPromptsSortData()
+            } catch (e: Exception) {
+                // Обработка ошибки, если нужна
+                // Например, показать Toast или записать в лог
+            }
+        }
+    }
+
+    fun onSortButtonClicked() {
+        val availableFilters = _sortDataState.value
+        if (availableFilters != null) {
+            val event = PromptsUiEvents.OpenSortScreenEvent(
+                sortData = SortData(availableFilters.categories, availableFilters.tags),
+                currentFilters = CurrentFilters(
+                    _currentSortDataState.value?.categories.orEmpty(),
+                    _currentSortDataState.value?.tags.orEmpty()
+                ),
+            )
+            viewModelScope.launch {
+                _eventChannel.emit(event)
+            }
+        }
+    }
 
     fun handleLoadStates(loadStates: CombinedLoadStates, itemCount: Int) {
         val isLoading = loadStates.refresh is LoadState.Loading
@@ -214,5 +256,9 @@ class PromptsViewModel @AssistedInject constructor(
                 }
             }
         }
+    }
+
+    fun applyFilters(categories: List<String>, tags: List<String>) {
+        _currentSortDataState.value = PromptsSortData(categories, tags)
     }
 }

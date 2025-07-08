@@ -15,10 +15,10 @@ import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.DefaultItemAnimator
 import com.arny.aipromptmaster.core.di.scopes.viewModelFactory
 import com.arny.aipromptmaster.domain.models.Chat
-import com.arny.aipromptmaster.domain.results.DataResult
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.FragmentHistoryBinding
 import com.arny.aipromptmaster.presentation.utils.autoClean
+import com.arny.aipromptmaster.presentation.utils.getColorFromAttr
 import com.arny.aipromptmaster.presentation.utils.strings.SimpleString
 import com.arny.aipromptmaster.presentation.utils.toastMessage
 import com.xwray.groupie.GroupieAdapter
@@ -133,10 +133,18 @@ class ChatHistoryFragment : Fragment() {
         binding.swipeRefresh.setOnRefreshListener {
             viewModel.loadChats()
         }
-        binding.swipeRefresh.setColorSchemeResources(
-            R.color.colorPrimary,
-            R.color.colorPrimaryDark,
-            R.color.colorAccent
+        val colorPrimary =
+            requireContext().getColorFromAttr(com.google.android.material.R.attr.colorPrimary)
+        val colorSecondary =
+            requireContext().getColorFromAttr(com.google.android.material.R.attr.colorSecondary)
+        val colorTertiary =
+            requireContext().getColorFromAttr(com.google.android.material.R.attr.colorTertiary)
+
+        // Используем метод setColorSchemeColors (без ...Resources)
+        binding.swipeRefresh.setColorSchemeColors(
+            colorPrimary,
+            colorSecondary,
+            colorTertiary
         )
     }
 

@@ -1,109 +1,94 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base application theme. -->
-    <style name="AppTheme" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your theme here. -->
-        <item name="colorPrimary">@color/colorPrimary</item>
-        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-        <item name="colorAccent">@color/colorAccent</item>
+    <style name="Base.Theme.App" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Цветовая схема Material 3 для СВЕТЛОЙ темы -->
+        <item name="colorPrimary">@color/purple_primary</item>
+        <item name="colorOnPrimary">@color/neutral_white</item>
+        <item name="colorPrimaryContainer">@color/purple_light_accent</item>
+        <item name="colorOnPrimaryContainer">@color/purple_dark</item>
 
-        <item name="android:windowBackground">@color/colorPrimaryDark</item>
-        <item name="android:textColor">@color/textColorPrimary</item>
-        <item name="android:textColorHint">@color/textColorSecondary</item>
-        <item name="android:textColorPrimary">@color/textColorPrimary</item>
-        <item name="android:textColorSecondary">@color/textColorSecondary</item>
+        <item name="colorSecondary">@color/blue_secondary</item>
+        <item name="colorOnSecondary">@color/neutral_white</item>
+        <item name="colorSecondaryContainer">@color/blue_secondary_container_light</item>
+        <item name="colorOnSecondaryContainer">@color/blue_on_secondary_container_text_light</item>
 
-        <item name="android:dialogTheme">@style/MyDialogStyle</item>
-        <item name="alertDialogTheme">@style/MyDialogStyle</item>
+        <item name="colorError">@color/red_error</item>
+        <item name="colorOnError">@color/neutral_white</item>
 
-        <item name="android:statusBarColor">@color/colorPrimaryDark</item>
-        <item name="android:navigationBarColor">@color/colorPrimaryDark</item>
-        <item name="android:itemTextAppearance">@style/ItemMenuTextAppearance</item>
-        <item name="popupMenuStyle">@style/popupMenuStyle</item>
+        <item name="android:colorBackground">#FEFBFF</item>
+        <item name="colorOnBackground">#1C1B1F</item>
+        <item name="colorSurface">#FEFBFF</item>
+        <item name="colorOnSurface">#1C1B1F</item>
+        <item name="colorSurfaceVariant">#E7E0EC</item>
+        <item name="colorOnSurfaceVariant">#49454F</item>
+        <item name="colorOutline">#79747E</item>
 
-        <!-- Material 3 attributes -->
+        <!-- Статус-бар и навигационный бар -->
+        <item name="android:statusBarColor">?attr/colorSurface</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">?attr/colorSurface</item>
+    </style>
+
+    <!-- Финальная тема приложения -->
+    <style name="Theme.App" parent="Base.Theme.App">
         <item name="materialCardViewStyle">@style/Widget.App.CardView</item>
-        <item name="chipStyle">@style/Widget.App.Chip</item>
-    </style>
-
-    <style name="ItemMenuTextAppearance">
-        <item name="android:textColor">@color/colorPrimaryDark</item>
-        <item name="android:itemBackground">@android:color/white</item>
-    </style>
-
-    <style name="popupMenuStyle" parent="Widget.MaterialComponents.PopupMenu">
-        <item name="android:popupBackground">@android:color/white</item>
-    </style>
-
-    <!--Input label style-->
-    <style name="InputTextStyle" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-        <item name="android:textColor">@color/textColorPrimary</item>
-        <item name="boxBackgroundColor">@color/colorPrimaryDark</item>
-        <item name="colorControlNormal">@color/textColorPrimary</item>
-        <item name="colorControlActivated">@color/textColorPrimary</item>
-        <item name="hintTextColor">@color/hintTextColor</item>
-        <item name="boxStrokeColor">@color/text_input_box_stroke</item>
-    </style>
-
-    <style name="MyDialogStyle" parent="Theme.MaterialComponents.DayNight.Dialog">
-        <item name="colorPrimary">@color/colorPrimary</item>
-        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-        <item name="colorAccent">@color/colorAccent</item>
-        <item name="android:background">@drawable/dialog_background</item>
-        <item name="android:windowBackground">@android:color/transparent</item>
-        <item name="android:textViewStyle">@style/DialogTextViewStyle</item>
-        <item name="windowFixedWidthMajor">90%</item>
-        <item name="windowFixedWidthMinor">90%</item>
-        <item name="textColorAlertDialogListItem">@color/textColorPrimary</item>
-        <item name="colorControlNormal">@color/colorAccent</item>
-    </style>
-
-    <style name="PromptTag" parent="Widget.Material3.Chip.Suggestion">
-        <item name="android:textSize">12sp</item>
-        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
-        <item name="chipMinHeight">24dp</item>
-        <item name="chipStartPadding">8dp</item>
-        <item name="chipEndPadding">8dp</item>
-    </style>
-
-    <style name="DialogTextViewStyle" parent="android:Widget.TextView">
-        <item name="android:textColor">@color/textColorPrimary</item>
-    </style>
-
-    <style name="AppTheme.NoActionBar">
-        <item name="windowActionBar">false</item>
-        <item name="windowNoTitle">true</item>
+        <item name="chipStyle">@style/Widget.App.Chip.Filter</item>
+        <item name="textInputStyle">@style/Widget.App.TextInputLayout</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.Dialog</item>
     </style>
 
     <style name="AppTheme.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
 
     <style name="AppTheme.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
 
+    <!-- Стиль для MaterialCardView -->
     <style name="Widget.App.CardView" parent="Widget.Material3.CardView.Elevated">
-        <item name="cardBackgroundColor">@color/card_background</item>
+        <!--
+        Здесь не нужно указывать цвета вроде `cardBackgroundColor`.
+        Виджет сам возьмет ?attr/colorSurface из темы.
+        Здесь можно переопределить форму, elevation и т.д., если нужно.
+        -->
         <item name="cardElevation">2dp</item>
-        <item name="strokeWidth">1dp</item>
-        <item name="strokeColor">@color/card_stroke</item>
-        <item name="android:textColorPrimary">@color/textColorPrimary</item>
-        <item name="android:textColorSecondary">@color/textColorSecondary</item>
-        <item name="materialCardViewStyle">@style/Widget.Material3.CardView.Elevated</item>
+        <item name="cardCornerRadius">12dp</item>
     </style>
 
-    <style name="PromptItemText">
-        <item name="android:textColor">@color/textColorPrimary</item>
-        <item name="android:textSize">16sp</item>
+    <!-- Стиль для Filter Chip -->
+    <style name="Widget.App.Chip.Filter" parent="Widget.Material3.Chip.Filter">
+        <!--
+        Цвета фона, текста, иконки, рамки в разных состояниях (выбран/не выбран)
+        будут автоматически браться из атрибутов темы:
+        - colorSecondaryContainer / colorOnSecondaryContainer (для выбранного)
+        - colorSurface / colorOnSurfaceVariant (для невыбранного)
+        - colorOutline (для рамки)
+        Вам не нужно их хардкодить.
+        -->
     </style>
 
-    <style name="PromptItemTextSecondary">
-        <item name="android:textColor">@color/textColorSecondary</item>
-        <item name="android:textSize">14sp</item>
+
+    <style name="ShapeAppearance.App.Dialog" parent="ShapeAppearance.Material3.MediumComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">16dp</item>
     </style>
 
-    <style name="Widget.App.Chip" parent="Widget.Material3.Chip.Filter">
-        <item name="chipBackgroundColor">@color/card_background</item>
-        <item name="android:textColor">@color/textColorPrimary</item>
-        <item name="chipStrokeWidth">1dp</item>
-        <item name="chipStrokeColor">@color/colorSeparator</item>
-        <item name="rippleColor">@color/colorPrimary</item>
+    <!-- Стиль для TextInputLayout -->
+    <style name="Widget.App.TextInputLayout" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <!-- Цвет рамки и текста будет браться из ?attr/colorOutline и ?attr/colorOnSurface -->
+        <!-- Ничего не нужно переопределять, если стандартное поведение устраивает -->
+    </style>
+
+    <!-- Стиль для диалогов -->
+    <style name="ThemeOverlay.App.Dialog" parent="ThemeOverlay.Material3.Dialog">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.App.Dialog</item>
+        <!-- Цвета кнопок и текста будут браться из основной темы -->
+    </style>
+
+    <!-- Стиль для текста -->
+    <style name="TextAppearance.App.BodyLarge" parent="TextAppearance.Material3.BodyLarge">
+        <item name="android:textColor">?attr/colorOnSurface</item>
+    </style>
+
+    <style name="TextAppearance.App.BodyMedium" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
     </style>
 </resources>

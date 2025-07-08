@@ -1,10 +1,10 @@
 package com.arny.aipromptmaster.data.repositories
 
-import android.util.Log
 import com.arny.aipromptmaster.data.db.daos.PromptDao
 import com.arny.aipromptmaster.data.mappers.toDomain
 import com.arny.aipromptmaster.data.mappers.toEntity
 import com.arny.aipromptmaster.domain.models.Prompt
+import com.arny.aipromptmaster.domain.models.PromptsSortData
 import com.arny.aipromptmaster.domain.repositories.IPromptsRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
@@ -16,10 +16,33 @@ class PromptsRepositoryImpl @Inject constructor(
     private val promptDao: PromptDao,
     private val dispatcher: CoroutineDispatcher
 ) : IPromptsRepository {
+    @Volatile
+    private var sortDataCache: PromptsSortData? = null
+
+    override fun invalidateSortDataCache() {
+        sortDataCache = null
+    }
+
+    override fun cacheSortData(sortData: PromptsSortData) {
+        sortDataCache = sortData
+    }
+
+    override suspend fun getCacheSortData(): PromptsSortData? = sortDataCache
 
     override suspend fun getAllPrompts(): Flow<List<Prompt>> = promptDao
         .getAllPromptsFlow()
         .map { entities -> entities.map { it.toDomain() } }
+
+    override suspend fun getUniqueCategories(): List<String> = promptDao.getCategories()
+
+    override suspend fun getUniqueTags(): List<String> {
+        return promptDao.getTags()
+            .flatMap { tags ->
+                tags.split(",")
+                    .map { it.trim() }
+                    .filter { it.isNotBlank() }
+            }.distinct()
+    }
 
     override suspend fun getPromptById(promptId: String): Prompt? = withContext(dispatcher) {
         promptDao.getById(promptId)?.toDomain()

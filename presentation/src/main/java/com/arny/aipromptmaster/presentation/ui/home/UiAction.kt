@@ -8,5 +8,5 @@ sealed class UiAction {
         val tags: List<String> = emptyList()
     ) : UiAction()
 
-    object Refresh : UiAction()
+    data object Refresh : UiAction()
 }

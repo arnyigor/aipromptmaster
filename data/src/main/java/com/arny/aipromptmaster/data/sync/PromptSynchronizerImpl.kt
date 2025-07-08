@@ -10,6 +10,7 @@ import com.arny.aipromptmaster.data.prefs.Prefs
 import com.arny.aipromptmaster.data.repositories.PromptsRepositoryImpl
 import com.arny.aipromptmaster.domain.models.Prompt
 import com.arny.aipromptmaster.domain.repositories.IPromptSynchronizer
+import com.arny.aipromptmaster.domain.repositories.IPromptsRepository
 import com.arny.aipromptmaster.domain.repositories.SyncResult
 import com.google.gson.Gson
 import com.google.gson.JsonParseException
@@ -24,7 +25,7 @@ import javax.inject.Inject
 
 class PromptSynchronizerImpl @Inject constructor(
     private val githubService: GitHubService,
-    private val promptsRepository: PromptsRepositoryImpl,
+    private val promptsRepository: IPromptsRepository,
     private val prefs: Prefs,
     private val gson: Gson,
     private val config: GitHubConfig,
@@ -110,6 +111,7 @@ class PromptSynchronizerImpl @Inject constructor(
                         TAG,
                         "Sync completed successfully, processed ${remotePrompts.size} prompts from remote"
                     )
+                    promptsRepository.invalidateSortDataCache()
                     // Возвращаем все обработанные удаленные промпты как успешный результат
                     SyncResult.Success(remotePrompts)
                 } catch (e: Exception) {

@@ -7,15 +7,15 @@ import android.view.ViewGroup
 import androidx.core.os.bundleOf
 import androidx.fragment.app.setFragmentResult
 import com.arny.aipromptmaster.presentation.R
-import com.arny.aipromptmaster.presentation.databinding.BottomSheetFiltersBinding
+import com.arny.aipromptmaster.presentation.databinding.ModelsBottomSheetFiltersBinding
 import com.arny.aipromptmaster.presentation.ui.models.FilterState
 import com.arny.aipromptmaster.presentation.ui.models.SortOption
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
-class FilterBottomSheetDialogFragment : BottomSheetDialogFragment() {
+class ModelsFilterBottomSheetDialogFragment : BottomSheetDialogFragment() {
 
     // Используем ViewBinding для безопасного доступа к View
-    private var _binding: BottomSheetFiltersBinding? = null
+    private var _binding: ModelsBottomSheetFiltersBinding? = null
     private val binding get() = _binding!!
 
     override fun onCreateView(
@@ -23,7 +23,7 @@ class FilterBottomSheetDialogFragment : BottomSheetDialogFragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = BottomSheetFiltersBinding.inflate(inflater, container, false)
+        _binding = ModelsBottomSheetFiltersBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -94,8 +94,8 @@ class FilterBottomSheetDialogFragment : BottomSheetDialogFragment() {
         private const val ARG_FILTERS = "arg_filters"
 
         // Фабричный метод для создания инстанса с передачей аргументов
-        fun newInstance(currentFilters: FilterState): FilterBottomSheetDialogFragment {
-            return FilterBottomSheetDialogFragment().apply {
+        fun newInstance(currentFilters: FilterState): ModelsFilterBottomSheetDialogFragment {
+            return ModelsFilterBottomSheetDialogFragment().apply {
                 arguments = bundleOf(ARG_FILTERS to currentFilters)
             }
         }
