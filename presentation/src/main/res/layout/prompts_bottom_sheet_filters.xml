@@ -1,73 +1,99 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:padding="16dp">
 
+    <!-- ======================= HEADER ======================= -->
     <com.google.android.material.textview.MaterialTextView
         android:id="@+id/title_text"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="@string/filters_and_sort"
+        android:text="@string/filters"
         android:textAppearance="?attr/textAppearanceTitleLarge"
+        app:layout_constraintEnd_toStartOf="@id/reset_button"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <com.google.android.material.textview.MaterialTextView
-        android:id="@+id/categories_label"
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/reset_button"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="@string/categories"
-        android:textAppearance="?attr/textAppearanceTitleMedium"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/title_text" />
+        android:text="@string/reset"
+        app:layout_constraintBaseline_toBaselineOf="@id/title_text"
+        app:layout_constraintEnd_toEndOf="parent" />
 
-    <com.google.android.material.chip.ChipGroup
-        android:id="@+id/category_chip_group"
+    <!-- ======================= SCROLLABLE CONTENT ======================= -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/scroll_view"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="16dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/categories_label"
-        app:selectionRequired="false"
-        app:singleSelection="false">
+        app:layout_constraintTop_toBottomOf="@id/title_text"
+        app:layout_constraintBottom_toTopOf="@id/apply_button"
+        app:layout_constraintVertical_bias="0.0"
+        app:layout_constrainedHeight="true">
 
-    </com.google.android.material.chip.ChipGroup>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
-    <com.google.android.material.textview.MaterialTextView
-        android:id="@+id/tags_label"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:text="@string/tags"
-        android:textAppearance="?attr/textAppearanceTitleMedium"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/category_chip_group" />
+            <!-- Секция Категорий -->
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/categories_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/categories"
+                android:textAppearance="?attr/textAppearanceTitleMedium" />
 
-    <com.google.android.material.chip.ChipGroup
-        android:id="@+id/tags_chip_group"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tags_label"
-        app:selectionRequired="false"
-        app:singleSelection="false">
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/category_chip_group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                app:selectionRequired="false"
+                app:singleSelection="true">
+                <!-- Чипы для категорий будут добавлены программно -->
+            </com.google.android.material.chip.ChipGroup>
 
-    </com.google.android.material.chip.ChipGroup>
+            <!-- Секция Тегов -->
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/tags_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/tags"
+                android:textAppearance="?attr/textAppearanceTitleMedium" />
 
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/tags_chip_group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                app:selectionRequired="false"
+                app:singleSelection="false">
+                <!-- Чипы для тегов будут добавлены программно -->
+            </com.google.android.material.chip.ChipGroup>
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- ======================= FOOTER ======================= -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/apply_button"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/margin_16"
+        android:layout_marginTop="24dp"
         android:text="@string/apply"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tags_chip_group" />
+        app:layout_constraintTop_toBottomOf="@id/scroll_view" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

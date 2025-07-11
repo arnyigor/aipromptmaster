@@ -46,6 +46,8 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@null"
             android:src="@android:drawable/ic_menu_sort_by_size"
+            app:iconTint="?attr/colorPrimary"
+            android:tintMode="src_in"
             app:layout_constraintBottom_toTopOf="@+id/swipeRefresh"
             app:layout_constraintStart_toEndOf="@+id/chipGroupFilters"
             app:layout_constraintTop_toTopOf="parent" />

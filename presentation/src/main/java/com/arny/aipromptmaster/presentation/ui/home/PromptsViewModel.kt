@@ -35,7 +35,7 @@ class PromptsViewModel @AssistedInject constructor(
 
     private val _sortDataState = MutableStateFlow<PromptsSortData?>(null)
     val sortDataState = _sortDataState.asStateFlow()
-    private val _currentSortDataState = MutableStateFlow<PromptsSortData?>(null)
+    private val _currentSortDataState = MutableStateFlow<CurrentFilters?>(null)
 
     private val _uiState = MutableStateFlow<PromptsUiState>(PromptsUiState.Initial)
     val uiState = _uiState.asStateFlow()
@@ -52,7 +52,7 @@ class PromptsViewModel @AssistedInject constructor(
 
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     val promptsFlow: Flow<PagingData<Prompt>> = _searchState
-        .debounce(350) // Дебаунс прямо на потоке состояния
+        .debounce(350)
         .flatMapLatest { state ->
             createPager(state).flow
         }
@@ -64,8 +64,6 @@ class PromptsViewModel @AssistedInject constructor(
                 _sortDataState.value = interactor.getPromptsSortData()
             } catch (e: Exception) {
                 e.printStackTrace()
-                // Обработка ошибки, если нужна
-                // Например, показать Toast или записать в лог
             }
         }
     }
@@ -76,10 +74,13 @@ class PromptsViewModel @AssistedInject constructor(
             if (availableFilters != null) {
                 _event.emit(
                     PromptsUiEvent.OpenSortScreenEvent(
-                        sortData = SortData(availableFilters.categories, availableFilters.tags),
+                        sortData = SortData(
+                            categories = availableFilters.categories,
+                            tags = availableFilters.tags,
+                        ),
                         currentFilters = CurrentFilters(
-                            _currentSortDataState.value?.categories.orEmpty(),
-                            _currentSortDataState.value?.tags.orEmpty()
+                            category = _currentSortDataState.value?.category.orEmpty(),
+                            tags = _currentSortDataState.value?.tags.orEmpty(),
                         ),
                     )
                 )
@@ -216,7 +217,12 @@ class PromptsViewModel @AssistedInject constructor(
         }
     }
 
-    fun applyFilters(categories: List<String>, tags: List<String>) {
-        _currentSortDataState.value = PromptsSortData(categories, tags)
+    fun applyFiltersFromDialog(category: String?, tags: List<String>) {
+        _currentSortDataState.value = CurrentFilters(category, tags)
+        applyFilters(
+            category = category,
+            status = searchState.value.status,
+            tags = tags
+        )
     }
 }

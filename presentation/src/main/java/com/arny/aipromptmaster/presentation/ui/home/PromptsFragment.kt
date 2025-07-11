@@ -3,6 +3,7 @@ package com.arny.aipromptmaster.presentation.ui.home
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
@@ -27,6 +28,7 @@ import com.arny.aipromptmaster.presentation.utils.autoClean
 import com.arny.aipromptmaster.presentation.utils.getParcelableCompat
 import com.arny.aipromptmaster.presentation.utils.hideKeyboard
 import com.arny.aipromptmaster.presentation.utils.launchWhenCreated
+import com.arny.aipromptmaster.presentation.utils.printContents
 import com.arny.aipromptmaster.presentation.utils.strings.IWrappedString
 import com.arny.aipromptmaster.presentation.utils.strings.ResourceString
 import com.arny.aipromptmaster.presentation.utils.toastMessage
@@ -409,12 +411,15 @@ class PromptsFragment : Fragment() {
     }
 
     private fun listenForFilterResults() {
-        setFragmentResultListener(PromptsFilterSettingsBottomSheet.REQUEST_KEY) { requestKey, bundle ->
+        childFragmentManager.setFragmentResultListener(
+            PromptsFilterSettingsBottomSheet.REQUEST_KEY,
+            viewLifecycleOwner
+        ) { requestKey, bundle ->
             val result =
                 bundle.getParcelableCompat<FilterSettings>(PromptsFilterSettingsBottomSheet.BUNDLE_KEY)
             result?.let {
-                viewModel.applyFilters(
-                    categories = it.categories,
+                viewModel.applyFiltersFromDialog(
+                    category = it.category,
                     tags = it.tags,
                 )
             }

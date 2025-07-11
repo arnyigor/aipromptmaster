@@ -1,5 +1,6 @@
 package com.arny.aipromptmaster.data.repositories
 
+import android.util.Log
 import com.arny.aipromptmaster.data.db.daos.PromptDao
 import com.arny.aipromptmaster.data.mappers.toDomain
 import com.arny.aipromptmaster.data.mappers.toEntity

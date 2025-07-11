@@ -62,6 +62,10 @@
     <string name="tags">Теги</string>
     <string name="apply">Применить</string>
     <string name="add_to_favorites">Добавить в избранное</string>
+    <string name="sorting">сортировка</string>
+    <string name="reset">сбросить</string>
+    <string name="reverse">обратная</string>
+    <string name="filters">Фильтры</string>
 
     <string-array name="prompt_options">
         <item>Редактировать</item>

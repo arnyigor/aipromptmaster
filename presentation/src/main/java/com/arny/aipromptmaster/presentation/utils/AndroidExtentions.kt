@@ -350,6 +350,30 @@ fun Context.shareFile(file: File, title: String?) {
     }
 }
 
+fun Bundle.printContents(indent: String = "") {
+    println(this.toFormattedString(indent))
+}
+
+fun Bundle.toFormattedString(indent: String = ""): String {
+    val stringBuilder = StringBuilder()
+    for (key in this.keySet()) {
+        val value = this.get(key)
+        stringBuilder.append("$indent$key: ")
+        when (value) {
+            null -> stringBuilder.append("null\n")
+            is Bundle -> {
+                stringBuilder.append("Bundle {\n")
+                stringBuilder.append(value.toFormattedString("$indent    "))
+                stringBuilder.append("$indent}\n")
+            }
+            is Array<*> -> stringBuilder.append("Array(${value.size}) ${value.contentToString()}\n")
+            is Collection<*> -> stringBuilder.append("Collection(${value.size}) $value\n")
+            else -> stringBuilder.append("${value::class.simpleName} = $value\n")
+        }
+    }
+    return stringBuilder.toString()
+}
+
 fun Context.getAvailableMemory(): ActivityManager.MemoryInfo {
     val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
     return ActivityManager.MemoryInfo().also { memoryInfo ->

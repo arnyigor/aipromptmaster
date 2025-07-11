@@ -1,6 +1,7 @@
 package com.arny.aipromptmaster.presentation.ui.home
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -29,9 +30,7 @@ class PromptsFilterSettingsBottomSheet : BottomSheetDialogFragment() {
     }
 
     override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
         _binding = PromptsBottomSheetFiltersBinding.inflate(inflater, container, false)
         return binding.root
@@ -39,39 +38,82 @@ class PromptsFilterSettingsBottomSheet : BottomSheetDialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
         populateUi()
         setupListeners()
     }
 
     private fun populateUi() {
-        availableSortData?.let { data ->
-            populateChipGroup(binding.categoryChipGroup, data.categories, currentFilters?.category)
-            populateChipGroup(binding.tagsChipGroup, data.tags, currentFilters?.tags)
-        }
+        val data = availableSortData ?: return
+        val filters = currentFilters ?: return
+
+        populateCategoryChipGroup(
+            chipGroup = binding.categoryChipGroup,
+            items = data.categories,
+            selected = filters.category
+        )
+
+        populateTagChipGroup(
+            chipGroup = binding.tagsChipGroup,
+            items = data.tags,
+            selected = filters.tags
+        )
     }
 
     private fun setupListeners() {
         binding.applyButton.setOnClickListener {
+            val selectedCategoryId = binding.categoryChipGroup.checkedChipId
+            val selectedCategory = if (selectedCategoryId != View.NO_ID) {
+                binding.categoryChipGroup.findViewById<Chip>(selectedCategoryId)?.text?.toString()
+            } else {
+                null
+            }
+
             val settings = FilterSettings(
-                categories = binding.categoryChipGroup.getMultiSelectedChipTexts(),
+                category = selectedCategory,
                 tags = binding.tagsChipGroup.getMultiSelectedChipTexts()
             )
             setFragmentResult(REQUEST_KEY, bundleOf(BUNDLE_KEY to settings))
             dismiss()
         }
+
+        binding.resetButton.setOnClickListener {
+            val settings = FilterSettings(category = null, tags = emptyList())
+            setFragmentResult(REQUEST_KEY, bundleOf(BUNDLE_KEY to settings))
+            dismiss()
+        }
     }
 
-    private fun populateChipGroup(chipGroup: ChipGroup, items: List<String>, selected: Any?) {
-        chipGroup.isSingleSelection = selected is String?
+    private fun populateCategoryChipGroup(
+        chipGroup: ChipGroup,
+        items: List<String>,
+        selected: String?
+    ) {
+        chipGroup.isSingleSelection = true
+        chipGroup.removeAllViews()
+
         items.forEach { item ->
-            val chip = Chip(context).apply {
+            val chip = Chip(requireContext()).apply {
                 text = item
                 isCheckable = true
-                isChecked =
-                    if (selected is String?) item == selected else (selected as? List<*>)?.contains(
-                        item
-                    ) ?: false
+                isChecked = (item == selected)
+            }
+            chipGroup.addView(chip)
+        }
+    }
+
+    private fun populateTagChipGroup(
+        chipGroup: ChipGroup,
+        items: List<String>,
+        selected: List<String>?
+    ) {
+        chipGroup.isSingleSelection = false
+        chipGroup.removeAllViews()
+
+        items.forEach { item ->
+            val chip = Chip(requireContext()).apply {
+                text = item
+                isCheckable = true
+                isChecked = selected?.contains(item) ?: false
             }
             chipGroup.addView(chip)
         }
@@ -79,7 +121,7 @@ class PromptsFilterSettingsBottomSheet : BottomSheetDialogFragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        _binding = null // Очищаем ссылку на binding
+        _binding = null
     }
 
     companion object {
