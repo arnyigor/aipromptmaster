@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.arny.aipromptmaster.data.db.AppDatabase
+import com.arny.aipromptmaster.data.db.daos.ChatDao
 import com.arny.aipromptmaster.data.db.daos.PromptDao
 import com.arny.aipromptmaster.data.models.GitHubConfig
 import com.arny.aipromptmaster.data.openrouter.OpenRouterRepositoryImpl
@@ -63,6 +64,10 @@ interface DataModule {
         @Provides
         @Singleton
         fun providePromptDao(db: AppDatabase): PromptDao = db.promptDao()
+
+        @Provides
+        @Singleton
+        fun provideChatDao(db: AppDatabase): ChatDao = db.chatDao()
     }
 
     @Binds

@@ -1,0 +1,46 @@
+<!-- res/layout/item_ai_message.xml -->
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingStart="16dp"
+    android:paddingEnd="64dp"
+    android:paddingVertical="4dp">
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/messageCard"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:cardBackgroundColor="?attr/colorSurfaceContainer"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="0dp"
+        app:strokeColor="?attr/colorOutlineVariant"
+        app:strokeWidth="1dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <TextView
+            android:id="@+id/tvMessage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="12dp"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="16sp"
+            tools:text="Привет! 😊 Как я могу помочь тебе сегодня?" />
+
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Кнопка Копировать -->
+    <ImageView
+        android:id="@+id/btnCopy"
+        style="@style/Widget.App.ActionButton"
+        android:layout_marginTop="8dp"
+        android:contentDescription="@string/copy"
+        android:src="@drawable/ic_content_copy"
+        app:tint="?attr/colorOnPrimary"
+        app:layout_constraintStart_toStartOf="@id/messageCard"
+        app:layout_constraintTop_toBottomOf="@id/messageCard" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

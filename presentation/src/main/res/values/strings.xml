@@ -44,6 +44,7 @@
     <string name="sync_processing_error">Ошибка при обработке файлов: %s</string>
     <string name="prompt_details">Просмотр промпта</string>
     <string name="title_llm_interaction">ИИ-ассистент</string>
+    <string name="title_llm_interaction_model_not_selected">Не выбрана модель</string>
     <string name="enter_message">Введите сообщение…</string>
     <string name="no_chats_found">Нет активных чатов\nНажмите + чтобы начать новый</string>
     <string name="save">Сохранить</string>
@@ -56,6 +57,11 @@
     <string name="filter">Фильтр</string>
     <string name="created">Created</string>
     <string name="context">Context</string>
+    <string name="sync_success_updated_count">Обновлено промптов:%d</string>
+    <string name="get_api_key_link_text">Получить ключ на OpenRouter.ai</string>
+    <string name="copy">Копировать</string>
+    <string name="regenerate">Перегенерировать</string>
+    <string name="copied_to_clipboard">Текст скопирован</string>
     <string name="sync_success_updated_count">Обновлено промптов:%d</string>
     <string name="filters_and_sort">Фильтры и сортировка</string>
     <string name="categories">Категории</string>

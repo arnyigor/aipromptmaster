@@ -3,8 +3,11 @@ package com.arny.aipromptmaster.domain.interactors
 // LLMInteractor.kt
 import android.util.Log
 import com.arny.aipromptmaster.domain.R
+import com.arny.aipromptmaster.domain.models.Chat
+import com.arny.aipromptmaster.domain.models.ChatMessage
+import com.arny.aipromptmaster.domain.models.ChatRole
 import com.arny.aipromptmaster.domain.models.LlmModel
-import com.arny.aipromptmaster.domain.models.Message
+import com.arny.aipromptmaster.domain.models.errors.DomainError
 import com.arny.aipromptmaster.domain.repositories.IChatHistoryRepository
 import com.arny.aipromptmaster.domain.repositories.IOpenRouterRepository
 import com.arny.aipromptmaster.domain.repositories.ISettingsRepository
@@ -24,55 +27,78 @@ class LLMInteractor @Inject constructor(
     private val historyRepository: IChatHistoryRepository
 ) : ILLMInteractor {
 
-    override fun sendMessage(model: String, userMessage: String): Flow<DataResult<String>> =
-        flow {
-            emit(DataResult.Loading)
-            try {
-                // 1. Получаем текущую историю чата. `first()` берет последнее значение из Flow.
-                val currentHistory = historyRepository.getHistoryFlow().first()
+    // Определяем максимальное количество сообщений в истории.
+    // 20 сообщений (10 пар "вопрос-ответ") - хороший старт.
+    // Можно вынести в настройки, если хотите дать пользователю выбор.
+    private companion object {
+        const val MAX_HISTORY_SIZE = 20
+    }
 
-                // 2. Создаем сообщение пользователя и сразу добавляем его в историю.
-                historyRepository.addMessages(listOf(Message(role = "user", content = userMessage)))
+    override suspend fun createNewConversation(title: String): String {
+        return historyRepository.createNewConversation(title)
+    }
 
-                // 3. Формируем полный контекст для API.
-                // Берем историю (которая уже включает новое сообщение) и передаем в репозиторий.
-                val messagesForApi = historyRepository.getHistoryFlow().first()
+    override suspend fun addUserMessageToHistory(conversationId: String, userMessage: String) {
+        historyRepository.addMessages(conversationId, listOf(ChatMessage(role = ChatRole.USER, content = userMessage)))
+    }
 
-                // 4. Проверяем API ключ
-                val apiKey = settingsRepository.getApiKey()?.trim()
-                if (apiKey.isNullOrEmpty()) {
-                    emit(DataResult.Error(IllegalArgumentException("API key is required")))
-                    return@flow
-                }
+    override suspend fun addAssistantMessageToHistory(conversationId: String, assistantMessage: String) {
+        historyRepository.addMessages(conversationId, listOf(ChatMessage(role = ChatRole.ASSISTANT, content = assistantMessage)))
+    }
 
-                // 5. Выполняем запрос с полным контекстом
-                val result = modelsRepository.getChatCompletion(model, messagesForApi, apiKey)
-
-                result.fold(
-                    onSuccess = { response ->
-                        val content = response.choices.firstOrNull()?.message?.content
-                        if (content != null) {
-                            // 6. При успехе добавляем ответ модели в историю
-                            val modelMessage = Message(role = "assistant", content = content)
-                            historyRepository.addMessages(listOf(modelMessage))
-                            emit(DataResult.Success(content))
-                        } else {
-                            emit(DataResult.Error(Exception("Empty response from API")))
-                        }
-                    },
-                    onFailure = { exception -> emit(DataResult.Error(exception)) }
-                )
-            } catch (e: Exception) {
-                emit(DataResult.Error(e))
-            }
+    override suspend fun addUserMessageToHistory(conversationId: String, userMessage: String): String {
+        // 1. Определяем ID диалога. Если его нет, создаем новый.
+        val currentConversationId = conversationId ?: run {
+            val newTitle = userMessage.take(40).ifEmpty { "Новый чат" }
+            historyRepository.createNewConversation(newTitle)
         }
 
-    // НОВЫЙ МЕТОД для получения истории для UI
-    override fun getChatHistoryFlow(): Flow<List<Message>> = historyRepository.getHistoryFlow()
+        // 2. Добавляем сообщение пользователя в этот диалог
+        val userChatMessage = ChatMessage(role = ChatRole.USER, content = userMessage)
+        historyRepository.addMessages(currentConversationId, listOf(userChatMessage))
 
-    // НОВЫЙ МЕТОД для очистки истории
-    override suspend fun clearChat() {
-        historyRepository.clearHistory()
+        // 3. Возвращаем ID, с которым мы работали (старый или новый)
+        return currentConversationId
+    }
+
+    /**
+     * Отправляет сообщение, используя ограниченный контекст.
+     */
+    override fun sendMessage(model: String, messages: List<ChatMessage>): Flow<DataResult<String>> = flow {
+        emit(DataResult.Loading)
+        try {
+            val apiKey = settingsRepository.getApiKey()?.trim()
+            if (apiKey.isNullOrEmpty()) {
+                emit(DataResult.Error(DomainError.Local("API ключ не указан.")))
+                return@flow
+            }
+
+            val result = modelsRepository.getChatCompletion(model, messages, apiKey)
+            result.fold(
+                onSuccess = { response ->
+                    val content = response.choices.firstOrNull()?.message?.content
+                    if (content != null) {
+                        emit(DataResult.Success(content))
+                    } else {
+                        emit(DataResult.Error(DomainError.Generic("Пустой ответ от API")))
+                    }
+                },
+                onFailure = { exception -> emit(DataResult.Error(exception)) }
+            )
+        } catch (e: Exception) {
+            emit(DataResult.Error(DomainError.Generic(e.message)))
+        }
+    }
+
+    override fun getChatList(): Flow<List<Chat>> {
+        return historyRepository.getChatList()
+    }
+
+    override fun getChatHistoryFlow(conversationId: String?): Flow<List<ChatMessage>> =
+        historyRepository.getHistoryFlow(conversationId.orEmpty())
+
+    override suspend fun clearChat(conversationId: String?) {
+        historyRepository.clearHistory(conversationId.orEmpty())
     }
 
     /**
@@ -82,7 +108,10 @@ class LLMInteractor @Inject constructor(
         val selectedIdFlow: Flow<String?> = settingsRepository.getSelectedModelId()
         val modelsListFlow: Flow<List<LlmModel>> = modelsRepository.getModelsFlow()
         return combine(selectedIdFlow, modelsListFlow) { selectedId, modelsList ->
-            Log.i(this::class.java.simpleName, "getModels: selectedId: $selectedId, modelsList: ${modelsList.size}")
+            Log.i(
+                this::class.java.simpleName,
+                "getModels: selectedId: $selectedId, modelsList: ${modelsList.size}"
+            )
             // Эта лямбда будет выполняться каждый раз, когда меняется ID или список моделей.
             if (modelsList.isEmpty()) {
                 DataResult.Loading
@@ -115,7 +144,6 @@ class LLMInteractor @Inject constructor(
             }
         }
     }
-
 
     /**
      * Сохраняет выбор пользователя в репозитории настроек.

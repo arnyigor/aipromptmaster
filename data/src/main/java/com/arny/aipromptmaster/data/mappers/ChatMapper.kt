@@ -6,7 +6,8 @@ import com.arny.aipromptmaster.data.models.MessageDTO
 import com.arny.aipromptmaster.data.models.UsageDTO
 import com.arny.aipromptmaster.domain.models.ChatCompletionResponse
 import com.arny.aipromptmaster.domain.models.Choice
-import com.arny.aipromptmaster.domain.models.Message
+import com.arny.aipromptmaster.domain.models.ChatMessage
+import com.arny.aipromptmaster.domain.models.ChatRole
 import com.arny.aipromptmaster.domain.models.Usage
 
 object ChatMapper {
@@ -25,9 +26,9 @@ object ChatMapper {
         )
     }
 
-    private fun toDomainMessage(dto: MessageDTO): Message {
-        return Message(
-            role = dto.role,
+    private fun toDomainMessage(dto: MessageDTO): ChatMessage {
+        return ChatMessage(
+            role = ChatRole.fromString(dto.role),
             content = dto.content
         )
     }

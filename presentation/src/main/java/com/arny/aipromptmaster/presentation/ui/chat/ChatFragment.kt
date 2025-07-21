@@ -1,5 +1,7 @@
 package com.arny.aipromptmaster.presentation.ui.chat
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.PorterDuff
 import android.os.Bundle
@@ -11,42 +13,51 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.fragment.findNavController
+import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.arny.aipromptmaster.core.di.scopes.viewModelFactory
+import com.arny.aipromptmaster.domain.models.ChatRole
+import com.arny.aipromptmaster.domain.models.errors.DomainError
 import com.arny.aipromptmaster.domain.results.DataResult
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.FragmentChatBinding
 import com.arny.aipromptmaster.presentation.utils.autoClean
-import com.arny.aipromptmaster.presentation.utils.getColorFromAttr
 import com.arny.aipromptmaster.presentation.utils.launchWhenCreated
-import com.arny.aipromptmaster.presentation.utils.setTextColorRes
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.xwray.groupie.GroupieAdapter
 import dagger.android.support.AndroidSupportInjection
 import dagger.assisted.AssistedFactory
 import es.dmoral.toasty.Toasty
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
 class ChatFragment : Fragment() {
     private var _binding: FragmentChatBinding? = null
     private val binding get() = _binding!!
 
+    // Получаем аргументы навигации с помощью Safe Args
+    private val args: ChatFragmentArgs by navArgs()
+
     @AssistedFactory
     internal interface ViewModelFactory {
-        fun create(): ChatViewModel
+        fun create(chatid: String?): ChatViewModel
     }
 
     private val groupAdapter by autoClean { GroupieAdapter() }
 
     @Inject
     internal lateinit var viewModelFactory: ViewModelFactory
-    private val viewModel: ChatViewModel by viewModelFactory { viewModelFactory.create() }
+    private val viewModel: ChatViewModel by viewModelFactory { viewModelFactory.create(args.chatid) }
 
     override fun onAttach(context: Context) {
         AndroidSupportInjection.inject(this)
@@ -98,22 +109,22 @@ class ChatFragment : Fragment() {
 
     private fun setupViews() {
         binding.rvChat.apply {
-            layoutManager = LinearLayoutManager(context)
+            layoutManager = LinearLayoutManager(context).apply {
+                stackFromEnd = true
+            }
             adapter = groupAdapter
+            adapter?.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
+                override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
+                    smoothScrollToPosition(groupAdapter.itemCount - 1)
+                }
+            })
         }
 
         binding.btnSend.setOnClickListener {
-            val message = binding.etUserInput.text.toString()
+            val message = binding.etUserInput.text.toString().trim()
             if (message.isNotBlank()) {
-                // Добавляем сообщение пользователя
-                groupAdapter.add(UserMessageItem(message))
-                // Прокручиваем к последнему сообщению
-                binding.rvChat.smoothScrollToPosition(groupAdapter.itemCount - 1)
-                // Очищаем поле ввода
-                binding.etUserInput.text?.clear()
-                // Отправляем сообщение в ViewModel
                 viewModel.sendMessage(message)
-                showSendingState(true)
+                binding.etUserInput.text?.clear()
             }
         }
 
@@ -124,48 +135,75 @@ class ChatFragment : Fragment() {
         }
     }
 
-    private fun showSendingState(isSending: Boolean) {
-        Log.i(this::class.java.simpleName, "showSendingState: isSending:$isSending")
-        if (isSending) {
-            // Начало отправки
-            binding.btnSend.isEnabled = false
-            binding.btnSend.visibility = View.INVISIBLE // Скрываем, но оставляем занимаемое место
-            binding.progressBarSend.visibility = View.VISIBLE
-        } else {
-            // Окончание отправки
-            binding.btnSend.isEnabled = true
-            binding.btnSend.visibility = View.VISIBLE
-            binding.progressBarSend.visibility = View.GONE
-        }
-    }
-
     private fun observeViewModel() {
         launchWhenCreated {
             viewModel.uiState.collectLatest { state ->
-                Log.d(this::class.java.simpleName, "observeViewModel: state=$state")
-                // 1. Обновляем весь список целиком. Groupie/ListAdapter сам найдет разницу.
-                // Это надежнее, чем groupAdapter.add()
-                groupAdapter.update(state.messages.map { UserMessageItem(it.content) })
-                showSendingState(false)
+                val items = state.messages.map { message ->
+                    when (message.role) {
+                        ChatRole.USER -> UserMessageItem(
+                            message = message,
+                            onCopyClicked = { textToCopy ->
+                                copyToClipboard(textToCopy)
+                            }
+                        )
 
-                // Прокручиваем к последнему сообщению, если список изменился
-                if (groupAdapter.itemCount > 0) {
+                        ChatRole.ASSISTANT -> AiMessageItem(
+                            message = message,
+                            onCopyClicked = { textToCopy ->
+                                copyToClipboard(textToCopy)
+                            },
+                        )
+
+                        else -> throw IllegalArgumentException("Unknown message role: ${message.role})")
+                    }
+                }
+                // Обновляем адаптер. Groupie сам разберется с изменениями благодаря getId()
+                groupAdapter.update(items)
+
+                // Прокручиваем вниз, только если пользователь уже внизу списка
+                // (чтобы не сбивать его, если он читает старые сообщения)
+                val layoutManager = binding.rvChat.layoutManager as LinearLayoutManager
+                if (layoutManager.findLastVisibleItemPosition() == groupAdapter.itemCount - 2) {
                     binding.rvChat.smoothScrollToPosition(groupAdapter.itemCount - 1)
                 }
-
-                // 2. Показываем/скрываем ProgressBar
+                // 2. Управляем состоянием отправки ИСКЛЮЧИТЕЛЬНО через state
                 binding.progressBarSend.isVisible = state.isLoading
+                binding.btnSend.isEnabled = !state.isLoading
+                binding.btnSend.visibility = if (state.isLoading) View.INVISIBLE else View.VISIBLE
 
-                // 3. Показываем ошибку (например, в SnackBar)
+                // 3. Показываем ошибку. Теперь этот блок будет работать надежно.
                 state.error?.let { error ->
-                    // Создаем сообщение для пользователя
-                    val errorMessage = when (error) {
-                        is IllegalArgumentException -> "Ошибка: Неверный API ключ. Проверьте настройки."
-                        else -> error.message ?: "Произошла неизвестная ошибка"
+                    Log.i(this::class.java.name, "observeViewModel: error = $error")
+                    when (error) {
+                        // Работаем с ошибкой доменного типа
+                        is DomainError.Api -> {
+                            showApiErrorDialog(error)
+                        }
+                        // Работаем с другой ошибкой доменного типа
+                        is DomainError.Local -> {
+                            Toasty.error(
+                                requireContext(),
+                                error.message.orEmpty(),
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                        // Обрабатываем все остальные случаи
+                        is DomainError.Generic -> {
+                            Toasty.warning(
+                                requireContext(),
+                                error.message ?: "Произошла неизвестная ошибка",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                        // На случай, если прилетит обычный Exception
+                        else -> {
+                            Toasty.error(
+                                requireContext(),
+                                error.message ?: "Неизвестная ошибка",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
                     }
-
-                    Toasty.error(requireContext(), errorMessage, Toast.LENGTH_LONG).show()
-
                     // СРАЗУ ЖЕ сообщаем ViewModel, что ошибка показана.
                     // Это предотвратит повторный показ SnackBar при каждом незначительном обновлении стейта.
                     viewModel.errorShown()
@@ -175,7 +213,6 @@ class ChatFragment : Fragment() {
 
         launchWhenCreated {
             viewModel.selectedModelResult.collectLatest { modelResult ->
-                Log.d(this::class.java.simpleName, "observeViewModel: modelResult:$modelResult")
                 when (modelResult) {
                     is DataResult.Error<*> -> {
                         binding.btnSend.isEnabled = false
@@ -186,20 +223,67 @@ class ChatFragment : Fragment() {
                     is DataResult.Success<*> -> {
                         binding.btnSend.isEnabled = true
                         setErrorColor(false)
-                        showSendingState(false)
                     }
                 }
             }
         }
+
+        launchWhenCreated {
+            viewModel.uiState
+                // 1. Извлекаем только название модели. Если модели нет, будет null.
+                .map { it.selectedModel?.name }
+                // 2. Пропускаем одинаковые значения подряд. Заголовок обновится,
+                //    только если название модели действительно изменилось.
+                .distinctUntilChanged()
+                // 3. Собираем результат
+                .collect { modelName ->
+                    // Получаем supportActionBar из Activity. Используем безопасное приведение.
+                    val actionBar = (activity as? AppCompatActivity)?.supportActionBar
+                    if (modelName != null) {
+                        // Если имя модели есть, устанавливаем его
+                        actionBar?.title = modelName
+                    } else {
+                        // Если модели нет (загрузка, ошибка), ставим заголовок по умолчанию
+                        actionBar?.title =
+                            getString(R.string.title_llm_interaction_model_not_selected)
+                    }
+                }
+        }
+    }
+
+    /**
+     * Показывает детализированный диалог для ошибок API.
+     */
+    private fun showApiErrorDialog(apiError: DomainError.Api) {
+        MaterialAlertDialogBuilder(requireActivity())
+            .setTitle(apiError.userFriendlyMessage)
+            .setMessage(apiError.detailedMessage)
+            .setPositiveButton(android.R.string.ok) { dialog, _ ->
+                dialog.dismiss()
+            }
+            .setNeutralButton(R.string.action_settings) { dialog, _ ->
+                findNavController().navigate(ChatFragmentDirections.actionNavChatToSettingsFragment())
+                dialog.dismiss()
+            }.show()
+    }
+
+    private fun copyToClipboard(text: String) {
+        val clipboard = context?.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+        val clip = ClipData.newPlainText("AI Response", text)
+        clipboard?.setPrimaryClip(clip)
+        Toasty.success(
+            requireContext(),
+            getString(R.string.copied_to_clipboard),
+            Toast.LENGTH_SHORT
+        ).show()
     }
 
     private fun setErrorColor(isError: Boolean) {
         if (isError) {
-            binding.btnModelSettings.setTextColorRes(R.color.red_error)
+            val redColor = ContextCompat.getColor(requireContext(), R.color.icon_active_red)
+            binding.btnModelSettings.setColorFilter(redColor, PorterDuff.Mode.SRC_IN)
         } else {
-            val attr =
-                requireContext().getColorFromAttr(com.google.android.material.R.attr.colorOnSurfaceVariant)
-            binding.btnModelSettings.setTextColor(attr)
+            binding.btnModelSettings.clearColorFilter()
         }
     }
 

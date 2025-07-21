@@ -1,16 +1,35 @@
-<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- res/layout/item_user_message.xml -->
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:gravity="end"
-    android:padding="8dp">
+    android:paddingStart="64dp"
+    android:paddingEnd="16dp"
+    android:paddingVertical="4dp">
 
     <TextView
         android:id="@+id/tvMessage"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:padding="12dp"
-        tools:text="tvMessage" />
+        android:background="@drawable/shape_user_bubble"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="12dp"
+        android:textColor="?attr/colorOnPrimary"
+        android:textSize="16sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="Это мое сообщение. Оно может быть довольно длинным." />
 
-</LinearLayout>
+    <!-- НОВАЯ КНОПКА Копировать -->
+    <ImageView
+        android:id="@+id/btnCopy"
+        style="@style/Widget.App.ActionButton"
+        android:layout_marginTop="8dp"
+        android:contentDescription="@string/copy"
+        android:src="@drawable/ic_content_copy"
+        app:tint="?attr/colorOnPrimary"
+        app:layout_constraintEnd_toEndOf="@id/tvMessage"
+        app:layout_constraintTop_toBottomOf="@id/tvMessage" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -4,12 +4,17 @@ import android.util.Log
 import com.arny.aipromptmaster.data.api.OpenRouterService
 import com.arny.aipromptmaster.data.mappers.ChatMapper
 import com.arny.aipromptmaster.data.mappers.toDomain
+import com.arny.aipromptmaster.data.mappers.toDomainError
+import com.arny.aipromptmaster.data.models.ApiErrorResponse
 import com.arny.aipromptmaster.data.models.ChatCompletionRequestDTO
 import com.arny.aipromptmaster.data.models.MessageDTO
+import com.arny.aipromptmaster.data.models.errors.ApiException
 import com.arny.aipromptmaster.domain.models.ChatCompletionResponse
 import com.arny.aipromptmaster.domain.models.LlmModel
-import com.arny.aipromptmaster.domain.models.Message
+import com.arny.aipromptmaster.domain.models.ChatMessage
+import com.arny.aipromptmaster.domain.models.errors.DomainError
 import com.arny.aipromptmaster.domain.repositories.IOpenRouterRepository
+import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,33 +69,62 @@ class OpenRouterRepositoryImpl @Inject constructor(
 
     override suspend fun getChatCompletion(
         model: String,
-        messages: List<Message>,
+        messages: List<ChatMessage>,
         apiKey: String,
     ): Result<ChatCompletionResponse> = withContext(dispatcher) {
         val request = ChatCompletionRequestDTO(
             model = model,
-            messages = messages.map { MessageDTO(it.role, it.content) },
+            messages = messages.map { MessageDTO(it.role.toString(), it.content) },
             maxTokens = 4096
         )
         Log.d("ChatDebug", "6.5. Request:$request")
-        val response = service.getChatCompletion(
-            authorization = "Bearer $apiKey",
-            referer = "aiprompts", // Эти заголовки лучше вынести в Interceptor
-            title = "AI Chat App",
-            request = request
-        )
-        Log.d("ChatDebug", "7. response:$response")
-        when {
-            response.isSuccessful && response.body() != null -> {
+
+        try {
+            val response = service.getChatCompletion(
+                authorization = "Bearer $apiKey",
+                referer = "aiprompts",
+                title = "AI Chat App",
+                request = request
+            )
+            Log.d("ChatDebug", "7. response:$response")
+
+            if (response.isSuccessful && response.body() != null) {
                 val domainResponse = ChatMapper.toDomain(response.body()!!)
                 Result.success(domainResponse)
+            } else {
+                // Обработка неуспешных HTTP-статусов (4xx, 5xx)
+                val errorBody = response.errorBody()?.string()
+                val domainError = if (!errorBody.isNullOrBlank()) {
+                    try {
+                        // Пытаемся распарсить тело ошибки в нашу модель
+                        val gson = Gson()
+                        val errorResponse = gson.fromJson(errorBody, ApiErrorResponse::class.java)
+                        errorResponse.error.toDomainError()
+                    } catch (e: Exception) {
+                        // Если парсинг не удался, возвращаем ошибку с сырым телом
+                        DomainError.Generic("Не удалось обработать ответ сервера (Код: ${response.code()}). Тело ответа: $errorBody")
+                    }
+                } else {
+                    // Тело ошибки пустое, используем код и сообщение ответа
+                    DomainError.Api(
+                        code = response.code(),
+                        userFriendlyMessage = "Ошибка сервера (Код: ${response.code()})",
+                        detailedMessage = response.message().ifBlank { "Ответ не содержит дополнительной информации." }
+                    )
+                }
+                Result.failure(domainError)
             }
-
-            else -> {
-                val errorMessage =
-                    response.errorBody()?.string() ?: "API Error: ${response.code()}"
-                Result.failure(Exception(errorMessage))
+        } catch (e: Exception) {
+            // Обработка сетевых ошибок (например, SocketTimeoutException, UnknownHostException)
+            // и других непредвиденных исключений
+            Log.e("ChatDebug", "Network or unexpected error", e)
+            val domainError = when (e) {
+                is java.net.SocketTimeoutException -> DomainError.Network("Превышено время ожидания ответа от сервера.")
+                is java.net.UnknownHostException -> DomainError.Network("Не удалось подключиться к серверу. Проверьте интернет-соединение.")
+                else -> DomainError.Generic("Произошла непредвиденная ошибка: ${e.localizedMessage}")
             }
+            Result.failure(domainError)
         }
     }
+
 }

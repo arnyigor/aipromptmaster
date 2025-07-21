@@ -23,6 +23,46 @@
         <item name="colorOnSurfaceVariant">#49454F</item>
         <item name="colorOutline">#79747E</item>
 
+    </style>
+
+    <style name="Widget.App.ActionButton" parent="Widget.AppCompat.ImageButton">
+        <item name="android:layout_width">24dp</item>
+        <item name="android:layout_height">24dp</item>
+        <item name="android:background">?attr/selectableItemBackgroundBorderless</item>
+        <item name="android:scaleType">centerInside</item>
+        <item name="tint">?attr/colorOnSurfaceVariant</item>
+    </style>
+
+    <style name="ItemMenuTextAppearance">
+        <item name="android:textColor">@color/colorPrimaryDark</item>
+        <item name="android:itemBackground">@android:color/white</item>
+    </style>
+
+    <style name="popupMenuStyle" parent="Widget.MaterialComponents.PopupMenu">
+        <item name="android:popupBackground">@android:color/white</item>
+    </style>
+
+    <!--Input label style-->
+    <style name="InputTextStyle" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="android:textColor">@color/textColorPrimary</item>
+        <item name="boxBackgroundColor">@color/colorPrimaryDark</item>
+        <item name="colorControlNormal">@color/textColorPrimary</item>
+        <item name="colorControlActivated">@color/textColorPrimary</item>
+        <item name="hintTextColor">@color/hintTextColor</item>
+        <item name="boxStrokeColor">@color/text_input_box_stroke</item>
+    </style>
+
+    <style name="MyDialogStyle" parent="Theme.MaterialComponents.DayNight.Dialog">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="android:background">@drawable/dialog_background</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:textViewStyle">@style/DialogTextViewStyle</item>
+        <item name="windowFixedWidthMajor">90%</item>
+        <item name="windowFixedWidthMinor">90%</item>
+        <item name="textColorAlertDialogListItem">@color/textColorPrimary</item>
+        <item name="colorControlNormal">@color/colorAccent</item>
         <!-- Статус-бар и навигационный бар -->
         <item name="android:statusBarColor">?attr/colorSurface</item>
         <item name="android:windowLightStatusBar">true</item>

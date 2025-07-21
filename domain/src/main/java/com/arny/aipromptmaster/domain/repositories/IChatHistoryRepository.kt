@@ -1,21 +1,21 @@
 package com.arny.aipromptmaster.domain.repositories
 
-import com.arny.aipromptmaster.domain.models.Message
+import com.arny.aipromptmaster.domain.models.Chat
+import com.arny.aipromptmaster.domain.models.ChatMessage
 import kotlinx.coroutines.flow.Flow
 
 interface IChatHistoryRepository {
-    /**
-     * Предоставляет реактивный поток с полной историей сообщений.
-     */
-    fun getHistoryFlow(): Flow<List<Message>>
+    // Теперь метод требует ID диалога
+    fun getHistoryFlow(conversationId: String): Flow<List<ChatMessage>>
 
-    /**
-     * Добавляет одно или несколько сообщений в историю.
-     */
-    suspend fun addMessages(messages: List<Message>)
+    // Добавляет сообщения в конкретный диалог
+    suspend fun addMessages(conversationId: String, messages: List<ChatMessage>)
 
-    /**
-     * Очищает историю чата.
-     */
-    suspend fun clearHistory()
+    // Очищает конкретный диалог
+    suspend fun clearHistory(conversationId: String)
+
+    // Создает новый диалог в базе и возвращает его ID
+    suspend fun createNewConversation(title: String): String
+
+    fun getChatList(): Flow<List<Chat>>
 }

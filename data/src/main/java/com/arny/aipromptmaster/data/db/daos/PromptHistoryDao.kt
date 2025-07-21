@@ -1,6 +1,16 @@
 package com.arny.aipromptmaster.data.db.daos
-
 /*
+
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Update
+import com.arny.aipromptmaster.data.db.entities.PromptEntity
+import com.arny.aipromptmaster.data.db.entities.PromptHistoryEntity
+import kotlinx.coroutines.flow.Flow
+import java.util.Date
+
 @Dao
 interface PromptHistoryDao {
     @Query("""
@@ -61,4 +71,5 @@ interface PromptHistoryDao {
         limit: Int,
         offset: Int
     ): List<PromptHistoryEntity>
-}*/
+}
+*/

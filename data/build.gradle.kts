@@ -4,6 +4,7 @@ plugins {
     kotlin("plugin.serialization") version "2.1.10"
     kotlin("kapt")
     id("com.google.devtools.ksp")
+    alias(libs.plugins.android.room)
 }
 
 android {
@@ -31,6 +32,12 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+}
+
+room {
+    // Указываем путь, куда Room будет сохранять JSON-файлы со схемами.
+    // ИСПРАВЛЕНИЕ: Это не свойство, а функция. Вызываем ее.
+    schemaDirectory("$projectDir/schemas")
 }
 
 dependencies {

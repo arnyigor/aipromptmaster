@@ -2,7 +2,7 @@ package com.arny.aipromptmaster.domain.repositories
 
 import com.arny.aipromptmaster.domain.models.ChatCompletionResponse
 import com.arny.aipromptmaster.domain.models.LlmModel
-import com.arny.aipromptmaster.domain.models.Message
+import com.arny.aipromptmaster.domain.models.ChatMessage
 import kotlinx.coroutines.flow.Flow
 
 interface IOpenRouterRepository {
@@ -23,7 +23,7 @@ interface IOpenRouterRepository {
      */
     suspend fun getChatCompletion(
         model: String,
-        messages: List<Message>,
+        messages: List<ChatMessage>,
         apiKey: String,
     ): Result<ChatCompletionResponse>
 }
