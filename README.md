@@ -43,28 +43,41 @@
 
 ---
 
-## 🛠️ Технологический стек
-
+<details>
+<summary><b>🛠️ Технологический стек</b></summary>
+<br>
 Проект построен на современном стеке технологий для Android, что делает его быстрым, надежным и легким для поддержки:
--   **Язык**: 100% [Kotlin](https://kotlinlang.org/)
--   **Асинхронность**: [Kotlin Coroutines](https://kotlinlang.org/docs/coroutines-guide.html) & [Flow](https://kotlinlang.org/docs/flow.html)
--   **Архитектура**: MVVM (Model-View-ViewModel)
--   **UI**: Android Views с XML, Material Design 3 Components.
--   **DI (Внедрение зависимостей)**: [Dagger 2 / Hilt](https://developer.android.com/training/dependency-injection/hilt-android)
--   **Сеть**: [Retrofit](https://square.github.io/retrofit/) & [OkHttp](https://square.github.io/okhttp/)
--   **База данных**: [Room](https://developer.android.com/training/data-storage/room)
--   **Работа со списками**: [Paging 3](https://developer.android.com/topic/libraries/architecture/paging/v3-overview)
--   **Навигация**: [Jetpack Navigation Component](https://developer.android.com/guide/navigation)
+<ul>
+  <li><b>Язык</b>: 100% <a href="https://kotlinlang.org/">Kotlin</a></li>
+  <li><b>Асинхронность</b>: <a href="https://kotlinlang.org/docs/coroutines-guide.html">Kotlin Coroutines</a> & <a href="https://kotlinlang.org/docs/flow.html">Flow</a></li>
+  <li><b>Архитектура</b>: MVVM (Model-View-ViewModel)</li>
+  <li><b>UI</b>: Android Views с XML, Material Design 3 Components.</li>
+  <li><b>DI (Внедрение зависимостей)</b>: <a href="https://developer.android.com/training/dependency-injection/hilt-android">Dagger 2 / Hilt</a></li>
+  <li><b>Сеть</b>: <a href="https://square.github.io/retrofit/">Retrofit</a> & <a href="https://square.github.io/okhttp/">OkHttp</a></li>
+  <li><b>База данных</b>: <a href="https://developer.android.com/training/data-storage/room">Room</a></li>
+  <li><b>Работа со списками</b>: <a href="https://developer.android.com/topic/libraries/architecture/paging/v3-overview">Paging 3</a></li>
+  <li><b>Навигация</b>: <a href="https://developer.android.com/guide/navigation">Jetpack Navigation Component</a></li>
+</ul>
+</details>
 
----
-
-## 📸 Скриншоты
-
-| Главный экран |        Фильтры и сортировка         |
-| :---: |:-----------------------------------:|
-| ![Главная](screenshots/home_screen.png) | ![Чат](screenshots/chat_screen.png) |
-| *Список промптов с поиском в реальном времени.* |        *Чат с ИИ моделями.*         |
-
+<details>
+<summary><b>📸 Скриншоты</b></summary>
+<br>
+<table>
+  <tr>
+    <td align="center"><b>Главный экран</b></td>
+    <td align="center"><b>Чат с ИИ</b></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/home_screen.png" alt="Главная" width="300"/></td>
+    <td><img src="screenshots/chat_screen.png" alt="Чат" width="300"/></td>
+  </tr>
+  <tr>
+    <td align="center"><i>Список промптов с поиском в реальном времени.</i></td>
+    <td align="center"><i>Общение с ИИ моделями и стриминг ответов.</i></td>
+  </tr>
+</table>
+</details>
 
 ---
 ## 📚 Библиотека промптов
