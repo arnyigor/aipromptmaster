@@ -72,6 +72,7 @@
     <string name="reverse">обратная</string>
     <string name="filters">Фильтры</string>
     <string name="clear_history">Очистить историю</string>
+    <string name="ai_reasoning">Думает…</string>
 
     <string-array name="prompt_options">
         <item>Редактировать</item>

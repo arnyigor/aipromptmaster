@@ -8,15 +8,27 @@ import com.arny.aipromptmaster.domain.models.ChatMessage
 import com.arny.aipromptmaster.domain.models.ChatRole
 import com.arny.aipromptmaster.domain.repositories.IChatHistoryRepository
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 
 class ChatHistoryRepositoryImpl @Inject constructor(
     private val chatDao: ChatDao
 ) : IChatHistoryRepository {
+
+    // В реализации репозитория истории
+    override suspend fun addMessage(conversationId: String, message: ChatMessage): String {
+        val entity = message.toEntity(conversationId) // Преобразуем в MessageEntity
+        chatDao.insertMessage(entity) // Новый метод в DAO
+        return entity.id
+    }
+
+    override suspend fun updateMessageContent(messageId: String, newContent: String) {
+        chatDao.updateMessageContent(messageId, newContent)
+    }
+
+    override suspend fun appendContentToMessage(messageId: String, contentChunk: String) {
+        chatDao.appendContentToMessage(messageId, contentChunk) // Новый метод в DAO
+    }
 
     override fun getHistoryFlow(conversationId: String): Flow<List<ChatMessage>> {
         return chatDao.getMessagesForConversation(conversationId).map { entities ->

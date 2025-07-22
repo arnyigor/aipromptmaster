@@ -33,3 +33,13 @@ sealed class DomainError(message: String?) : Exception(message) {
      */
     data class Generic(override val message: String?) : DomainError(message)
 }
+
+fun Throwable.getFriendlyMessage(): String {
+    return when (this) {
+        is DomainError.Api -> this.userFriendlyMessage
+        is DomainError.Network -> this.message
+        is DomainError.Local -> this.message
+        is DomainError.Generic -> this.message ?: "Произошла неизвестная ошибка"
+        else -> this.message ?: "Неизвестная ошибка"
+    }
+}

@@ -19,4 +19,5 @@ interface ILLMInteractor {
     suspend fun addUserMessageToHistory(conversationId: String, userMessage: String)
     suspend fun addAssistantMessageToHistory(conversationId: String, assistantMessage: String)
     suspend fun createNewConversation(title: String): String
+    suspend fun sendMessageWithFallback(model: String, conversationId: String?)
 }

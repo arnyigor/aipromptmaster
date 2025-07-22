@@ -22,7 +22,7 @@ interface OpenRouterService {
         @Body request: ChatCompletionRequestDTO
     ): Response<ChatCompletionResponseDTO>
 
-    @Streaming // <--- 1. Указываем Retrofit, что ответ будет потоковым
+    @Streaming
     @POST("chat/completions")
     @Headers("Content-Type: application/json")
     suspend fun getChatCompletionStream(
@@ -30,7 +30,7 @@ interface OpenRouterService {
         @Header("HTTP-Referer") referer: String? = null,
         @Header("X-Title") title: String? = null,
         @Body request: ChatCompletionRequestDTO
-    ): Response<ResponseBody> // <--- 3. Возвращаем ResponseBody, чтобы читать поток байт
+    ): Response<ResponseBody>
 
 
     @GET("models")

@@ -8,11 +8,13 @@ import com.arny.aipromptmaster.domain.models.ChatMessage
 import com.arny.aipromptmaster.domain.models.ChatRole
 import com.arny.aipromptmaster.domain.models.LlmModel
 import com.arny.aipromptmaster.domain.models.errors.DomainError
+import com.arny.aipromptmaster.domain.models.errors.getFriendlyMessage
 import com.arny.aipromptmaster.domain.repositories.IChatHistoryRepository
 import com.arny.aipromptmaster.domain.repositories.IOpenRouterRepository
 import com.arny.aipromptmaster.domain.repositories.ISettingsRepository
 import com.arny.aipromptmaster.domain.results.DataResult
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
@@ -90,6 +92,84 @@ class LLMInteractor @Inject constructor(
                 emit(DataResult.Error(DomainError.Generic(e.message)))
             }
         }
+
+    /**
+     * Отправляет сообщение. Сначала пытается сделать это через стриминг.
+     * Если стриминг проваливается, автоматически переключается на обычный запрос.
+     * Все обновления происходят через базу данных, на которую подписан UI.
+     */
+    override suspend fun sendMessageWithFallback(model: String, conversationId: String?) {
+        // 1. Создаем "пустое" сообщение от ассистента в БД.
+        //    UI сразу покажет "печатающий" индикатор.
+        val assistantMessage = ChatMessage(role = ChatRole.ASSISTANT, content = "")
+        val assistantMessageId = historyRepository.addMessage(conversationId.orEmpty(), assistantMessage)
+
+        try {
+            // --- ПОПЫТКА 1: СТРИМИНГ ---
+            val apiKey = settingsRepository.getApiKey()?.trim()
+                ?: throw DomainError.Local("API ключ не указан.")
+
+            val messagesForApi = historyRepository.getHistoryFlow(conversationId.orEmpty())
+                .first().takeLast(MAX_HISTORY_SIZE)
+
+            var streamFailed = false
+            modelsRepository.getChatCompletionStream(model, messagesForApi, apiKey)
+                .catch {
+                    // Эта ошибка означает, что сам Flow сломался (например, разрыв сети)
+                    streamFailed = true
+                    Log.e("LLMInteractor", "Stream failed catastrophically", it)
+                }
+                .collect { result ->
+                    when (result) {
+                        is DataResult.Success -> {
+                            // Добавляем часть текста к сообщению в БД
+                            historyRepository.appendContentToMessage(assistantMessageId, result.data)
+                        }
+                        is DataResult.Error -> {
+                            // Ошибка внутри потока (например, 429 Rate Limit)
+                            streamFailed = true
+                            throw result.exception ?: DomainError.Generic("Stream returned an error")
+                        }
+                        DataResult.Loading -> {}
+                    }
+                }
+
+            if (streamFailed) {
+                // Если была ошибка, collect завершится, и мы вызовем исключение,
+                // чтобы перейти в блок catch для fallback.
+                throw DomainError.Generic("Stream failed, attempting fallback.")
+            }
+
+        } catch (e: Exception) {
+            // --- ПОПЫТКА 2: FALLBACK НА ОБЫЧНЫЙ ЗАПРОС ---
+            Log.w("LLMInteractor", "Streaming failed with error: ${e.message}. Falling back to regular request.")
+
+            try {
+                val apiKey = settingsRepository.getApiKey()?.trim()
+                    ?: throw DomainError.Local("API ключ не указан.")
+                val messagesForApi = historyRepository.getHistoryFlow(conversationId.orEmpty())
+                    .first().takeLast(MAX_HISTORY_SIZE)
+
+                val result = modelsRepository.getChatCompletion(model, messagesForApi, apiKey)
+
+                result.fold(
+                    onSuccess = { response ->
+                        val fullContent = response.choices.firstOrNull()?.message?.content ?: ""
+                        // Обновляем наше "пустое" сообщение полным текстом
+                        historyRepository.updateMessageContent(assistantMessageId, fullContent)
+                    },
+                    onFailure = { fallbackError ->
+                        // Обе попытки провалились. Обновляем сообщение текстом ошибки.
+                        val errorMessage = fallbackError.getFriendlyMessage()
+                        historyRepository.updateMessageContent(assistantMessageId, "Ошибка: $errorMessage")
+                    }
+                )
+            } catch (finalError: Exception) {
+                val errorMessage = finalError.getFriendlyMessage()
+                historyRepository.updateMessageContent(assistantMessageId, "Ошибка: $errorMessage")
+            }
+        }
+    }
 
     override fun getChatList(): Flow<List<Chat>> {
         return historyRepository.getChatList()

@@ -2,6 +2,7 @@ package com.arny.aipromptmaster.presentation.ui.chat
 
 import android.text.method.LinkMovementMethod
 import android.view.View
+import androidx.core.view.isVisible
 import com.arny.aipromptmaster.domain.models.ChatMessage
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.ItemAiMessageBinding
@@ -13,8 +14,14 @@ class AiMessageItem(
 ) : BindableItem<ItemAiMessageBinding>() {
 
     override fun bind(viewBinding: ItemAiMessageBinding, position: Int) {
-        viewBinding.tvMessage.text = message.content
-        viewBinding.tvMessage.movementMethod = LinkMovementMethod.getInstance()
+        val emptyContent = message.content.isEmpty()
+        viewBinding.tvPlaceholder.isVisible = emptyContent
+        viewBinding.btnCopy.isVisible = !emptyContent
+        viewBinding.tvMessage.isVisible = !emptyContent
+        if (!emptyContent) {
+            viewBinding.tvMessage.text = message.content
+            viewBinding.tvMessage.movementMethod = LinkMovementMethod.getInstance()
+        }
         viewBinding.btnCopy.setOnClickListener {
             onCopyClicked(message.content)
         }

@@ -29,7 +29,7 @@ object ChatMapper {
     private fun toDomainMessage(dto: MessageDTO): ChatMessage {
         return ChatMessage(
             role = ChatRole.fromString(dto.role),
-            content = dto.content
+            content = dto.content.orEmpty()
         )
     }
 

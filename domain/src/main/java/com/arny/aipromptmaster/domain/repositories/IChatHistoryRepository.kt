@@ -18,4 +18,7 @@ interface IChatHistoryRepository {
     suspend fun createNewConversation(title: String): String
 
     fun getChatList(): Flow<List<Chat>>
+    suspend fun appendContentToMessage(messageId: String, contentChunk: String)
+    suspend fun addMessage(conversationId: String, message: ChatMessage): String
+    suspend fun updateMessageContent(messageId: String, newContent: String)
 }

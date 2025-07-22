@@ -19,6 +19,16 @@ interface ChatDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMessages(messages: List<MessageEntity>)
 
+    // В ChatDao
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMessage(message: MessageEntity)
+
+    @Query("UPDATE messages SET content = :newContent WHERE id = :messageId")
+    suspend fun updateMessageContent(messageId: String, newContent: String)
+
+    @Query("UPDATE messages SET content = content || :contentChunk WHERE id = :messageId")
+    suspend fun appendContentToMessage(messageId: String, contentChunk: String)
+
     /**
      * Получает реактивный поток сообщений для КОНКРЕТНОГО диалога.
      */

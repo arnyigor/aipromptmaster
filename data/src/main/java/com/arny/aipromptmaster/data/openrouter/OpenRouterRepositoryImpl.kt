@@ -129,7 +129,6 @@ class OpenRouterRepositoryImpl @Inject constructor(
         }
     }
 
-
     override fun getChatCompletionStream(
         model: String,
         messages: List<ChatMessage>,
@@ -164,10 +163,14 @@ class OpenRouterRepositoryImpl @Inject constructor(
                                 break
                             }
                             try {
-                                // Парсим JSON, чтобы извлечь только дельту контента
                                 val gson = Gson()
                                 val chunk = gson.fromJson(json, ChatCompletionResponseDTO::class.java)
-                                val contentDelta = chunk.choices.firstOrNull()?.delta?.content
+                                val delta = chunk.choices.firstOrNull()?.delta
+
+                                // Проверяем сначала content, потом reasoning.
+                                val contentDelta = delta?.content?.takeIf { it.isNotEmpty() }
+                                    ?: delta?.reasoning?.takeIf { it.isNotEmpty() }
+
                                 if (contentDelta != null) {
                                     // Эмитим только новую часть текста
                                     emit(DataResult.Success(contentDelta))
@@ -194,7 +197,11 @@ class OpenRouterRepositoryImpl @Inject constructor(
     }
 
     // Вынесем логику парсинга ошибок в отдельные функции для чистоты
-    private fun parseErrorBody(code: Int, body: String?, message: String): DomainError { /* ... */ }
-    private fun mapNetworkException(e: Exception): DomainError { /* ... */ }
+    private fun parseErrorBody(code: Int, body: String?, message: String): DomainError { /* ... */ return TODO(
+        "Provide the return value"
+    )
+    }
+    private fun mapNetworkException(e: Exception): DomainError { /* ... */ return TODO("Provide the return value")
+    }
 
 }

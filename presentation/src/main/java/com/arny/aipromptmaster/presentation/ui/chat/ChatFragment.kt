@@ -164,6 +164,7 @@ class ChatFragment : Fragment() {
                         else -> throw IllegalArgumentException("Unknown message role: ${message.role})")
                     }
                 }
+//                Log.d("ChatUI", "Updating adapter with ${items.size} items. Last message: ${state.messages.lastOrNull()}")
                 // Обновляем адаптер. Groupie сам разберется с изменениями благодаря getId()
                 groupAdapter.update(items)
 
@@ -175,6 +176,8 @@ class ChatFragment : Fragment() {
                 }
                 // 2. Управляем состоянием отправки ИСКЛЮЧИТЕЛЬНО через state
                 binding.progressBarSend.isVisible = state.isLoading
+                binding.btnModelSettings.isEnabled = !state.isLoading
+                binding.etUserInput.isEnabled = !state.isLoading
                 binding.btnSend.isEnabled = !state.isLoading
                 binding.btnSend.visibility = if (state.isLoading) View.INVISIBLE else View.VISIBLE
 

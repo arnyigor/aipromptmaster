@@ -12,7 +12,8 @@ data class ChatCompletionRequestDTO(
 
 data class MessageDTO(
     val role: String, // "user", "assistant", "system"
-    val content: String
+    val content: String? = null,
+    val reasoning: String? = null
 )
 
 data class ChatCompletionResponseDTO(

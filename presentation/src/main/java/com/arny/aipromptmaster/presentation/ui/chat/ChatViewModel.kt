@@ -112,37 +112,13 @@ class ChatViewModel @AssistedInject constructor(
                 // 2. Добавляем сообщение пользователя.
                 interactor.addUserMessageToHistory(conversationId, userMessageText)
 
-
                 val selectedModelId = uiState.value.selectedModel?.id
                     ?: throw DomainError.Local("Модель не выбрана. Пожалуйста, выберите модель в настройках.")
 
-                // 4. Отправляем запрос в API и обрабатываем результат.
-                // Используем .collect, так как interactor возвращает Flow<DataResult>
-                interactor.sendMessage(selectedModelId, conversationId)
-                    .collect { result ->
-                        when (result) {
-                            is DataResult.Success -> {
-                                // 5. При успехе добавляем ответ ассистента в тот же чат
-                                interactor.addAssistantMessageToHistory(conversationId, result.data)
-                                // Успешно завершили, убираем загрузку
-                                _sendingState.update { it.copy(isLoading = false) }
-                            }
-
-                            is DataResult.Error -> {
-                                // НЕ БРОСАЕМ ИСКЛЮЧЕНИЕ, а просто обновляем состояние с ошибкой.
-                                _sendingState.update {
-                                    it.copy(
-                                        isLoading = false,
-                                        error = result.exception
-                                    )
-                                }
-                            }
-
-                            DataResult.Loading -> { /* Уже обрабатывается в _sendingState */
-                            }
-                        }
-                    }
+                interactor.sendMessageWithFallback(selectedModelId, conversationId)
             }
+
+            _sendingState.update { it.copy(isLoading = false) }
 
             // Если в блоке runCatching произошла синхронная ошибка (до вызова Flow),
             // мы перехватим ее здесь.
