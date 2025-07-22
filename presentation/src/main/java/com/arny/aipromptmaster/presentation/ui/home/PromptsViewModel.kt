@@ -10,6 +10,7 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.arny.aipromptmaster.domain.interactors.IPromptsInteractor
+import com.arny.aipromptmaster.domain.interactors.ISettingsInteractor
 import com.arny.aipromptmaster.domain.models.Prompt
 import com.arny.aipromptmaster.domain.models.PromptsSortData
 import com.arny.aipromptmaster.domain.repositories.SyncResult
@@ -31,7 +32,12 @@ import kotlinx.coroutines.launch
 
 class PromptsViewModel @AssistedInject constructor(
     private val interactor: IPromptsInteractor,
+    private val settingsInteractor: ISettingsInteractor
 ) : ViewModel() {
+
+    // Используем SharedFlow для одноразовых событий (показать Toast/Snackbar)
+    private val _feedbackResult = MutableSharedFlow<Result<Unit>>()
+    val feedbackResult = _feedbackResult.asSharedFlow()
 
     private val _sortDataState = MutableStateFlow<PromptsSortData?>(null)
     val sortDataState = _sortDataState.asStateFlow()
@@ -65,6 +71,13 @@ class PromptsViewModel @AssistedInject constructor(
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+        }
+    }
+
+    fun sendFeedback(content: String) {
+        viewModelScope.launch {
+            val result = settingsInteractor.sendFeedback(content)
+            _feedbackResult.emit(result)
         }
     }
 

@@ -6,6 +6,7 @@ import com.arny.aipromptmaster.domain.interactors.ISettingsInteractor
 import com.arny.aipromptmaster.domain.interactors.LLMInteractor
 import com.arny.aipromptmaster.domain.interactors.PromptsInteractorImpl
 import com.arny.aipromptmaster.domain.interactors.SettingsInteractorImpl
+import com.arny.aipromptmaster.domain.repositories.IFeedbackRepository
 import dagger.Binds
 import dagger.Module
 import javax.inject.Singleton

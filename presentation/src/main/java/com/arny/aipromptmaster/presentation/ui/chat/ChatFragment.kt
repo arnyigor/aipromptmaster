@@ -183,7 +183,7 @@ class ChatFragment : Fragment() {
 
                 // 3. Показываем ошибку. Теперь этот блок будет работать надежно.
                 state.error?.let { error ->
-                    Log.i(this::class.java.name, "observeViewModel: error = $error")
+//                    Log.i(this::class.java.name, "observeViewModel: error = $error")
                     when (error) {
                         // Работаем с ошибкой доменного типа
                         is DomainError.Api -> {

@@ -73,6 +73,10 @@
     <string name="filters">Фильтры</string>
     <string name="clear_history">Очистить историю</string>
     <string name="ai_reasoning">Думает…</string>
+    <string name="feedback_hint">Опишите ошибку или предложение</string>
+    <string name="action_send">Отправить</string>
+    <string name="feedback_sent_successfully">Сообщение отправлено успешно</string>
+    <string name="feedback_send_error">Ошибка отправки %s</string>
 
     <string-array name="prompt_options">
         <item>Редактировать</item>

@@ -1,5 +1,6 @@
 package com.arny.aipromptmaster.data.di
 
+import com.arny.aipromptmaster.data.api.FeedbackApiService
 import com.arny.aipromptmaster.data.api.GitHubService
 import com.arny.aipromptmaster.data.api.OpenRouterService
 import com.google.gson.Gson
@@ -17,6 +18,7 @@ import javax.inject.Singleton
 object NetworkModule {
     private const val GITHUB_BASE_URL = "https://api.github.com/"
     private const val OPEN_ROUTER_BASE_URL = "https://openrouter.ai/api/v1/"
+    private const val FEEDBACK_BASE_URL = "https://aipromptsapi.vercel.app/"
 
     @Provides
     @Singleton
@@ -67,6 +69,23 @@ object NetworkModule {
     fun provideOpenRouterService(@OpenRouterRetrofit retrofit: Retrofit): OpenRouterService {
         return retrofit.create(OpenRouterService::class.java)
     }
+
+    @Provides
+    @Singleton
+    @FeedbackRetrofit // <--- 4. Используем новый квалификатор
+    fun provideFeedbackRetrofit(okHttpClient: OkHttpClient, gson: Gson): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl(FEEDBACK_BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideFeedbackApiService(@FeedbackRetrofit retrofit: Retrofit): FeedbackApiService {
+        return retrofit.create(FeedbackApiService::class.java)
+    }
 }
 
 // Квалификаторы для различения экземпляров Retrofit
@@ -77,3 +96,7 @@ annotation class GitHubRetrofit
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class OpenRouterRetrofit
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class FeedbackRetrofit

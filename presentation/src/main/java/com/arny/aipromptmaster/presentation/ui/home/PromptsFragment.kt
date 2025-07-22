@@ -10,6 +10,7 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.appcompat.widget.SearchView
 import androidx.core.net.toUri
 import androidx.core.view.MenuProvider
@@ -34,8 +35,10 @@ import com.arny.aipromptmaster.presentation.utils.strings.ResourceString
 import com.arny.aipromptmaster.presentation.utils.toastMessage
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
+import com.google.android.material.textfield.TextInputEditText
 import dagger.android.support.AndroidSupportInjection
 import dagger.assisted.AssistedFactory
+import es.dmoral.toasty.Toasty
 import kotlinx.coroutines.flow.collectLatest
 import javax.inject.Inject
 
@@ -178,6 +181,18 @@ class PromptsFragment : Fragment() {
                 updateEvent(event)
             }
         }
+        launchWhenCreated {
+            viewModel.feedbackResult.collect { result ->
+                result.fold(
+                    onSuccess = {
+                        Toasty.success(requireContext(), R.string.feedback_sent_successfully, Toast.LENGTH_LONG).show()
+                    },
+                    onFailure = { error ->
+                        Toasty.error(requireContext(), getString(R.string.feedback_send_error, error.message), Toast.LENGTH_LONG).show()
+                    }
+                )
+            }
+        }
     }
 
     private fun updateEvent(event: PromptsUiEvent) {
@@ -293,20 +308,39 @@ class PromptsFragment : Fragment() {
                 }
         }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
+//
+//    private fun showFeedBackDialog() {
+//        MaterialAlertDialogBuilder(requireActivity())
+//            .setTitle(getString(R.string.send_feedback_question))
+//            .setMessage(getString(R.string.review_current_issues_on_github))
+//            .setPositiveButton(android.R.string.ok) { dialog, _ ->
+//                val intent = Intent(Intent.ACTION_VIEW).apply {
+//                    data = getString(R.string.github_issues_link).toUri()
+//                }
+//                startActivity(intent)
+//                dialog.dismiss()
+//            }
+//            .setNegativeButton(android.R.string.cancel) { dialog, _ ->
+//                dialog.dismiss()
+//            }
+//            .show()
+//    }
 
     private fun showFeedBackDialog() {
-        MaterialAlertDialogBuilder(requireActivity())
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_feedback, null)
+        val editText = dialogView.findViewById<TextInputEditText>(R.id.et_feedback)
+
+        val dialog = MaterialAlertDialogBuilder(requireContext())
             .setTitle(getString(R.string.send_feedback_question))
-            .setMessage(getString(R.string.review_current_issues_on_github))
-            .setPositiveButton(android.R.string.ok) { dialog, _ ->
-                val intent = Intent(Intent.ACTION_VIEW).apply {
-                    data = getString(R.string.github_issues_link).toUri()
+            .setView(dialogView)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.action_send) { _, _ ->
+                val feedbackText = editText.text.toString().trim()
+                if (feedbackText.isNotEmpty()) {
+                    viewModel.sendFeedback(feedbackText)
+                } else {
+                    Toasty.warning(requireContext(), getString(android.R.string.cancel), Toast.LENGTH_SHORT).show()
                 }
-                startActivity(intent)
-                dialog.dismiss()
-            }
-            .setNegativeButton(android.R.string.cancel) { dialog, _ ->
-                dialog.dismiss()
             }
             .show()
     }
