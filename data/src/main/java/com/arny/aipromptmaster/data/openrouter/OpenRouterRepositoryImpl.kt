@@ -55,7 +55,7 @@ class OpenRouterRepositoryImpl @Inject constructor(
                     // При успехе обновляем значение в StateFlow.
                     // Все подписчики на getModelsFlow() автоматически получат новый список.
                     _modelsCache.value = response.body()!!.models.map { it.toDomain() }
-                    Log.i(this::class.java.simpleName, "refreshModels: _modelsCache.value = ${_modelsCache.value.size}")
+//                    Log.i(this::class.java.simpleName, "refreshModels: _modelsCache.value = ${_modelsCache.value.size}")
                     Result.success(Unit)
                 } else {
                     // В случае ошибки сети возвращаем Failure. Кэш не трогаем.

@@ -11,6 +11,7 @@
         android:layout_height="match_parent"
         android:layout_marginBottom="?attr/actionBarSize"> <!-- Оставляем место для BottomAppBar -->
 
+        <!-- 1. Статичные фильтры. Привязаны к левому краю родителя. -->
         <com.google.android.material.chip.ChipGroup
             android:id="@+id/chipGroupFilters"
             android:layout_width="wrap_content"
@@ -38,20 +39,39 @@
 
         </com.google.android.material.chip.ChipGroup>
 
+        <!-- 2. Кнопка сортировки. Привязана к ПРАВОМУ краю родителя. -->
         <ImageButton
             android:id="@+id/btn_sort"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_marginStart="@dimen/margin_16"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="8dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@null"
+            android:contentDescription="@string/sorting"
             android:src="@android:drawable/ic_menu_sort_by_size"
-            app:iconTint="?attr/colorPrimary"
-            android:tintMode="src_in"
-            app:layout_constraintBottom_toTopOf="@+id/swipeRefresh"
-            app:layout_constraintStart_toEndOf="@+id/chipGroupFilters"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintBottom_toBottomOf="@+id/chipGroupFilters"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/chipGroupFilters" />
 
+        <!-- 3. Динамические фильтры. Занимают все место МЕЖДУ статичными и кнопкой. -->
+        <HorizontalScrollView
+            android:id="@+id/scrollViewDynamicFilters"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:scrollbars="none"
+            app:layout_constraintBottom_toBottomOf="@+id/chipGroupFilters"
+            app:layout_constraintEnd_toStartOf="@+id/btn_sort"
+            app:layout_constraintStart_toEndOf="@+id/chipGroupFilters"
+            app:layout_constraintTop_toTopOf="@+id/chipGroupFilters">
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipGroupDynamicFilters"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:singleLine="true">
+                <!-- Тестовый чип для проверки -->
+            </com.google.android.material.chip.ChipGroup>
+
+        </HorizontalScrollView>
 
         <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
             android:id="@+id/swipeRefresh"

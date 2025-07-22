@@ -143,7 +143,6 @@ class ModelsFragment : Fragment() {
     private fun observeViewModel() {
         launchWhenCreated {
             viewModel.uiState.collectLatest { state ->
-                Log.i(this::class.java.simpleName, "observeViewModel: state: $state")
                 when (state) {
                     is DataResult.Error<*> -> {
                         binding.progressBar.isVisible = false

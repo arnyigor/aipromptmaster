@@ -1,9 +1,7 @@
 package com.arny.aipromptmaster.presentation.ui.home
 
 import android.content.Context
-import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
@@ -12,7 +10,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.widget.SearchView
-import androidx.core.net.toUri
 import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -29,10 +26,10 @@ import com.arny.aipromptmaster.presentation.utils.autoClean
 import com.arny.aipromptmaster.presentation.utils.getParcelableCompat
 import com.arny.aipromptmaster.presentation.utils.hideKeyboard
 import com.arny.aipromptmaster.presentation.utils.launchWhenCreated
-import com.arny.aipromptmaster.presentation.utils.printContents
 import com.arny.aipromptmaster.presentation.utils.strings.IWrappedString
 import com.arny.aipromptmaster.presentation.utils.strings.ResourceString
 import com.arny.aipromptmaster.presentation.utils.toastMessage
+import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
@@ -110,8 +107,6 @@ class PromptsFragment : Fragment() {
                 promptsAdapter.refresh()
             }
 
-            updateChipGroup()
-
             fabAdd.setOnClickListener {
                 // TODO: Navigate to add prompt screen
             }
@@ -123,40 +118,17 @@ class PromptsFragment : Fragment() {
             btnSort.setOnClickListener {
                 viewModel.onSortButtonClicked()
             }
+
+            chipGroupFilters.setOnCheckedChangeListener { _, checkedId ->
+                when (checkedId) {
+                    R.id.chipAll -> viewModel.setStatusFilter(null) // Статус null = "Все"
+                    R.id.chipFavorites -> viewModel.setStatusFilter("favorite")
+                }
+            }
         }
         // Handle adapter load states
         promptsAdapter.addLoadStateListener { loadStates ->
             viewModel.handleLoadStates(loadStates, promptsAdapter.itemCount)
-        }
-    }
-
-    private fun FragmentHomeBinding.updateChipGroup() {
-        chipGroupFilters.setOnCheckedChangeListener { group, checkedId ->
-            // Получаем текущий поисковый запрос, чтобы не потерять его
-            // Это не самый лучший подход, лучше, чтобы ViewModel сама его хранила,
-            // но для быстрого исправления подойдет. В идеале UI не должен знать о деталях состояния.
-            // В нашей новой ViewModel это уже так, поэтому мы можем просто вызвать applyFilters.
-
-            when (checkedId) {
-                // Если выбраны "Все", мы сбрасываем фильтр по статусу
-                R.id.chipAll -> viewModel.applyFilters(
-                    category = viewModel.searchState.value.category, // Сохраняем другие фильтры
-                    status = null, // Сбрасываем только статус
-                    tags = viewModel.searchState.value.tags
-                )
-                // Если выбраны "Избранные", устанавливаем фильтр по статусу
-                R.id.chipFavorites -> viewModel.applyFilters(
-                    category = viewModel.searchState.value.category,
-                    status = "favorite", // Устанавливаем статус
-                    tags = viewModel.searchState.value.tags
-                )
-                // Если ни один чип не выбран (пользователь снял выбор)
-                View.NO_ID -> viewModel.applyFilters(
-                    category = viewModel.searchState.value.category,
-                    status = null,
-                    tags = viewModel.searchState.value.tags
-                )
-            }
         }
     }
 
@@ -185,12 +157,85 @@ class PromptsFragment : Fragment() {
             viewModel.feedbackResult.collect { result ->
                 result.fold(
                     onSuccess = {
-                        Toasty.success(requireContext(), R.string.feedback_sent_successfully, Toast.LENGTH_LONG).show()
+                        Toasty.success(
+                            requireContext(),
+                            R.string.feedback_sent_successfully,
+                            Toast.LENGTH_LONG
+                        ).show()
                     },
                     onFailure = { error ->
-                        Toasty.error(requireContext(), getString(R.string.feedback_send_error, error.message), Toast.LENGTH_LONG).show()
+                        Toasty.error(
+                            requireContext(),
+                            getString(R.string.feedback_send_error, error.message),
+                            Toast.LENGTH_LONG
+                        ).show()
                     }
                 )
+            }
+        }
+
+        launchWhenCreated {
+            viewModel.searchState.collect { state ->
+                updateDynamicFilterChips(state)
+                updateStaticFilterChips(state)
+            }
+        }
+    }
+
+// PromptsFragment.kt
+
+    private fun updateDynamicFilterChips(state: SearchState) {
+        binding.chipGroupDynamicFilters.removeAllViews()
+
+        // Добавляем чип для категории, если она выбрана
+        state.category?.let { category ->
+            val chip = createFilterChip(category)
+            binding.chipGroupDynamicFilters.addView(chip)
+        }
+        // Добавляем чипы для каждого тега
+        state.tags.forEach { tag ->
+            val chip = createFilterChip(tag)
+            binding.chipGroupDynamicFilters.addView(chip)
+        }
+    }
+
+
+    // НОВЫЙ МЕТОД для создания одного чипа
+    private fun createFilterChip(text: String): Chip {
+        return Chip(requireContext()).apply {
+            this.text = text
+            isCloseIconVisible = true
+            setOnCloseIconClickListener {
+                viewModel.removeFilter(text)
+            }
+        }
+    }
+
+    // НОВЫЙ МЕТОД для синхронизации состояния статических чипов
+    private fun updateStaticFilterChips(state: SearchState) {
+        // Временно отключаем слушатель, чтобы программное изменение не вызывало его снова
+        binding.chipGroupFilters.setOnCheckedChangeListener(null)
+
+        when {
+            // Если выбран статус "Избранное"
+            state.status == "favorite" -> {
+                binding.chipGroupFilters.check(R.id.chipFavorites)
+            }
+            // Если нет НИКАКИХ фильтров (ни статуса, ни кастомных) - выбраны "Все"
+            state.status == null && state.category == null && state.tags.isEmpty() -> {
+                binding.chipGroupFilters.check(R.id.chipAll)
+            }
+            // Если есть кастомные фильтры (категория или теги), то ни "Все", ни "Избранное" не выбраны
+            else -> {
+                binding.chipGroupFilters.clearCheck()
+            }
+        }
+
+        // Возвращаем слушатель обратно
+        binding.chipGroupFilters.setOnCheckedChangeListener { _, checkedId ->
+            when (checkedId) {
+                R.id.chipAll -> viewModel.setStatusFilter(null)
+                R.id.chipFavorites -> viewModel.setStatusFilter("favorite")
             }
         }
     }
@@ -308,29 +353,13 @@ class PromptsFragment : Fragment() {
                 }
         }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
-//
-//    private fun showFeedBackDialog() {
-//        MaterialAlertDialogBuilder(requireActivity())
-//            .setTitle(getString(R.string.send_feedback_question))
-//            .setMessage(getString(R.string.review_current_issues_on_github))
-//            .setPositiveButton(android.R.string.ok) { dialog, _ ->
-//                val intent = Intent(Intent.ACTION_VIEW).apply {
-//                    data = getString(R.string.github_issues_link).toUri()
-//                }
-//                startActivity(intent)
-//                dialog.dismiss()
-//            }
-//            .setNegativeButton(android.R.string.cancel) { dialog, _ ->
-//                dialog.dismiss()
-//            }
-//            .show()
-//    }
 
     private fun showFeedBackDialog() {
-        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_feedback, null)
+        val dialogView =
+            LayoutInflater.from(requireContext()).inflate(R.layout.dialog_feedback, null)
         val editText = dialogView.findViewById<TextInputEditText>(R.id.et_feedback)
 
-        val dialog = MaterialAlertDialogBuilder(requireContext())
+        MaterialAlertDialogBuilder(requireContext())
             .setTitle(getString(R.string.send_feedback_question))
             .setView(dialogView)
             .setNegativeButton(android.R.string.cancel, null)
@@ -339,7 +368,11 @@ class PromptsFragment : Fragment() {
                 if (feedbackText.isNotEmpty()) {
                     viewModel.sendFeedback(feedbackText)
                 } else {
-                    Toasty.warning(requireContext(), getString(android.R.string.cancel), Toast.LENGTH_SHORT).show()
+                    Toasty.warning(
+                        requireContext(),
+                        getString(android.R.string.cancel),
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
             .show()

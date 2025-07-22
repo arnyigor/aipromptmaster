@@ -107,10 +107,10 @@ class PromptSynchronizerImpl @Inject constructor(
                 try {
                     promptsRepository.savePrompts(remotePrompts)
                     setLastSyncTime(System.currentTimeMillis())
-                    Log.i(
-                        TAG,
-                        "Sync completed successfully, processed ${remotePrompts.size} prompts from remote"
-                    )
+//                    Log.i(
+//                        TAG,
+//                        "Sync completed successfully, processed ${remotePrompts.size} prompts from remote"
+//                    )
                     promptsRepository.invalidateSortDataCache()
                     // Возвращаем все обработанные удаленные промпты как успешный результат
                     SyncResult.Success(remotePrompts)
@@ -211,7 +211,7 @@ class PromptSynchronizerImpl @Inject constructor(
 
         // 4. Если есть что удалять, выполняем ОДНУ пакетную операцию
         if (idsToDelete.isNotEmpty()) {
-            Log.i(TAG, "Deleting ${idsToDelete.size} prompts that are no longer on remote.")
+//            Log.i(TAG, "Deleting ${idsToDelete.size} prompts that are no longer on remote.")
             // Вызываем метод репозитория, который внутри вызовет DAO с пакетным удалением
             promptsRepository.deletePromptsByIds(idsToDelete)
         }

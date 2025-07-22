@@ -52,6 +52,10 @@ class PromptsViewModel @AssistedInject constructor(
     private val _searchState = MutableStateFlow(SearchState())
     val searchState = _searchState.asStateFlow()
 
+    // НОВОЕ СОСТОЯНИЕ для хранения ВЫБРАННЫХ кастомных фильтров
+    private val _customFiltersState =
+        MutableStateFlow(CurrentFilters(category = null, tags = emptyList()))
+
     init {
         loadSortData()
     }
@@ -91,10 +95,8 @@ class PromptsViewModel @AssistedInject constructor(
                             categories = availableFilters.categories,
                             tags = availableFilters.tags,
                         ),
-                        currentFilters = CurrentFilters(
-                            category = _currentSortDataState.value?.category.orEmpty(),
-                            tags = _currentSortDataState.value?.tags.orEmpty(),
-                        ),
+                        // Используем наше новое состояние
+                        currentFilters = _customFiltersState.value
                     )
                 )
             }
@@ -135,24 +137,28 @@ class PromptsViewModel @AssistedInject constructor(
         _searchState.update { it.copy(query = query) }
     }
 
-    fun applyFilters(
-        category: String? = searchState.value.category,
-        status: String? = searchState.value.status,
-        tags: List<String> = searchState.value.tags,
-    ) {
+    fun removeFilter(filter: String) {
+        // Обновляем оба состояния
+        val newCustomFilters = _customFiltersState.value.let {
+            if (it.category == filter) {
+                it.copy(category = null)
+            } else {
+                it.copy(tags = it.tags.filterNot { t -> t == filter })
+            }
+        }
+        _customFiltersState.value = newCustomFilters
+
         _searchState.update { currentState ->
-            currentState.copy(
-                category = category,
-                status = when (status) {
-                    "favorite" -> "favorite"
-                    else -> null
-                },
-                tags = tags
-            )
+            if (currentState.category == filter) {
+                currentState.copy(category = null)
+            } else {
+                currentState.copy(tags = currentState.tags.filterNot { it == filter })
+            }
         }
     }
 
     fun resetSearchAndFilters() {
+        _customFiltersState.value = CurrentFilters(null, emptyList())
         _searchState.value = SearchState()
     }
 
@@ -161,7 +167,6 @@ class PromptsViewModel @AssistedInject constructor(
             _event.emit(PromptsUiEvent.SyncInProgress) // Используем event-поток
             try {
                 val result = interactor.synchronize()
-                Log.i(this::class.java.simpleName, "synchronize: result: $result")
                 when (result) {
                     is SyncResult.Success -> {
                         _event.emit(PromptsUiEvent.SyncSuccess(result.updatedPrompts.size))
@@ -230,12 +235,32 @@ class PromptsViewModel @AssistedInject constructor(
         }
     }
 
+    fun setStatusFilter(newStatus: String?) {
+        // При любом выборе статического фильтра ("Все" или "Избранное")
+        // мы должны полностью сбросить состояние кастомных фильтров.
+        _customFiltersState.value = CurrentFilters(category = null, tags = emptyList())
+
+        // А затем обновить поисковое состояние, которое также сбросит кастомные фильтры
+        // и установит нужный статус.
+        _searchState.update {
+            it.copy(
+                status = newStatus,
+                category = null,
+                tags = emptyList()
+            )
+        }
+    }
+
     fun applyFiltersFromDialog(category: String?, tags: List<String>) {
-        _currentSortDataState.value = CurrentFilters(category, tags)
-        applyFilters(
-            category = category,
-            status = searchState.value.status,
-            tags = tags
-        )
+        _customFiltersState.value = CurrentFilters(category, tags)
+
+        _searchState.update { currentState ->
+            val newState = currentState.copy(
+                category = category,
+                tags = tags,
+                status = null
+            )
+            newState // Возвращаем новый стейт
+        }
     }
 }
