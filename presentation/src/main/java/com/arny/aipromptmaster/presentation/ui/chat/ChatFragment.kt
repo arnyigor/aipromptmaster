@@ -101,6 +101,10 @@ class ChatFragment : Fragment() {
                         )
                         true
                     }
+                    R.id.action_clear_chat -> {
+                        showClearDialog()
+                        true
+                    }
 
                     else -> false
                 }
@@ -144,6 +148,9 @@ class ChatFragment : Fragment() {
                             message = message,
                             onCopyClicked = { textToCopy ->
                                 copyToClipboard(textToCopy)
+                            },
+                            onRegenerateClicked = { textToCopy ->
+                                binding.etUserInput.setText(textToCopy)
                             }
                         )
 
@@ -267,6 +274,20 @@ class ChatFragment : Fragment() {
             }.show()
     }
 
+
+    private fun showClearDialog() {
+        MaterialAlertDialogBuilder(requireActivity())
+            .setTitle("Очистить историю чата?")
+            .setMessage("При удалении истории чата удалится история разговора и ИИ модель не будет помнить о чем был разговор.")
+            .setPositiveButton(android.R.string.ok) { dialog, _ ->
+                viewModel.onRemoveChatHistory()
+                dialog.dismiss()
+            }
+            .setNegativeButton(android.R.string.cancel) { dialog, _ ->
+                dialog.dismiss()
+            }.show()
+    }
+
     private fun copyToClipboard(text: String) {
         val clipboard = context?.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
         val clip = ClipData.newPlainText("AI Response", text)
@@ -280,7 +301,7 @@ class ChatFragment : Fragment() {
 
     private fun setErrorColor(isError: Boolean) {
         if (isError) {
-            val redColor = ContextCompat.getColor(requireContext(), R.color.icon_active_red)
+            val redColor = ContextCompat.getColor(requireContext(), R.color.red_error)
             binding.btnModelSettings.setColorFilter(redColor, PorterDuff.Mode.SRC_IN)
         } else {
             binding.btnModelSettings.clearColorFilter()

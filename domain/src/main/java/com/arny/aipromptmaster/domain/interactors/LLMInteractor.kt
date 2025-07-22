@@ -30,7 +30,7 @@ class LLMInteractor @Inject constructor(
     // Определяем максимальное количество сообщений в истории.
     // 20 сообщений (10 пар "вопрос-ответ") - хороший старт.
     // Можно вынести в настройки, если хотите дать пользователю выбор.
-    private companion object {
+   private companion object {
         const val MAX_HISTORY_SIZE = 20
     }
 
@@ -38,57 +38,58 @@ class LLMInteractor @Inject constructor(
         return historyRepository.createNewConversation(title)
     }
 
+
     override suspend fun addUserMessageToHistory(conversationId: String, userMessage: String) {
-        historyRepository.addMessages(conversationId, listOf(ChatMessage(role = ChatRole.USER, content = userMessage)))
+        historyRepository.addMessages(
+            conversationId,
+            listOf(ChatMessage(role = ChatRole.USER, content = userMessage))
+        )
     }
 
-    override suspend fun addAssistantMessageToHistory(conversationId: String, assistantMessage: String) {
-        historyRepository.addMessages(conversationId, listOf(ChatMessage(role = ChatRole.ASSISTANT, content = assistantMessage)))
-    }
-
-    override suspend fun addUserMessageToHistory(conversationId: String, userMessage: String): String {
-        // 1. Определяем ID диалога. Если его нет, создаем новый.
-        val currentConversationId = conversationId ?: run {
-            val newTitle = userMessage.take(40).ifEmpty { "Новый чат" }
-            historyRepository.createNewConversation(newTitle)
-        }
-
-        // 2. Добавляем сообщение пользователя в этот диалог
-        val userChatMessage = ChatMessage(role = ChatRole.USER, content = userMessage)
-        historyRepository.addMessages(currentConversationId, listOf(userChatMessage))
-
-        // 3. Возвращаем ID, с которым мы работали (старый или новый)
-        return currentConversationId
+    override suspend fun addAssistantMessageToHistory(
+        conversationId: String,
+        assistantMessage: String
+    ) {
+        historyRepository.addMessages(
+            conversationId,
+            listOf(ChatMessage(role = ChatRole.ASSISTANT, content = assistantMessage))
+        )
     }
 
     /**
      * Отправляет сообщение, используя ограниченный контекст.
      */
-    override fun sendMessage(model: String, messages: List<ChatMessage>): Flow<DataResult<String>> = flow {
-        emit(DataResult.Loading)
-        try {
-            val apiKey = settingsRepository.getApiKey()?.trim()
-            if (apiKey.isNullOrEmpty()) {
-                emit(DataResult.Error(DomainError.Local("API ключ не указан.")))
-                return@flow
-            }
+    override fun sendMessage(model: String, conversationId: String?): Flow<DataResult<String>> =
+        flow {
+            emit(DataResult.Loading)
+            try {
+                val apiKey = settingsRepository.getApiKey()?.trim()
+                if (apiKey.isNullOrEmpty()) {
+                    emit(DataResult.Error(DomainError.Local("API ключ не указан.")))
+                    return@flow
+                }
 
-            val result = modelsRepository.getChatCompletion(model, messages, apiKey)
-            result.fold(
-                onSuccess = { response ->
-                    val content = response.choices.firstOrNull()?.message?.content
-                    if (content != null) {
-                        emit(DataResult.Success(content))
-                    } else {
-                        emit(DataResult.Error(DomainError.Generic("Пустой ответ от API")))
-                    }
-                },
-                onFailure = { exception -> emit(DataResult.Error(exception)) }
-            )
-        } catch (e: Exception) {
-            emit(DataResult.Error(DomainError.Generic(e.message)))
+                // 3. Получаем контекст для API
+                val messagesForApi = getChatHistoryFlow(conversationId)
+                    .first()
+                    .takeLast(MAX_HISTORY_SIZE)
+
+                val result = modelsRepository.getChatCompletion(model, messagesForApi, apiKey)
+                result.fold(
+                    onSuccess = { response ->
+                        val content = response.choices.firstOrNull()?.message?.content
+                        if (content != null) {
+                            emit(DataResult.Success(content))
+                        } else {
+                            emit(DataResult.Error(DomainError.Generic("Пустой ответ от API")))
+                        }
+                    },
+                    onFailure = { exception -> emit(DataResult.Error(exception)) }
+                )
+            } catch (e: Exception) {
+                emit(DataResult.Error(DomainError.Generic(e.message)))
+            }
         }
-    }
 
     override fun getChatList(): Flow<List<Chat>> {
         return historyRepository.getChatList()

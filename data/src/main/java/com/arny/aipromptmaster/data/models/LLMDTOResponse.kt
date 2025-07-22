@@ -6,7 +6,8 @@ data class ChatCompletionRequestDTO(
     val model: String,
     val messages: List<MessageDTO>,
     @SerializedName("max_tokens") val maxTokens: Int? = null,
-    val temperature: Double? = null
+    val temperature: Double? = null,
+    val stream: Boolean = false
 )
 
 data class MessageDTO(
@@ -47,6 +48,7 @@ data class ErrorMetadata(
 )
 
 data class ChoiceDTO(
+    val delta: MessageDTO?,
     val message: MessageDTO,
     @SerializedName("finish_reason") val finishReason: String? = null
 )

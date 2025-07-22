@@ -7,4 +7,9 @@
         android:icon="@drawable/ic_settings"
         android:title="@string/action_settings"
         app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/action_clear_chat"
+        android:icon="@drawable/outline_delete_history_24"
+        android:title="@string/clear_history"
+        app:showAsAction="ifRoom" />
 </menu>

@@ -8,13 +8,17 @@ import com.xwray.groupie.viewbinding.BindableItem
 
 class UserMessageItem(
     private val message: ChatMessage,
-    private val onCopyClicked: (String) -> Unit = {}
+    private val onCopyClicked: (String) -> Unit = {},
+    private val onRegenerateClicked: (String) -> Unit = {}
 ) : BindableItem<ItemUserMessageBinding>() {
 
     override fun bind(viewBinding: ItemUserMessageBinding, position: Int) {
         viewBinding.tvMessage.text = message.content
         viewBinding.btnCopy.setOnClickListener {
             onCopyClicked(message.content)
+        }
+        viewBinding.btnRegenerate.setOnClickListener {
+            onRegenerateClicked(message.content)
         }
     }
 

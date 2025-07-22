@@ -12,9 +12,8 @@ interface ILLMInteractor {
     suspend fun selectModel(id: String)
     suspend fun refreshModels(): Result<Unit>
     suspend fun toggleModelSelection(clickedModelId: String)
-    suspend fun addUserMessageToHistory(conversationId: String?, userMessage: String): String
     fun getChatHistoryFlow(conversationId: String?): Flow<List<ChatMessage>>
-    fun sendMessage(model: String, messages: List<ChatMessage>): Flow<DataResult<String>>
+    fun sendMessage(model: String, conversationId: String?): Flow<DataResult<String>>
     suspend fun clearChat(conversationId: String?)
     fun getChatList(): Flow<List<Chat>>
     suspend fun addUserMessageToHistory(conversationId: String, userMessage: String)

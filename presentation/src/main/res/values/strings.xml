@@ -62,7 +62,6 @@
     <string name="copy">Копировать</string>
     <string name="regenerate">Перегенерировать</string>
     <string name="copied_to_clipboard">Текст скопирован</string>
-    <string name="sync_success_updated_count">Обновлено промптов:%d</string>
     <string name="filters_and_sort">Фильтры и сортировка</string>
     <string name="categories">Категории</string>
     <string name="tags">Теги</string>
@@ -72,6 +71,7 @@
     <string name="reset">сбросить</string>
     <string name="reverse">обратная</string>
     <string name="filters">Фильтры</string>
+    <string name="clear_history">Очистить историю</string>
 
     <string-array name="prompt_options">
         <item>Редактировать</item>

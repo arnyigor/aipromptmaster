@@ -4,9 +4,9 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:paddingVertical="4dp"
     android:paddingStart="64dp"
-    android:paddingEnd="16dp"
-    android:paddingVertical="4dp">
+    android:paddingEnd="16dp">
 
     <TextView
         android:id="@+id/tvMessage"
@@ -21,15 +21,26 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:text="Это мое сообщение. Оно может быть довольно длинным." />
 
-    <!-- НОВАЯ КНОПКА Копировать -->
     <ImageView
         android:id="@+id/btnCopy"
         style="@style/Widget.App.ActionButton"
         android:layout_marginTop="8dp"
         android:contentDescription="@string/copy"
         android:src="@drawable/ic_content_copy"
-        app:tint="?attr/colorOnPrimary"
         app:layout_constraintEnd_toEndOf="@id/tvMessage"
-        app:layout_constraintTop_toBottomOf="@id/tvMessage" />
+        app:layout_constraintTop_toBottomOf="@id/tvMessage"
+        app:tint="?attr/colorPrimary" />
+
+    <ImageView
+        android:id="@+id/btnRegenerate"
+        style="@style/Widget.App.ActionButton"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="@dimen/margin_8"
+        android:contentDescription="@string/copy"
+        android:src="@drawable/ic_restore"
+        app:layout_constraintEnd_toEndOf="@id/tvMessage"
+        app:layout_constraintEnd_toStartOf="@+id/btnCopy"
+        app:layout_constraintTop_toBottomOf="@id/tvMessage"
+        app:tint="?attr/colorPrimary" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

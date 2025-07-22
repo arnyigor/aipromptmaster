@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/card_background">
+    android:background="?attr/colorSurface">
 
     <!-- RecyclerView для сообщений (без изменений) -->
     <androidx.recyclerview.widget.RecyclerView
@@ -25,9 +25,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        app:cardBackgroundColor="@color/colorPrimaryDark"
         app:cardElevation="8dp"
-        app:strokeColor="@color/card_stroke"
         app:strokeWidth="1dp">
 
         <androidx.constraintlayout.widget.ConstraintLayout
@@ -43,13 +41,13 @@
                 android:id="@+id/btn_model_settings"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
+                app:tint="?attr/colorPrimary"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/select_model_button_description"
                 android:src="@drawable/outline_discover_tune_24"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                app:tint="@color/colorIcon" />
+                app:layout_constraintTop_toTopOf="parent" />
 
             <!-- Поле ввода (ИЗМЕНЕНО) -->
             <com.google.android.material.textfield.TextInputEditText
@@ -65,8 +63,6 @@
                 android:minHeight="48dp"
                 android:paddingTop="12dp"
                 android:paddingBottom="12dp"
-                android:textColor="@color/textColorPrimary"
-                android:textColorHint="@color/textColorSecondary"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@id/btn_send"
                 app:layout_constraintStart_toEndOf="@id/btn_model_settings"
@@ -79,12 +75,10 @@
                 android:layout_height="wrap_content"
                 android:contentDescription="@null"
                 android:src="@android:drawable/ic_menu_send"
-                app:backgroundTint="@color/colorPrimary"
                 app:fabCustomSize="40dp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                app:tint="@color/textColorPrimary" />
+                app:layout_constraintTop_toTopOf="parent"  />
 
             <ProgressBar
                 android:id="@+id/progress_bar_send"
@@ -92,7 +86,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:elevation="8dp"
-                android:indeterminateTint="@color/colorAccent"
                 android:visibility="gone"
                 app:layout_constraintBottom_toBottomOf="@id/btn_send"
                 app:layout_constraintEnd_toEndOf="@id/btn_send"

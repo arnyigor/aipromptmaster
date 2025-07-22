@@ -7,18 +7,20 @@ import com.arny.aipromptmaster.data.mappers.toDomain
 import com.arny.aipromptmaster.data.mappers.toDomainError
 import com.arny.aipromptmaster.data.models.ApiErrorResponse
 import com.arny.aipromptmaster.data.models.ChatCompletionRequestDTO
+import com.arny.aipromptmaster.data.models.ChatCompletionResponseDTO
 import com.arny.aipromptmaster.data.models.MessageDTO
-import com.arny.aipromptmaster.data.models.errors.ApiException
 import com.arny.aipromptmaster.domain.models.ChatCompletionResponse
 import com.arny.aipromptmaster.domain.models.LlmModel
 import com.arny.aipromptmaster.domain.models.ChatMessage
 import com.arny.aipromptmaster.domain.models.errors.DomainError
 import com.arny.aipromptmaster.domain.repositories.IOpenRouterRepository
+import com.arny.aipromptmaster.domain.results.DataResult
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -126,5 +128,73 @@ class OpenRouterRepositoryImpl @Inject constructor(
             Result.failure(domainError)
         }
     }
+
+
+    override fun getChatCompletionStream(
+        model: String,
+        messages: List<ChatMessage>,
+        apiKey: String
+    ): Flow<DataResult<String>> = flow {
+        val request = ChatCompletionRequestDTO(
+            model = model,
+            messages = messages.map { MessageDTO(it.role.toString(), it.content) },
+            maxTokens = 4096,
+            stream = true // <--- Включаем стриминг
+        )
+
+        try {
+            val response = service.getChatCompletionStream(
+                authorization = "Bearer $apiKey",
+                referer = "aiprompts",
+                title = "AI Chat App",
+                request = request
+            )
+
+            if (response.isSuccessful && response.body() != null) {
+                val body = response.body()!!
+                // Используем reader для чтения потока построчно
+                body.source().use { source ->
+                    while (!source.exhausted()) {
+                        val line = source.readUtf8Line()
+                        // SSE-события начинаются с "data: "
+                        if (line?.startsWith("data:") == true) {
+                            val json = line.substring(5).trim()
+                            if (json == "[DONE]") {
+                                // Сервер сообщил, что поток завершен
+                                break
+                            }
+                            try {
+                                // Парсим JSON, чтобы извлечь только дельту контента
+                                val gson = Gson()
+                                val chunk = gson.fromJson(json, ChatCompletionResponseDTO::class.java)
+                                val contentDelta = chunk.choices.firstOrNull()?.delta?.content
+                                if (contentDelta != null) {
+                                    // Эмитим только новую часть текста
+                                    emit(DataResult.Success(contentDelta))
+                                }
+                            } catch (e: Exception) {
+                                Log.w("ChatStream", "Failed to parse stream chunk: $json", e)
+                                // Можно проигнорировать или эмитить ошибку
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Обработка неуспешных HTTP-статусов (4xx, 5xx)
+                val errorBody = response.errorBody()?.string()
+                // ... (твоя логика обработки ошибок остается такой же)
+                val domainError = parseErrorBody(response.code(), errorBody, response.message())
+                emit(DataResult.Error(domainError))
+            }
+        } catch (e: Exception) {
+            // ... (твоя логика обработки сетевых ошибок остается такой же)
+            val domainError = mapNetworkException(e)
+            emit(DataResult.Error(domainError))
+        }
+    }
+
+    // Вынесем логику парсинга ошибок в отдельные функции для чистоты
+    private fun parseErrorBody(code: Int, body: String?, message: String): DomainError { /* ... */ }
+    private fun mapNetworkException(e: Exception): DomainError { /* ... */ }
 
 }

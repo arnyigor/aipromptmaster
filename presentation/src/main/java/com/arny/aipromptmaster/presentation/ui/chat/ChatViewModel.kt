@@ -8,12 +8,12 @@ import com.arny.aipromptmaster.domain.models.errors.DomainError
 import com.arny.aipromptmaster.domain.results.DataResult
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
@@ -30,6 +30,7 @@ class ChatViewModel @AssistedInject constructor(
     private val _currentConversationId = MutableStateFlow(conversationId)
 
     // ЕДИНЫЙ ИСТОЧНИК ПРАВДЫ ДЛЯ UI
+    @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<ChatUiState> = _currentConversationId.flatMapLatest { currentId ->
         // Если ID null, мы просто возвращаем пустой поток. UI покажет пустой чат.
         val historyFlow = if (currentId != null) {
@@ -93,9 +94,13 @@ class ChatViewModel @AssistedInject constructor(
         if (userMessageText.isBlank()) return
 
         viewModelScope.launch {
-            _sendingState.update { it.copy(isLoading = true) }
+            // Устанавливаем состояние загрузки в самом начале.
+            // Также очищаем предыдущую ошибку, чтобы она не "зависла" в UI.
+            _sendingState.update { it.copy(isLoading = true, error = null) }
 
-            try {
+            // Мы используем runCatching, чтобы элегантно обработать ошибки
+            // из СИНХРОННОЙ части кода (создание чата, проверка модели).
+            val result: Result<Unit> = runCatching {
                 // 1. Убеждаемся, что у нас есть ID. Если нет - СОЗДАЕМ.
                 val conversationId = _currentConversationId.value ?: run {
                     val newTitle = userMessageText.take(40).ifEmpty { "Новый чат" }
@@ -104,34 +109,45 @@ class ChatViewModel @AssistedInject constructor(
                     newId
                 }
 
-                // 2. Теперь у нас ГАРАНТИРОВАННО есть ID. Добавляем сообщение пользователя.
+                // 2. Добавляем сообщение пользователя.
                 interactor.addUserMessageToHistory(conversationId, userMessageText)
 
-                // 3. Получаем контекст для API
-                val messagesForApi = interactor.getChatHistoryFlow(conversationId)
-                    .first()
-                    .takeLast(20)
 
                 val selectedModelId = uiState.value.selectedModel?.id
-                if (selectedModelId == null) {
-                    throw DomainError.Local("Модель не выбрана")
-                }
+                    ?: throw DomainError.Local("Модель не выбрана. Пожалуйста, выберите модель в настройках.")
 
-                // 4. Отправляем запрос в API
-                interactor.sendMessage(selectedModelId, messagesForApi)
+                // 4. Отправляем запрос в API и обрабатываем результат.
+                // Используем .collect, так как interactor возвращает Flow<DataResult>
+                interactor.sendMessage(selectedModelId, conversationId)
                     .collect { result ->
                         when (result) {
                             is DataResult.Success -> {
                                 // 5. При успехе добавляем ответ ассистента в тот же чат
                                 interactor.addAssistantMessageToHistory(conversationId, result.data)
-                                _sendingState.update { it.copy(isLoading = false, error = null) }
+                                // Успешно завершили, убираем загрузку
+                                _sendingState.update { it.copy(isLoading = false) }
                             }
-                            is DataResult.Error -> throw result.exception!!
-                            DataResult.Loading -> { /* Уже обрабатывается в начале */ }
+
+                            is DataResult.Error -> {
+                                // НЕ БРОСАЕМ ИСКЛЮЧЕНИЕ, а просто обновляем состояние с ошибкой.
+                                _sendingState.update {
+                                    it.copy(
+                                        isLoading = false,
+                                        error = result.exception
+                                    )
+                                }
+                            }
+
+                            DataResult.Loading -> { /* Уже обрабатывается в _sendingState */
+                            }
                         }
                     }
-            } catch (e: Exception) {
-                _sendingState.update { it.copy(isLoading = false, error = e) }
+            }
+
+            // Если в блоке runCatching произошла синхронная ошибка (до вызова Flow),
+            // мы перехватим ее здесь.
+            result.onFailure { exception ->
+                _sendingState.update { it.copy(isLoading = false, error = exception) }
             }
         }
     }
@@ -139,5 +155,24 @@ class ChatViewModel @AssistedInject constructor(
 
     fun errorShown() {
         _sendingState.update { it.copy(error = null) }
+    }
+
+    fun onRemoveChatHistory() {
+        // Получаем текущий ID. Если его нет, то и очищать нечего.
+        val currentId = _currentConversationId.value ?: return
+
+        viewModelScope.launch {
+            try {
+                interactor.clearChat(currentId)
+                // Если нужно показать сообщение об успехе, можно использовать для этого
+                // поле error с каким-то специальным типом Success.
+                // Например:
+                // _sendingState.update { it.copy(error = DomainSuccess("История чата очищена")) }
+            } catch (e: Exception) {
+                // Если интерактор может выбросить исключение, ловим его здесь
+                // и обновляем состояние с ошибкой.
+                _sendingState.update { it.copy(isLoading = false, error = e) }
+            }
+        }
     }
 }
