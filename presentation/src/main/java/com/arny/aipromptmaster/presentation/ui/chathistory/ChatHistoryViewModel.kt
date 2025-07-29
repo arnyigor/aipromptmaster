@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import java.util.UUID
 
-// Добавляем Interactor в конструктор
 class ChatHistoryViewModel @AssistedInject constructor(
     private val interactor: ILLMInteractor
 ) : ViewModel() {
@@ -28,11 +27,23 @@ class ChatHistoryViewModel @AssistedInject constructor(
             interactor.getChatList()
                 .onStart { _uiState.value = ChatHistoryUIState.Loading }
                 .catch { e ->
-                    _uiState.value = ChatHistoryUIState.Error(SimpleString(e.message ?: "Ошибка загрузки чатов"))
+                    _uiState.value = ChatHistoryUIState.Error(SimpleString(e.message))
                 }
                 .collect { chats ->
                     _uiState.value = ChatHistoryUIState.Success(chats)
                 }
+        }
+    }
+
+    fun deleteConversation(conversationId: String) {
+        viewModelScope.launch {
+            try {
+                interactor.deleteConversation(conversationId)
+                // Ничего больше делать не нужно! Flow сам обновит список.
+            } catch (e: Exception) {
+                // Если при удалении произойдет ошибка, покажем ее.
+                _uiState.value = ChatHistoryUIState.Error(SimpleString(e.message ?: "Ошибка удаления"))
+            }
         }
     }
 }

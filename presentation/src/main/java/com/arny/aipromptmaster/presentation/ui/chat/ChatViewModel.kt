@@ -6,56 +6,79 @@ import com.arny.aipromptmaster.domain.interactors.ILLMInteractor
 import com.arny.aipromptmaster.domain.models.LlmModel
 import com.arny.aipromptmaster.domain.models.errors.DomainError
 import com.arny.aipromptmaster.domain.results.DataResult
+import com.arny.aipromptmaster.presentation.R
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+sealed class ChatUiEvent {
+    data class ShowError(val error: Throwable) : ChatUiEvent()
+}
+
 class ChatViewModel @AssistedInject constructor(
     private val interactor: ILLMInteractor,
     @Assisted private val conversationId: String?
 ) : ViewModel() {
-    private val _sendingState = MutableStateFlow(SendingState())
+    // Приватный изменяемый StateFlow для состояния загрузки
+    private val _isLoading = MutableStateFlow(false)
 
-    // Храним ID текущего диалога
+    // Приватный SharedFlow для событий
+    private val _uiEvents = MutableSharedFlow<ChatUiEvent>()
+    val uiEvents: SharedFlow<ChatUiEvent> = _uiEvents.asSharedFlow()
+
     private val _currentConversationId = MutableStateFlow(conversationId)
 
     // ЕДИНЫЙ ИСТОЧНИК ПРАВДЫ ДЛЯ UI
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<ChatUiState> = _currentConversationId.flatMapLatest { currentId ->
-        // Если ID null, мы просто возвращаем пустой поток. UI покажет пустой чат.
+        // Если ID null, мы работаем с "пустыми" потоками
         val historyFlow = if (currentId != null) {
             interactor.getChatHistoryFlow(currentId)
         } else {
             flowOf(emptyList())
         }
+
+        // НОВЫЙ ПОТОК: получаем системный промпт
+        val systemPromptFlow = if (currentId != null) {
+            // Мы можем создать flow, который эмитит значение из suspend функции
+            flow<String?> { emit(interactor.getSystemPrompt(currentId)) }
+        } else {
+            flowOf(null) // Если ID нет, промпта тоже нет
+        }
+
+        // Усложняем combine, добавляя новый поток
         combine(
             historyFlow,
             interactor.getSelectedModel(),
-            _sendingState
-        ) { messages, modelResult, sendingState ->
-            val selectedModel = (modelResult as? DataResult.Success)?.data
-            val modelError = (modelResult as? DataResult.Error)?.exception
+            _isLoading,
+            systemPromptFlow
+        ) { messages, modelResult, isLoading, systemPrompt ->
             ChatUiState(
                 messages = messages,
-                selectedModel = selectedModel,
-                isLoading = sendingState.isLoading,
-                error = sendingState.error ?: modelError
+                selectedModel = (modelResult as? DataResult.Success)?.data,
+                isLoading = isLoading,
+                systemPrompt = systemPrompt
             )
         }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000L),
-        initialValue = ChatUiState() // Начальное пустое состояние
+        initialValue = ChatUiState()
     )
 
     private val modelsResult: StateFlow<DataResult<List<LlmModel>>> = interactor.getModels()
@@ -76,6 +99,13 @@ class ChatViewModel @AssistedInject constructor(
         )
 
     init {
+        viewModelScope.launch {
+            interactor.getSelectedModel().collect { result ->
+                if (result is DataResult.Error) {
+                    _uiEvents.emit(ChatUiEvent.ShowError(result.exception ?: DomainError.Generic("Ошибка загрузки модели")))
+                }
+            }
+        }
         refreshModels()
     }
 
@@ -91,46 +121,48 @@ class ChatViewModel @AssistedInject constructor(
     }
 
     fun sendMessage(userMessageText: String) {
-        if (userMessageText.isBlank()) return
+        if (userMessageText.isBlank() || _isLoading.value) return
 
         viewModelScope.launch {
-            // Устанавливаем состояние загрузки в самом начале.
-            // Также очищаем предыдущую ошибку, чтобы она не "зависла" в UI.
-            _sendingState.update { it.copy(isLoading = true, error = null) }
-
-            // Мы используем runCatching, чтобы элегантно обработать ошибки
-            // из СИНХРОННОЙ части кода (создание чата, проверка модели).
-            val result: Result<Unit> = runCatching {
-                // 1. Убеждаемся, что у нас есть ID. Если нет - СОЗДАЕМ.
+            _isLoading.value = true
+            try {
                 val conversationId = _currentConversationId.value ?: run {
                     val newTitle = userMessageText.take(40).ifEmpty { "Новый чат" }
                     val newId = interactor.createNewConversation(newTitle)
-                    _currentConversationId.value = newId // Обновляем состояние
+                    _currentConversationId.value = newId
                     newId
                 }
 
-                // 2. Добавляем сообщение пользователя.
                 interactor.addUserMessageToHistory(conversationId, userMessageText)
 
                 val selectedModelId = uiState.value.selectedModel?.id
-                    ?: throw DomainError.Local("Модель не выбрана. Пожалуйста, выберите модель в настройках.")
+                    ?: throw DomainError.local(R.string.title_llm_interaction_model_not_selected)
 
+                // Интерактор теперь пробрасывает ошибку (как мы делали в прошлый раз)
                 interactor.sendMessageWithFallback(selectedModelId, conversationId)
-            }
 
-            _sendingState.update { it.copy(isLoading = false) }
-
-            // Если в блоке runCatching произошла синхронная ошибка (до вызова Flow),
-            // мы перехватим ее здесь.
-            result.onFailure { exception ->
-                _sendingState.update { it.copy(isLoading = false, error = exception) }
+            } catch (e: Exception) {
+                // Ловим ошибку и превращаем ее в СОБЫТИЕ
+                _uiEvents.emit(ChatUiEvent.ShowError(e))
+            } finally {
+                // Гарантированно выключаем загрузку
+                _isLoading.value = false
             }
         }
     }
 
+    fun setSystemPrompt(prompt: String) {
+        // ID диалога должен быть известен
+        val currentId = _currentConversationId.value ?: return
 
-    fun errorShown() {
-        _sendingState.update { it.copy(error = null) }
+        viewModelScope.launch {
+            try {
+                interactor.setSystemPrompt(currentId, prompt)
+                // Можно отправить UiEvent об успехе, если нужно
+            } catch (e: Exception) {
+                _uiEvents.emit(ChatUiEvent.ShowError(e))
+            }
+        }
     }
 
     fun onRemoveChatHistory() {
@@ -147,7 +179,7 @@ class ChatViewModel @AssistedInject constructor(
             } catch (e: Exception) {
                 // Если интерактор может выбросить исключение, ловим его здесь
                 // и обновляем состояние с ошибкой.
-                _sendingState.update { it.copy(isLoading = false, error = e) }
+                _uiEvents.emit(ChatUiEvent.ShowError(e))
             }
         }
     }

@@ -77,6 +77,16 @@
     <string name="action_send">Отправить</string>
     <string name="feedback_sent_successfully">Сообщение отправлено успешно</string>
     <string name="feedback_send_error">Ошибка отправки %s</string>
+    <string name="action_system_prompt">Системный промпт</string>
+    <string name="system_prompt_dialog_title">Системный промпт</string>
+    <string name="system_prompt_dialog_message">Задайте роль или поведение для ассистента в этом чате.</string>
+    <string name="system_prompt_dialog_hint">Например: "Ты — шеф-повар из Италии"</string>
+    <string name="action_save">Сохранить</string>
+    <string name="action_cancel">Отмена</string>
+    <string name="no_messages">Нет сообщений</string>
+    <string name="delete_chat_dialog_title">Удалить чат?</string>
+    <string name="delete_chat_dialog_message">Вы уверены, что хотите удалить чат \"%1$s\"? Это действие необратимо.</string>
+    <string name="action_delete">Удалить</string>
 
     <string-array name="prompt_options">
         <item>Редактировать</item>

@@ -5,7 +5,6 @@ import android.app.Activity
 import android.app.ActivityManager
 import android.app.SearchManager
 import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Context.POWER_SERVICE
 import android.content.Intent
 import android.content.IntentFilter
@@ -26,6 +25,7 @@ import android.provider.Settings
 import android.util.DisplayMetrics
 import android.util.TypedValue
 import android.view.KeyEvent
+import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.MotionEvent
 import android.view.View
@@ -56,13 +56,31 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import coil3.load
+import com.arny.aipromptmaster.presentation.databinding.DialogEditTextBinding
 import com.arny.aipromptmaster.presentation.utils.strings.IWrappedString
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.io.File
 import kotlin.math.roundToInt
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
+
+import android.content.Context
+import com.arny.aipromptmaster.domain.models.strings.StringHolder
+
+fun StringHolder.asString(context: Context): String {
+    return when (this) {
+        is StringHolder.Text -> this.value
+        is StringHolder.Resource -> context.getString(this.id)
+        is StringHolder.Formatted -> context.getString(this.id, *this.formatArgs.toTypedArray())
+        is StringHolder.Plural -> context.resources.getQuantityString(
+            this.id,
+            this.quantity,
+            *this.formatArgs.toTypedArray()
+        )
+    }
+}
 
 fun Cursor.getStringOrDefault(
     columnName: String,
@@ -573,6 +591,11 @@ fun Fragment.toastMessage(string: IWrappedString?) {
         Toast.makeText(requireContext(), text, Toast.LENGTH_SHORT).show()
     }
 }
+fun Fragment.toastMessage(string: String?) {
+    string?.takeIf { it.isNotBlank() }?.let { text ->
+        Toast.makeText(requireContext(), text, Toast.LENGTH_SHORT).show()
+    }
+}
 
 fun Context.getDP(value: Int) = TypedValue.applyDimension(
     TypedValue.COMPLEX_UNIT_DIP, value.toFloat(),
@@ -582,3 +605,44 @@ fun Context.getDP(value: Int) = TypedValue.applyDimension(
 fun Context.isPiPAvailable() =
     Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
             && packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+
+
+/**
+ * Показывает готовый диалог с одним полем для ввода текста.
+ * Является высокоуровневой оберткой для типовой задачи.
+ *
+ * @param title Заголовок диалога.
+ * @param message Необязательное поясняющее сообщение под заголовком.
+ * @param hint Текст-подсказка для поля ввода (отображается как плавающая метка).
+ * @param prefillText **(НОВОЕ)** Текст, который будет вставлен в поле ввода изначально. Полезно для редактирования.
+ * @param positiveButtonText Текст для позитивной кнопки (по умолчанию "Готово").
+ * @param onResult Лямбда-функция, которая будет вызвана с введенным текстом. Возвращает пустую строку, если ввод пуст.
+ */
+fun Context.showInputTextDialog(
+    title: String,
+    message: String? = null,
+    hint: String? = null,
+    prefillText: String? = null,
+    positiveButtonText: String,
+    negativeButtonText: String,
+    onResult: (String) -> Unit
+) {
+    // Привязка к верстке здесь - это осознанный выбор в пользу простоты API для конкретной задачи.
+    // Для нетиповых диалогов следует использовать MaterialAlertDialogBuilder напрямую.
+    val binding = DialogEditTextBinding.inflate(LayoutInflater.from(this))
+
+    // Устанавливаем начальные значения
+    binding.textInputLayout.hint = hint
+    prefillText?.let { binding.textInputEditText.setText(it) }
+
+    MaterialAlertDialogBuilder(this)
+        .setTitle(title)
+        .setMessage(message)
+        .setView(binding.root)
+        .setNegativeButton(negativeButtonText, null)
+        .setPositiveButton(positiveButtonText) { dialog, _ ->
+            val enteredText = binding.textInputEditText.text.toString()
+            onResult(enteredText)
+        }
+        .show()
+}

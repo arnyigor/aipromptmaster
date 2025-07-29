@@ -77,3 +77,6 @@ fun ChipGroup.getMultiSelectedChipTexts(): List<String> {
         findViewById<Chip>(chipId)?.text?.toString()
     }
 }
+
+
+

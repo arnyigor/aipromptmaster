@@ -14,11 +14,9 @@ import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.DefaultItemAnimator
 import com.arny.aipromptmaster.core.di.scopes.viewModelFactory
 import com.arny.aipromptmaster.domain.models.Chat
-import com.arny.aipromptmaster.presentation.BuildConfig
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.FragmentHistoryBinding
 import com.arny.aipromptmaster.presentation.utils.autoClean
-import com.arny.aipromptmaster.presentation.utils.strings.SimpleString
 import com.arny.aipromptmaster.presentation.utils.toastMessage
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.xwray.groupie.GroupieAdapter
@@ -106,7 +104,9 @@ class ChatHistoryFragment : Fragment() {
                         }
 
                         is ChatHistoryUIState.Error -> {
-                            toastMessage(state.message)
+                            toastMessage(
+                                state.message?.toString(requireContext()) ?: "Ошибка загрузки чатов"
+                            )
                             binding.emptyView.visibility = View.VISIBLE
                         }
                     }
@@ -117,14 +117,30 @@ class ChatHistoryFragment : Fragment() {
 
     private fun createItems(chats: List<Chat>): List<ChatItem> {
         return chats.map { chat ->
-            ChatItem(chat) { clickedChat ->
-                // ИЗМЕНЯЕМ ЛОГИКУ КЛИКА
-                findNavController().navigate(
-                    // Передаем ID чата в качестве аргумента
-                    ChatHistoryFragmentDirections.actionNavHistoryToNavChat(clickedChat.id)
-                )
-            }
+            ChatItem(
+                chat = chat,
+                onClick = { clickedChat ->
+                    findNavController().navigate(
+                        ChatHistoryFragmentDirections.actionNavHistoryToNavChat(clickedChat.id)
+                    )
+                },
+                // ПЕРЕДАЕМ РЕАЛИЗАЦИЮ ДЛЯ ДОЛГОГО НАЖАТИЯ
+                onLongClick = { longClickedChat ->
+                    showDeleteConfirmationDialog(longClickedChat)
+                }
+            )
         }
+    }
+
+    private fun showDeleteConfirmationDialog(chat: Chat) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.delete_chat_dialog_title)
+            .setMessage(getString(R.string.delete_chat_dialog_message, chat.name))
+            .setNegativeButton(R.string.action_cancel, null)
+            .setPositiveButton(R.string.action_delete) { _, _ ->
+                viewModel.deleteConversation(chat.id)
+            }
+            .show()
     }
 
     override fun onDestroyView() {

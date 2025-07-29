@@ -9,5 +9,6 @@ data class ConversationEntity(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
     val title: String,
-    val lastUpdated: Long = System.currentTimeMillis()
+    val lastUpdated: Long = System.currentTimeMillis(),
+    val systemPrompt: String? = null
 )

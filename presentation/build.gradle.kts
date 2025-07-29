@@ -66,8 +66,6 @@ dependencies {
     implementation(libs.groupie.viewbinding)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.material)
-    implementation(libs.material.dialogs.core)
-    implementation(libs.material.dialogs.input)
     implementation(libs.navigation.fragment.ktx)
     implementation(libs.navigation.ui.ktx)
     implementation(libs.toasty)

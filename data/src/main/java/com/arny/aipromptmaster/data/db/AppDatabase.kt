@@ -17,10 +17,7 @@ import com.arny.aipromptmaster.data.db.entities.PromptEntity
         ConversationEntity::class,
         MessageEntity::class,
     ],
-    autoMigrations = [
-        AutoMigration(1, 2)
-    ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -63,6 +60,13 @@ abstract class AppDatabase : RoomDatabase() {
 
                 // Создаем индекс для быстрой выборки сообщений по conversationId
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_messages_conversationId` ON `messages` (`conversationId`)")
+            }
+        }
+
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Добавляем новую колонку 'systemPrompt' в таблицу 'conversations'
+                db.execSQL("ALTER TABLE conversations ADD COLUMN systemPrompt TEXT")
             }
         }
     }

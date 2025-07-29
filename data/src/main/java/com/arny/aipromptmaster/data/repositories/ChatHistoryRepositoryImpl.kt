@@ -15,6 +15,10 @@ class ChatHistoryRepositoryImpl @Inject constructor(
     private val chatDao: ChatDao
 ) : IChatHistoryRepository {
 
+    override suspend fun deleteMessage(messageId: String) {
+        chatDao.deleteMessageById(messageId)
+    }
+
     // В реализации репозитория истории
     override suspend fun addMessage(conversationId: String, message: ChatMessage): String {
         val entity = message.toEntity(conversationId) // Преобразуем в MessageEntity
@@ -55,6 +59,18 @@ class ChatHistoryRepositoryImpl @Inject constructor(
         val newConversation = ConversationEntity(title = title)
         chatDao.insertConversation(newConversation)
         return newConversation.id
+    }
+
+    override suspend fun updateSystemPrompt(conversationId: String, prompt: String) {
+        chatDao.updateSystemPrompt(conversationId, prompt)
+    }
+
+    override suspend fun deleteConversation(conversationId: String) {
+        chatDao.deleteConversationById(conversationId)
+    }
+
+    override suspend fun getSystemPrompt(conversationId: String): String? {
+        return chatDao.getSystemPrompt(conversationId)
     }
 
     // Вспомогательные функции-мапперы (можно вынести в отдельный файл ChatMapper.kt)
