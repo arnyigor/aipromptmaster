@@ -87,6 +87,7 @@
     <string name="delete_chat_dialog_title">Удалить чат?</string>
     <string name="delete_chat_dialog_message">Вы уверены, что хотите удалить чат \"%1$s\"? Это действие необратимо.</string>
     <string name="action_delete">Удалить</string>
+    <string name="action_export">Поделиться</string>
 
     <string-array name="prompt_options">
         <item>Редактировать</item>

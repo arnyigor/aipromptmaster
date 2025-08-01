@@ -138,4 +138,16 @@ interface ChatDao {
      */
     @Query("DELETE FROM conversations WHERE id = :conversationId")
     suspend fun deleteConversationById(conversationId: String)
+
+    /**
+     * Получает один диалог по его ID.
+     */
+    @Query("SELECT * FROM conversations WHERE id = :conversationId")
+    suspend fun getConversation(conversationId: String): ConversationEntity? // Nullable на случай неверного ID
+
+    /**
+     * Получает ВСЕ сообщения для диалога, отсортированные по времени.
+     */
+    @Query("SELECT * FROM messages WHERE conversationId = :conversationId ORDER BY timestamp ASC")
+    suspend fun getAllMessagesForConversation(conversationId: String): List<MessageEntity>
 }

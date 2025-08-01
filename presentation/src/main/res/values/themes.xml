@@ -25,6 +25,12 @@
 
     </style>
 
+    <style name="Theme.App.FullScreenDialog" parent="Theme.MaterialComponents.DayNight.Dialog">
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:statusBarColor">?attr/colorSurface</item>
+    </style>
+
     <style name="Widget.App.ActionButton" parent="Widget.AppCompat.ImageButton">
         <item name="android:layout_width">24dp</item>
         <item name="android:layout_height">24dp</item>

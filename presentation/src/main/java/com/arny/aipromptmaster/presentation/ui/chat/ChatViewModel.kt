@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 
 sealed class ChatUiEvent {
     data class ShowError(val error: Throwable) : ChatUiEvent()
+    data class ShareChat(val content: String) : ChatUiEvent()
 }
 
 class ChatViewModel @AssistedInject constructor(
@@ -116,6 +117,19 @@ class ChatViewModel @AssistedInject constructor(
                 (initialData is DataResult.Success && initialData.data.isEmpty())
             ) {
                 interactor.refreshModels()
+            }
+        }
+    }
+
+    fun onExportChatClicked() {
+        val currentId = _currentConversationId.value ?: return
+
+        viewModelScope.launch {
+            try {
+                val chatContent = interactor.getFullChatForExport(currentId)
+                _uiEvents.emit(ChatUiEvent.ShareChat(chatContent))
+            } catch (e: Exception) {
+                _uiEvents.emit(ChatUiEvent.ShowError(e))
             }
         }
     }

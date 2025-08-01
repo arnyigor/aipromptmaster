@@ -126,4 +126,12 @@ interface ILLMInteractor {
     suspend fun getSystemPrompt(conversationId: String): String?
 
     suspend fun deleteConversation(conversationId: String)
+
+    /**
+     * Получает полную историю чата для экспорта.
+     *
+     * @param conversationId ID диалога.
+     * @return Отформатированная строка с полной историей чата.
+     */
+    suspend fun getFullChatForExport(conversationId: String): String
 }

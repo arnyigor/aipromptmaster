@@ -6,6 +6,7 @@ import com.arny.aipromptmaster.data.db.entities.MessageEntity
 import com.arny.aipromptmaster.domain.models.Chat
 import com.arny.aipromptmaster.domain.models.ChatMessage
 import com.arny.aipromptmaster.domain.models.ChatRole
+import com.arny.aipromptmaster.domain.models.Conversation
 import com.arny.aipromptmaster.domain.repositories.IChatHistoryRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -73,6 +74,14 @@ class ChatHistoryRepositoryImpl @Inject constructor(
         return chatDao.getSystemPrompt(conversationId)
     }
 
+    override suspend fun getConversation(conversationId: String): Conversation? {
+        return chatDao.getConversation(conversationId)?.toDomain()
+    }
+
+    override suspend fun getFullHistory(conversationId: String): List<ChatMessage> {
+        return chatDao.getAllMessagesForConversation(conversationId).map { it.toDomain() }
+    }
+
     // Вспомогательные функции-мапперы (можно вынести в отдельный файл ChatMapper.kt)
     private fun MessageEntity.toDomainModel(): ChatMessage = ChatMessage(
         id = this.id,
@@ -84,6 +93,19 @@ class ChatHistoryRepositoryImpl @Inject constructor(
         id = this.id,
         conversationId = conversationId,
         role = this.role.toString(),
+        content = this.content
+    )
+
+    private fun ConversationEntity.toDomain(): Conversation = Conversation(
+        id = this.id,
+        title = this.title,
+        systemPrompt = this.systemPrompt
+    )
+
+    // У вас уже должен быть похожий маппер, убедитесь, что он есть
+    private fun MessageEntity.toDomain(): ChatMessage = ChatMessage(
+        id = this.id,
+        role = ChatRole.fromString(this.role),
         content = this.content
     )
 }

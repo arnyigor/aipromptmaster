@@ -18,4 +18,10 @@
         android:icon="@drawable/outline_discover_tune_24"
         android:title="@string/action_system_prompt"
         app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_export_chat"
+        android:icon="@android:drawable/ic_menu_share"
+        android:title="@string/action_export"
+        app:showAsAction="ifRoom" />
 </menu>

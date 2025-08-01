@@ -2,12 +2,29 @@ package com.arny.aipromptmaster.domain.repositories
 
 import com.arny.aipromptmaster.domain.models.Chat
 import com.arny.aipromptmaster.domain.models.ChatMessage
+import com.arny.aipromptmaster.domain.models.Conversation
 import kotlinx.coroutines.flow.Flow
 
 /**
  * Интерфейс для взаимодействия с репозиторием истории чата.
  */
 interface IChatHistoryRepository {
+
+    /**
+     * Получает диалог по его идентификатору.
+     *
+     * @param conversationId Уникальный идентификатор диалога.
+     * @return Объект диалога [Conversation] или null, если диалог не найден.
+     */
+    suspend fun getConversation(conversationId: String): Conversation?
+
+    /**
+     * Получает полную историю сообщений для указанного диалога.
+     *
+     * @param conversationId Уникальный идентификатор диалога.
+     * @return Список всех сообщений диалога [ChatMessage].
+     */
+    suspend fun getFullHistory(conversationId: String): List<ChatMessage>
 
     /**
      * Возвращает поток истории сообщений для указанного диалога.
@@ -95,5 +112,10 @@ interface IChatHistoryRepository {
      */
     suspend fun updateSystemPrompt(conversationId: String, prompt: String)
 
+    /**
+     * Удаляет диалог и всю связанную с ним историю.
+     *
+     * @param conversationId Уникальный идентификатор диалога для удаления.
+     */
     suspend fun deleteConversation(conversationId: String)
 }

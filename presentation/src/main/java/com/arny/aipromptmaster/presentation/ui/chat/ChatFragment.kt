@@ -3,6 +3,7 @@ package com.arny.aipromptmaster.presentation.ui.chat
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
 import android.graphics.PorterDuff
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -17,6 +18,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.setFragmentResultListener
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -28,23 +30,21 @@ import com.arny.aipromptmaster.core.di.scopes.viewModelFactory
 import com.arny.aipromptmaster.domain.models.ChatMessage
 import com.arny.aipromptmaster.domain.models.ChatRole
 import com.arny.aipromptmaster.domain.models.errors.DomainError
-import com.arny.aipromptmaster.domain.results.DataResult
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.FragmentChatBinding
+import com.arny.aipromptmaster.presentation.ui.editprompt.EditPromptDialogFragment
 import com.arny.aipromptmaster.presentation.utils.autoClean
-import com.arny.aipromptmaster.presentation.utils.launchWhenCreated
+import com.arny.aipromptmaster.presentation.utils.showInputTextDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.xwray.groupie.GroupieAdapter
 import dagger.android.support.AndroidSupportInjection
 import dagger.assisted.AssistedFactory
 import es.dmoral.toasty.Toasty
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import javax.inject.Inject
-import com.arny.aipromptmaster.presentation.utils.showInputTextDialog
 
 class ChatFragment : Fragment() {
     private var _binding: FragmentChatBinding? = null
@@ -88,6 +88,7 @@ class ChatFragment : Fragment() {
         initMenu()
         setupViews()
         observeViewModel()
+        setupFragmentResultListener()
     }
 
     private fun initMenu() {
@@ -107,16 +108,20 @@ class ChatFragment : Fragment() {
                         true
                     }
 
+                    R.id.action_export_chat -> {
+                        viewModel.onExportChatClicked()
+                        true
+                    }
+
                     R.id.action_clear_chat -> {
                         showClearDialog()
                         true
                     }
 
                     R.id.action_system_prompt -> {
-                        // Получаем текущее значение из последнего собранного state
-                        // Это уже лучше, так как мы берем его из "реактивного" контекста
                         val currentPrompt = viewModel.uiState.value.systemPrompt
-                        showSystemPromptDialog(currentPrompt)
+                        val action = ChatFragmentDirections.actionNavChatToEditPromptDialogFragment(currentPrompt)
+                        findNavController().navigate(action)
                         true
                     }
 
@@ -125,17 +130,14 @@ class ChatFragment : Fragment() {
         }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
 
-    private fun showSystemPromptDialog(initialPrompt: String?) {
-        requireContext().showInputTextDialog(
-            title = getString(R.string.system_prompt_dialog_title),
-            hint = getString(R.string.system_prompt_dialog_message),
-            prefillText = initialPrompt,
-            positiveButtonText = getString(android.R.string.ok),
-            negativeButtonText = getString(android.R.string.cancel),
-            onResult = { name ->
-                viewModel.setSystemPrompt(name)
+    private fun setupFragmentResultListener() {
+        setFragmentResultListener(EditPromptDialogFragment.REQUEST_KEY) { _, bundle ->
+            val newPrompt = bundle.getString(EditPromptDialogFragment.BUNDLE_KEY)
+            // Проверяем, что результат не null, хотя он должен всегда быть String
+            if (newPrompt != null) {
+                viewModel.setSystemPrompt(newPrompt)
             }
-        )
+        }
     }
 
     private fun setupViews() {
@@ -214,12 +216,23 @@ class ChatFragment : Fragment() {
                         viewModel.uiEvents.collect { event ->
                             when (event) {
                                 is ChatUiEvent.ShowError -> handleError(event.error)
+                                is ChatUiEvent.ShareChat -> shareChatContent(event.content)
                             }
                         }
                     }
                 }
             }
         }
+    }
+
+    private fun shareChatContent(content: String) {
+        val sendIntent: Intent = Intent().apply {
+            action = Intent.ACTION_SEND
+            putExtra(Intent.EXTRA_TEXT, content)
+            type = "text/plain"
+        }
+        val shareIntent = Intent.createChooser(sendIntent, null)
+        startActivity(shareIntent)
     }
 
     private fun updateToolbarTitle(modelName: String?) {
@@ -237,9 +250,14 @@ class ChatFragment : Fragment() {
     }
 
     private fun handleError(error: Throwable) {
+        error.printStackTrace()
         when (error) {
             is DomainError.Api -> showApiErrorDialog(error)
-            is DomainError.Local -> Toasty.error(requireContext(), error.message.orEmpty(), Toast.LENGTH_LONG)
+            is DomainError.Local -> Toasty.error(
+                requireContext(),
+                error.message.orEmpty(),
+                Toast.LENGTH_LONG
+            )
                 .show()
 
             is DomainError.Generic -> Toasty.warning(

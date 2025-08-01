@@ -7,19 +7,20 @@ import com.arny.aipromptmaster.domain.models.ChatMessage
 import com.arny.aipromptmaster.domain.models.ChatRole
 import com.arny.aipromptmaster.domain.models.LlmModel
 import com.arny.aipromptmaster.domain.models.errors.DomainError
-import com.arny.aipromptmaster.domain.models.errors.getFriendlyMessage
 import com.arny.aipromptmaster.domain.repositories.IChatHistoryRepository
 import com.arny.aipromptmaster.domain.repositories.IOpenRouterRepository
 import com.arny.aipromptmaster.domain.repositories.ISettingsRepository
 import com.arny.aipromptmaster.domain.results.DataResult
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 
 class LLMInteractor @Inject constructor(
@@ -31,7 +32,7 @@ class LLMInteractor @Inject constructor(
     // Определяем максимальное количество сообщений в истории.
     // 20 сообщений (10 пар "вопрос-ответ") - хороший старт.
     // Можно вынести в настройки, если хотите дать пользователю выбор.
-   private companion object {
+    private companion object {
         const val MAX_HISTORY_SIZE = 20
     }
 
@@ -49,6 +50,45 @@ class LLMInteractor @Inject constructor(
 
     override suspend fun deleteConversation(conversationId: String) {
         historyRepository.deleteConversation(conversationId)
+    }
+
+    override suspend fun getFullChatForExport(conversationId: String): String {
+        val conversation = historyRepository.getConversation(conversationId)
+            ?: throw DomainError.Local("Диалог не найден") // Или вернуть строку с ошибкой
+
+        val history = historyRepository.getFullHistory(conversationId)
+
+        val stringBuilder = StringBuilder()
+        val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
+
+        // --- Заголовок ---
+        stringBuilder.append("Диалог: ${conversation.title}\n")
+        stringBuilder.append("Дата экспорта: ${dateFormat.format(Date())}\n")
+
+        if (!conversation.systemPrompt.isNullOrBlank()) {
+            stringBuilder.append("\n--- СИСТЕМНЫЙ ПРОМПТ ---\n")
+            stringBuilder.append(conversation.systemPrompt)
+            stringBuilder.append("\n")
+        }
+
+        // --- История ---
+        stringBuilder.append("\n--- ИСТОРИЯ ДИАЛОГА ---\n\n")
+
+        if (history.isEmpty()) {
+            stringBuilder.append("Сообщений нет.")
+        } else {
+            history.forEach { message ->
+                val role = when (message.role) {
+                    ChatRole.USER -> "ПОЛЬЗОВАТЕЛЬ"
+                    ChatRole.ASSISTANT -> "АССИСТЕНТ"
+                    ChatRole.SYSTEM -> "СИСТЕМА" // На всякий случай
+                }
+                stringBuilder.append("[$role]:\n")
+                stringBuilder.append("${message.content}\n\n")
+            }
+        }
+
+        return stringBuilder.toString()
     }
 
     override suspend fun addUserMessageToHistory(conversationId: String, userMessage: String) {
@@ -104,10 +144,12 @@ class LLMInteractor @Inject constructor(
         }
 
     override suspend fun sendMessageWithFallback(model: String, conversationId: String?) {
-        val currentConversationId = conversationId ?: return // Или бросить ошибку, если ID null недопустим
+        val currentConversationId =
+            conversationId ?: return // Или бросить ошибку, если ID null недопустим
 
         val assistantMessage = ChatMessage(role = ChatRole.ASSISTANT, content = "")
-        val assistantMessageId = historyRepository.addMessage(currentConversationId, assistantMessage)
+        val assistantMessageId =
+            historyRepository.addMessage(currentConversationId, assistantMessage)
 
         try {
             val apiKey = settingsRepository.getApiKey()?.trim()
@@ -138,7 +180,10 @@ class LLMInteractor @Inject constructor(
             try {
                 // ... тут должна быть логика fallback, которая тоже использует messagesForApi
                 // Сейчас я ее пропущу для краткости, но она должна быть адаптирована
-                Log.e("LLMInteractor", "Streaming/preparation failed: ${e.message}. Attempting fallback.")
+                Log.e(
+                    "LLMInteractor",
+                    "Streaming/preparation failed: ${e.message}. Attempting fallback."
+                )
                 // ...
                 // В случае полного провала
                 historyRepository.deleteMessage(assistantMessageId)
@@ -164,10 +209,12 @@ class LLMInteractor @Inject constructor(
                         historyRepository.appendContentToMessage(messageId, result.data)
                         isSuccess = true // Помечаем, что хотя бы один чанк пришел
                     }
+
                     is DataResult.Error -> {
                         // Если API возвращает ошибку в потоке, пробрасываем ее дальше
                         throw result.exception ?: DomainError.Generic("Stream returned an error")
                     }
+
                     DataResult.Loading -> {}
                 }
             }

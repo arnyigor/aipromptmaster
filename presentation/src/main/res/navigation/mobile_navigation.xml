@@ -40,6 +40,9 @@
         <action
             android:id="@+id/action_nav_chat_to_modelsFragment"
             app:destination="@id/modelsFragment" />
+        <action
+            android:id="@+id/action_nav_chat_to_editPromptDialogFragment"
+            app:destination="@id/editPromptDialogFragment" />
     </fragment>
     <fragment
         android:id="@+id/promptViewFragment"
@@ -62,4 +65,13 @@
             android:id="@+id/action_modelsFragment_to_settingsFragment"
             app:destination="@id/settingsFragment" />
     </fragment>
+    <dialog
+        android:id="@+id/editPromptDialogFragment"
+        android:name="com.arny.aipromptmaster.presentation.ui.editprompt.EditPromptDialogFragment"
+        android:label="EditPromptDialogFragment" >
+        <argument
+            android:name="initialPrompt"
+            app:argType="string"
+            app:nullable="true" />
+    </dialog>
 </navigation>
