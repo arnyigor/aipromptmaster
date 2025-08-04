@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     kotlin("android")
@@ -6,6 +8,17 @@ plugins {
 }
 
 android {
+    // Загружаем переменные из .env файла, если он существует
+    val envFile = rootProject.file(".env")
+    if (envFile.exists()) {
+        val properties = Properties()
+        properties.load(envFile.inputStream())
+        properties.forEach { (key, value) ->
+            // Устанавливаем переменные как project extra properties
+            project.ext.set(key.toString(), value.toString())
+        }
+    }
+
     namespace = "com.arny.aipromptmaster"
     compileSdk = 36
     val vMajor = 0
@@ -22,10 +35,31 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            // Сначала проверяем project extra properties,
+            // а если их нет, то переменные окружения (для CI/CD).
+            val storeFile = project.findProperty("SIGNING_KEY_STORE_PATH") ?: System.getenv("SIGNING_KEY_STORE_PATH")
+            val storePassword = project.findProperty("SIGNING_KEY_STORE_PASSWORD") ?: System.getenv("SIGNING_KEY_STORE_PASSWORD")
+            val keyAlias = project.findProperty("SIGNING_KEY_ALIAS") ?: System.getenv("SIGNING_KEY_ALIAS")
+            val keyPassword = project.findProperty("SIGNING_KEY_PASSWORD") ?: System.getenv("SIGNING_KEY_PASSWORD")
+
+            if (storeFile != null) {
+                this.storeFile = file(storeFile)
+                this.storePassword = storePassword as String?
+                this.keyAlias = keyAlias as String?
+                this.keyPassword = keyPassword as String?
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+
+            // Связываем нашу release-сборку с созданной конфигурацией подписи
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
