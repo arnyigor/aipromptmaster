@@ -34,3 +34,11 @@ google-services.json
 .DS_Store
 /app/release/output-metadata.json
 schemas
+
+# Node.js / npm
+/node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp/
+.pnp.js
