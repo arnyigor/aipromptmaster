@@ -1,6 +1,6 @@
 {
   "name": "aipromptmaster",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Free and open-source tool for creating, improving, and sharing AI prompts.",
   "main": "index.js",
   "scripts": {
