@@ -2,4 +2,7 @@
 <resources>
     <string name="empty_models_list">Список моделей пуст</string>
     <string name="selected_model_not_found">Выбранная модель не найдена</string>
+    <string name="dialog_not_found">Диалог не найден</string>
+    <string name="api_key_not_found">API ключ не указан.</string>
+    <string name="empty_api_response">Пустой ответ от API</string>
 </resources>

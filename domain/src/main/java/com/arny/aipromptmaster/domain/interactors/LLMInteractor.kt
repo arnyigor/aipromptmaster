@@ -54,7 +54,7 @@ class LLMInteractor @Inject constructor(
 
     override suspend fun getFullChatForExport(conversationId: String): String {
         val conversation = historyRepository.getConversation(conversationId)
-            ?: throw DomainError.Local("Диалог не найден") // Или вернуть строку с ошибкой
+            ?: throw DomainError.local(R.string.dialog_not_found) // Или вернуть строку с ошибкой
 
         val history = historyRepository.getFullHistory(conversationId)
 
@@ -117,7 +117,7 @@ class LLMInteractor @Inject constructor(
             try {
                 val apiKey = settingsRepository.getApiKey()?.trim()
                 if (apiKey.isNullOrEmpty()) {
-                    emit(DataResult.Error(DomainError.Local("API ключ не указан.")))
+                    emit(DataResult.Error(DomainError.local(R.string.api_key_not_found)))
                     return@flow
                 }
 
@@ -133,7 +133,7 @@ class LLMInteractor @Inject constructor(
                         if (content != null) {
                             emit(DataResult.Success(content))
                         } else {
-                            emit(DataResult.Error(DomainError.Generic("Пустой ответ от API")))
+                            emit(DataResult.Error(DomainError.generic(R.string.empty_api_response)))
                         }
                     },
                     onFailure = { exception -> emit(DataResult.Error(exception)) }
