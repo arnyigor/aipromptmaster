@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.library")
     kotlin("android")
@@ -13,6 +16,18 @@ android {
     defaultConfig {
         minSdk = 23
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Читаем ключ из корневого local.properties
+        val localProperties = Properties()
+        // rootProject.file(...) - это важно, ищет файл в корне проекта, а не модуля
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            localProperties.load(FileInputStream(localPropertiesFile))
+        }
+        val apiKey = localProperties.getProperty("API_SECRET_KEY", "DEFAULT_KEY_IF_NOT_FOUND")
+
+        // Создаем поле в BuildConfig ИМЕННО ДЛЯ МОДУЛЯ :data
+        buildConfigField("String", "API_SECRET_KEY", "\"$apiKey\"")
     }
 
     buildTypes {

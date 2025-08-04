@@ -1,40 +1,40 @@
 package com.arny.aipromptmaster.data.di
 
+import com.arny.aipromptmaster.data.BuildConfig
 import com.arny.aipromptmaster.data.api.FeedbackApiService
-import com.arny.aipromptmaster.data.api.GitHubService
 import com.arny.aipromptmaster.data.api.OpenRouterService
 import com.arny.aipromptmaster.data.api.VercelApiService
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
-import com.google.gson.Gson
-import com.google.gson.GsonBuilder
 import dagger.Module
 import dagger.Provides
 import kotlinx.serialization.json.Json
+import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Qualifier
 import javax.inject.Singleton
 
 @Module
 object NetworkModule {
-    private const val GITHUB_BASE_URL = "https://api.github.com/"
     private const val OPEN_ROUTER_BASE_URL = "https://openrouter.ai/api/v1/"
-    private const val FEEDBACK_BASE_URL = "https://aipromptsapi.vercel.app/"
+    private const val VERCEL_BASE_URL = "https://aipromptsapi.vercel.app/"
 
     @Provides
     @Singleton
-    fun provideGson(): Gson = GsonBuilder().create()
+    fun provideJsonParser(): Json = Json {
+        ignoreUnknownKeys = true
+        isLenient = true
+    }
 
     @Provides
     @Singleton
+    @DefaultOkHttpClient
     fun provideOkHttpClient(): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
         }
-
         return OkHttpClient.Builder()
             .addInterceptor(logging)
             .build()
@@ -42,31 +42,35 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideJsonParser(): Json = Json {
-        ignoreUnknownKeys = true // Очень важная настройка для стабильности
-        isLenient = true // Помогает с некоторыми нестрогими JSON
-    }
+    @VercelOkHttpClient
+    fun provideVercelOkHttpClient(): OkHttpClient {
+        val logging = HttpLoggingInterceptor().apply {
+            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
+        }
 
-    @Provides
-    @Singleton
-    @GitHubRetrofit
-    fun provideGitHubRetrofit(okHttpClient: OkHttpClient, json: Json): Retrofit {
-        val contentType = "application/json".toMediaType()
-        return Retrofit.Builder()
-            .baseUrl(GITHUB_BASE_URL)
-            .client(okHttpClient)
-            .addConverterFactory(json.asConverterFactory(contentType))
+        // Создаем Interceptor, который будет добавлять наш ключ в заголовок
+        val apiKeyInterceptor = Interceptor { chain ->
+            val originalRequest = chain.request()
+            val newRequest = originalRequest.newBuilder()
+                .header("X-API-Key", BuildConfig.API_SECRET_KEY)
+                .build()
+            chain.proceed(newRequest)
+        }
+
+        return OkHttpClient.Builder()
+            .addInterceptor(logging)
+            .addInterceptor(apiKeyInterceptor)
             .build()
     }
 
     @Provides
     @Singleton
     @OpenRouterRetrofit
-    fun provideOpenRouterRetrofit(okHttpClient: OkHttpClient, json: Json): Retrofit {
+    fun provideOpenRouterRetrofit(@DefaultOkHttpClient okHttpClient: OkHttpClient, json: Json): Retrofit {
         val contentType = "application/json".toMediaType()
         return Retrofit.Builder()
             .baseUrl(OPEN_ROUTER_BASE_URL)
-            .client(okHttpClient)
+            .client(okHttpClient) // Используем ОБЩИЙ клиент
             .addConverterFactory(json.asConverterFactory(contentType))
             .build()
     }
@@ -74,55 +78,33 @@ object NetworkModule {
     @Provides
     @Singleton
     @VercelRetrofit
-    fun provideVercelApiRetrofit(json: Json, okHttpClient: OkHttpClient): Retrofit {
+    fun provideVercelApiRetrofit(json: Json, @VercelOkHttpClient okHttpClient: OkHttpClient): Retrofit {
         val contentType = "application/json".toMediaType()
         return Retrofit.Builder()
-            .baseUrl("https://aipromptsapi.vercel.app/") // Новый базовый URL
-            .client(okHttpClient)
+            .baseUrl(VERCEL_BASE_URL)
+            .client(okHttpClient) // Используем ЗАЩИЩЕННЫЙ клиент
             .addConverterFactory(json.asConverterFactory(contentType))
             .build()
     }
 
-    @Provides
-    @Singleton
-    fun provideGitHubService(@GitHubRetrofit retrofit: Retrofit): GitHubService {
-        return retrofit.create(GitHubService::class.java)
-    }
+    // --- СЕРВИСЫ ---
 
     @Provides
     @Singleton
-    fun provideOpenRouterService(@OpenRouterRetrofit retrofit: Retrofit): OpenRouterService {
-        return retrofit.create(OpenRouterService::class.java)
-    }
+    fun provideOpenRouterService(@OpenRouterRetrofit retrofit: Retrofit): OpenRouterService =
+        retrofit.create(OpenRouterService::class.java)
+
+    // VercelApiService и FeedbackApiService теперь используют один и тот же инстанс Retrofit
+    @Provides
+    @Singleton
+    fun provideVercelApiService(@VercelRetrofit retrofit: Retrofit): VercelApiService =
+        retrofit.create(VercelApiService::class.java)
 
     @Provides
     @Singleton
-    @FeedbackRetrofit
-    fun provideFeedbackRetrofit(okHttpClient: OkHttpClient, gson: Gson): Retrofit {
-        return Retrofit.Builder()
-            .baseUrl(FEEDBACK_BASE_URL)
-            .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create(gson))
-            .build()
-    }
-
-    @Provides
-    @Singleton
-    fun provideFeedbackApiService(@FeedbackRetrofit retrofit: Retrofit): FeedbackApiService {
-        return retrofit.create(FeedbackApiService::class.java)
-    }
-
-    @Provides
-    @Singleton
-    fun provideVercelApiService(@VercelRetrofit retrofit: Retrofit): VercelApiService {
-        return retrofit.create(VercelApiService::class.java)
-    }
+    fun provideFeedbackApiService(@VercelRetrofit retrofit: Retrofit): FeedbackApiService =
+        retrofit.create(FeedbackApiService::class.java)
 }
-
-// Квалификаторы для различения экземпляров Retrofit
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class GitHubRetrofit
 
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
@@ -130,8 +112,13 @@ annotation class OpenRouterRetrofit
 
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
-annotation class FeedbackRetrofit
+annotation class VercelRetrofit
+
+// Квалификаторы для разных OkHttpClient
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class DefaultOkHttpClient
 
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
-annotation class VercelRetrofit
+annotation class VercelOkHttpClient
