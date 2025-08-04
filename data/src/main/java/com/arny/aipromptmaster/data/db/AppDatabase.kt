@@ -1,6 +1,5 @@
 package com.arny.aipromptmaster.data.db
 
-import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
@@ -17,7 +16,7 @@ import com.arny.aipromptmaster.data.db.entities.PromptEntity
         ConversationEntity::class,
         MessageEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -67,6 +66,12 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // Добавляем новую колонку 'systemPrompt' в таблицу 'conversations'
                 db.execSQL("ALTER TABLE conversations ADD COLUMN systemPrompt TEXT")
+            }
+        }
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Добавляем новую колонку. NOT NULL и DEFAULT '[]' важны для стабильности.
+                db.execSQL("ALTER TABLE prompts ADD COLUMN prompt_variants_json TEXT NOT NULL DEFAULT '[]'")
             }
         }
     }

@@ -5,13 +5,13 @@ import android.app.Activity
 import android.app.ActivityManager
 import android.app.SearchManager
 import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Context.POWER_SERVICE
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
-import android.database.Cursor
 import android.graphics.Bitmap
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
@@ -46,7 +46,6 @@ import androidx.appcompat.widget.SearchView
 import androidx.appcompat.widget.Toolbar
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
-import androidx.core.database.getStringOrNull
 import androidx.core.widget.ImageViewCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
@@ -56,8 +55,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import coil3.load
+import com.arny.aipromptmaster.domain.models.strings.StringHolder
 import com.arny.aipromptmaster.presentation.databinding.DialogEditTextBinding
-import com.arny.aipromptmaster.presentation.utils.strings.IWrappedString
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -66,30 +65,15 @@ import kotlin.math.roundToInt
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
-import android.content.Context
-import com.arny.aipromptmaster.domain.models.strings.StringHolder
-
-fun StringHolder.asString(context: Context): String {
-    return when (this) {
-        is StringHolder.Text -> this.value
-        is StringHolder.Resource -> context.getString(this.id)
-        is StringHolder.Formatted -> context.getString(this.id, *this.formatArgs.toTypedArray())
-        is StringHolder.Plural -> context.resources.getQuantityString(
-            this.id,
-            this.quantity,
-            *this.formatArgs.toTypedArray()
-        )
-    }
-}
-
-fun Cursor.getStringOrDefault(
-    columnName: String,
-    default: String = "Unknown"
-): String {
-    val index = getColumnIndex(columnName)
-    return if (index >= 0) {
-        this.getStringOrNull(index) ?: default
-    } else default
+fun StringHolder.asString(context: Context): String = when (this) {
+    is StringHolder.Text -> this.value.orEmpty()
+    is StringHolder.Resource -> context.getString(this.id)
+    is StringHolder.Formatted -> context.getString(this.id, *this.formatArgs.toTypedArray())
+    is StringHolder.Plural -> context.resources.getQuantityString(
+        this.id,
+        this.quantity,
+        *this.formatArgs.toTypedArray()
+    )
 }
 
 // Хелпер для совместимости с разными версиями Android
@@ -384,6 +368,7 @@ fun Bundle.toFormattedString(indent: String = ""): String {
                 stringBuilder.append(value.toFormattedString("$indent    "))
                 stringBuilder.append("$indent}\n")
             }
+
             is Array<*> -> stringBuilder.append("Array(${value.size}) ${value.contentToString()}\n")
             is Collection<*> -> stringBuilder.append("Collection(${value.size}) $value\n")
             else -> stringBuilder.append("${value::class.simpleName} = $value\n")
@@ -586,11 +571,13 @@ fun Fragment.setupSearchView(
     return searchView
 }
 
-fun Fragment.toastMessage(string: IWrappedString?) {
-    string?.toString(requireContext()).takeIf { !it.isNullOrBlank() }?.let { text ->
+
+fun Fragment.toastMessage(holder: StringHolder?) {
+    holder?.asString(requireContext()).takeIf { !it.isNullOrBlank() }?.let { text ->
         Toast.makeText(requireContext(), text, Toast.LENGTH_SHORT).show()
     }
 }
+
 fun Fragment.toastMessage(string: String?) {
     string?.takeIf { it.isNotBlank() }?.let { text ->
         Toast.makeText(requireContext(), text, Toast.LENGTH_SHORT).show()

@@ -3,9 +3,9 @@ package com.arny.aipromptmaster.presentation.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.arny.aipromptmaster.domain.interactors.ISettingsInteractor
+import com.arny.aipromptmaster.domain.models.strings.StringHolder
+import com.arny.aipromptmaster.domain.models.strings.toErrorHolder
 import com.arny.aipromptmaster.presentation.R
-import com.arny.aipromptmaster.presentation.utils.strings.ResourceString
-import com.arny.aipromptmaster.presentation.utils.strings.SimpleString
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,13 +20,13 @@ class SettingsViewModel @AssistedInject constructor(
     fun saveApiKey(apiKey: String?) {
         viewModelScope.launch {
             if (apiKey.isNullOrBlank()) {
-                _uiState.value = SettingsUIState.Error(ResourceString(R.string.error_empty_string))
+                _uiState.value = SettingsUIState.Error(StringHolder.Resource(R.string.error_empty_string))
             } else {
                 try {
                     settingsInteractor.saveApiKey(apiKey)
                     _uiState.value = SettingsUIState.Success(apiKey)
                 } catch (e: Exception) {
-                    _uiState.value = SettingsUIState.Error(SimpleString(e.message))
+                    _uiState.value = SettingsUIState.Error(e.toErrorHolder())
                 }
             }
         }
@@ -38,7 +38,7 @@ class SettingsViewModel @AssistedInject constructor(
                 val apiKey = settingsInteractor.getApiKey()
                 _uiState.value = SettingsUIState.Success(apiKey)
             } catch (e: Exception) {
-                _uiState.value = SettingsUIState.Error(SimpleString(e.message))
+                _uiState.value = SettingsUIState.Error(e.toErrorHolder())
             }
         }
     }

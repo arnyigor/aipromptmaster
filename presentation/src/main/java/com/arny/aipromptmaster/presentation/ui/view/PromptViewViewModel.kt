@@ -3,6 +3,9 @@ package com.arny.aipromptmaster.presentation.ui.view
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.arny.aipromptmaster.domain.interactors.IPromptsInteractor
+import com.arny.aipromptmaster.domain.models.strings.StringHolder
+import com.arny.aipromptmaster.domain.models.strings.toErrorHolder
+import com.arny.aipromptmaster.presentation.R
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -32,10 +35,11 @@ class PromptViewViewModel @AssistedInject constructor(
                 if (prompt != null) {
                     _uiState.value = PromptViewUiState.Content(prompt)
                 } else {
-                    _uiState.value = PromptViewUiState.Error("Промпт не найден")
+                    _uiState.value =
+                        PromptViewUiState.Error(StringHolder.Resource(R.string.prompt_not_found))
                 }
             } catch (e: Exception) {
-                _uiState.value = PromptViewUiState.Error(e.message ?: "Неизвестная ошибка")
+                showError(e)
             }
         }
     }
@@ -55,8 +59,12 @@ class PromptViewViewModel @AssistedInject constructor(
                     _uiEvent.emit(PromptViewUiEvent.PromptUpdated(promptId))
                 }
             } catch (e: Exception) {
-                _uiState.value = PromptViewUiState.Error(e.message ?: "Неизвестная ошибка")
+                showError(e)
             }
         }
+    }
+
+    private fun showError(e: Exception) {
+        _uiState.value = PromptViewUiState.Error(e.toErrorHolder())
     }
 }

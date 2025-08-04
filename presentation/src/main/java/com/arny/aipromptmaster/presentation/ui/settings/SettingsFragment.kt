@@ -88,7 +88,7 @@ class SettingsFragment : Fragment() {
                     }
 
                     is SettingsUIState.Error -> {
-                        toastMessage(state.message)
+                        toastMessage(state.stringHolder)
                     }
                 }
             }

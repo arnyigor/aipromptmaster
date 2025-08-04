@@ -80,4 +80,7 @@ data class PromptEntity(
 
     @ColumnInfo(name = "modified_at")
     val modifiedAt: String = "",
+
+    @ColumnInfo(name = "prompt_variants_json")
+    val promptVariantsJson: String = "[]"
 )

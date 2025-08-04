@@ -38,7 +38,6 @@
     <string name="compatible_models">Совместимые модели</string>
     <string name="copy_prompt">Копировать промпт</string>
     <string name="prompt_copied">Промпт скопирован</string>
-    <string name="sync_error">Ошибка синхронизации: %s</string>
     <string name="sync_no_prompts_found">Не найдены промпты в репозитории. Проверьте структуру директорий.</string>
     <string name="sync_directory_error">Не удалось получить содержимое директории %s. Проверьте права доступа.</string>
     <string name="sync_processing_error">Ошибка при обработке файлов: %s</string>
@@ -88,6 +87,8 @@
     <string name="delete_chat_dialog_message">Вы уверены, что хотите удалить чат \"%1$s\"? Это действие необратимо.</string>
     <string name="action_delete">Удалить</string>
     <string name="action_export">Поделиться</string>
+    <string name="prompt_not_found">Промпт не найден</string>
+    <string name="remove_error">Ошибка удаления</string>
 
     <string-array name="prompt_options">
         <item>Редактировать</item>

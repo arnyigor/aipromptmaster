@@ -5,4 +5,10 @@
     <string name="dialog_not_found">Диалог не найден</string>
     <string name="api_key_not_found">API ключ не указан.</string>
     <string name="empty_api_response">Пустой ответ от API</string>
+    <string name="error_timeout">Таймаут соединения</string>
+    <string name="error_no_internet">Нет подключения к интернету</string>
+    <string name="system_error">Неизвестная ошибка</string>
+    <string name="sync_error">Ошибка синхронизации: %s</string>
+    <string name="sync_is_up_to_date">Данные уже обновлены</string>
+    <string name="unknown_error">Непредвиденная ошибка %s:</string>
 </resources>

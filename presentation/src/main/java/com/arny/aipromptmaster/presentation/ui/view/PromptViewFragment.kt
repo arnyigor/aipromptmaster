@@ -7,7 +7,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.content.ContextCompat
 import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResult
@@ -16,6 +15,7 @@ import com.arny.aipromptmaster.core.di.scopes.viewModelFactory
 import com.arny.aipromptmaster.domain.models.AppConstants
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.FragmentPromptViewBinding
+import com.arny.aipromptmaster.presentation.utils.asString
 import com.arny.aipromptmaster.presentation.utils.launchWhenCreated
 import com.google.android.material.chip.Chip
 import com.google.android.material.snackbar.Snackbar
@@ -111,7 +111,7 @@ class PromptViewFragment : Fragment() {
                     }
 
                     is PromptViewUiEvent.ShowError -> {
-                        showMessage(event.message?.toString(requireContext()).orEmpty())
+                        showMessage(event.stringHolder?.asString(requireContext()).orEmpty())
                     }
                 }
             }
@@ -150,7 +150,7 @@ class PromptViewFragment : Fragment() {
                 }
 
                 is PromptViewUiState.Error -> {
-                    showMessage(state.message)
+                    showMessage(state.stringHolder.asString(requireContext()))
                 }
 
                 else -> Unit

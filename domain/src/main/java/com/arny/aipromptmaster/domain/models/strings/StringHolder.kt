@@ -2,6 +2,7 @@ package com.arny.aipromptmaster.domain.models.strings
 
 import androidx.annotation.PluralsRes
 import androidx.annotation.StringRes
+import com.arny.aipromptmaster.domain.R
 
 sealed interface StringHolder {
 
@@ -9,7 +10,7 @@ sealed interface StringHolder {
     value class Resource(@StringRes val id: Int) : StringHolder
 
     @JvmInline
-    value class Text(val value: String) : StringHolder
+    value class Text(val value: String?) : StringHolder
 
     data class Formatted(
         @StringRes val id: Int,
@@ -22,3 +23,10 @@ sealed interface StringHolder {
         val formatArgs: List<Any> = emptyList()
     ) : StringHolder
 }
+
+
+fun Throwable.toErrorHolder(
+    @StringRes defaultRes: Int = R.string.system_error
+): StringHolder = message?.takeUnless { it.isBlank() }
+    ?.let { StringHolder.Text(it) }
+    ?: StringHolder.Resource(defaultRes)

@@ -3,15 +3,15 @@ package com.arny.aipromptmaster.presentation.ui.chathistory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.arny.aipromptmaster.domain.interactors.ILLMInteractor
-import com.arny.aipromptmaster.presentation.utils.strings.SimpleString
+import com.arny.aipromptmaster.domain.models.strings.StringHolder
+import com.arny.aipromptmaster.domain.models.strings.toErrorHolder
+import com.arny.aipromptmaster.presentation.R
 import dagger.assisted.AssistedInject
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 class ChatHistoryViewModel @AssistedInject constructor(
     private val interactor: ILLMInteractor
@@ -27,7 +27,7 @@ class ChatHistoryViewModel @AssistedInject constructor(
             interactor.getChatList()
                 .onStart { _uiState.value = ChatHistoryUIState.Loading }
                 .catch { e ->
-                    _uiState.value = ChatHistoryUIState.Error(SimpleString(e.message))
+                    _uiState.value = ChatHistoryUIState.Error(StringHolder.Text(e.message))
                 }
                 .collect { chats ->
                     _uiState.value = ChatHistoryUIState.Success(chats)
@@ -41,8 +41,7 @@ class ChatHistoryViewModel @AssistedInject constructor(
                 interactor.deleteConversation(conversationId)
                 // Ничего больше делать не нужно! Flow сам обновит список.
             } catch (e: Exception) {
-                // Если при удалении произойдет ошибка, покажем ее.
-                _uiState.value = ChatHistoryUIState.Error(SimpleString(e.message ?: "Ошибка удаления"))
+                _uiState.value = ChatHistoryUIState.Error(e.toErrorHolder(R.string.remove_error))
             }
         }
     }

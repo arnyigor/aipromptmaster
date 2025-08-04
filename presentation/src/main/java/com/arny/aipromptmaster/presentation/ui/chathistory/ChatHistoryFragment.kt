@@ -16,6 +16,7 @@ import com.arny.aipromptmaster.core.di.scopes.viewModelFactory
 import com.arny.aipromptmaster.domain.models.Chat
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.FragmentHistoryBinding
+import com.arny.aipromptmaster.presentation.utils.asString
 import com.arny.aipromptmaster.presentation.utils.autoClean
 import com.arny.aipromptmaster.presentation.utils.toastMessage
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -105,7 +106,7 @@ class ChatHistoryFragment : Fragment() {
 
                         is ChatHistoryUIState.Error -> {
                             toastMessage(
-                                state.message?.toString(requireContext()) ?: "Ошибка загрузки чатов"
+                                state.stringHolder?.asString(requireContext()) ?: "Ошибка загрузки чатов"
                             )
                             binding.emptyView.visibility = View.VISIBLE
                         }

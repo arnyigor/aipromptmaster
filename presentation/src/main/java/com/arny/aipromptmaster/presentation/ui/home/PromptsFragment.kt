@@ -20,14 +20,16 @@ import com.arny.aipromptmaster.core.di.scopes.viewModelFactory
 import com.arny.aipromptmaster.domain.models.AppConstants
 import com.arny.aipromptmaster.domain.models.Prompt
 import com.arny.aipromptmaster.domain.models.SyncConflict
+import com.arny.aipromptmaster.domain.models.strings.StringHolder
+import com.arny.aipromptmaster.domain.models.strings.StringHolder.*
 import com.arny.aipromptmaster.presentation.R
+import com.arny.aipromptmaster.domain.R as domainR
 import com.arny.aipromptmaster.presentation.databinding.FragmentHomeBinding
+import com.arny.aipromptmaster.presentation.utils.asString
 import com.arny.aipromptmaster.presentation.utils.autoClean
 import com.arny.aipromptmaster.presentation.utils.getParcelableCompat
 import com.arny.aipromptmaster.presentation.utils.hideKeyboard
 import com.arny.aipromptmaster.presentation.utils.launchWhenCreated
-import com.arny.aipromptmaster.presentation.utils.strings.IWrappedString
-import com.arny.aipromptmaster.presentation.utils.strings.ResourceString
 import com.arny.aipromptmaster.presentation.utils.toastMessage
 import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -243,19 +245,15 @@ class PromptsFragment : Fragment() {
     private fun updateEvent(event: PromptsUiEvent) {
         with(binding) {
             when (event) {
-                is PromptsUiEvent.ShowError -> {
-                    showError(event.message)
-                }
-
                 is PromptsUiEvent.SyncConflicts -> {
                     recyclerView.isVisible = true
                     showSyncConflictsDialog(event.conflicts)
                     requireActivity().invalidateOptionsMenu()
                 }
 
-                PromptsUiEvent.SyncError -> {
+                is PromptsUiEvent.ShowError -> {
                     errorView.isVisible = true
-                    tvError.text = getString(R.string.sync_error)
+                    tvError.text = event.stringHolder.asString(requireContext())
                     requireActivity().invalidateOptionsMenu()
                 }
 
@@ -271,9 +269,9 @@ class PromptsFragment : Fragment() {
                     showMessage(getString(R.string.sync_success, event.updatedCount))
                     requireActivity().invalidateOptionsMenu()
                     toastMessage(
-                        ResourceString(
+                        Formatted(
                             R.string.sync_success_updated_count,
-                            event.updatedCount
+                            listOf(event.updatedCount)
                         )
                     )
                 }
@@ -287,6 +285,15 @@ class PromptsFragment : Fragment() {
 
                 is PromptsUiEvent.PromptUpdated -> {
                     adapterRefresh()
+                }
+
+                is PromptsUiEvent.ShowInfoMessage ->{
+                    toastMessage(event.stringHolder)
+                }
+
+                PromptsUiEvent.SyncFinished -> {
+                    progressSync.isVisible = false
+                    requireActivity().invalidateOptionsMenu()
                 }
             }
         }
@@ -440,8 +447,8 @@ class PromptsFragment : Fragment() {
         promptsAdapter.refresh()
     }
 
-    private fun showError(error: IWrappedString) {
-        val errorMessage = error.toString(requireContext())
+    private fun showError(stringHolder: StringHolder) {
+        val errorMessage = stringHolder.asString(requireContext())
         with(binding) {
             // При показе ошибки скрываем все остальные состояния
             recyclerView.isVisible = false
@@ -451,7 +458,7 @@ class PromptsFragment : Fragment() {
         }
         Snackbar.make(
             binding.root,
-            errorMessage.orEmpty(),
+            errorMessage,
             Snackbar.LENGTH_LONG
         ).setAction(R.string.retry) {
             viewModel.synchronize()

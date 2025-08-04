@@ -3,10 +3,14 @@ package com.arny.aipromptmaster.data.di
 import com.arny.aipromptmaster.data.api.FeedbackApiService
 import com.arny.aipromptmaster.data.api.GitHubService
 import com.arny.aipromptmaster.data.api.OpenRouterService
+import com.arny.aipromptmaster.data.api.VercelApiService
+import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import dagger.Module
 import dagger.Provides
+import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -38,23 +42,44 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    fun provideJsonParser(): Json = Json {
+        ignoreUnknownKeys = true // Очень важная настройка для стабильности
+        isLenient = true // Помогает с некоторыми нестрогими JSON
+    }
+
+    @Provides
+    @Singleton
     @GitHubRetrofit
-    fun provideGitHubRetrofit(okHttpClient: OkHttpClient, gson: Gson): Retrofit {
+    fun provideGitHubRetrofit(okHttpClient: OkHttpClient, json: Json): Retrofit {
+        val contentType = "application/json".toMediaType()
         return Retrofit.Builder()
             .baseUrl(GITHUB_BASE_URL)
             .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create(gson))
+            .addConverterFactory(json.asConverterFactory(contentType))
             .build()
     }
 
     @Provides
     @Singleton
     @OpenRouterRetrofit
-    fun provideOpenRouterRetrofit(okHttpClient: OkHttpClient, gson: Gson): Retrofit {
+    fun provideOpenRouterRetrofit(okHttpClient: OkHttpClient, json: Json): Retrofit {
+        val contentType = "application/json".toMediaType()
         return Retrofit.Builder()
             .baseUrl(OPEN_ROUTER_BASE_URL)
             .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create(gson))
+            .addConverterFactory(json.asConverterFactory(contentType))
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    @VercelRetrofit
+    fun provideVercelApiRetrofit(json: Json, okHttpClient: OkHttpClient): Retrofit {
+        val contentType = "application/json".toMediaType()
+        return Retrofit.Builder()
+            .baseUrl("https://aipromptsapi.vercel.app/") // Новый базовый URL
+            .client(okHttpClient)
+            .addConverterFactory(json.asConverterFactory(contentType))
             .build()
     }
 
@@ -72,7 +97,7 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    @FeedbackRetrofit // <--- 4. Используем новый квалификатор
+    @FeedbackRetrofit
     fun provideFeedbackRetrofit(okHttpClient: OkHttpClient, gson: Gson): Retrofit {
         return Retrofit.Builder()
             .baseUrl(FEEDBACK_BASE_URL)
@@ -85,6 +110,12 @@ object NetworkModule {
     @Singleton
     fun provideFeedbackApiService(@FeedbackRetrofit retrofit: Retrofit): FeedbackApiService {
         return retrofit.create(FeedbackApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideVercelApiService(@VercelRetrofit retrofit: Retrofit): VercelApiService {
+        return retrofit.create(VercelApiService::class.java)
     }
 }
 
@@ -100,3 +131,7 @@ annotation class OpenRouterRetrofit
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class FeedbackRetrofit
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class VercelRetrofit

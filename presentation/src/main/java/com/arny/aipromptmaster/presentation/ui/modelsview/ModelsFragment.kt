@@ -17,6 +17,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.arny.aipromptmaster.core.di.scopes.viewModelFactory
 import com.arny.aipromptmaster.domain.models.LlmModel
+import com.arny.aipromptmaster.domain.models.strings.StringHolder
 import com.arny.aipromptmaster.domain.results.DataResult
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.FragmentModelsBinding
@@ -24,8 +25,6 @@ import com.arny.aipromptmaster.presentation.ui.models.FilterState
 import com.arny.aipromptmaster.presentation.utils.autoClean
 import com.arny.aipromptmaster.presentation.utils.hideKeyboard
 import com.arny.aipromptmaster.presentation.utils.launchWhenCreated
-import com.arny.aipromptmaster.presentation.utils.strings.ResourceString
-import com.arny.aipromptmaster.presentation.utils.strings.SimpleString
 import com.arny.aipromptmaster.presentation.utils.toastMessage
 import dagger.android.support.AndroidSupportInjection
 import dagger.assisted.AssistedFactory
@@ -150,11 +149,11 @@ class ModelsFragment : Fragment() {
                         val messageRes = state.messageRes
                         when {
                             exception != null -> {
-                                toastMessage(SimpleString(exception.message))
+                                toastMessage(StringHolder.Text(exception.message))
                             }
 
                             messageRes != null -> {
-                                toastMessage(ResourceString(messageRes))
+                                toastMessage(StringHolder.Resource(messageRes))
                             }
                         }
                     }

@@ -1,6 +1,5 @@
 package com.arny.aipromptmaster.presentation.ui.home
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.CombinedLoadStates
@@ -9,14 +8,13 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import com.arny.aipromptmaster.domain.R
 import com.arny.aipromptmaster.domain.interactors.IPromptsInteractor
 import com.arny.aipromptmaster.domain.interactors.ISettingsInteractor
 import com.arny.aipromptmaster.domain.models.Prompt
 import com.arny.aipromptmaster.domain.models.PromptsSortData
+import com.arny.aipromptmaster.domain.models.strings.StringHolder
 import com.arny.aipromptmaster.domain.repositories.SyncResult
-import com.arny.aipromptmaster.presentation.R
-import com.arny.aipromptmaster.presentation.utils.strings.ResourceString
-import com.arny.aipromptmaster.presentation.utils.strings.SimpleString
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -41,7 +39,6 @@ class PromptsViewModel @AssistedInject constructor(
 
     private val _sortDataState = MutableStateFlow<PromptsSortData?>(null)
     val sortDataState = _sortDataState.asStateFlow()
-    private val _currentSortDataState = MutableStateFlow<CurrentFilters?>(null)
 
     private val _uiState = MutableStateFlow<PromptsUiState>(PromptsUiState.Initial)
     val uiState = _uiState.asStateFlow()
@@ -52,7 +49,6 @@ class PromptsViewModel @AssistedInject constructor(
     private val _searchState = MutableStateFlow(SearchState())
     val searchState = _searchState.asStateFlow()
 
-    // НОВОЕ СОСТОЯНИЕ для хранения ВЫБРАННЫХ кастомных фильтров
     private val _customFiltersState =
         MutableStateFlow(CurrentFilters(category = null, tags = emptyList()))
 
@@ -95,7 +91,6 @@ class PromptsViewModel @AssistedInject constructor(
                             categories = availableFilters.categories,
                             tags = availableFilters.tags,
                         ),
-                        // Используем наше новое состояние
                         currentFilters = _customFiltersState.value
                     )
                 )
@@ -170,30 +165,27 @@ class PromptsViewModel @AssistedInject constructor(
                 when (result) {
                     is SyncResult.Success -> {
                         _event.emit(PromptsUiEvent.SyncSuccess(result.updatedPrompts.size))
-                        // После успешной синхронизации PagingDataAdapter сам должен будет обновиться
 
                         _searchState.value = SearchState()
                     }
 
                     is SyncResult.Error -> {
-                        _event.emit(PromptsUiEvent.SyncError)
+                        _event.emit(PromptsUiEvent.ShowError(result.stringHolder))
+                    }
+
+                    SyncResult.TooSoon ->{
                         _event.emit(
-                            PromptsUiEvent.ShowError(
-                                ResourceString(
-                                    R.string.sync_error,
-                                    result.message
-                                )
+                            PromptsUiEvent.ShowInfoMessage(
+                                StringHolder.Resource(R.string.sync_is_up_to_date)
                             )
                         )
                     }
-
-                    is SyncResult.Conflicts -> {
-                        _event.emit(PromptsUiEvent.SyncConflicts(result.conflicts))
-                    }
                 }
             } catch (e: Exception) {
-                handleError(e)
-                _event.emit(PromptsUiEvent.SyncError)
+                handleError(e) // Ваш существующий обработчик ошибок
+            } finally {
+                // Добавляем finally, чтобы всегда скрывать прогресс
+                _event.emit(PromptsUiEvent.SyncFinished)
             }
         }
     }
@@ -220,7 +212,15 @@ class PromptsViewModel @AssistedInject constructor(
     }
 
     private suspend fun handleError(error: Throwable) {
-        _event.emit(PromptsUiEvent.ShowError(SimpleString(error.message ?: "Unknown error")))
+        error.printStackTrace()
+        _event.emit(
+            PromptsUiEvent.ShowError(
+                error.message
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let(StringHolder::Text)
+                    ?: StringHolder.Resource(R.string.system_error)
+            )
+        )
     }
 
     fun updateFavorite(promptId: String?) {
