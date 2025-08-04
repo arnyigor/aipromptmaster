@@ -1,15 +1,28 @@
 {
   "name": "aipromptmaster",
   "version": "1.0.0",
-  "description": "",
+  "description": "Free and open-source tool for creating, improving, and sharing AI prompts.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "release": "standard-version"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arnyigor/aipromptmaster.git"
+  },
+  "keywords": [
+    "android",
+    "ai",
+    "prompts",
+    "kotlin"
+  ],
+  "author": "arnyigor",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/arnyigor/aipromptmaster/issues"
+  },
+  "homepage": "https://github.com/arnyigor/aipromptmaster#readme",
   "devDependencies": {
     "standard-version": "^9.5.0"
   }

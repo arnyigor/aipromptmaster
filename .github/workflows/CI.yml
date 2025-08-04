@@ -1,47 +1,53 @@
 name: Build and Release APK
 
+# ИЗМЕНЕНО: Триггер срабатывает только на теги, соответствующие семантическому версионированию.
+# Это предотвращает случайные запуски.
 on:
   push:
     tags:
-      - 'v*' # Срабатывает только на теги формата vX.X.X
-    branches:
-      - release # Ограничение на ветку release
+      - 'v[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Клонировать репозиторий
+      # 1. Клонировать репозиторий (обновлено до v4)
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # 2. Установить Java и Android SDK
+      # 2. Установить Java (обновлено до v4, дистрибутив temurin - стандарт)
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
+          distribution: 'temurin'
           java-version: '17'
+          cache: 'gradle' # Добавлено кеширование для ускорения сборок
 
-      - name: Install Android SDK
-        uses: android-actions/setup-android@v2
+      # 3. Сделать Gradle wrapper исполняемым
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
 
-      # 3. Сборка APK
+      # 4. Сборка APK (без изменений)
       - name: Build APK
         run: ./gradlew assembleRelease
 
-      # 4. Генерация changelog (опционально)
-      - name: Extract changelog for release
-        id: changelog
+      # 5. ИСПРАВЛЕНО: Динамический поиск APK-файла
+      # Этот шаг находит APK независимо от его имени и сохраняет путь для следующего шага.
+      - name: Find APK file
+        id: find_apk
         run: |
-          echo "CHANGELOG=$(awk '/^## \['${{ github.ref_name }}'\]/ {flag=1; next} /^## \[/{flag=0} flag' CHANGELOG.md)" >> $GITHUB_ENV
+          apk_path=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          echo "apk_path=$apk_path" >> $GITHUB_ENV
 
-      # 5. Создание релиза и загрузка APK
+      # 6. ИСПРАВЛЕНО: Создание релиза с помощью более простого и надежного action
       - name: Create GitHub Release
-        uses: ncipollo/release-action@v1
+        uses: softprops/action-gh-release@v2
         with:
-          artifacts: app/build/outputs/apk/release/app-release.apk # Путь к APK
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ github.ref_name }}
+          # Используем имя тега (например, v1.1.0) как имя релиза
+          tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
-          body: ${{ env.CHANGELOG }}
+          # УПРОЩЕНО: Action сам прочитает файл и вставит его содержимое в описание релиза.
+          body_path: CHANGELOG.md
+          # Указываем путь к нашему APK, который мы нашли на предыдущем шаге.
+          files: ${{ env.apk_path }}
