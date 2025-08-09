@@ -1,5 +1,7 @@
 package com.arny.aiprompts.presentation.ui.scraper
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,17 +12,33 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import com.arny.aiprompts.data.scraper.WebScraper
 import com.arny.aiprompts.domain.usecase.ScrapeWebsiteUseCase
 import com.arny.aiprompts.domain.usecase.ScraperResult
 import com.arny.aiprompts.data.scraper.PreScrapeCheck
+import com.arny.aiprompts.domain.model.PromptData
+import com.arny.aiprompts.domain.usecase.ParseHtmlUseCase
+import com.arny.aiprompts.domain.usecase.SavePromptsAsFilesUseCase
+import com.arny.aiprompts.presentation.utils.copyToClipboard
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import org.koin.java.KoinJavaComponent.getKoin
 import java.io.File
 
 @Composable
 fun ScraperTestScreen() {
+    val savePromptsAsFilesUseCase: SavePromptsAsFilesUseCase = getKoin().get()
+    var lastSavedJsonFiles by remember { mutableStateOf<List<File>>(emptyList()) }
+    val parseUseCase: ParseHtmlUseCase = getKoin().get()
+    var parsedPrompts by remember { mutableStateOf<List<PromptData>>(emptyList()) }
     val scrapeUseCase: ScrapeWebsiteUseCase = getKoin().get()
     val webScraper: WebScraper = getKoin().get()
     val scope = rememberCoroutineScope()
@@ -133,6 +151,77 @@ fun ScraperTestScreen() {
             if (inProgress) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp))
             }
+
+            Button(
+                onClick = {
+                    scope.launch {
+                        // Очищаем предыдущие результаты
+                        lastSavedJsonFiles = emptyList()
+                        parsedPrompts = emptyList()
+                        inProgress = true // Показываем индикатор на время парсинга
+                        logs = logs + "--- НАЧИНАЮ ПАРСИНГ ВСЕХ ФАЙЛОВ ---"
+
+                        // Получаем количество страниц из поля ввода, чтобы не парсить лишнего
+                        val pageCount = pagesToScrape.toIntOrNull() ?: savedFiles.size
+                        val filesToParse = savedFiles.take(pageCount)
+
+                        // Используем coroutineScope для запуска параллельных задач
+                        val parsingResults = coroutineScope {
+                            filesToParse.map { file ->
+                                // async запускает каждую задачу в отдельной корутине
+                                async(Dispatchers.IO) {
+                                    // Dispatchers.IO, т.к. чтение файла - блокирующая операция
+                                    logs = logs + "Парсинг ${file.absolutePath}..."
+                                    // Вызываем UseCase для каждого файла
+                                    parseUseCase(file)
+                                }
+                            }.awaitAll() // Ждем завершения всех задач парсинга
+                        }
+
+                        // Теперь обрабатываем результаты
+                        val allParsedPrompts = mutableListOf<PromptData>()
+                        var successCount = 0
+                        var failureCount = 0
+
+                        parsingResults.forEach { result ->
+                            result.onSuccess { promptsData ->
+                                allParsedPrompts.addAll(promptsData)
+                                successCount++
+                            }
+                                .onFailure { error ->
+                                    logs = logs + "ОШИБКА: ${error.message}"
+                                    failureCount++
+                                }
+                        }
+
+                        logs = logs + "--- ПАРСИНГ ЗАВЕРШЕН ---"
+                        logs = logs + "Успешно обработано файлов: $successCount, с ошибками: $failureCount."
+                        logs = logs + "Всего найдено промптов: ${allParsedPrompts.size}."
+
+                        parsedPrompts = allParsedPrompts
+
+                        // Если что-то удалось спарсить, сохраняем это в JSON-файлы
+                        if (allParsedPrompts.isNotEmpty()) {
+                            logs = logs + "Сохранение ${allParsedPrompts.size} промптов в JSON файлы..."
+                            savePromptsAsFilesUseCase(allParsedPrompts)
+                                .onSuccess { savedJsonFiles ->
+                                    lastSavedJsonFiles = savedJsonFiles
+                                    logs = logs + "Успешно сохранено ${savedJsonFiles.size} файлов."
+                                }
+                                .onFailure { saveError ->
+                                    logs = logs + "Ошибка сохранения файлов: ${saveError.message}"
+                                }
+                        }
+
+                        inProgress = false // Скрываем индикатор
+
+                        println(logs)
+                    }
+                },
+                enabled = savedFiles.isNotEmpty()
+            ) {
+                Text("Парсить и сохранить в JSON")
+            }
         }
 
         // Логи и результаты
@@ -150,6 +239,29 @@ fun ScraperTestScreen() {
                     )
                 }
                 items(savedFiles) { file -> Text("• ${file.name}") }
+            }
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                item {
+                    Text(
+                        "Спарсенные промпты (${parsedPrompts.size}):",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+                items(parsedPrompts) { prompt ->
+                    Text("• ${prompt.title}", style = MaterialTheme.typography.bodySmall)
+                }
+
+                item { Spacer(Modifier.height(16.dp)) }
+
+                item {
+                    Text(
+                        "Сохраненные JSON файлы (${lastSavedJsonFiles.size}):",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+                items(lastSavedJsonFiles) { file ->
+                    Text("• ${file.name}", style = MaterialTheme.typography.bodySmall)
+                }
             }
         }
     }

@@ -9,6 +9,7 @@
 # Сгенерированные файлы
 /out/
 /build/
+.kotlin
 
 schemas/
 

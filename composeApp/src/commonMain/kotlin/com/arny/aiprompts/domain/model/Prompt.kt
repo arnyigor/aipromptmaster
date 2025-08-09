@@ -1,5 +1,6 @@
 package com.arny.aiprompts.domain.model
 
+import com.arny.aiprompts.data.model.PromptMetadata
 import kotlinx.datetime.Instant
 
 data class Prompt(

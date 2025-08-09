@@ -5,7 +5,9 @@ import com.arny.aiprompts.domain.model.Author
 import com.arny.aiprompts.domain.model.Prompt
 import com.arny.aiprompts.domain.model.PromptContent
 import com.arny.aiprompts.data.model.PromptJson
-import com.arny.aiprompts.domain.model.PromptMetadata
+import com.arny.aiprompts.data.model.PromptMetadata
+import com.arny.aiprompts.data.model.Rating
+import com.arny.aiprompts.domain.model.PromptData
 import com.benasher44.uuid.uuid4 // Кросс-платформенный генератор UUID
 import kotlinx.datetime.Instant
 
@@ -24,14 +26,14 @@ fun Prompt.toEntity(): PromptEntity = PromptEntity(
     rating = rating,
     ratingVotes = ratingVotes,
     compatibleModels = compatibleModels.joinToString(),
-    author = metadata.author.name,
-    authorId = metadata.author.id,
-    source = metadata.source,
-    notes = metadata.notes,
+    author = metadata.author?.name.orEmpty(),
+    authorId = metadata.author?.id.orEmpty(),
+    source = metadata.source.orEmpty(),
+    notes = metadata.notes.orEmpty(),
     version = version,
     // Преобразуем Instant? в строку ISO 8601. Если null - пустая строка
-    createdAt = this.createdAt?.toString() ?: "",
-    modifiedAt = this.modifiedAt?.toString() ?: ""
+    createdAt = this.createdAt?.toString().orEmpty(),
+    modifiedAt = this.modifiedAt?.toString().orEmpty()
 )
 
 // Entity -> Domain
@@ -94,3 +96,24 @@ fun PromptJson.toDomain(): Prompt = Prompt(
     createdAt = createdAt?.let { Instant.parse(it) },
     modifiedAt = updatedAt?.let { Instant.parse(it) }
 )
+
+// Маппер из PromptData (результат парсинга) в PromptJson (DTO для файла)
+fun PromptData.toPromptJson(): PromptJson {
+    return PromptJson(
+        id = this.id,
+        title = this.title,
+        description = this.description,
+        content = mapOf("ru" to (this.variants.firstOrNull()?.content ?: "")),
+        category = this.category,
+        tags = this.tags,
+        status = "active",
+        metadata = PromptMetadata(
+            author = Author(id = this.author.id, name = this.author.name),
+            source = this.source
+        ),
+        // Преобразуем Instant? в строку ISO 8601. Если null - пустая строка
+        createdAt = Instant.fromEpochMilliseconds(this.createdAt).toString(),
+        updatedAt = Instant.fromEpochMilliseconds(this.updatedAt).toString(),
+        rating = Rating() // Рейтинг по умолчанию
+    )
+}

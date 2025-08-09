@@ -18,7 +18,7 @@ data class PromptJson(
     @SerialName("category") var category: String? = null,
     @SerialName("tags") var tags: List<String> = emptyList(),
     @SerialName("variables") var variables: List<PromptVariable> = emptyList(),
-    @SerialName("metadata") var metadata: Metadata? = Metadata(),
+    @SerialName("metadata") var metadata: PromptMetadata? = PromptMetadata(),
     @SerialName("rating") var rating: Rating? = Rating(),
     @SerialName("created_at") var createdAt: String? = null,
     @SerialName("updated_at") var updatedAt: String? = null
