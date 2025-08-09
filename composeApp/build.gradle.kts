@@ -85,6 +85,10 @@ kotlin {
             implementation(libs.kotlinx.coroutines.swing) // ПРАВИЛЬНОЕ МЕСТО
             implementation(libs.ktor.client.cio)
             implementation(libs.logback.classic) // Логирование для JVM
+
+            // Web Scraping Libraries
+            implementation(libs.selenium.java)
+            implementation(libs.jsoup)
         }
     }
 

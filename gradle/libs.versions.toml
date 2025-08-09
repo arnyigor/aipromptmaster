@@ -26,6 +26,9 @@ logback = "1.4.14"
 #koin
 koin = "4.0.4"
 
+selenium = "4.21.0"
+jsoup = "1.17.2"
+
 [libraries]
 # Ktor for networking
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
@@ -61,6 +64,9 @@ ktor-client-cio = { module = "io.ktor:ktor-client-cio" }
 
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 uuid = { module = "com.benasher44:uuid", version.ref = "uuid" }
+
+selenium-java = { module = "org.seleniumhq.selenium:selenium-java", version.ref = "selenium" }
+jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 
 # Logging
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }

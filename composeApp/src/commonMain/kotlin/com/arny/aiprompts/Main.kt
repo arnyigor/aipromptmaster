@@ -11,8 +11,10 @@ import com.arkivanov.decompose.extensions.compose.lifecycle.LifecycleController
 import com.arkivanov.essenty.lifecycle.LifecycleRegistry
 import com.arny.aiprompts.di.dataModule
 import com.arny.aiprompts.di.domainModule
+import com.arny.aiprompts.di.scraperModule
 import com.arny.aiprompts.presentation.navigation.DefaultRootComponent
 import com.arny.aiprompts.presentation.ui.RootContent
+import com.arny.aiprompts.presentation.ui.scraper.ScraperTestScreen
 import org.koin.core.context.startKoin
 import org.koin.java.KoinJavaComponent.getKoin
 
@@ -20,7 +22,7 @@ import org.koin.java.KoinJavaComponent.getKoin
 fun main() {
     // 1. Инициализация Koin остается здесь, это можно делать в любом потоке.
     startKoin {
-        modules(dataModule, domainModule)
+        modules(dataModule, domainModule,scraperModule)
     }
 
     // 2. Запускаем оконное приложение Compose.
@@ -53,7 +55,9 @@ fun main() {
             title = "AI Prompts"
         ) {
             // 6. Вызываем наш корневой Composable
-            RootContent(component = root)
+//            RootContent(component = root)
+            // Временно показываем наш тестовый экран
+            ScraperTestScreen()
         }
     }
 }
