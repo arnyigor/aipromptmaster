@@ -1,45 +1,32 @@
 package com.arny.aiprompts.domain.usecase
 
 import com.arny.aiprompts.data.scraper.WebScraper
-import com.arny.aiprompts.domain.model.ScrapedPost
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.channelFlow // <-- ИМПОРТИРУЕМ channelFlow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.withContext
+import java.io.File
 
 class ScrapeWebsiteUseCase(private val webScraper: WebScraper) {
-    /**
-     * Запускает скрапинг и эмитит прогресс и результат через Flow.
-     * Использует channelFlow для безопасной эмиссии данных из не-suspend коллбэка.
-     */
-    operator fun invoke(baseUrl: String, pages: Int): Flow<ScraperResult> = channelFlow {
-        // Начальное сообщение
+    operator fun invoke(baseUrl: String, pages: Int, startPage: Int): Flow<ScraperResult> = channelFlow {
         send(ScraperResult.InProgress("Начинаю процесс..."))
-
         try {
-            // Запускаем блокирующую операцию в отдельном потоке
-            val posts = withContext(Dispatchers.IO) {
-                // Вся тяжелая работа здесь
-                webScraper.scrapeUrl(baseUrl, pages) { progressMessage ->
-                    // Внутри коллбэка onProgress...
-                    // Используем trySend, чтобы не блокировать поток скрапера,
-                    // если потребитель (UI) не успевает обрабатывать сообщения.
+            val files = withContext(Dispatchers.IO) {
+                webScraper.scrapeAndSave(baseUrl, pages, startPage) { progressMessage ->
                     trySend(ScraperResult.InProgress(progressMessage))
                 }
             }
-            // Отправляем финальный успешный результат
-            send(ScraperResult.Success(posts))
+            send(ScraperResult.Success(files))
         } catch (e: Exception) {
             e.printStackTrace()
-            // Отправляем ошибку
-            send(ScraperResult.Error(e.message ?: "Неизвестная ошибка скрапинга"))
+            send(ScraperResult.Error(e.message ?: "Неизвестная ошибка"))
         }
     }
 }
 
-// Sealed-класс для представления состояний скрапинга (остается без изменений)
+// Обновляем ScraperResult, чтобы он работал с File
 sealed interface ScraperResult {
     data class InProgress(val message: String) : ScraperResult
-    data class Success(val posts: List<ScrapedPost>) : ScraperResult
+    data class Success(val files: List<File>) : ScraperResult
     data class Error(val errorMessage: String) : ScraperResult
 }
