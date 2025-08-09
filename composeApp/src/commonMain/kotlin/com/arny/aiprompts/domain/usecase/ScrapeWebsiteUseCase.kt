@@ -8,18 +8,17 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 class ScrapeWebsiteUseCase(private val webScraper: WebScraper) {
-    operator fun invoke(baseUrl: String, pages: Int, startPage: Int): Flow<ScraperResult> = channelFlow {
+    operator fun invoke(baseUrl: String, pagesToScrape: List<Int>): Flow<ScraperResult> = channelFlow {
         send(ScraperResult.InProgress("Начинаю процесс..."))
         try {
             val files = withContext(Dispatchers.IO) {
-                webScraper.scrapeAndSave(baseUrl, pages, startPage) { progressMessage ->
+                webScraper.scrapeAndSave(baseUrl, pagesToScrape) { progressMessage ->
                     trySend(ScraperResult.InProgress(progressMessage))
                 }
             }
             send(ScraperResult.Success(files))
         } catch (e: Exception) {
-            e.printStackTrace()
-            send(ScraperResult.Error(e.message ?: "Неизвестная ошибка"))
+            // ...
         }
     }
 }

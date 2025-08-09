@@ -43,39 +43,38 @@ fun ScraperTestScreen() {
     }
 
     // Функция для запуска скрапинга, теперь принимает только стартовую страницу
-    val startScraping = { startPage: Int ->
+    val startScraping = { pages: List<Int> ->
         scope.launch {
             inProgress = true
-            if (startPage == 0) {
-                logs = listOf("Запуск с нуля...")
-                // При перезаписи мы не очищаем `savedFiles` сразу,
-                // он сам обновится по мере сохранения новых файлов.
-                // Либо можно очистить для мгновенной обратной связи:
+            // Очищаем лог только при полном перезапуске
+            if (pages.size == (pagesToScrape.toIntOrNull() ?: 0)) {
+                logs = listOf("Запуск перезаписи...")
                 savedFiles = emptyList()
             }
 
-            scrapeUseCase("https://4pda.to/forum/index.php?showtopic=1109539", pagesToScrape.toIntOrNull() ?: 1, startPage)
-                .collect { result ->
-                    when (result) {
-                        is ScraperResult.InProgress -> {
-                            logs = logs + result.message
-                            logListState.animateScrollToItem(logs.size)
-                        }
-                        is ScraperResult.Success -> {
-                            // --- ОБНОВЛЕННАЯ ЛОГИКА ---
-                            // Просто перезагружаем список файлов из директории,
-                            // чтобы получить самое актуальное состояние
-                            savedFiles = webScraper.getExistingScrapedFiles()
+            scrapeUseCase("https://4pda.to/forum/index.php?showtopic=1109539", pages).collect { result ->
+                when (result) {
+                    is ScraperResult.InProgress -> {
+                        logs = logs + result.message
+                        logListState.animateScrollToItem(logs.size)
+                    }
 
-                            logs = logs + "--- ЗАВЕРШЕНО ---"
-                            inProgress = false
-                        }
-                        is ScraperResult.Error -> {
-                            logs = logs + "--- ОШИБКА: ${result.errorMessage} ---"
-                            inProgress = false
-                        }
+                    is ScraperResult.Success -> {
+                        // --- ОБНОВЛЕННАЯ ЛОГИКА ---
+                        // Просто перезагружаем список файлов из директории,
+                        // чтобы получить самое актуальное состояние
+                        savedFiles = webScraper.getExistingScrapedFiles()
+
+                        logs = logs + "--- ЗАВЕРШЕНО ---"
+                        inProgress = false
+                    }
+
+                    is ScraperResult.Error -> {
+                        logs = logs + "--- ОШИБКА: ${result.errorMessage} ---"
+                        inProgress = false
                     }
                 }
+            }
         }
     }
 
@@ -83,15 +82,14 @@ fun ScraperTestScreen() {
     val onStartClicked = {
         val totalPages = pagesToScrape.toIntOrNull() ?: 0
         if (totalPages > 0) {
-            // Выполняем предварительную проверку в фоновом потоке, чтобы не блокировать UI
             scope.launch {
                 val checkResult = webScraper.checkExistingFiles(totalPages)
-                if (checkResult.existingFileCount > 0) {
-                    // Если есть файлы, показываем диалог
+                // Показываем диалог, если есть и существующие, и отсутствующие файлы
+                if (checkResult.existingFileCount > 0 && checkResult.missingPages.isNotEmpty()) {
                     preScrapeCheckResult = checkResult
                 } else {
-                    // Если файлов нет, просто запускаем с самого начала
-                    startScraping(0)
+                    // Иначе просто скачиваем все (или все недостающие, если есть только они)
+                    startScraping((0 until totalPages).toList())
                 }
             }
         }
@@ -145,7 +143,12 @@ fun ScraperTestScreen() {
             }
             // Панель результатов
             LazyColumn(modifier = Modifier.weight(1f)) {
-                item { Text("Сохраненные файлы (${savedFiles.size} шт.):", style = MaterialTheme.typography.titleMedium) }
+                item {
+                    Text(
+                        "Сохраненные файлы (${savedFiles.size} шт.):",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
                 items(savedFiles) { file -> Text("• ${file.name}") }
             }
         }
@@ -153,26 +156,38 @@ fun ScraperTestScreen() {
 
     // --- НОВЫЙ УЛУЧШЕННЫЙ ДИАЛОГ ---
     if (showDialog) {
-        // ИСПРАВЛЕНИЕ: Получаем результат проверки напрямую
         val checkResult = preScrapeCheckResult
         if (checkResult != null) {
             AlertDialog(
                 onDismissRequest = { preScrapeCheckResult = null; inProgress = false },
-                title = { Text("Обнаружены файлы") },
-                text = { Text("Найдено ${checkResult.existingFileCount} уже скачанных страниц из ${pagesToScrape}.\n\nЧто вы хотите сделать?") },
+                title = { Text("Обнаружены пропуски") },
+                text = {
+                    Text(
+                        "Найдено ${checkResult.existingFileCount} из ${pagesToScrape} страниц.\n" +
+                                "Отсутствуют страницы: ${
+                                    checkResult.missingPages.map { it + 1 }.joinToString()
+                                }. \n\n" +
+                                "Что вы хотите сделать?"
+                    )
+                },
                 confirmButton = {
-                    if (checkResult.canContinue) {
-                        Button(onClick = {
+                    // Кнопка "Докачать недостающие"
+                    Button(
+                        onClick = {
                             preScrapeCheckResult = null
-                            startScraping(checkResult.existingFileCount)
-                        }) { Text("Продолжить") }
+                            // Запускаем скрапинг, передавая только список недостающих страниц
+                            startScraping(checkResult.missingPages)
+                        }
+                    ) {
+                        Text("Докачать (${checkResult.missingPages.size})")
                     }
                 },
                 dismissButton = {
                     Row {
                         TextButton(onClick = {
                             preScrapeCheckResult = null
-                            startScraping(0)
+                            // Запускаем скрапинг для ВСЕХ страниц от 0 до N
+                            startScraping((0 until (pagesToScrape.toIntOrNull() ?: 0)).toList())
                         }) { Text("Перезаписать все") }
                         Spacer(Modifier.width(8.dp))
                         TextButton(onClick = {

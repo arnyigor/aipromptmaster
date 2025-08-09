@@ -14,22 +14,21 @@ import java.nio.charset.StandardCharsets
 interface WebScraper {
     fun getSaveDirectory(): File
     fun openSaveDirectory()
-    // Новый метод для предварительной проверки
-    fun checkExistingFiles(pages: Int): PreScrapeCheck
+    // Метод проверки теперь возвращает новую структуру
+    fun checkExistingFiles(totalPages: Int): PreScrapeCheck
     fun getExistingScrapedFiles(): List<File>
-    // Метод скрапинга теперь принимает начальную страницу
+    // Метод скрапинга теперь принимает список страниц для скачивания
     fun scrapeAndSave(
         baseUrl: String,
-        pages: Int,
-        startPage: Int, // Начинаем с этой страницы (индекс с 0)
+        pagesToScrape: List<Int>, // Например, [0, 1, 4, 5]
         onProgress: (String) -> Unit
     ): List<File>
 }
 
-// Создадим небольшой data class для передачи результата проверки
+// Обновляем PreScrapeCheck, чтобы он хранил список недостающих страниц
 data class PreScrapeCheck(
     val existingFileCount: Int,
-    val canContinue: Boolean // True, если есть что продолжать
+    val missingPages: List<Int> // Список номеров страниц (с 0)
 )
 
 class SeleniumWebScraper : WebScraper {
@@ -64,31 +63,33 @@ class SeleniumWebScraper : WebScraper {
     }
 
 
-    // --- НОВЫЙ МЕТОД ПРОВЕРКИ ---
-    override fun checkExistingFiles(pages: Int): PreScrapeCheck {
+    // --- НОВЫЙ, УМНЫЙ МЕТОД ПРОВЕРКИ ---
+    override fun checkExistingFiles(totalPages: Int): PreScrapeCheck {
         val saveDir = getSaveDirectory()
-        var lastFoundPage = -1
-        for (i in 0 until pages) {
-            if (File(saveDir, "page_${i + 1}.html").exists()) {
-                lastFoundPage = i
+        val missing = mutableListOf<Int>()
+        var existingCount = 0
+
+        for (pageNum in 0 until totalPages) {
+            if (File(saveDir, "page_${pageNum + 1}.html").exists()) {
+                existingCount++
             } else {
-                // Прерываемся, как только нашли "дырку" в последовательности
-                break
+                missing.add(pageNum)
             }
         }
-        val existingCount = lastFoundPage + 1
-        return PreScrapeCheck(
-            existingFileCount = existingCount,
-            canContinue = existingCount > 0 && existingCount < pages
-        )
+        return PreScrapeCheck(existingCount, missing)
     }
 
     override fun scrapeAndSave(
         baseUrl: String,
-        pages: Int,
-        startPage: Int,
+        pagesToScrape: List<Int>,
         onProgress: (String) -> Unit
     ): List<File> {
+        if (pagesToScrape.isEmpty()) {
+            onProgress("Нет страниц для скачивания.")
+            return emptyList()
+        }
+        onProgress("Запускаю скачивание для ${pagesToScrape.size} страниц: ${pagesToScrape.map { it + 1 }}")
+
         val saveDir = getSaveDirectory()
         onProgress("Сохранение в директорию: ${saveDir.absolutePath}")
 
@@ -103,8 +104,8 @@ class SeleniumWebScraper : WebScraper {
         val savedFiles = mutableListOf<File>()
 
         try {
-            // Начинаем цикл с правильной страницы
-            for (pageNum in startPage until pages) {
+            // Итерируемся по списку нужных нам страниц
+            for (pageNum in pagesToScrape) {
                 val startOffset = pageNum * 20
                 val pageUrl = "$baseUrl&st=$startOffset"
                 val targetFile = File(saveDir, "page_${pageNum + 1}.html")
