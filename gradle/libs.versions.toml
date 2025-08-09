@@ -1,0 +1,77 @@
+# aiprompts-kmp/gradle/libs.versions.toml
+
+[versions]
+# Core
+kotlin = "2.2.0"
+compose-plugin = "1.8.2"
+decompose ="3.3.0"
+lifecycle-coroutines ="2.5.0"
+icons = "1.7.2"
+# Android (не используется сейчас, но полезно для будущего)
+agp = "8.2.2"
+android-compileSdk = "34"
+android-minSdk = "24"
+androidx-activity = "1.8.2"
+ksp = "2.2.0-2.0.2"
+# Libraries
+ktor = "3.1.3"
+room = "2.7.2"
+sqlite-bundled = "2.5.2"
+kotlinx-serialization = "1.9.0"
+kotlinx-coroutines = "1.10.2"
+kotlinx-datetime = "0.6.2"
+uuid = "0.8.4"
+# Logging
+logback = "1.4.14"
+#koin
+koin = "4.0.4"
+
+[libraries]
+# Ktor for networking
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
+compose-material-icons-extended = { group = "org.jetbrains.compose.material", name = "material-icons-extended", version.ref = "icons" }
+
+# --- ROOM ---
+androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite-bundled" }
+
+# --- DECOMPOSE ---
+decompose = { module = "com.arkivanov.decompose:decompose", version.ref = "decompose" }
+decompose-extensions-compose = { module = "com.arkivanov.decompose:extensions-compose", version.ref = "decompose" }
+lifecycle-coroutines = { module = "com.arkivanov.essenty:lifecycle-coroutines", version.ref = "lifecycle-coroutines" }
+
+# --- KOIN ---
+koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
+koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
+koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
+koin-androidx-compose = { group = "io.insert-koin", name = "koin-androidx-compose", version.ref = "koin" }
+
+# --- KTOR ---
+ktor-bom = { module = "io.ktor:ktor-bom", version.ref = "ktor" }
+ktor-client-core = { module = "io.ktor:ktor-client-core" }
+ktor-client-logging = { module = "io.ktor:ktor-client-logging" }
+ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation" }
+ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json" }
+ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp" }
+ktor-client-cio = { module = "io.ktor:ktor-client-cio" }
+
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
+uuid = { module = "com.benasher44:uuid", version.ref = "uuid" }
+
+# Logging
+logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+
+[plugins]
+# Core plugins
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+compose = { id = "org.jetbrains.compose", version.ref = "compose-plugin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+room = { id = "androidx.room", version.ref = "room" }
+kotlinx-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlinx-serialization" }
+# Android (не используется сейчас, но полезно для будущего)
+android-application = { id = "com.android.application", version.ref = "agp" }
