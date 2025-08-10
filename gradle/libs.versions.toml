@@ -26,6 +26,10 @@ logback = "1.4.14"
 #koin
 koin = "4.0.4"
 
+junit = "4.13.2"
+truth = "1.4.2"
+mockk = "1.13.11"
+
 selenium = "4.21.0"
 jsoup = "1.17.2"
 
@@ -67,6 +71,11 @@ uuid = { module = "com.benasher44:uuid", version.ref = "uuid" }
 
 selenium-java = { module = "org.seleniumhq.selenium:selenium-java", version.ref = "selenium" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
+
+# --- Testing ---
+junit = { module = "junit:junit", version.ref = "junit" }
+truth = { module = "com.google.truth:truth", version.ref = "truth" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 
 # Logging
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }

@@ -26,6 +26,16 @@ kotlin {
 
     sourceSets {
         val desktopMain by getting
+        // --- НОВАЯ СЕКЦИЯ ДЛЯ ТЕСТОВ ---
+        val desktopTest by getting {
+            dependencies {
+                implementation(libs.junit)
+                implementation(libs.truth)
+                implementation(libs.mockk)
+                // Зависимость на основной код, чтобы тесты его "видели"
+                implementation(kotlin("test"))
+            }
+        }
 
         commonMain.dependencies {
             // Здесь общие зависимости, доступные на всех платформах
