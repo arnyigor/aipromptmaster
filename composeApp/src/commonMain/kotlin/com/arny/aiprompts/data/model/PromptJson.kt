@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 data class PromptJson(
 
     @SerialName("id") var id: String? = null,
+    @SerialName("source_id") var sourceId: String? = null,
     @SerialName("title") var title: String? = null,
     @SerialName("version") var version: String? = null,
     @SerialName("status") var status: String? = null,

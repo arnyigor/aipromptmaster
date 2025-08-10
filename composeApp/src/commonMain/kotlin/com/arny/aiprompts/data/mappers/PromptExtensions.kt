@@ -99,6 +99,8 @@ fun PromptJson.toDomain(): Prompt = Prompt(
 
 // Маппер из PromptData (результат парсинга) в PromptJson (DTO для файла)
 fun PromptData.toPromptJson(): PromptJson {
+    val createdAtString = Instant.fromEpochMilliseconds(this.createdAt).toString().removeSuffix("Z")
+    val updatedAtString = Instant.fromEpochMilliseconds(this.updatedAt).toString().removeSuffix("Z")
     return PromptJson(
         id = this.id,
         title = this.title,
@@ -112,8 +114,8 @@ fun PromptData.toPromptJson(): PromptJson {
             source = this.source
         ),
         // Преобразуем Instant? в строку ISO 8601. Если null - пустая строка
-        createdAt = Instant.fromEpochMilliseconds(this.createdAt).toString(),
-        updatedAt = Instant.fromEpochMilliseconds(this.updatedAt).toString(),
+        createdAt = createdAtString,
+        updatedAt = updatedAtString,
         rating = Rating() // Рейтинг по умолчанию
     )
 }

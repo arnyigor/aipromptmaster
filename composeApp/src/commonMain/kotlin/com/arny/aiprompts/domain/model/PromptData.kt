@@ -5,16 +5,17 @@ import kotlinx.serialization.Serializable
 // Эта модель будет результатом работы парсера
 @Serializable
 data class PromptData(
-    val id: String, // ID поста
+    val id: String, // UUID
+    val sourceId: String, // ID поста с форума
     val title: String,
     val description: String,
     val variants: List<PromptVariant>,
     val author: Author,
     val createdAt: Long,
     val updatedAt: Long,
-    val tags: List<String> = emptyList(), // Могут быть добавлены позже
-    val category: String = "general", // Категория по умолчанию
-    val source: String = "4pda.to" // Источник по умолчанию
+    val tags: List<String> = emptyList(),
+    val category: String = "general",
+    val source: String = "4pda.to"
 )
 
 @Serializable

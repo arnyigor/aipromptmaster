@@ -8,6 +8,7 @@ import com.arkivanov.decompose.DefaultComponentContext
 import com.arkivanov.decompose.ExperimentalDecomposeApi
 import com.arkivanov.decompose.extensions.compose.lifecycle.LifecycleController
 import com.arkivanov.essenty.lifecycle.LifecycleRegistry
+import com.arny.aiprompts.data.di.desktopModules
 import com.arny.aiprompts.di.appModules
 import com.arny.aiprompts.presentation.navigation.DefaultRootComponent
 import com.arny.aiprompts.presentation.ui.scraper.ScraperTestScreen
@@ -18,7 +19,7 @@ import org.koin.java.KoinJavaComponent.getKoin
 fun main() {
     // 1. Инициализация Koin остается здесь, это можно делать в любом потоке.
     startKoin {
-        modules(appModules)
+        modules(appModules+desktopModules)
     }
 
     // 2. Запускаем оконное приложение Compose.
