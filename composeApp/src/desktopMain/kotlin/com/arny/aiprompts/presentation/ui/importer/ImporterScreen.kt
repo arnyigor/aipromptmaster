@@ -10,19 +10,19 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.awt.SwingPanel
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
-import javax.swing.JEditorPane
-import javax.swing.JScrollPane
-import javax.swing.text.html.HTMLEditorKit
-import javax.swing.text.html.StyleSheet
-import java.awt.Color as AwtColor
+import com.arny.aiprompts.data.parser.BlockType
+import com.arny.aiprompts.data.parser.ParsedPostBlock
+import com.arny.aiprompts.data.parser.PostStructureParser
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -167,7 +167,7 @@ private fun EditorPanel(
             // Контент вкладок
             when (selectedTab) {
                 0 -> EditorFields(editedData, component)
-                1 -> HtmlPreview(state.selectedPost?.fullHtmlContent ?: "")
+                1 -> HtmlPreviewPanel(state.selectedPost?.fullHtmlContent ?: "")
             }
         }
     }
@@ -236,76 +236,38 @@ private fun EditorFields(
     }
 }
 
+// --- НОВЫЙ "ИНСПЕКТОР ПОСТА" ---
 @Composable
-private fun HtmlPreview(htmlContent: String) {
-    // Получаем цвет фона из текущей темы Compose
-    val backgroundColor = MaterialTheme.colorScheme.surface
-    // Преобразуем его в цвет Swing
-    val swingBackgroundColor =
-        AwtColor(backgroundColor.red, backgroundColor.green, backgroundColor.blue, backgroundColor.alpha)
+private fun HtmlPreviewPanel(htmlContent: String) {
+    // `remember` кэширует результат парсинга, пока htmlContent не изменится
+    val blocks = remember(htmlContent) {
+        PostStructureParser().parse(htmlContent)
+    }
+    val clipboardManager = LocalClipboardManager.current
 
-    SwingPanel(
-        modifier = Modifier.fillMaxSize(),
-        background = Color.Transparent, // Фон самого SwingPanel делаем прозрачным
-        factory = {
-            // --- 1. УЛУЧШЕНИЕ СТИЛЕЙ ---
-            val editorKit = HTMLEditorKit()
-            val styleSheet = StyleSheet()
-            // Добавляем базовые стили, чтобы текст был читаемым
-            styleSheet.addRule("body { font-family: sans-serif; padding: 8px; color: #333; }")
-            styleSheet.addRule("a { color: #0000EE; }")
-            // Устанавливаем стили в наш kit
-            editorKit.styleSheet = styleSheet
-
-            // --- 2. СОЗДАНИЕ КОМПОНЕНТОВ ---
-            val editorPane = JEditorPane().apply {
-                this.editorKit = editorKit
-                contentType = "text/html"
-                isEditable = false
-                // Устанавливаем фон, соответствующий теме
-                background = swingBackgroundColor
-            }
-
-            // --- 3. ДОБАВЛЕНИЕ СКРОЛЛА ---
-            // Оборачиваем JEditorPane в JScrollPane
-            JScrollPane(editorPane).apply {
-                // Убираем рамку у скролл-панели
-                border = null
-            }
-        },
-        update = { scrollPane ->
-            // Теперь мы обновляем JEditorPane, который находится ВНУТРИ JScrollPane
-            val editorPane = scrollPane.viewport.view as JEditorPane
-
-            // Формируем полный HTML с нашими стилями.
-            // Мы можем добавить CSS для темной темы, если нужно.
-            val fullHtml = """
-                <html>
-                    <head>
-                        <style>
-                            body { 
-                                background-color: #${Integer.toHexString(swingBackgroundColor.rgb).substring(2)};
-                                color: ${if (backgroundColor.luminance() > 0.5) "black" else "white"};
-                            }
-                            a { color: #88aaff; } /* Пример цвета ссылок */
-                        </style>
-                    </head>
-                    <body>$htmlContent</body>
-                </html>
-            """.trimIndent()
-
-            editorPane.text = fullHtml
-            // Важно: прокручиваем к самому верху при обновлении контента
-            editorPane.caretPosition = 0
-            scrollPane.verticalScrollBar.value = 0
+    if (blocks.isEmpty()) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Не удалось разобрать контент поста")
         }
-    )
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(blocks) { block ->
+                when (block.type) {
+                    BlockType.TEXT -> TextBlock(block.content)
+                    BlockType.SPOILER -> SpoilerBlock(block) { textToCopy ->
+                        clipboardManager.setText(AnnotatedString(textToCopy))
+                    }
+
+                    BlockType.QUOTE -> QuoteBlock(block.content)
+                }
+            }
+        }
+    }
 }
 
-// Вспомогательная функция для определения яркости цвета
-private fun Color.luminance(): Float {
-    return (0.2126f * red + 0.7152f * green + 0.0722f * blue)
-}
 
 @Composable
 private fun ActionsPanel(
@@ -329,5 +291,58 @@ private fun ActionsPanel(
         if (state.error != null) {
             Text(state.error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }
+    }
+}
+// --- Компоненты для каждого типа блока ---
+
+@Composable
+fun TextBlock(text: String) {
+    Text(
+        text = text,
+        modifier = Modifier.padding(horizontal = 8.dp),
+        style = MaterialTheme.typography.bodyMedium
+    )
+}
+
+@Composable
+fun SpoilerBlock(block: ParsedPostBlock, onCopy: (String) -> Unit) {
+    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = block.title ?: "Спойлер",
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = { onCopy(block.content) }, modifier = Modifier.size(24.dp)) {
+                    Icon(Icons.Default.ContentCopy, "Копировать содержимое")
+                }
+            }
+            Text(
+                text = block.content,
+                modifier = Modifier.padding(12.dp),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+    }
+}
+
+@Composable
+fun QuoteBlock(text: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(12.dp),
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }
