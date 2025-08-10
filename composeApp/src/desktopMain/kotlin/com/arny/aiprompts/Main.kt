@@ -35,7 +35,8 @@ fun main() {
                 webScraper = getKoin().get(),
                 parseRawPostsUseCase = getKoin().get(),
                 savePromptsAsFilesUseCase = getKoin().get(),
-                hybridParser = getKoin().get() // <-- Получаем новую зависимость из Koin
+                hybridParser = getKoin().get(),
+                httpClient = getKoin().get()
             )
         }
 

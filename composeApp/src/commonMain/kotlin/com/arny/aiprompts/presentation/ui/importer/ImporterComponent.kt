@@ -2,23 +2,24 @@ package com.arny.aiprompts.presentation.ui.importer
 
 import kotlinx.coroutines.flow.StateFlow
 
+// Единица для действий с блоками
+enum class BlockActionTarget { TITLE, DESCRIPTION, CONTENT }
+
 interface ImporterComponent {
     val state: StateFlow<ImporterState>
 
-    // События от UI
+    // --- События от списка постов ---
     fun onPostClicked(postId: String)
     fun onTogglePostForImport(postId: String, isChecked: Boolean)
 
-    // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
-    // Универсальный метод для обновления данных в полях редактирования
-    fun onEditDataChanged(editedData: ExtractedPromptData)
-
-    fun onImportClicked()
-    fun onBackClicked()
-
-    // Новые методы для кнопок управления постом
+    // --- События от панели редактирования ---
+    fun onEditDataChanged(editedData: EditedPostData) // Универсальный метод
+    fun onBlockActionClicked(text: String, target: BlockActionTarget) // Для кнопок "T, D, C"
+    
+    // --- События от кнопок управления ---
     fun onSkipPostClicked()
     fun onSaveAndSelectNextClicked()
+    fun onImportClicked()
+    fun onBackClicked()
+    fun onVariantSelected(variant: PromptVariantData)
 }
-
-enum class AssignTarget { CONTENT, DESCRIPTION }

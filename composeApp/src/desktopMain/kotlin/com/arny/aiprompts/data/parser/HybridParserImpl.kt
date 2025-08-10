@@ -1,71 +1,55 @@
 package com.arny.aiprompts.data.parser
 
 import com.arny.aiprompts.domain.interfaces.IHybridParser
-import com.arny.aiprompts.presentation.ui.importer.ExtractedPromptData
+import com.arny.aiprompts.presentation.ui.importer.EditedPostData
+import com.arny.aiprompts.presentation.ui.importer.PromptVariantData
 import org.jsoup.Jsoup
-import org.jsoup.nodes.Element
-import org.jsoup.nodes.TextNode
 
 class HybridParserImpl : IHybridParser {
 
-    override fun analyzeAndExtract(htmlContent: String): ExtractedPromptData? {
-        // Мы парсим не весь HTML, а только фрагмент контента поста,
-        // поэтому оборачиваем его в body для корректной работы Jsoup.
+    override fun analyzeAndExtract(htmlContent: String): EditedPostData? {
         val postElement = Jsoup.parse("<body>$htmlContent</body>").body()
-        
-        // --- 1. Извлекаем все структурные блоки ---
-        val spoilers = postElement.select("div.post-block.spoil")
-        val attachmentLink = postElement.selectFirst("a.attach-file[href*=.txt]")
+        val contentBody = postElement.selectFirst("div.postcolor") ?: return null
 
-        // --- 2. Эвристика: если нет ни спойлеров, ни вложений, это, скорее всего, не промпт ---
-        if (spoilers.isEmpty() && attachmentLink == null) {
-            return null
-        }
+        // --- 1. Находим все спойлеры, игнорируя те, что с изображениями ---
+        val allSpoilers = contentBody.select("div.post-block.spoil")
+        val promptSpoilers = allSpoilers
+            .filterNot { it.selectFirst(".block-title")?.text()?.contains("Прикрепленные изображения", true) == true }
 
-        var title = ""
-        var description = ""
-        var content = ""
-
-        // --- 3. Логика принятия решений на основе структуры ---
-        if (attachmentLink != null) {
-            title = attachmentLink.text().removeSuffix(".txt").trim()
-            content = "[Содержимое из файла: ${attachmentLink.text()}]"
-            description = cleanHtmlToText(postElement)
-        } else if (spoilers.isNotEmpty()) {
-            val firstSpoiler = spoilers.first()!!
-            
-            title = firstSpoiler.selectFirst(".block-title")?.text()?.replace("ПРОМПТ №\\d+".toRegex(), "")?.trim() ?: ""
-            content = cleanHtmlToText(firstSpoiler.selectFirst(".block-body"))
-
-            // --- ИСПРАВЛЕННАЯ ЛОГИКА ИЗВЛЕЧЕНИЯ ОПИСАНИЯ ---
-            val descriptionParts = mutableListOf<String>()
-            var currentNode = firstSpoiler.previousSibling()
-            while (currentNode != null) {
-                when (currentNode) {
-                    is TextNode -> descriptionParts.add(currentNode.text())
-                    is Element -> descriptionParts.add(cleanHtmlToText(currentNode))
-                }
-                currentNode = currentNode.previousSibling()
-            }
-            val preSpoilerDescription = descriptionParts.reversed().joinToString("\n").trim()
-            
-            val secondSpoilerContent = if (spoilers.size > 1) {
-                cleanHtmlToText(spoilers[1].selectFirst(".block-body"))
-            } else ""
-
-            description = (preSpoilerDescription + "\n\n" + secondSpoilerContent).trim()
-
-            if (title.isBlank()) {
-                title = description.lines().firstOrNull { it.trim().length in 5..100 } ?: ""
+        // --- НОВАЯ ЛОГИКА ИЗВЛЕЧЕНИЯ ВАРИАНТОВ ---
+        val variants = promptSpoilers.mapNotNull { spoiler ->
+            val variantTitle = spoiler.selectFirst(".block-title")?.text()?.trim() ?: "Вариант"
+            val variantContent = cleanHtmlToText(spoiler.selectFirst(".block-body"))
+            if (variantContent.isNotBlank()) {
+                PromptVariantData(title = variantTitle, content = variantContent)
+            } else {
+                null
             }
         }
 
-        if (content.isBlank()) return null
+        // Если вариантов нет, это не промпт
+        if (variants.isEmpty()) return null
 
-        return ExtractedPromptData(
+        // --- 4. Извлекаем ОПИСАНИЕ (все, что находится ВНЕ спойлеров) ---
+        val descriptionElement = contentBody.clone()
+        // Удаляем из клона все спойлеры, чтобы остался только текст описания
+        descriptionElement.select("div.post-block.spoil").remove()
+        val description = cleanHtmlToText(descriptionElement)
+
+        // --- 5. Извлекаем ЗАГОЛОВОК по приоритетам ---
+        val title = // Приоритет 1: Заголовок первого спойлера
+            promptSpoilers.first().selectFirst(".block-title")?.text()
+                ?.replace("ПРОМПТ №?\\d+?".toRegex(), "")?.trim()
+                // Приоритет 2: Первая осмысленная строка описания
+                ?: description.lines().firstOrNull { it.trim().length in 5..100 }
+                // Приоритет 3: Fallback
+                ?: ""
+
+        return EditedPostData(
             title = title,
             description = description,
-            content = content
+            content = variants.first().content, // Основной контент - из первого варианта
+            variants = variants
         )
     }
 }

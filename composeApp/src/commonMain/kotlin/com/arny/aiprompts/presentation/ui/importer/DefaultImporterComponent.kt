@@ -9,6 +9,7 @@ import com.arny.aiprompts.domain.model.RawPostData
 import com.arny.aiprompts.domain.usecase.ParseRawPostsUseCase
 import com.arny.aiprompts.domain.usecase.SavePromptsAsFilesUseCase
 import com.benasher44.uuid.uuid4
+import io.ktor.client.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -21,6 +22,7 @@ class DefaultImporterComponent(
     private val parseRawPostsUseCase: ParseRawPostsUseCase,
     private val savePromptsAsFilesUseCase: SavePromptsAsFilesUseCase,
     private val hybridParser: IHybridParser,
+    private val httpClient: HttpClient, // Внедряем Ktor Client
     private val onBack: () -> Unit
 ) : ImporterComponent, ComponentContext by componentContext {
 
@@ -78,11 +80,25 @@ class DefaultImporterComponent(
         ensureAndPrefillEditedData(selectedPost)
     }
 
-    override fun onEditDataChanged(editedData: ExtractedPromptData) {
+    override fun onEditDataChanged(editedData: EditedPostData) {
         val postId = _state.value.selectedPostId ?: return
         _state.update {
             val newEditedData = it.editedData + (postId to editedData)
             it.copy(editedData = newEditedData)
+        }
+    }
+
+    override fun onBlockActionClicked(text: String, target: BlockActionTarget) {
+        val postId = _state.value.selectedPostId ?: return
+        val currentEditedData = _state.value.editedData[postId] ?: return
+
+        val newEditedData = when (target) {
+            BlockActionTarget.TITLE -> currentEditedData.copy(title = text.lines().firstOrNull()?.trim() ?: "")
+            BlockActionTarget.DESCRIPTION -> currentEditedData.copy(description = if (currentEditedData.description.isBlank()) text else "${currentEditedData.description}\n\n$text")
+            BlockActionTarget.CONTENT -> currentEditedData.copy(content = if (currentEditedData.content.isBlank()) text else "${currentEditedData.content}\n\n$text")
+        }
+        _state.update {
+            it.copy(editedData = it.editedData + (postId to newEditedData))
         }
     }
 
@@ -103,7 +119,20 @@ class DefaultImporterComponent(
         _state.update { it.copy(postsToImport = currentSet) }
     }
 
-    override fun onBackClicked() { onBack() }
+    override fun onBackClicked() {
+        onBack()
+    }
+
+    override fun onVariantSelected(variant: PromptVariantData) {
+        val postId = _state.value.selectedPostId ?: return
+        val currentEditedData = _state.value.editedData[postId] ?: return
+        
+        // Когда пользователь кликает на вариант, мы просто меняем основной контент в черновике
+        val newEditedData = currentEditedData.copy(content = variant.content)
+        _state.update {
+            it.copy(editedData = it.editedData + (postId to newEditedData))
+        }
+    }
 
     override fun onImportClicked() {
         scope.launch {
@@ -140,29 +169,35 @@ class DefaultImporterComponent(
     private fun ensureAndPrefillEditedData(post: RawPostData) {
         if (!_state.value.editedData.containsKey(post.postId)) {
             val extractedData = hybridParser.analyzeAndExtract(post.fullHtmlContent)
-            val newEditedData: ExtractedPromptData
-            if (extractedData != null) {
-                newEditedData = ExtractedPromptData(
-                    title = extractedData.title,
-                    description = extractedData.description,
-                    content = extractedData.content
-                )
-            } else {
-                val cleanContent = post.fullHtmlContent
-                    .replace(Regex("<br\\s*/?>"), "\n") // Заменяем <br> на переносы
-                    .replace(Regex("<.*?>"), "") // Грубо удаляем все остальные теги
-                    .trim()
-                newEditedData = ExtractedPromptData(
-                    title = "Не удалось распознать промпт. Введите вручную.",
-                    description = cleanContent.take(500),
-                    content = ""
-                )
-            }
+            
+            val newEditedData = extractedData ?: EditedPostData(
+                title = "Промпт от ${post.author.name} (${post.postId})",
+                description = post.fullHtmlContent
+                    .replace(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE), "\n")
+                    .replace(Regex("<.*?>"), "")
+                    .trim(),
+                content = ""
+            )
             _state.update {
                 it.copy(editedData = it.editedData + (post.postId to newEditedData))
             }
         }
     }
-    
-    private fun selectNextUnprocessedPost() { /* ... код без изменений ... */ }
+
+    private fun selectNextUnprocessedPost() {
+        val currentState = _state.value
+        val processedIds = currentState.postsToImport // + пропущенные ID в будущем
+        val currentIndex = currentState.rawPosts.indexOfFirst { it.postId == currentState.selectedPostId }
+
+        val nextPost = currentState.rawPosts
+            .drop(currentIndex + 1) // Ищем только после текущего
+            .firstOrNull { it.postId !in processedIds }
+            ?: currentState.rawPosts.firstOrNull { it.postId !in processedIds } // Если не нашли, ищем с начала
+
+        if (nextPost != null) {
+            onPostClicked(nextPost.postId)
+        } else {
+            _state.update { it.copy(selectedPostId = null) }
+        }
+    }
 }

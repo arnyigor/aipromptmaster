@@ -11,12 +11,13 @@ import com.arkivanov.decompose.value.Value
 import com.arny.aiprompts.data.scraper.WebScraper
 import com.arny.aiprompts.domain.usecase.*
 import com.arny.aiprompts.domain.interfaces.IHybridParser // <-- Импортируем интерфейс
+import com.arny.aiprompts.presentation.ui.importer.ImporterComponent
 import com.arny.aiprompts.presentation.ui.importer.DefaultImporterComponent
 import com.arny.aiprompts.presentation.screens.DefaultPromptListComponent
 import com.arny.aiprompts.presentation.screens.PromptListComponent
-import com.arny.aiprompts.presentation.ui.importer.ImporterComponent
 import com.arny.aiprompts.presentation.ui.scraper.DefaultScraperComponent
 import com.arny.aiprompts.presentation.ui.scraper.ScraperComponent
+import io.ktor.client.HttpClient
 
 interface RootComponent {
     val stack: Value<ChildStack<*, Child>>
@@ -38,6 +39,7 @@ class DefaultRootComponent(
     private val parseRawPostsUseCase: ParseRawPostsUseCase,
     private val savePromptsAsFilesUseCase: SavePromptsAsFilesUseCase,
     private val hybridParser: IHybridParser, // Добавляем новую зависимость
+    private val httpClient: HttpClient,
 ) : RootComponent, ComponentContext by componentContext {
 
     private val navigation = StackNavigation<ScreenConfig>()
@@ -86,6 +88,7 @@ class DefaultRootComponent(
                     parseRawPostsUseCase = parseRawPostsUseCase,
                     savePromptsAsFilesUseCase = savePromptsAsFilesUseCase,
                     hybridParser = hybridParser,
+                    httpClient = httpClient,
                     onBack = { navigation.pop() }
                 )
             )

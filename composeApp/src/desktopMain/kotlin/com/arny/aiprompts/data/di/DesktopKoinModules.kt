@@ -44,7 +44,7 @@ val desktopParserModule = module {
 }
 
 val desktopLlmModule = module {
-    single { HttpClient(CIO) { install(ContentNegotiation) { json() } } }
+    single { HttpClient(CIO) }
     single<LLMService> { NoOpLLMService() }
 }
 
