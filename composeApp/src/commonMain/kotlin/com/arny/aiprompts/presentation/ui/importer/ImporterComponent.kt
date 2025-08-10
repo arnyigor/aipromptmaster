@@ -11,7 +11,7 @@ interface ImporterComponent {
 
     // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
     // Универсальный метод для обновления данных в полях редактирования
-    fun onEditDataChanged(editedData: EditedPostData)
+    fun onEditDataChanged(editedData: ExtractedPromptData)
 
     fun onImportClicked()
     fun onBackClicked()

@@ -9,8 +9,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -78,7 +80,6 @@ private fun PostListPanel(
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Найденные посты", style = MaterialTheme.typography.titleMedium)
-        // TODO: Добавить сюда фильтры
         LazyColumn(
             modifier = Modifier.fillMaxHeight().border(1.dp, MaterialTheme.colorScheme.outlineVariant),
             verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -86,32 +87,23 @@ private fun PostListPanel(
             items(state.rawPosts, key = { it.postId }) { post ->
                 val isSelected = state.selectedPostId == post.postId
                 val isReadyToImport = post.postId in state.postsToImport
-                // TODO: Добавить статус "Пропущен"
-
+                
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onPostClicked(post.postId) }
+                    modifier = Modifier.fillMaxWidth().clickable { onPostClicked(post.postId) }
                         .background(if (isSelected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent)
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // --- НОВЫЙ ИНДИКАТОР СТАТУСА ---
                     Box(
                         modifier = Modifier
                             .size(12.dp)
                             .clip(CircleShape)
                             .background(
-                                when {
-                                    isReadyToImport -> Color.Green
-                                    // isSkipped -> Color.Gray
-                                    else -> Color.Transparent
-                                }
+                                if (isReadyToImport) Color.Green else Color.Transparent
                             )
                             .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
                     )
-
                     Column(modifier = Modifier.weight(1f)) {
                         Text(post.author.name, style = MaterialTheme.typography.bodyMedium)
                         Text(
@@ -120,12 +112,23 @@ private fun PostListPanel(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    if (post.isLikelyPrompt) {
+
+                    // --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
+                    val editedContent = state.editedData[post.postId]?.content
+                    // "Предзаполнено" - если стратегия смогла извлечь непустой контент
+                    val wasPrefilled = !editedContent.isNullOrBlank()
+
+                    if (wasPrefilled) {
                         Icon(
-                            imageVector = Icons.Default.AutoAwesome,
+                            imageVector = Icons.Default.CheckCircle, // Иконка "успех"
+                            contentDescription = "Данные предзаполнены",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    } else if (post.isLikelyPrompt) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.HelpOutline, // Иконка "подсказка"
                             contentDescription = "Вероятно, промпт",
-                            tint = MaterialTheme.colorScheme.tertiary,
-                            modifier = Modifier.size(20.dp)
+                            tint = MaterialTheme.colorScheme.tertiary
                         )
                     }
                 }
@@ -175,7 +178,7 @@ private fun EditorPanel(
 
 @Composable
 private fun EditorFields(
-    editedData: EditedPostData,
+    editedData: ExtractedPromptData,
     component: ImporterComponent,
     modifier: Modifier = Modifier
 ) {

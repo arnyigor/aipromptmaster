@@ -19,7 +19,7 @@ data class ImporterState(
     // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
     // Хранилище для всех отредактированных "черновиков".
     // Ключ - postId, Значение - отредактированные данные.
-    val editedData: Map<String, EditedPostData> = emptyMap(),
+    val editedData: Map<String, ExtractedPromptData> = emptyMap(),
 
     val selectedText: String = "" // Новое поле для хранения выделенного текста
 ) {
@@ -28,6 +28,6 @@ data class ImporterState(
         get() = rawPosts.find { it.postId == selectedPostId }
 
     // Новое вычисляемое свойство для удобного доступа к черновику ВЫБРАННОГО поста
-    val currentEditedData: EditedPostData?
+    val currentEditedData: ExtractedPromptData?
         get() = selectedPostId?.let { editedData[it] }
 }

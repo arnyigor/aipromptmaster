@@ -34,7 +34,8 @@ fun main() {
                 scrapeUseCase = getKoin().get(),
                 webScraper = getKoin().get(),
                 parseRawPostsUseCase = getKoin().get(),
-                savePromptsAsFilesUseCase = getKoin().get()
+                savePromptsAsFilesUseCase = getKoin().get(),
+                hybridParser = getKoin().get() // <-- Получаем новую зависимость из Koin
             )
         }
 
