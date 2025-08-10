@@ -1,56 +1,86 @@
 package com.arny.aiprompts.presentation.navigation
 
+import com.arny.aiprompts.presentation.navigation.RootComponent.Child
+import com.arny.aiprompts.presentation.ui.importer.DefaultImporterComponent
+
+
 import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.decompose.DelicateDecomposeApi
 import com.arkivanov.decompose.router.stack.*
 import com.arkivanov.decompose.value.Value
-import com.arkivanov.decompose.router.stack.StackNavigation
-import com.arny.aiprompts.domain.usecase.GetPromptsUseCase
-import com.arny.aiprompts.domain.usecase.ToggleFavoriteUseCase
+import com.arny.aiprompts.data.scraper.WebScraper
+import com.arny.aiprompts.domain.usecase.*
 import com.arny.aiprompts.presentation.screens.DefaultPromptListComponent
 import com.arny.aiprompts.presentation.screens.PromptListComponent
-import org.koin.core.component.KoinComponent
+import com.arny.aiprompts.presentation.ui.importer.ImporterComponent
+import com.arny.aiprompts.presentation.ui.scraper.DefaultScraperComponent
+import com.arny.aiprompts.presentation.ui.scraper.ScraperComponent
 
 interface RootComponent {
     val stack: Value<ChildStack<*, Child>>
 
-    // Sealed-класс для дочерних компонентов, чтобы UI знал, какой экран рисовать
     sealed interface Child {
         data class List(val component: PromptListComponent) : Child
+        data class Scraper(val component: ScraperComponent) : Child
+        data class Importer(val component: ImporterComponent) : Child
     }
 }
 
 class DefaultRootComponent(
     componentContext: ComponentContext,
+    // Все зависимости, которые понадобятся дочерним компонентам
     private val getPromptsUseCase: GetPromptsUseCase,
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
-) : RootComponent, ComponentContext by componentContext, KoinComponent {
+    private val scrapeUseCase: ScrapeWebsiteUseCase,
+    private val webScraper: WebScraper,
+    private val parseRawPostsUseCase: ParseRawPostsUseCase,
+    private val savePromptsAsFilesUseCase: SavePromptsAsFilesUseCase
+) : RootComponent, ComponentContext by componentContext {
 
     private val navigation = StackNavigation<ScreenConfig>()
 
-    override val stack: Value<ChildStack<*, RootComponent.Child>> =
+    override val stack: Value<ChildStack<*, Child>> =
         childStack(
             source = navigation,
-            serializer = ScreenConfig.serializer(), // Для сохранения стека
-            initialConfiguration = ScreenConfig.PromptList, // Стартовый экран
-            handleBackButton = true, // Автоматическая обработка кнопки "назад" на Android
-            childFactory = ::createChild // Фабрика для создания дочерних компонентов
+            serializer = ScreenConfig.serializer(),
+            initialConfiguration = ScreenConfig.PromptList, // Стартуем с главного экрана
+            handleBackButton = true,
+            childFactory = ::createChild
         )
 
     @OptIn(DelicateDecomposeApi::class)
-    private fun createChild(
-        config: ScreenConfig,
-        context: ComponentContext
-    ): RootComponent.Child {
+    private fun createChild(config: ScreenConfig, context: ComponentContext): Child {
         return when (config) {
-            is ScreenConfig.PromptList -> RootComponent.Child.List(
+            is ScreenConfig.PromptList -> Child.List(
                 DefaultPromptListComponent(
                     componentContext = context,
                     getPromptsUseCase = getPromptsUseCase,
                     toggleFavoriteUseCase = toggleFavoriteUseCase,
-                    onNavigateToDetails = {
-//                        navigation.push(ScreenConfig.PromptDetails(it.id))
+                    onNavigateToDetails = { /* TODO */ },
+                    onNavigateToScraper = { navigation.push(ScreenConfig.Scraper) }
+                )
+            )
+            is ScreenConfig.Scraper -> Child.Scraper(
+                DefaultScraperComponent(
+                    componentContext = context,
+                    scrapeUseCase = scrapeUseCase,
+                    webScraper = webScraper,
+                    parseRawPostsUseCase = parseRawPostsUseCase,
+                    savePromptsAsFilesUseCase = savePromptsAsFilesUseCase,
+                    onNavigateToImporter = { files ->
+                        if (files.isNotEmpty()) {
+                            navigation.push(ScreenConfig.Importer(files))
+                        }
                     }
+                )
+            )
+            is ScreenConfig.Importer -> Child.Importer(
+                DefaultImporterComponent(
+                    componentContext = context,
+                    filesToImport = config.files,
+                    parseRawPostsUseCase = parseRawPostsUseCase,
+                    savePromptsAsFilesUseCase = savePromptsAsFilesUseCase,
+                    onBack = { navigation.pop() }
                 )
             )
         }

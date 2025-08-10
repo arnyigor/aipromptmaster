@@ -1,15 +1,13 @@
 package com.arny.aiprompts.data.mappers
 
 import com.arny.aiprompts.data.db.entities.PromptEntity
-import com.arny.aiprompts.domain.model.Author
-import com.arny.aiprompts.domain.model.Prompt
-import com.arny.aiprompts.domain.model.PromptContent
 import com.arny.aiprompts.data.model.PromptJson
 import com.arny.aiprompts.data.model.PromptMetadata
 import com.arny.aiprompts.data.model.Rating
-import com.arny.aiprompts.domain.model.PromptData
-import com.benasher44.uuid.uuid4 // Кросс-платформенный генератор UUID
+import com.arny.aiprompts.domain.model.*
+import com.benasher44.uuid.uuid4
 import kotlinx.datetime.Instant
+import org.jsoup.Jsoup
 
 // Domain -> Entity
 fun Prompt.toEntity(): PromptEntity = PromptEntity(
@@ -117,5 +115,24 @@ fun PromptData.toPromptJson(): PromptJson {
         createdAt = createdAtString,
         updatedAt = updatedAtString,
         rating = Rating() // Рейтинг по умолчанию
+    )
+}
+
+// Маппер из "сырого" поста в "финальный" PromptData.
+// Здесь происходит финальная бизнес-логика и очистка.
+fun RawPostData.toPromptData(): PromptData {
+    // Используем Jsoup для финальной очистки HTML в plain text
+    val cleanContent = Jsoup.parse(this.fullHtmlContent).text()
+
+    return PromptData(
+        id = uuid4().toString(),
+        sourceId = this.postId,
+        title = "Prompt for ${this.author.name} (${this.postId})", // TODO: Улучшить извлечение заголовка
+        description = cleanContent.take(200), // Берем первые 200 символов как описание
+        variants = listOf(PromptVariant(content = cleanContent)),
+        author = this.author,
+        createdAt = this.date.toEpochMilliseconds(),
+        updatedAt = this.date.toEpochMilliseconds(),
+        category = "imported"
     )
 }

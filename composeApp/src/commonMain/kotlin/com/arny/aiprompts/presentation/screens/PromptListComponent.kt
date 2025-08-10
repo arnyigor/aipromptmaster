@@ -3,8 +3,8 @@ package com.arny.aiprompts.presentation.screens
 import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.essenty.lifecycle.coroutines.coroutineScope
 import com.arny.aiprompts.domain.errors.DomainError
-import com.arny.aiprompts.domain.usecase.GetPromptsUseCase
 import com.arny.aiprompts.domain.model.Prompt
+import com.arny.aiprompts.domain.usecase.GetPromptsUseCase
 import com.arny.aiprompts.domain.usecase.ToggleFavoriteUseCase
 import com.arny.aiprompts.presentation.ui.prompts.PromptsListState
 import com.arny.aiprompts.presentation.ui.prompts.SortOrder
@@ -35,6 +35,7 @@ interface PromptListComponent {
 
     fun onMoreMenuToggle(isVisible: Boolean)
     fun onSettingsClicked()
+    fun onNavigateToScraperClicked()
 }
 
 class DefaultPromptListComponent(
@@ -42,10 +43,11 @@ class DefaultPromptListComponent(
     private val getPromptsUseCase: GetPromptsUseCase,
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
     private val onNavigateToDetails: (promptId: String) -> Unit,
+    private val onNavigateToScraper: () -> Unit,
 ) : PromptListComponent, ComponentContext by componentContext {
 
     private companion object {
-         const val PAGE_SIZE = 20
+        const val PAGE_SIZE = 20
     }
 
     private val _state = MutableStateFlow(PromptsListState(isLoading = true))
@@ -111,6 +113,9 @@ class DefaultPromptListComponent(
 
     }
 
+    override fun onNavigateToScraperClicked() {
+        onNavigateToScraper()
+    }
 
     // А этот метод для полного обновления с нуля (pull-to-refresh)
     override fun onRefresh() {
@@ -130,7 +135,6 @@ class DefaultPromptListComponent(
             loadPrompts(fromRefresh = false) // fromRefresh = false означает, что мы добавляем данные, а не заменяем
         }
     }
-
 
     /**
      * Основной метод загрузки данных.
@@ -183,9 +187,8 @@ class DefaultPromptListComponent(
         }
     }
 
-
     // Также нужно обновить `onSearchQueryChanged` и другие фильтры,
-// чтобы они сбрасывали пагинацию и запускали загрузку заново.
+    // чтобы они сбрасывали пагинацию и запускали загрузку заново.
     override fun onSearchQueryChanged(query: String) {
         _state.update { it.copy(searchQuery = query, page = 0, endReached = false) }
         loadPrompts(fromRefresh = true)

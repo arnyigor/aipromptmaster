@@ -46,6 +46,7 @@ val domainModule = module {
     singleOf(::GetPromptsUseCase)
     singleOf(::ToggleFavoriteUseCase)
     singleOf(::ParseHtmlUseCase)
+    singleOf(::ParseRawPostsUseCase)
     singleOf(::SavePromptsAsFilesUseCase)
 }
 
@@ -69,4 +70,4 @@ val fileModule = module {
     singleOf(::FileDataSourceImpl) { bind<FileDataSource>() }
 }
 
-val appModules = listOf(dataModule, domainModule, scraperModule, llmModule, fileModule)
+val commonModules = listOf(dataModule, domainModule, scraperModule, llmModule, fileModule)

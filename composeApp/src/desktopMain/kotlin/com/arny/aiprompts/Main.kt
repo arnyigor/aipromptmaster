@@ -9,52 +9,43 @@ import com.arkivanov.decompose.ExperimentalDecomposeApi
 import com.arkivanov.decompose.extensions.compose.lifecycle.LifecycleController
 import com.arkivanov.essenty.lifecycle.LifecycleRegistry
 import com.arny.aiprompts.data.di.desktopModules
-import com.arny.aiprompts.di.appModules
+import com.arny.aiprompts.di.commonModules
 import com.arny.aiprompts.presentation.navigation.DefaultRootComponent
-import com.arny.aiprompts.presentation.ui.scraper.ScraperTestScreen
+import com.arny.aiprompts.presentation.ui.RootContent
 import org.koin.core.context.startKoin
 import org.koin.java.KoinJavaComponent.getKoin
 
 @OptIn(ExperimentalDecomposeApi::class)
 fun main() {
-    // 1. Инициализация Koin остается здесь, это можно делать в любом потоке.
     startKoin {
-        modules(appModules+desktopModules)
+        modules(commonModules + desktopModules)
     }
 
-    // 2. Запускаем оконное приложение Compose.
-    // Все, что внутри этого блока, будет выполняться в UI-потоке.
     application {
         val windowState = rememberWindowState()
-
-        // --- КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ ---
-        // Создаем Lifecycle и RootComponent ВНУТРИ `application` блока
-
-        // 3. Создаем жизненный цикл для Decompose
         val lifecycle = remember { LifecycleRegistry() }
 
-        // 4. Создаем корневой компонент, он теперь будет создан в UI-потоке
         val root = remember {
             DefaultRootComponent(
                 componentContext = DefaultComponentContext(lifecycle = lifecycle),
-                // Зависимости по-прежнему получаем из Koin
+                // Koin предоставляет все эти зависимости
                 getPromptsUseCase = getKoin().get(),
-                toggleFavoriteUseCase = getKoin().get()
+                toggleFavoriteUseCase = getKoin().get(),
+                scrapeUseCase = getKoin().get(),
+                webScraper = getKoin().get(),
+                parseRawPostsUseCase = getKoin().get(),
+                savePromptsAsFilesUseCase = getKoin().get()
             )
         }
 
-        // 5. Управляем жизненным циклом Decompose вместе с окном
         LifecycleController(lifecycle, windowState)
 
         Window(
             onCloseRequest = ::exitApplication,
             state = windowState,
-            title = "AI Prompts"
+            title = "AI Prompt Master"
         ) {
-            // 6. Вызываем наш корневой Composable
-//            RootContent(component = root)
-            // Временно показываем наш тестовый экран
-            ScraperTestScreen()
+            RootContent(component = root)
         }
     }
 }

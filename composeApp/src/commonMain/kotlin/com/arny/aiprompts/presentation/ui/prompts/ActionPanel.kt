@@ -14,7 +14,8 @@ fun ActionPanel(
     onAdd: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    onSettings: () -> Unit, // <-- Добавляем новый параметр
+    onSettings: () -> Unit,
+    onScraperNavigate: () -> Unit,
     isActionEnabled: Boolean
 ) {
     Card(modifier = modifier) {
@@ -33,6 +34,10 @@ fun ActionPanel(
             ) { Text("Удалить") }
 
             Spacer(Modifier.weight(1f)) // Этот Spacer отодвигает кнопку настроек вниз
+
+            OutlinedButton(onClick = onScraperNavigate, modifier = Modifier.fillMaxWidth()) {
+                Text("Скрапер / Импорт")
+            }
 
             OutlinedButton(onClick = onSettings, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))

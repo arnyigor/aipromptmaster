@@ -75,6 +75,7 @@ private fun DesktopLayout(state: PromptsListState, component: PromptListComponen
             onEdit = component::onEditPromptClicked,
             onDelete = component::onDeletePromptClicked,
             onSettings = component::onSettingsClicked, // Передаем обработчик настроек
+            onScraperNavigate = component::onNavigateToScraperClicked,
             isActionEnabled = state.selectedPromptId != null
         )
     }
