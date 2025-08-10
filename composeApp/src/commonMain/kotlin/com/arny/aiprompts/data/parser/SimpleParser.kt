@@ -3,13 +3,8 @@ package com.arny.aiprompts.data.parser
 import com.arny.aiprompts.domain.interfaces.IFileParser
 import com.arny.aiprompts.domain.model.Author
 import com.arny.aiprompts.domain.model.RawPostData
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toInstant
+import kotlinx.datetime.*
 import org.jsoup.Jsoup
-import org.jsoup.nodes.Element
 
 /**
  * Простой и надежный парсер, который реализует интерфейс IFileParser.
@@ -31,7 +26,8 @@ class SimpleParser : IFileParser {
                 // Извлекаем только 100% надежные данные. Если чего-то нет, пропускаем пост.
                 val postId = postElement.attr("data-post").ifBlank { return@mapNotNull null }
                 val authorName = postElement.selectFirst("span.normalname a")?.text() ?: "Unknown"
-                val authorId = postElement.selectFirst("span.normalname a")?.attr("href")?.substringAfter("showuser=") ?: ""
+                val authorId =
+                    postElement.selectFirst("span.normalname a")?.attr("href")?.substringAfter("showuser=") ?: ""
 
                 // Ищем дату редактирования, если ее нет - ищем дату создания.
                 val editDateStr = postElement.selectFirst("span.edit")?.text()

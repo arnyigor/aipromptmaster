@@ -16,12 +16,18 @@ data class ImporterState(
     val selectedPostId: String? = null,
     val postsToImport: Set<String> = emptySet(), // Set ID постов, отмеченных для импорта
 
-    // Данные для редактирования выбранного поста
-    val editableTitle: String = "",
-    val editableDescription: String = "",
-    val editableContent: String = ""
+    // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
+    // Хранилище для всех отредактированных "черновиков".
+    // Ключ - postId, Значение - отредактированные данные.
+    val editedData: Map<String, EditedPostData> = emptyMap(),
+
+    val selectedText: String = "" // Новое поле для хранения выделенного текста
 ) {
     // Вычисляемое свойство для удобства получения выбранного поста
     val selectedPost: RawPostData?
         get() = rawPosts.find { it.postId == selectedPostId }
+
+    // Новое вычисляемое свойство для удобного доступа к черновику ВЫБРАННОГО поста
+    val currentEditedData: EditedPostData?
+        get() = selectedPostId?.let { editedData[it] }
 }

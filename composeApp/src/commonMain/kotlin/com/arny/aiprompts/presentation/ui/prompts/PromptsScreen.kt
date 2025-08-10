@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -135,7 +136,7 @@ private fun PromptsTopAppBar(
                             },
                             enabled = state.selectedPromptId != null
                         )
-                        Divider()
+                        HorizontalDivider()
                         DropdownMenuItem(
                             text = { Text("Настройки") },
                             onClick = {

@@ -8,9 +8,17 @@ interface ImporterComponent {
     // События от UI
     fun onPostClicked(postId: String)
     fun onTogglePostForImport(postId: String, isChecked: Boolean)
-    fun onTitleChanged(newTitle: String)
-    fun onDescriptionChanged(newDescription: String)
-    fun onContentChanged(newContent: String)
+
+    // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
+    // Универсальный метод для обновления данных в полях редактирования
+    fun onEditDataChanged(editedData: EditedPostData)
+
     fun onImportClicked()
     fun onBackClicked()
+
+    // Новые методы для кнопок управления постом
+    fun onSkipPostClicked()
+    fun onSaveAndSelectNextClicked()
 }
+
+enum class AssignTarget { CONTENT, DESCRIPTION }

@@ -27,8 +27,9 @@ logback = "1.4.14"
 koin = "4.0.4"
 
 junit = "4.13.2"
-truth = "1.4.2"
-mockk = "1.13.11"
+truth = "1.1.4"
+mockk = "1.13.8"
+kotlinx-coroutines-test = "1.7.3"
 
 selenium = "4.21.0"
 jsoup = "1.17.2"
@@ -72,10 +73,12 @@ uuid = { module = "com.benasher44:uuid", version.ref = "uuid" }
 selenium-java = { module = "org.seleniumhq.selenium:selenium-java", version.ref = "selenium" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 
-# --- Testing ---
+# --- TESTING ---
 junit = { module = "junit:junit", version.ref = "junit" }
 truth = { module = "com.google.truth:truth", version.ref = "truth" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+mockk-common = { module = "io.mockk:mockk-common", version.ref = "mockk" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines-test" }
 
 # Logging
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
@@ -87,6 +90,6 @@ compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "
 compose = { id = "org.jetbrains.compose", version.ref = "compose-plugin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 room = { id = "androidx.room", version.ref = "room" }
-kotlinx-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlinx-serialization" }
+kotlinx-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 # Android (не используется сейчас, но полезно для будущего)
 android-application = { id = "com.android.application", version.ref = "agp" }
