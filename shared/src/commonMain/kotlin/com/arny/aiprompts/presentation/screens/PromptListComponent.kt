@@ -5,6 +5,7 @@ import com.arkivanov.essenty.lifecycle.coroutines.coroutineScope
 import com.arny.aiprompts.domain.errors.DomainError
 import com.arny.aiprompts.domain.model.Prompt
 import com.arny.aiprompts.domain.usecase.GetPromptsUseCase
+import com.arny.aiprompts.domain.usecase.ImportJsonUseCase
 import com.arny.aiprompts.domain.usecase.ToggleFavoriteUseCase
 import com.arny.aiprompts.presentation.ui.prompts.PromptsListState
 import com.arny.aiprompts.presentation.ui.prompts.SortOrder
@@ -42,6 +43,7 @@ class DefaultPromptListComponent(
     componentContext: ComponentContext,
     private val getPromptsUseCase: GetPromptsUseCase,
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
+    private val importJsonUseCase: ImportJsonUseCase,
     private val onNavigateToDetails: (promptId: String) -> Unit,
     private val onNavigateToScraper: () -> Unit,
 ) : PromptListComponent, ComponentContext by componentContext {
@@ -56,7 +58,25 @@ class DefaultPromptListComponent(
     private val scope = coroutineScope()
 
     init {
-        loadPrompts(fromRefresh = false)
+        // Подписываемся на Flow из репозитория, который теперь будет обновляться
+        observePrompts()
+
+        // Запускаем первоначальный импорт
+        onRefresh()
+    }
+
+    private fun observePrompts() {
+        scope.launch {
+            getPromptsUseCase.getPromptsFlow() // Используем ваш существующий метод
+                .collect { result ->
+                    result.onSuccess { prompts ->
+                        _state.update { it.copy(allPrompts = prompts, isLoading = false) }
+                        applyFiltersAndSorting() // Применяем фильтры к новым данным
+                    }.onFailure { error ->
+                        _state.update { it.copy(error = error.message, isLoading = false) }
+                    }
+                }
+        }
     }
 
     override fun onPromptClicked(id: String) {
@@ -119,11 +139,17 @@ class DefaultPromptListComponent(
 
     // А этот метод для полного обновления с нуля (pull-to-refresh)
     override fun onRefresh() {
-        // Сбрасываем пагинацию и загружаем заново
-        _state.update { it.copy(page = 0, endReached = false) }
-        loadPrompts(fromRefresh = true)
+        scope.launch {
+            _state.update { it.copy(isLoading = true, error = null) }
+            val result = importJsonUseCase()
+            result.onSuccess { count ->
+                println("Успешно импортировано $count промптов.")
+                // Данные в state обновятся автоматически благодаря Flow в observePrompts()
+            }.onFailure { error ->
+                _state.update { it.copy(isLoading = false, error = "Ошибка импорта: ${error.message}") }
+            }
+        }
     }
-
     // Этот метод теперь будет вызываться для загрузки СЛЕДУЮЩЕЙ страницы
     fun loadNextPage() {
         val currentState = _state.value

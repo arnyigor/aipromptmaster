@@ -9,11 +9,7 @@ import com.arny.aiprompts.data.parser.SimpleParser
 import com.arny.aiprompts.data.repository.PromptsRepositoryImpl
 import com.arny.aiprompts.data.scraper.SeleniumWebScraper
 import com.arny.aiprompts.data.scraper.WebScraper
-import com.arny.aiprompts.domain.interfaces.FileDataSource
-import com.arny.aiprompts.domain.interfaces.IFileParser
-import com.arny.aiprompts.domain.interfaces.IHybridParser
-import com.arny.aiprompts.domain.interfaces.IPromptsRepository
-import com.arny.aiprompts.domain.interfaces.LLMService
+import com.arny.aiprompts.domain.interfaces.*
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import kotlinx.coroutines.Dispatchers
@@ -46,5 +42,18 @@ val desktopLlmModule = module {
     single<LLMService> { NoOpLLMService() }
 }
 
+// --- НОВЫЙ МОДУЛЬ ДЛЯ ФАЙЛОВ ---
+val fileModule = module {
+    singleOf(::FileDataSourceImpl) { bind<FileDataSource>() }
+}
+
+
 val desktopModules =
-    listOf(desktopDataModule, desktopFileModule, desktopScraperModule, desktopParserModule, desktopLlmModule)
+    listOf(
+        desktopDataModule,
+        desktopFileModule,
+        desktopScraperModule,
+        desktopParserModule,
+        desktopLlmModule,
+        fileModule
+    )

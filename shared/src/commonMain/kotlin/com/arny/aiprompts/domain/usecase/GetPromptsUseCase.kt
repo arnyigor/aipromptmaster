@@ -17,11 +17,7 @@ class GetPromptsUseCase(
      * Возвращает Flow, который эмитирует либо список промптов, либо ошибку.
      * Это более реактивный подход, чем suspend функция с Result.
      */
-    fun getPromptsFlow(
-        query: String,
-        category: String? = null,
-        // ... другие параметры фильтрации
-    ): Flow<Result<List<Prompt>>> {
+    fun getPromptsFlow(): Flow<Result<List<Prompt>>> {
         // Мы будем вызывать метод getPrompts из репозитория,
         // но для реактивности, представим что у нас есть flow-версия
         // Для MVP начнем с getAllPromptsFlow

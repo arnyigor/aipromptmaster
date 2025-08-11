@@ -11,6 +11,7 @@ import com.arkivanov.decompose.value.Value
 import com.arny.aiprompts.data.scraper.WebScraper
 import com.arny.aiprompts.domain.usecase.*
 import com.arny.aiprompts.domain.interfaces.IHybridParser // <-- Импортируем интерфейс
+import com.arny.aiprompts.domain.usecase.ImportJsonUseCase
 import com.arny.aiprompts.presentation.ui.importer.ImporterComponent
 import com.arny.aiprompts.presentation.ui.importer.DefaultImporterComponent
 import com.arny.aiprompts.presentation.screens.DefaultPromptListComponent
@@ -34,6 +35,7 @@ class DefaultRootComponent(
     // Все зависимости, которые понадобятся дочерним компонентам
     private val getPromptsUseCase: GetPromptsUseCase,
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
+    private val importJsonUseCase: ImportJsonUseCase,
     private val scrapeUseCase: ScrapeWebsiteUseCase,
     private val webScraper: WebScraper,
     private val parseRawPostsUseCase: ParseRawPostsUseCase,
@@ -61,6 +63,7 @@ class DefaultRootComponent(
                     componentContext = context,
                     getPromptsUseCase = getPromptsUseCase,
                     toggleFavoriteUseCase = toggleFavoriteUseCase,
+                    importJsonUseCase = importJsonUseCase,
                     onNavigateToDetails = { /* TODO */ },
                     onNavigateToScraper = { navigation.push(ScreenConfig.Scraper) }
                 )

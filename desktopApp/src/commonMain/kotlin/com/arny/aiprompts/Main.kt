@@ -28,6 +28,7 @@ fun main() {
                 componentContext = DefaultComponentContext(lifecycle = lifecycle),
                 getPromptsUseCase = getKoin().get(),
                 toggleFavoriteUseCase = getKoin().get(),
+                importJsonUseCase = getKoin().get(),
                 scrapeUseCase = getKoin().get(),
                 webScraper = getKoin().get(),
                 parseRawPostsUseCase = getKoin().get(),

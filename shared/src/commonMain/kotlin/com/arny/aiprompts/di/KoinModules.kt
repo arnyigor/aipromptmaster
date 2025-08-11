@@ -1,7 +1,6 @@
 package com.arny.aiprompts.di
 
 import com.arny.aiprompts.data.db.AppDatabase
-import com.arny.aiprompts.data.files.FileDataSourceImpl
 import com.arny.aiprompts.data.llm.NoOpLLMService
 import com.arny.aiprompts.data.repository.PromptsRepositoryImpl
 import com.arny.aiprompts.data.scraper.SeleniumWebScraper
@@ -39,12 +38,13 @@ val scraperModule = module {
 }
 
 // Модуль для доменного слоя (UseCases)
-val domainModule = module {
+val commonDomainModule = module {
     singleOf(::GetPromptsUseCase)
     singleOf(::ToggleFavoriteUseCase)
     singleOf(::ParseHtmlUseCase)
     singleOf(::ParseRawPostsUseCase)
     singleOf(::SavePromptsAsFilesUseCase)
+    singleOf(::ImportJsonUseCase)
 }
 
 val llmModule = module {
@@ -62,9 +62,5 @@ val llmModule = module {
     // single<LLMService> { OllamaLLMService(get()) }
 }
 
-// --- НОВЫЙ МОДУЛЬ ДЛЯ ФАЙЛОВ ---
-val fileModule = module {
-    singleOf(::FileDataSourceImpl) { bind<FileDataSource>() }
-}
 
-val commonModules = listOf(dataModule, domainModule, scraperModule, llmModule, fileModule)
+val commonModules = listOf(dataModule, commonDomainModule, scraperModule, llmModule)

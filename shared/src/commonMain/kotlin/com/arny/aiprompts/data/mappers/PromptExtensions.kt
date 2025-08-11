@@ -7,6 +7,9 @@ import com.arny.aiprompts.data.model.Rating
 import com.arny.aiprompts.domain.model.*
 import com.benasher44.uuid.uuid4
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 import org.jsoup.Jsoup
 
 // Domain -> Entity
@@ -63,37 +66,51 @@ fun PromptEntity.toDomain(): Prompt = Prompt(
 )
 
 // API -> Domain
-fun PromptJson.toDomain(): Prompt = Prompt(
-    // Если id нет в JSON, генерируем новый кросс-платформенный UUID
-    id = id ?: uuid4().toString(),
-    title = title.orEmpty(),
-    description = description,
-    content = PromptContent(
-        ru = content["ru"].orEmpty(),
-        en = content["en"].orEmpty()
-    ),
-    variables = variables.associate { it.name to it.type },
-    compatibleModels = compatibleModels,
-    category = category.orEmpty().lowercase(),
-    tags = tags,
-    isLocal = isLocal,
-    isFavorite = isFavorite,
-    rating = rating?.score ?: 0.0f,
-    ratingVotes = rating?.votes ?: 0,
-    status = status.orEmpty().lowercase(),
-    metadata = PromptMetadata(
-        author = Author(
-            id = metadata?.author?.name.orEmpty(),
-            name = metadata?.author?.name.orEmpty()
+fun PromptJson.toDomain(): Prompt {
+    fun parseDate(dateString: String?): Instant? {
+        if (dateString.isNullOrBlank()) return null
+        return try {
+            // Сначала парсим как LocalDateTime, так как нет информации о зоне
+            LocalDateTime.parse(dateString)
+                // Затем считаем, что это время в UTC
+                .toInstant(TimeZone.UTC)
+        } catch (e: Exception) {
+            // Если парсинг не удался, возвращаем null
+            null
+        }
+    }
+    return Prompt(
+        // Если id нет в JSON, генерируем новый кросс-платформенный UUID
+        id = id ?: uuid4().toString(),
+        title = title.orEmpty(),
+        description = description,
+        content = PromptContent(
+            ru = content["ru"].orEmpty(),
+            en = content["en"].orEmpty()
         ),
-        source = metadata?.source.orEmpty(),
-        notes = metadata?.notes.orEmpty()
-    ),
-    version = version.orEmpty(),
-    // Безопасно парсим строку из JSON в Instant?
-    createdAt = createdAt?.let { Instant.parse(it) },
-    modifiedAt = updatedAt?.let { Instant.parse(it) }
-)
+        variables = variables.associate { it.name to it.type },
+        compatibleModels = compatibleModels,
+        category = category.orEmpty().lowercase(),
+        tags = tags,
+        isLocal = isLocal,
+        isFavorite = isFavorite,
+        rating = rating?.score ?: 0.0f,
+        ratingVotes = rating?.votes ?: 0,
+        status = status.orEmpty().lowercase(),
+        metadata = PromptMetadata(
+            author = Author(
+                id = metadata?.author?.name.orEmpty(),
+                name = metadata?.author?.name.orEmpty()
+            ),
+            source = metadata?.source.orEmpty(),
+            notes = metadata?.notes.orEmpty()
+        ),
+        version = version.orEmpty(),
+        // Безопасно парсим строку из JSON в Instant?
+        createdAt = parseDate(createdAt),
+        modifiedAt = parseDate(updatedAt)
+    )
+}
 
 // Маппер из PromptData (результат парсинга) в PromptJson (DTO для файла)
 fun PromptData.toPromptJson(): PromptJson {
