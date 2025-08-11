@@ -1,97 +1,43 @@
-# ==================================
-#    IntelliJ / Android Studio
-# ==================================
-# Папки с настройками IDE
-.idea/
-*.iml
-*.iws
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
 
-# Сгенерированные файлы
-/out/
-/build/
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+schemas
+
+### Kotlin ###
 .kotlin
 
-schemas/
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
 
-# Локальные настройки, которые не должны быть в репозитории
-local.properties
-.gradle/
-gradle.properties
-/captures/
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+### Mac OS ###
 .DS_Store
-
-# Файлы Gradle
-gradlew
-gradlew.bat
-gradle/wrapper/gradle-wrapper.jar
-!gradle/wrapper/gradle-wrapper.properties
-
-# Логи и временные файлы
-*.log
-*.tmp
-
-# ==================================
-#        Kotlin / KMP
-# ==================================
-# Сгенерированные файлы KSP (Room, Moshi, и т.д.)
-/composeApp/build/
-/build/generated/
-
-# Схемы Room (их лучше версионировать, но можно и игнорировать, если вы не планируете сложные миграции)
-# /schemas
-
-# Нативные сборки для Desktop
-/composeApp/build/compose/binaries/
-/composeApp/build/compose/tmp/
-/composeApp/build/compose/packaging/
-
-# ==================================
-#            Python
-# ==================================
-# Виртуальные окружения
-venv/
-.venv/
-env/
-.env/
-*/venv/
-*/.venv/
-
-# Файлы кеша Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-
-# Яйца (eggs) и дистрибутивы
-.egg
-.egg-info/
-dist/
-build/
-*.egg
-*.whl
-
-# Файлы установщика
-/downloads/
-/eggs/
-.eggs/
-
-# Файлы PyInstaller
-*.spec
-
-# Файлы auto-py-to-exe
-auto-py-to-exe-config.json
-
-# ==================================
-#         Прочие
-# ==================================
-# Файлы баз данных (НИКОГДА не коммитьте локальные БД)
-*.db
-*.db-journal
-*.sqlite
-*.sqlite3
-
-# Секреты и переменные окружения
-.env
-*.env
-secrets.json
