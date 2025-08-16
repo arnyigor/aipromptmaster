@@ -5,18 +5,19 @@ import org.openqa.selenium.chrome.ChromeDriver
 import org.openqa.selenium.chrome.ChromeOptions
 import org.openqa.selenium.support.ui.WebDriverWait
 import java.awt.Desktop
-import java.time.Duration
-import kotlin.random.Random
-
 import java.io.File
 import java.nio.charset.StandardCharsets
+import java.time.Duration
+import kotlin.random.Random
 
 interface WebScraper {
     fun getSaveDirectory(): File
     fun openSaveDirectory()
+
     // Метод проверки теперь возвращает новую структуру
-    fun checkExistingFiles(totalPages: Int): PreScrapeCheck
+    fun checkExistingFiles(pages: List<Int>): PreScrapeCheck
     fun getExistingScrapedFiles(): List<File>
+
     // Метод скрапинга теперь принимает список страниц для скачивания
     fun scrapeAndSave(
         baseUrl: String,
@@ -63,20 +64,31 @@ class SeleniumWebScraper : WebScraper {
     }
 
 
-    // --- НОВЫЙ, УМНЫЙ МЕТОД ПРОВЕРКИ ---
-    override fun checkExistingFiles(totalPages: Int): PreScrapeCheck {
+    /**
+     * Проверяет наличие файлов для указанного списка номеров страниц.
+     * @param pages Список номеров страниц для проверки (например, [1, 2, 3, 5, 8]).
+     * @return PreScrapeCheck с количеством существующих файлов и списком отсутствующих номеров страниц.
+     */
+    override fun checkExistingFiles(pages: List<Int>): PreScrapeCheck {
         val saveDir = getSaveDirectory()
-        val missing = mutableListOf<Int>()
-        var existingCount = 0
+        val missingPages = mutableListOf<Int>()
+        var existingFileCount = 0
 
-        for (pageNum in 0 until totalPages) {
-            if (File(saveDir, "page_${pageNum + 1}.html").exists()) {
-                existingCount++
+        // Основное изменение: итерируемся по конкретному списку страниц, а не по диапазону.
+        for (pageNumber in pages) {
+            // Мы работаем напрямую с номером страницы, что делает код чище.
+            // Убедитесь, что ваш парсер возвращает страницы с 1, а не с 0.
+            // Наш PageStringParser из предыдущего ответа делает именно так.
+            val file = File(saveDir, "page_$pageNumber.html")
+
+            if (file.exists()) {
+                existingFileCount++
             } else {
-                missing.add(pageNum)
+                missingPages.add(pageNumber)
             }
         }
-        return PreScrapeCheck(existingCount, missing)
+
+        return PreScrapeCheck(existingFileCount, missingPages)
     }
 
     override fun scrapeAndSave(
@@ -88,7 +100,7 @@ class SeleniumWebScraper : WebScraper {
             onProgress("Нет страниц для скачивания.")
             return emptyList()
         }
-        onProgress("Запускаю скачивание для ${pagesToScrape.size} страниц: ${pagesToScrape.map { it + 1 }}")
+        onProgress("Запускаю скачивание для ${pagesToScrape.size} страниц: ${pagesToScrape.map { it }}")
 
         val saveDir = getSaveDirectory()
         onProgress("Сохранение в директорию: ${saveDir.absolutePath}")
@@ -106,11 +118,11 @@ class SeleniumWebScraper : WebScraper {
         try {
             // Итерируемся по списку нужных нам страниц
             for (pageNum in pagesToScrape) {
-                val startOffset = pageNum * 20
+                val startOffset = (pageNum - 1) * 20
                 val pageUrl = "$baseUrl&st=$startOffset"
-                val targetFile = File(saveDir, "page_${pageNum + 1}.html")
+                val targetFile = File(saveDir, "page_${pageNum}.html")
 
-                onProgress("Открываю страницу ${pageNum + 1}: $pageUrl")
+                onProgress("Открываю страницу ${pageNum}: $pageUrl")
                 driver.get(pageUrl)
 
                 val wait = WebDriverWait(driver, Duration.ofSeconds(15))

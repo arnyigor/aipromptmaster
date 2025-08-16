@@ -33,19 +33,32 @@ class DefaultScraperComponent(
     }
 
     override fun onPagesChanged(pages: String) {
-        _state.update { it.copy(pagesToScrape = pages.filter { c -> c.isDigit() }) }
+        _state.update { it.copy(pagesToScrape = pages) }
     }
 
-    override fun onStartScrapingClicked() {
-        val totalPages = _state.value.pagesToScrape.toIntOrNull() ?: 0
-        if (totalPages <= 0) return
 
-        scope.launch(Dispatchers.IO) {
-            val checkResult = webScraper.checkExistingFiles(totalPages)
+    override fun onStartScrapingClicked() {
+        // 1. Получаем список страниц с помощью нашего парсера
+        val pagesToScrape = PageStringParser.parse(_state.value.pagesToScrape)
+
+        // 2. Проверяем, что список не пуст
+        if (pagesToScrape.isEmpty()) {
+            // Опционально: можно показать ошибку пользователю
+            // _state.update { it.copy(error = "Некорректный ввод страниц") }
+            return
+        }
+
+        scope.launch{
+            // 3. Передаем список страниц для проверки
+            // Важно: вашему `webScraper` может понадобиться адаптация.
+            // Вместо общего количества страниц, ему теперь нужен конкретный список.
+            val checkResult = webScraper.checkExistingFiles(pagesToScrape)
+
             if (checkResult.existingFileCount > 0 && checkResult.missingPages.isNotEmpty()) {
                 _state.update { it.copy(preScrapeCheckResult = checkResult) }
             } else {
-                startScraping((0 until totalPages).toList())
+                // 4. Запускаем скрапинг для нужных страниц (или только недостающих)
+                startScraping(checkResult.missingPages) // Или startScraping(pagesToScrape), в зависимости от вашей логики
             }
         }
     }
@@ -93,11 +106,19 @@ class DefaultScraperComponent(
     override fun onDialogDismissed() { _state.update { it.copy(preScrapeCheckResult = null) } }
 
     override fun onOverwriteConfirmed() {
-        val totalPages = _state.value.pagesToScrape.toIntOrNull() ?: 0
-        _state.update { it.copy(preScrapeCheckResult = null) }
-        startScraping((0 until totalPages).toList())
-    }
+        // 1. Получаем список страниц из _state
+        val pagesToScrapeString = _state.value.pagesToScrape // Это строка, которую ввел пользователь
 
+        // 2. Парсим строку в список номеров страниц
+        val pagesToScrape = PageStringParser.parse(pagesToScrapeString)
+
+        // 3. Очищаем результат предпроверки (чтобы пользователь видел прогресс)
+        _state.update { it.copy(preScrapeCheckResult = null) }
+
+        // 4.  Запускаем скрапинг для выбранных страниц.
+        //  Важно: убедитесь, что метод startScraping принимает List<Int>
+        startScraping(pagesToScrape)
+    }
     override fun onContinueConfirmed() {
         val missingPages = _state.value.preScrapeCheckResult?.missingPages ?: emptyList()
         _state.update { it.copy(preScrapeCheckResult = null) }

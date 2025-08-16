@@ -32,12 +32,19 @@ fun ScraperScreen(component: ScraperComponent) {
             OutlinedTextField(
                 value = state.pagesToScrape,
                 onValueChange = component::onPagesChanged,
-                label = { Text("Количество страниц") },
-                modifier = Modifier.width(180.dp)
+                modifier = Modifier.width(180.dp),
+                // 1. Более точный и контекстный label
+                label = { Text("Страницы для сканирования") },
+                // 2. Placeholder с примером, который исчезнет при вводе
+                placeholder = { Text("Напр: 1-10, 15, 22") },
+                // 3. Чтобы ввод не переносился на новую строку
+                singleLine = true,
+                // 4. (Опционально) Вспомогательный текст под полем
+                supportingText = { Text("Укажите номера или диапазоны") }
             )
             Button(
                 onClick = component::onStartScrapingClicked,
-                enabled = !state.inProgress && (state.pagesToScrape.toIntOrNull() ?: 0) > 0
+                enabled = !state.inProgress && state.pagesToScrape.isNotBlank()
             ) { Text("Запустить скрапер") }
 
             IconButton(onClick = component::onOpenDirectoryClicked, enabled = !state.inProgress) {
