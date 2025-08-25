@@ -1,14 +1,17 @@
 package com.arny.aipromptmaster.data.models
 
-import com.google.gson.annotations.SerializedName
+import kotlinx.serialization.Contextual
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import java.math.BigDecimal
 
+@Serializable
 data class ModelDTO(
-    @SerializedName("id") val id: String,
-    @SerializedName("name") val name: String,
-    @SerializedName("context_length") val contextLength: BigDecimal,
-    @SerializedName("description") val description: String,
-    @SerializedName("created") val created: Long,
-    @SerializedName("architecture") val architecture: ModelArchitecture,
-    @SerializedName("pricing") val pricing: ModelPricing,
+    @SerialName("id") val id: String,
+    @SerialName("name") val name: String,
+    @Contextual @SerialName("context_length") val contextLength: Int,
+    @SerialName("description") val description: String,
+    @SerialName("created") val created: Long,
+    @SerialName("architecture") val architecture: ModelArchitectureDTO,
+    @SerialName("pricing") val pricing: ModelPricingDTO,
 )

@@ -1,5 +1,8 @@
 package com.arny.aipromptmaster.presentation.ui.chat
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ObjectAnimator
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -33,8 +36,9 @@ import com.arny.aipromptmaster.domain.models.errors.DomainError
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.FragmentChatBinding
 import com.arny.aipromptmaster.presentation.ui.editprompt.EditPromptDialogFragment
+import com.arny.aipromptmaster.presentation.utils.AnimationUtils
+import com.arny.aipromptmaster.presentation.utils.asString
 import com.arny.aipromptmaster.presentation.utils.autoClean
-import com.arny.aipromptmaster.presentation.utils.showInputTextDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.xwray.groupie.GroupieAdapter
 import dagger.android.support.AndroidSupportInjection
@@ -120,7 +124,9 @@ class ChatFragment : Fragment() {
 
                     R.id.action_system_prompt -> {
                         val currentPrompt = viewModel.uiState.value.systemPrompt
-                        val action = ChatFragmentDirections.actionNavChatToEditPromptDialogFragment(currentPrompt)
+                        val action = ChatFragmentDirections.actionNavChatToEditPromptDialogFragment(
+                            currentPrompt
+                        )
                         findNavController().navigate(action)
                         true
                     }
@@ -158,6 +164,8 @@ class ChatFragment : Fragment() {
             if (message.isNotBlank()) {
                 viewModel.sendMessage(message)
                 binding.etUserInput.text?.clear()
+                binding.errorCard.isVisible = false
+                binding.tvErrorMessage.text = ""
             }
         }
 
@@ -165,6 +173,11 @@ class ChatFragment : Fragment() {
             findNavController().navigate(
                 ChatFragmentDirections.actionNavChatToModelsFragment()
             )
+        }
+
+        binding.btnDismissError.setOnClickListener {
+            binding.tvErrorMessage.text = ""
+            binding.errorCard.isVisible = false
         }
     }
 
@@ -252,26 +265,97 @@ class ChatFragment : Fragment() {
     private fun handleError(error: Throwable) {
         error.printStackTrace()
         when (error) {
-            is DomainError.Api -> showApiErrorDialog(error)
-            is DomainError.Local -> Toasty.error(
-                requireContext(),
-                error.message.orEmpty(),
-                Toast.LENGTH_LONG
-            )
-                .show()
+            is DomainError.Api -> {
+                // Для API ошибок можно показывать как диалог, так и карточку
+                // в зависимости от критичности
+                when (error.code) {
+                    401, 403 -> showApiErrorDialog(error) // Критические ошибки авторизации
+                    429 -> showErrorCard( // Rate limit - можно показать в карточке
+                        "Превышен лимит запросов. ${error.detailedMessage}"
+                    )
+                    else -> showApiErrorDialog(error) // Остальные API ошибки через диалог
+                }
+            }
 
-            is DomainError.Generic -> Toasty.warning(
-                requireContext(),
-                error.message ?: "Произошла неизвестная ошибка",
-                Toast.LENGTH_LONG
-            ).show()
+            is DomainError.Local -> {
+                val message = error.stringHolder.asString(requireContext())
+                    .takeIf { it.isNotBlank() } ?: error.message ?: "Локальная ошибка"
+                showErrorCard(message)
+            }
 
-            else -> Toasty.error(
-                requireContext(),
-                error.message ?: "Неизвестная ошибка",
-                Toast.LENGTH_LONG
-            ).show()
+            is DomainError.Generic -> {
+                val message = error.stringHolder.asString(requireContext())
+                    .takeIf { it.isNotBlank() } ?: error.message ?: "Неизвестная ошибка"
+                showErrorCard(message)
+            }
+
+            else -> {
+                val message = error.message ?: "Неизвестная ошибка"
+                showErrorCard(message)
+            }
         }
+    }
+
+    /**
+     * Показать ошибку в анимированной карточке
+     */
+    private fun showErrorCard(message: String) {
+        binding.tvErrorMessage.text = message
+
+        // Используем анимацию вместо прямого изменения visibility
+        if (!binding.errorCard.isVisible) {
+            AnimationUtils.showWithSlideDown(binding.errorCard)
+        } else {
+            // Если карточка уже видна, просто обновляем текст с fade эффектом
+            updateErrorMessage(message)
+        }
+    }
+
+    /**
+     * Обновить сообщение в уже видимой карточке
+     */
+    private fun updateErrorMessage(newMessage: String) {
+        println("newMessage:$newMessage")
+        val fadeOut = ObjectAnimator.ofFloat(binding.tvErrorMessage, "alpha", 1f, 0f)
+        fadeOut.duration = 150
+
+        fadeOut.addListener(object : AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: Animator) {
+                binding.tvErrorMessage.text = newMessage
+                val fadeIn = ObjectAnimator.ofFloat(binding.tvErrorMessage, "alpha", 0f, 1f)
+                fadeIn.duration = 150
+                fadeIn.start()
+            }
+        })
+
+        fadeOut.start()
+    }
+
+    /**
+     * Показать критичную API ошибку в диалоге
+     */
+    private fun showApiErrorDialog(error: DomainError.Api) {
+        val title = when (error.code) {
+            401, 403 -> "Ошибка авторизации"
+            500, 502, 503 -> "Ошибка сервера"
+            else -> "Ошибка API"
+        }
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(title)
+            .setMessage(error.detailedMessage)
+            .setPositiveButton("ОК") { dialog, _ -> dialog.dismiss() }
+            .apply {
+                // Для ошибок авторизации добавляем кнопку настроек
+                if (error.code in listOf(401, 403)) {
+                    setNegativeButton("Настройки") { dialog, _ ->
+                        // Перейти к настройкам API ключа
+                        findNavController().navigate(ChatFragmentDirections.actionNavChatToSettingsFragment())
+                        dialog.dismiss()
+                    }
+                }
+            }
+            .show()
     }
 
     private fun updateModelErrorState(isError: Boolean) {
@@ -307,22 +391,6 @@ class ChatFragment : Fragment() {
         if (layoutManager.findLastVisibleItemPosition() == groupAdapter.itemCount - 2) {
             binding.rvChat.smoothScrollToPosition(groupAdapter.itemCount - 1)
         }
-    }
-
-    /**
-     * Показывает детализированный диалог для ошибок API.
-     */
-    private fun showApiErrorDialog(apiError: DomainError.Api) {
-        MaterialAlertDialogBuilder(requireActivity())
-            .setTitle(apiError.message)
-            .setMessage(apiError.detailedMessage)
-            .setPositiveButton(android.R.string.ok) { dialog, _ ->
-                dialog.dismiss()
-            }
-            .setNeutralButton(R.string.action_settings) { dialog, _ ->
-                findNavController().navigate(ChatFragmentDirections.actionNavChatToSettingsFragment())
-                dialog.dismiss()
-            }.show()
     }
 
     private fun showClearDialog() {

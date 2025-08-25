@@ -1,10 +1,17 @@
 package com.arny.aipromptmaster.data.models
 
-import com.google.gson.annotations.SerializedName
-import java.math.BigDecimal
+import kotlinx.serialization.Contextual
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-data class ModelPricing(
-    @SerializedName("prompt") val prompt: BigDecimal,
-    @SerializedName("completion") val completion: BigDecimal,
-    @SerializedName("image") val image: BigDecimal?,
+@Serializable
+data class ModelPricingDTO(
+    @SerialName("prompt") val prompt: String = "0", // Оставляем String, конвертируем в mapper'е
+    @SerialName("completion") val completion: String = "0",
+    @SerialName("image") val image: String = "0",
+    @SerialName("request") val request: String = "0",
+    @SerialName("web_search") val webSearch: String = "0",
+    @SerialName("internal_reasoning") val internalReasoning: String = "0",
+    @SerialName("input_cache_read") val inputCacheRead: String = "0",
+    @SerialName("input_cache_write") val inputCacheWrite: String = "0"
 )

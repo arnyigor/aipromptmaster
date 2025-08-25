@@ -1,7 +1,5 @@
 package com.arny.aipromptmaster.data.openrouter
 
-import com.arny.aipromptmaster.domain.R
-
 import android.util.Log
 import com.arny.aipromptmaster.data.api.OpenRouterService
 import com.arny.aipromptmaster.data.mappers.ChatMapper
@@ -11,10 +9,12 @@ import com.arny.aipromptmaster.data.models.ApiErrorResponse
 import com.arny.aipromptmaster.data.models.ChatCompletionRequestDTO
 import com.arny.aipromptmaster.data.models.ChatCompletionResponseDTO
 import com.arny.aipromptmaster.data.models.MessageDTO
+import com.arny.aipromptmaster.domain.R
 import com.arny.aipromptmaster.domain.models.ChatCompletionResponse
 import com.arny.aipromptmaster.domain.models.ChatMessage
 import com.arny.aipromptmaster.domain.models.LlmModel
 import com.arny.aipromptmaster.domain.models.errors.DomainError
+import com.arny.aipromptmaster.domain.models.strings.StringHolder
 import com.arny.aipromptmaster.domain.repositories.IOpenRouterRepository
 import com.arny.aipromptmaster.domain.results.DataResult
 import kotlinx.coroutines.CoroutineDispatcher
@@ -48,7 +48,11 @@ class OpenRouterRepositoryImpl @Inject constructor(
                     _modelsCache.value = response.body()!!.models.map { it.toDomain() }
                     Result.success(Unit)
                 } else {
-                    val error = parseErrorBody(response.code(), response.errorBody()?.string(), response.message())
+                    val error = parseErrorBody(
+                        response.code(),
+                        response.errorBody()?.string(),
+                        response.message()
+                    )
                     Result.failure(error)
                 }
             } catch (e: Exception) {
@@ -76,7 +80,11 @@ class OpenRouterRepositoryImpl @Inject constructor(
                 val domainResponse = ChatMapper.toDomain(response.body()!!)
                 Result.success(domainResponse)
             } else {
-                val domainError = parseErrorBody(response.code(), response.errorBody()?.string(), response.message())
+                val domainError = parseErrorBody(
+                    response.code(),
+                    response.errorBody()?.string(),
+                    response.message()
+                )
                 Result.failure(domainError)
             }
         } catch (e: Exception) {
@@ -107,7 +115,8 @@ class OpenRouterRepositoryImpl @Inject constructor(
                             val json = line.substring(5).trim()
                             if (json == "[DONE]") break
                             try {
-                                val chunk = jsonParser.decodeFromString<ChatCompletionResponseDTO>(json)
+                                val chunk =
+                                    jsonParser.decodeFromString<ChatCompletionResponseDTO>(json)
                                 val contentDelta = chunk.choices.firstOrNull()?.delta?.content
                                 if (contentDelta != null) {
                                     emit(DataResult.Success(contentDelta))
@@ -119,11 +128,19 @@ class OpenRouterRepositoryImpl @Inject constructor(
                     }
                 }
             } else {
-                val domainError = parseErrorBody(response.code(), response.errorBody()?.string(), response.message())
-                emit(DataResult.Error(domainError))
+                emit(
+                    DataResult.Error(
+                        parseErrorBody(
+                            response.code(),
+                            response.errorBody()?.string(),
+                            response.message()
+                        )
+                    )
+                )
             }
-        } catch (e: Exception) {
-            emit(DataResult.Error(mapNetworkException(e)))
+        } catch (exception: Exception) {
+            val domainError = mapNetworkException(exception)
+            emit(DataResult.Error(domainError))
         }
     }
 
@@ -132,21 +149,29 @@ class OpenRouterRepositoryImpl @Inject constructor(
         if (body.isNullOrBlank()) {
             return DomainError.Api(code, "Ошибка сервера (Код: $code)", message)
         }
+
         return try {
             val errorResponse = jsonParser.decodeFromString<ApiErrorResponse>(body)
             errorResponse.error.toDomainError()
         } catch (e: Exception) {
-            DomainError.Generic("Не удалось обработать ответ сервера (Код: $code). Тело ответа: $body")
+            Log.e("ParseError", "Failed to parse error response: $body", e)
+            // Fallback для неизвестного формата ошибки
+            DomainError.Api(
+                code = code,
+                stringHolder = StringHolder.Text("Ошибка сервера (Код: $code)"),
+                detailedMessage = body
+            )
         }
     }
 
     // Хелпер для маппинга сетевых исключений
-    private fun mapNetworkException(e: Exception): DomainError {
+    private fun mapNetworkException(e: Throwable): DomainError {
         Log.e("RepositoryError", "Network or unexpected error", e)
         return when (e) {
             is java.net.SocketTimeoutException -> DomainError.network(R.string.error_timeout)
             is java.net.UnknownHostException -> DomainError.network(R.string.error_no_internet)
-            else -> DomainError.Generic(e.localizedMessage)
+            is java.net.ConnectException -> DomainError.network(R.string.error_connection)
+            else -> DomainError.Generic(e.localizedMessage ?: "Неизвестная ошибка")
         }
     }
 }

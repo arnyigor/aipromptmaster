@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:background="?attr/colorSurface">
 
-    <!-- RecyclerView для сообщений (без изменений) -->
+    <!-- RecyclerView для сообщений -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_chat"
         android:layout_width="match_parent"
@@ -20,8 +20,63 @@
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         tools:listitem="@layout/item_user_message" />
 
-    <!-- Блок ввода сообщения (обновлен) -->
+    <!-- НОВОЕ: Поле для отображения ошибок -->
     <com.google.android.material.card.MaterialCardView
+        android:id="@+id/error_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="72dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="?attr/colorErrorContainer"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="4dp"
+        app:layout_anchor="@id/input_card"
+        app:layout_anchorGravity="top|center_horizontal"
+        app:strokeColor="?attr/colorError"
+        app:strokeWidth="1dp"
+        tools:visibility="visible">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="12dp">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center_vertical"
+                android:layout_marginEnd="12dp"
+                android:src="@drawable/ic_error"
+                app:tint="?attr/colorError" />
+
+            <TextView
+                android:id="@+id/tv_error_message"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:layout_weight="1"
+                android:textColor="?attr/colorOnErrorContainer"
+                android:textSize="14sp"
+                tools:text="Произошла ошибка при отправке сообщения. Проверьте подключение к интернету." />
+
+            <ImageButton
+                android:id="@+id/btn_dismiss_error"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_gravity="center_vertical"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/outline_close_24"
+                app:tint="?attr/colorError" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Блок ввода сообщения -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/input_card"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
@@ -36,20 +91,20 @@
             android:paddingEnd="8dp"
             android:paddingBottom="4dp">
 
-            <!-- НОВАЯ ИКОНКА: Настройки выбора модели -->
+            <!-- Настройки выбора модели -->
             <ImageButton
                 android:id="@+id/btn_model_settings"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                app:tint="?attr/colorPrimary"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/select_model_button_description"
                 android:src="@drawable/outline_discover_tune_24"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+                app:layout_constraintTop_toTopOf="parent"
+                app:tint="?attr/colorPrimary" />
 
-            <!-- Поле ввода (ИЗМЕНЕНО) -->
+            <!-- Поле ввода -->
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/et_user_input"
                 android:layout_width="0dp"
@@ -68,7 +123,7 @@
                 app:layout_constraintStart_toEndOf="@id/btn_model_settings"
                 app:layout_constraintTop_toTopOf="parent" />
 
-            <!-- Кнопка отправки (без изменений в constraints) -->
+            <!-- Кнопка отправки -->
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/btn_send"
                 android:layout_width="wrap_content"
@@ -78,7 +133,7 @@
                 app:fabCustomSize="40dp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="parent"  />
+                app:layout_constraintTop_toTopOf="parent" />
 
             <ProgressBar
                 android:id="@+id/progress_bar_send"

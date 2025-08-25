@@ -165,8 +165,7 @@ class PromptsViewModel @AssistedInject constructor(
                 when (result) {
                     is SyncResult.Success -> {
                         _event.emit(PromptsUiEvent.SyncSuccess(result.updatedPrompts.size))
-
-                        _searchState.value = SearchState()
+                        _event.emit(PromptsUiEvent.PromptUpdated)
                     }
 
                     is SyncResult.Error -> {

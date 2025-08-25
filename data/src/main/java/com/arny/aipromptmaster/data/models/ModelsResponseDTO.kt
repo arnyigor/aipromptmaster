@@ -1,7 +1,9 @@
 package com.arny.aipromptmaster.data.models
 
-import com.google.gson.annotations.SerializedName
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class ModelsResponseDTO(
-    @SerializedName("data") val models: List<ModelDTO>
+    @SerialName("data") val models: List<ModelDTO>
 )

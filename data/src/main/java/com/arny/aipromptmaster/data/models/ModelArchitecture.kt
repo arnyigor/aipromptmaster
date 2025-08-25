@@ -1,8 +1,12 @@
 package com.arny.aipromptmaster.data.models
 
-import com.google.gson.annotations.SerializedName
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-data class ModelArchitecture(
-    @SerializedName("input_modalities") val inputModalities: List<String> = emptyList(),
-    @SerializedName("output_modalities") val outputModalities: List<String> = emptyList()
+@Serializable
+data class ModelArchitectureDTO(
+    @SerialName("input_modalities") val inputModalities: List<String> = emptyList(),
+    @SerialName("output_modalities") val outputModalities: List<String> = emptyList(),
+    @SerialName("tokenizer") val tokenizer: String? = null,
+    @SerialName("instruct_type") val instructType: String? = null
 )
