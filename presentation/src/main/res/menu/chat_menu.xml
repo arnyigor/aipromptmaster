@@ -6,22 +6,29 @@
         android:id="@+id/action_settings"
         android:icon="@drawable/ic_settings"
         android:title="@string/action_settings"
-        app:showAsAction="ifRoom" />
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_model_select"
+        android:icon="@drawable/ic_settings"
+        android:title="@string/action_model_select"
+        app:showAsAction="never" />
+
     <item
         android:id="@+id/action_clear_chat"
         android:icon="@drawable/outline_delete_history_24"
         android:title="@string/clear_history"
-        app:showAsAction="ifRoom" />
+        app:showAsAction="never" />
 
     <item
         android:id="@+id/action_system_prompt"
         android:icon="@drawable/outline_discover_tune_24"
         android:title="@string/action_system_prompt"
-        app:showAsAction="ifRoom" />
+        app:showAsAction="never" />
 
     <item
         android:id="@+id/action_export_chat"
         android:icon="@android:drawable/ic_menu_share"
         android:title="@string/action_export"
-        app:showAsAction="ifRoom" />
+        app:showAsAction="never" />
 </menu>

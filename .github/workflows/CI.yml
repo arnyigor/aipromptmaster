@@ -3,16 +3,16 @@ name: Build and Release APK
 on:
   push:
     tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+'
-  workflow_dispatch:  # ДОБАВЛЕНО: ручной запуск
+      - 'v[0-9]+.[0-9]+.[0-9]+' # Запуск при пуше тега, например v1.2.3
+  workflow_dispatch:
     inputs:
       tag:
-        description: 'Укажите тег для релиза Android приложения'
+        description: 'Укажите тег для релиза (например, v1.2.3)'
         required: true
         type: string
 
 permissions:
-  contents: write
+  contents: write # Необходимо для создания релиза
 
 jobs:
   build:
@@ -27,57 +27,52 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-          cache: 'gradle'
-
-      # ДОБАВЛЕНО: Кеширование Gradle
-      - name: Cache Gradle dependencies
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            gradle-${{ runner.os }}-
+          cache: 'gradle' # Встроенное кеширование Gradle
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
       - name: Decode and Create Keystore File
         run: echo "${{ secrets.SIGNING_KEY_STORE_BASE64 }}" | base64 --decode > my-release-key.jks
+        # Этот шаг берет ваш секрет, декодирует его из Base64
+        # и воссоздает файл my-release-key.jks прямо на CI-машине.
 
-      # ДОБАВЛЕНО: Определение версии
-      - name: Get version from tag
+      - name: Get Version and Tag
         id: get_version
         run: |
           if [[ "${{ github.event_name }}" == "push" ]]; then
-            VERSION="${{ github.ref_name }}"
+            TAG_NAME="${{ github.ref_name }}"
           else
-            VERSION="${{ github.event.inputs.tag }}"
+            TAG_NAME="${{ github.event.inputs.tag }}"
           fi
-          echo "version=${VERSION#v}" >> $GITHUB_OUTPUT
+          VERSION_NAME="${TAG_NAME#v}"
+          echo "version_name=${VERSION_NAME}" >> $GITHUB_OUTPUT
+          echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
 
-      # УЛУЧШЕНО: Сборка с версией
+      # ИЗМЕНЕНО: Собираем APK (Android Package) вместо AAB
       - name: Build Signed APK
-        run: ./gradlew assembleRelease -PversionName=${{ steps.get_version.outputs.version }}
+        run: ./gradlew assembleRelease -PversionName=${{ steps.get_version.outputs.version_name }}
         env:
           SIGNING_KEY_STORE_PATH: my-release-key.jks
           SIGNING_KEY_STORE_PASSWORD: ${{ secrets.SIGNING_KEY_STORE_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
 
-      # УЛУЧШЕНО: Переименование APK
+      # ИЗМЕНЕНО: Переименовываем APK
       - name: Rename APK
+        id: rename_apk
         run: |
+          # APK-файлы могут иметь разное имя в зависимости от конфигурации сборки,
+          # поэтому ищем его надежным способом.
           apk_path=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
-          app_name="YourApp-${{ steps.get_version.outputs.version }}-release.apk"
+          app_name="AppName-${{ steps.get_version.outputs.version_name }}.apk"
           cp "$apk_path" "$app_name"
-          echo "apk_path=$app_name" >> $GITHUB_ENV
+          echo "apk_name=$app_name" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name || github.event.inputs.tag }}
-          name: Android Release ${{ steps.get_version.outputs.version }}
-          body: "Android приложение версии ${{ steps.get_version.outputs.version }}"
-          files: ${{ env.apk_path }}
+          tag_name: ${{ steps.get_version.outputs.tag_name }}
+          name: Release ${{ steps.get_version.outputs.version_name }}
+          body: "APK-файл приложения версии ${{ steps.get_version.outputs.version_name }}"
+          files: ${{ steps.rename_apk.outputs.apk_name }}

@@ -91,25 +91,12 @@
             android:paddingEnd="8dp"
             android:paddingBottom="4dp">
 
-            <!-- Настройки выбора модели -->
-            <ImageButton
-                android:id="@+id/btn_model_settings"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/select_model_button_description"
-                android:src="@drawable/outline_discover_tune_24"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                app:tint="?attr/colorPrimary" />
 
             <!-- Поле ввода -->
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/et_user_input"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
                 android:layout_marginEnd="8dp"
                 android:background="@android:color/transparent"
                 android:hint="@string/enter_message"
@@ -120,7 +107,7 @@
                 android:paddingBottom="12dp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@id/btn_send"
-                app:layout_constraintStart_toEndOf="@id/btn_model_settings"
+                app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
             <!-- Кнопка отправки -->
@@ -131,6 +118,7 @@
                 android:contentDescription="@null"
                 android:src="@android:drawable/ic_menu_send"
                 app:fabCustomSize="40dp"
+                app:backgroundTint="@color/fab_background_tint"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />

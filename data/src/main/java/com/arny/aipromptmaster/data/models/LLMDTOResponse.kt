@@ -23,7 +23,7 @@ data class MessageDTO(
 data class ChatCompletionResponseDTO(
     val id: String,
     val choices: List<ChoiceDTO>,
-    val usage: UsageDTO?,
+    val usage: UsageDTO? = null,
 )
 
 @Serializable
@@ -48,9 +48,18 @@ data class ErrorMetadata(
 
 @Serializable
 data class ChoiceDTO(
-    val delta: MessageDTO?,
-    val message: MessageDTO,
-    @SerialName("finish_reason") val finishReason: String? = null
+    // Делаем оба поля nullable со значением по умолчанию,
+    // чтобы один и тот же DTO мог парсить и стрим, и обычный ответ.
+    val message: MessageDTO? = null,
+    val delta: DeltaDTO? = null,
+    @SerialName("finish_reason")
+    val finishReason: String? = null
+)
+
+@Serializable
+data class DeltaDTO(
+    val role: String? = null,    // 'role' приходит только в первом чанке
+    val content: String? = null // 'content' может быть null или отсутствовать
 )
 
 @Serializable

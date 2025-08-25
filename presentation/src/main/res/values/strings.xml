@@ -2,6 +2,7 @@
 <resources>
     <string name="app_name" translatable="false">AI Prompt Master</string>
     <string name="action_settings">Настройки</string>
+    <string name="action_model_select">Выбрать модель</string>
     <string name="menu_home">Главная</string>
     <string name="menu_library">Библиотека</string>
     <string name="menu_history">История</string>
@@ -51,7 +52,6 @@
     <string name="ai_settings">Настройки ИИ-асистента</string>
     <string name="error_empty_string">Ошибка, пустая строка</string>
     <string name="choose_model">Выберите модель</string>
-    <string name="ai_models">ИИ модели</string>
     <string name="select_model_button_description">настрока моделей</string>
     <string name="filter">Фильтр</string>
     <string name="created">Created</string>
@@ -83,6 +83,7 @@
     <string name="action_save">Сохранить</string>
     <string name="action_cancel">Отмена</string>
     <string name="no_messages">Нет сообщений</string>
+    <string name="no_model_selected">Не выбрана модель. Выберите модель в настройках</string>
     <string name="delete_chat_dialog_title">Удалить чат?</string>
     <string name="delete_chat_dialog_message">Вы уверены, что хотите удалить чат \"%1$s\"? Это действие необратимо.</string>
     <string name="action_delete">Удалить</string>

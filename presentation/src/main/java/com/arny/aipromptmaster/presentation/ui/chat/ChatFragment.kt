@@ -7,7 +7,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.graphics.PorterDuff
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.Menu
@@ -15,9 +14,10 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
+import androidx.appcompat.widget.Toolbar
 import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -111,6 +111,12 @@ class ChatFragment : Fragment() {
                         )
                         true
                     }
+                    R.id.action_model_select -> {
+                        findNavController().navigate(
+                            ChatFragmentDirections.actionNavChatToModelsFragment()
+                        )
+                        true
+                    }
 
                     R.id.action_export_chat -> {
                         viewModel.onExportChatClicked()
@@ -167,12 +173,6 @@ class ChatFragment : Fragment() {
                 binding.errorCard.isVisible = false
                 binding.tvErrorMessage.text = ""
             }
-        }
-
-        binding.btnModelSettings.setOnClickListener {
-            findNavController().navigate(
-                ChatFragmentDirections.actionNavChatToModelsFragment()
-            )
         }
 
         binding.btnDismissError.setOnClickListener {
@@ -256,7 +256,6 @@ class ChatFragment : Fragment() {
 
     private fun updateLoadingState(isLoading: Boolean) {
         binding.progressBarSend.isVisible = isLoading
-        binding.btnModelSettings.isEnabled = !isLoading
         binding.etUserInput.isEnabled = !isLoading
         binding.btnSend.isEnabled = !isLoading
         binding.btnSend.visibility = if (isLoading) View.INVISIBLE else View.VISIBLE
@@ -273,6 +272,7 @@ class ChatFragment : Fragment() {
                     429 -> showErrorCard( // Rate limit - можно показать в карточке
                         "Превышен лимит запросов. ${error.detailedMessage}"
                     )
+
                     else -> showApiErrorDialog(error) // Остальные API ошибки через диалог
                 }
             }
@@ -418,12 +418,12 @@ class ChatFragment : Fragment() {
     }
 
     private fun setErrorColor(isError: Boolean) {
-        if (isError) {
-            val redColor = ContextCompat.getColor(requireContext(), R.color.red_error)
-            binding.btnModelSettings.setColorFilter(redColor, PorterDuff.Mode.SRC_IN)
-        } else {
-            binding.btnModelSettings.clearColorFilter()
-        }
+//        if (isError) {
+//            val redColor = ContextCompat.getColor(requireContext(), R.color.red_error)
+//            binding.btnModelSettings.setColorFilter(redColor, PorterDuff.Mode.SRC_IN)
+//        } else {
+//            binding.btnModelSettings.clearColorFilter()
+//        }
     }
 
     override fun onDestroyView() {

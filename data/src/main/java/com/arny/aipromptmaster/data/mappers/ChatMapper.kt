@@ -21,7 +21,8 @@ object ChatMapper {
 
     private fun toDomainChoice(dto: ChoiceDTO): Choice {
         return Choice(
-            message = toDomainMessage(dto.message),
+            message = dto.message?.let { toDomainMessage(it) }
+                ?: ChatMessage(role = ChatRole.ASSISTANT, content = ""),
             finishReason = dto.finishReason
         )
     }

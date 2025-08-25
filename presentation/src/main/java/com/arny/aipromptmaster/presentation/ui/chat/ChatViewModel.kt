@@ -103,7 +103,7 @@ class ChatViewModel @AssistedInject constructor(
         viewModelScope.launch {
             interactor.getSelectedModel().collect { result ->
                 if (result is DataResult.Error) {
-                    _uiEvents.emit(ChatUiEvent.ShowError(result.exception ?: DomainError.Generic("Ошибка загрузки модели")))
+                    _uiEvents.emit(ChatUiEvent.ShowError(result.exception ?: DomainError.generic(R.string.no_model_selected)))
                 }
             }
         }

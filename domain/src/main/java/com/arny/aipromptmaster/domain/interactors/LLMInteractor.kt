@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onStart
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -201,28 +202,56 @@ class LLMInteractor @Inject constructor(
         apiKey: String,
         messageId: String
     ) {
-        var isSuccess = false
+        var receivedAnyData = false
+        var streamError: DomainError? = null
+
+        // Используем onCompletion для обработки завершения потока
         modelsRepository.getChatCompletionStream(model, messages, apiKey)
+            .onCompletion { cause ->
+                // Этот блок вызывается ПОСЛЕ того, как поток завершился
+                // (либо успешно, либо с ошибкой `cause`).
+                // Если `cause` не null, значит, сам flow бросил исключение (наш первый рефакторинг).
+                if (cause != null) {
+                    // Это перехватит ошибки, если вы вдруг вернетесь к подходу с `throw` в репозитории.
+                    // При текущей реализации репозитория с DataResult, этот блок не должен выполниться.
+                    streamError = when(cause) {
+                        is DomainError -> cause
+                        else -> DomainError.Generic(cause.localizedMessage ?: "Unknown flow error")
+                    }
+                    return@onCompletion
+                }
+
+                // Если поток завершился штатно, но мы не получили ни одного чанка,
+                // и при этом не было ошибки внутри потока (streamError == null),
+                // то устанавливаем ошибку "пустого потока".
+                if (!receivedAnyData && streamError == null) {
+                    streamError = DomainError.Generic("Stream completed without emitting any data.")
+                }
+            }
             .collect { result ->
+                // Внутри collect мы ТОЛЬКО обрабатываем данные, но не бросаем исключения.
                 when (result) {
                     is DataResult.Success -> {
                         historyRepository.appendContentToMessage(messageId, result.data)
-                        isSuccess = true // Помечаем, что хотя бы один чанк пришел
+                        receivedAnyData = true // Помечаем, что данные были
                     }
-
                     is DataResult.Error -> {
-                        // Если API возвращает ошибку в потоке, пробрасываем ее дальше
-                        throw result.exception ?: DomainError.Generic("Stream returned an error")
+                        val exception = result.exception
+                        streamError = when (exception) {
+                            is DomainError -> exception // Если это уже наш тип, просто используем его
+                            null -> DomainError.Generic("Stream returned an error with no exception details")
+                            else -> DomainError.Generic( // Оборачиваем любое другое исключение
+                                exception.localizedMessage ?: "Unknown stream error"
+                            )
+                        }
                     }
-
-                    DataResult.Loading -> {}
+                    DataResult.Loading -> { /* Игнорируем */ }
                 }
             }
-        // Если поток завершился, но мы не получили ни одного успешного чанка,
-        // считаем это провалом, чтобы запустить fallback.
-        if (!isSuccess) {
-            throw DomainError.Generic("Stream completed without emitting any data.")
-        }
+
+        // После того как collect завершился, проверяем, была ли ошибка.
+        // Если да, бросаем ее. Теперь это безопасно и предсказуемо.
+        streamError?.let { throw it }
     }
 
     override fun getChatList(): Flow<List<Chat>> {
@@ -243,10 +272,6 @@ class LLMInteractor @Inject constructor(
         val selectedIdFlow: Flow<String?> = settingsRepository.getSelectedModelId()
         val modelsListFlow: Flow<List<LlmModel>> = modelsRepository.getModelsFlow()
         return combine(selectedIdFlow, modelsListFlow) { selectedId, modelsList ->
-//            Log.i(
-//                this::class.java.simpleName,
-//                "getModels: selectedId: $selectedId, modelsList: ${modelsList.size}"
-//            )
             // Эта лямбда будет выполняться каждый раз, когда меняется ID или список моделей.
             if (modelsList.isEmpty()) {
                 DataResult.Loading

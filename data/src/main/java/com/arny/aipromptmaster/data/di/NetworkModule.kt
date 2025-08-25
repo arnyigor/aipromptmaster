@@ -2,6 +2,7 @@ package com.arny.aipromptmaster.data.di
 
 import com.arny.aipromptmaster.data.BuildConfig
 import com.arny.aipromptmaster.data.api.FeedbackApiService
+import com.arny.aipromptmaster.data.api.GitHubService
 import com.arny.aipromptmaster.data.api.OpenRouterService
 import com.arny.aipromptmaster.data.api.VercelApiService
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
@@ -18,6 +19,7 @@ import javax.inject.Singleton
 
 @Module
 object NetworkModule {
+    private const val GITHUB_BASE_URL = "https://api.github.com/"
     private const val OPEN_ROUTER_BASE_URL = "https://openrouter.ai/api/v1/"
     private const val VERCEL_BASE_URL = "https://aipromptsapi.vercel.app/"
 
@@ -77,6 +79,18 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    @GitHubRetrofit
+    fun provideGitHubRetrofit(@DefaultOkHttpClient okHttpClient: OkHttpClient, json: Json): Retrofit {
+        val contentType = "application/json".toMediaType()
+        return Retrofit.Builder()
+            .baseUrl(GITHUB_BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(json.asConverterFactory(contentType))
+            .build()
+    }
+
+    @Provides
+    @Singleton
     @VercelRetrofit
     fun provideVercelApiRetrofit(json: Json, @VercelOkHttpClient okHttpClient: OkHttpClient): Retrofit {
         val contentType = "application/json".toMediaType()
@@ -87,7 +101,6 @@ object NetworkModule {
             .build()
     }
 
-    // --- СЕРВИСЫ ---
 
     @Provides
     @Singleton
@@ -102,6 +115,11 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    fun provideGithubService(@GitHubRetrofit retrofit: Retrofit): GitHubService =
+        retrofit.create(GitHubService::class.java)
+
+    @Provides
+    @Singleton
     fun provideFeedbackApiService(@VercelRetrofit retrofit: Retrofit): FeedbackApiService =
         retrofit.create(FeedbackApiService::class.java)
 }
@@ -113,6 +131,10 @@ annotation class OpenRouterRetrofit
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class VercelRetrofit
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class GitHubRetrofit
 
 // Квалификаторы для разных OkHttpClient
 @Qualifier

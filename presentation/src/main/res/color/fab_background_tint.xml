@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Цвет, когда FAB включена (enabled = true) -->
+    <!-- Используйте ваш основной цвет, например, из атрибута темы ?attr/colorPrimary -->
+    <item android:color="?attr/colorPrimary" android:state_enabled="true" />
+
+    <!-- Цвет, когда FAB выключена (enabled = false) -->
+    <!-- Material Design рекомендует использовать цвет OnSurface с 12% прозрачности для disabled состояния -->
+    <!-- Если ваша тема использует Material Theme, ?attr/colorOnSurface обычно черный или белый -->
+    <item android:color="?attr/colorOnSurface" android:alpha="0.12" android:state_enabled="false" />
+
+    <!-- Состояние по умолчанию (если нужно) -->
+    <!-- <item android:color="@color/default_color" /> -->
+</selector>
