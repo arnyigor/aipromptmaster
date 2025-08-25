@@ -1,5 +1,4 @@
 import java.util.Properties
-import java.io.ByteArrayOutputStream
 
 plugins {
     id("com.android.application")
@@ -8,45 +7,39 @@ plugins {
     kotlin("kapt")
 }
 
-// Функция для получения версии из Git
-fun getVersionFromGit(): Triple<Int, Int, Int> {
-    return try {
-        // Пытаемся получить версию из project property (для CI/CD)
-        val versionNameProperty = project.findProperty("versionName") as? String
-        if (versionNameProperty != null) {
-            println("Using version from project property: $versionNameProperty")
-            parseVersion(versionNameProperty)
-        } else {
-            // Получаем последний тег из Git
-            val output = ByteArrayOutputStream()
-            val result = exec {
-                commandLine("git", "describe", "--tags", "--abbrev=0")
-                standardOutput = output
-                isIgnoreExitValue = true
-            }
-
-            if (result.exitValue == 0) {
-                val gitTag = output.toString().trim()
-                println("Git tag found: $gitTag")
-                // Убираем префикс 'v' если есть
-                val versionString = if (gitTag.startsWith("v")) {
-                    gitTag.substring(1)
-                } else {
-                    gitTag
-                }
-                parseVersion(versionString)
-            } else {
-                println("No git tags found, using default version")
-                Triple(0, 1, 0) // Default версия
-            }
-        }
-    } catch (e: Exception) {
-        println("Error getting version from git: ${e.message}, using default")
-        Triple(0, 1, 0) // Fallback версия
+// Функция получения версии без внешних процессов
+fun getVersionFromProperties(): Triple<Int, Int, Int> {
+    // 1. Проверяем project property (приоритет для CI/CD)
+    val versionNameProperty = project.findProperty("versionName") as? String
+    if (versionNameProperty != null) {
+        println("📦 Using version from project property: $versionNameProperty")
+        return parseVersion(versionNameProperty)
     }
+
+    // 2. Проверяем environment variable
+    val versionFromEnv = System.getenv("VERSION_NAME")
+    if (versionFromEnv != null) {
+        println("📦 Using version from environment: $versionFromEnv")
+        return parseVersion(versionFromEnv)
+    }
+
+    // 3. Читаем из version.properties файла
+    val versionFile = rootProject.file("version.properties")
+    if (versionFile.exists()) {
+        val properties = Properties()
+        properties.load(versionFile.inputStream())
+        val version = properties.getProperty("version")
+        if (version != null) {
+            println("📦 Using version from version.properties: $version")
+            return parseVersion(version)
+        }
+    }
+
+    // 4. Fallback версия
+    println("📦 Using default version: 0.1.0")
+    return Triple(0, 1, 0)
 }
 
-// Функция парсинга версии из строки
 fun parseVersion(versionString: String): Triple<Int, Int, Int> {
     return try {
         val parts = versionString.split(".")
@@ -55,27 +48,17 @@ fun parseVersion(versionString: String): Triple<Int, Int, Int> {
         val patch = parts.getOrNull(2)?.toIntOrNull() ?: 0
         Triple(major, minor, patch)
     } catch (e: Exception) {
-        println("Error parsing version '$versionString': ${e.message}")
+        println("⚠️ Error parsing version '$versionString': ${e.message}")
         Triple(0, 1, 0)
     }
 }
 
 android {
-    // Загружаем переменные из .env файла, если он существует
-    val envFile = rootProject.file(".env")
-    if (envFile.exists()) {
-        val properties = Properties()
-        properties.load(envFile.inputStream())
-        properties.forEach { (key, value) ->
-            project.ext.set(key.toString(), value.toString())
-        }
-    }
-
     namespace = "com.arny.aipromptmaster"
     compileSdk = 36
 
-    // Получаем версию динамически
-    val (vMajor, vMinor, vPatch) = getVersionFromGit()
+    // Получаем версию без использования внешних процессов
+    val (vMajor, vMinor, vPatch) = getVersionFromProperties()
 
     defaultConfig {
         applicationId = "com.arny.aipromptmaster"
@@ -86,9 +69,10 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        println("Building version: $versionName (code: $versionCode)")
+        println("🚀 Building version: $versionName (code: $versionCode)")
     }
 
+    // Остальная конфигурация остается без изменений...
     signingConfigs {
         create("release") {
             val storeFile = project.findProperty("SIGNING_KEY_STORE_PATH") ?: System.getenv("SIGNING_KEY_STORE_PATH")
@@ -118,14 +102,13 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    // Настраиваем имя APK файла
     applicationVariants.all {
         val variant = this
         variant.outputs
             .map { it as com.android.build.gradle.internal.api.BaseVariantOutputImpl }
             .forEach { output ->
-                val outputFileName = "AiPromptMaster-${variant.baseName}-v${variant.versionName}" +
-                        ".apk"
+                val outputFileName =
+                    "AiPromptMaster-${variant.baseName}-v${variant.versionName}.apk"
                 output.outputFileName = outputFileName
             }
     }
@@ -134,8 +117,14 @@ android {
         viewBinding = true
         buildConfig = true
     }
+
     kotlinOptions {
         jvmTarget = "17"
+    }
+
+    kapt {
+        correctErrorTypes = true
+        useBuildCache = true
     }
 }
 
