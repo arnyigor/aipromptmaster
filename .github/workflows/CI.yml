@@ -12,7 +12,7 @@ on:
         type: string
 
 permissions:
-  contents: write # Необходимо для создания релиза
+  contents: write
 
 jobs:
   build:
@@ -21,21 +21,22 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # Важно: получаем полную историю для доступа к тегам
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-          cache: 'gradle' # Встроенное кеширование Gradle
+          cache: 'gradle'
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
       - name: Decode and Create Keystore File
         run: echo "${{ secrets.SIGNING_KEY_STORE_BASE64 }}" | base64 --decode > my-release-key.jks
-        # Этот шаг берет ваш секрет, декодирует его из Base64
-        # и воссоздает файл my-release-key.jks прямо на CI-машине.
 
       - name: Get Version and Tag
         id: get_version
@@ -48,31 +49,54 @@ jobs:
           VERSION_NAME="${TAG_NAME#v}"
           echo "version_name=${VERSION_NAME}" >> $GITHUB_OUTPUT
           echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION_NAME"
 
-      # ИЗМЕНЕНО: Собираем APK (Android Package) вместо AAB
+      # Собираем APK с передачей версии
       - name: Build Signed APK
-        run: ./gradlew assembleRelease -PversionName=${{ steps.get_version.outputs.version_name }}
+        run: ./gradlew assembleRelease -PversionName=${{ steps.get_version.outputs.version_name }} --info
         env:
           SIGNING_KEY_STORE_PATH: my-release-key.jks
           SIGNING_KEY_STORE_PASSWORD: ${{ secrets.SIGNING_KEY_STORE_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
 
-      # ИЗМЕНЕНО: Переименовываем APK
-      - name: Rename APK
+      - name: Find and Rename APK
         id: rename_apk
         run: |
-          # APK-файлы могут иметь разное имя в зависимости от конфигурации сборки,
-          # поэтому ищем его надежным способом.
+          # Ищем собранный APK
           apk_path=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
-          app_name="AppName-${{ steps.get_version.outputs.version_name }}.apk"
+          if [[ -z "$apk_path" ]]; then
+            echo "APK file not found!"
+            exit 1
+          fi
+          
+          # Создаем новое имя на основе версии
+          app_name="AiPromptMaster-v${{ steps.get_version.outputs.version_name }}.apk"
           cp "$apk_path" "$app_name"
+          
           echo "apk_name=$app_name" >> $GITHUB_OUTPUT
+          echo "original_apk=$apk_path" >> $GITHUB_OUTPUT
+          
+          # Выводим информацию для отладки
+          echo "Original APK: $apk_path"
+          echo "Renamed APK: $app_name"
+          ls -la "$app_name"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.get_version.outputs.tag_name }}
           name: Release ${{ steps.get_version.outputs.version_name }}
-          body: "APK-файл приложения версии ${{ steps.get_version.outputs.version_name }}"
+          body: |
+            🚀 **AiPromptMaster версии ${{ steps.get_version.outputs.version_name }}**
+            
+            ### Что нового:
+            - Добавьте сюда описание изменений
+            
+            ### Установка:
+            1. Скачайте APK-файл из раздела Assets ниже
+            2. Разрешите установку из неизвестных источников в настройках Android
+            3. Установите приложение
+            
+            **Минимальная версия Android:** 6.0 (API 23)
           files: ${{ steps.rename_apk.outputs.apk_name }}

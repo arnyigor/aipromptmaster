@@ -1,11 +1,63 @@
-import java.io.FileInputStream
 import java.util.Properties
+import java.io.ByteArrayOutputStream
 
 plugins {
     id("com.android.application")
     kotlin("android")
     kotlin("plugin.serialization") version "2.1.10"
     kotlin("kapt")
+}
+
+// Функция для получения версии из Git
+fun getVersionFromGit(): Triple<Int, Int, Int> {
+    return try {
+        // Пытаемся получить версию из project property (для CI/CD)
+        val versionNameProperty = project.findProperty("versionName") as? String
+        if (versionNameProperty != null) {
+            println("Using version from project property: $versionNameProperty")
+            parseVersion(versionNameProperty)
+        } else {
+            // Получаем последний тег из Git
+            val output = ByteArrayOutputStream()
+            val result = exec {
+                commandLine("git", "describe", "--tags", "--abbrev=0")
+                standardOutput = output
+                isIgnoreExitValue = true
+            }
+
+            if (result.exitValue == 0) {
+                val gitTag = output.toString().trim()
+                println("Git tag found: $gitTag")
+                // Убираем префикс 'v' если есть
+                val versionString = if (gitTag.startsWith("v")) {
+                    gitTag.substring(1)
+                } else {
+                    gitTag
+                }
+                parseVersion(versionString)
+            } else {
+                println("No git tags found, using default version")
+                Triple(0, 1, 0) // Default версия
+            }
+        }
+    } catch (e: Exception) {
+        println("Error getting version from git: ${e.message}, using default")
+        Triple(0, 1, 0) // Fallback версия
+    }
+}
+
+// Функция парсинга версии из строки
+fun parseVersion(versionString: String): Triple<Int, Int, Int> {
+    return try {
+        val parts = versionString.split(".")
+        val major = parts.getOrNull(0)?.toIntOrNull() ?: 0
+        val minor = parts.getOrNull(1)?.toIntOrNull() ?: 1
+        val patch = parts.getOrNull(2)?.toIntOrNull() ?: 0
+        Triple(major, minor, patch)
+    } catch (e: Exception) {
+        println("Error parsing version '$versionString': ${e.message}")
+        Triple(0, 1, 0)
+    }
 }
 
 android {
@@ -15,31 +67,30 @@ android {
         val properties = Properties()
         properties.load(envFile.inputStream())
         properties.forEach { (key, value) ->
-            // Устанавливаем переменные как project extra properties
             project.ext.set(key.toString(), value.toString())
         }
     }
 
     namespace = "com.arny.aipromptmaster"
     compileSdk = 36
-    val vMajor = 0
-    val vMinor = 1
-    val vBuild = 0
+
+    // Получаем версию динамически
+    val (vMajor, vMinor, vPatch) = getVersionFromGit()
+
     defaultConfig {
         applicationId = "com.arny.aipromptmaster"
         minSdk = 23
         targetSdk = 36
-        versionCode = vMajor * 100 + vMinor * 10 + vBuild
-        val name = "$vMajor" + ".${vMinor}" + ".${vBuild}"
-        versionName = "v$name($versionCode)"
+        versionCode = vMajor * 10000 + vMinor * 100 + vPatch
+        versionName = "$vMajor.$vMinor.$vPatch"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        println("Building version: $versionName (code: $versionCode)")
     }
 
     signingConfigs {
         create("release") {
-            // Сначала проверяем project extra properties,
-            // а если их нет, то переменные окружения (для CI/CD).
             val storeFile = project.findProperty("SIGNING_KEY_STORE_PATH") ?: System.getenv("SIGNING_KEY_STORE_PATH")
             val storePassword = project.findProperty("SIGNING_KEY_STORE_PASSWORD") ?: System.getenv("SIGNING_KEY_STORE_PASSWORD")
             val keyAlias = project.findProperty("SIGNING_KEY_ALIAS") ?: System.getenv("SIGNING_KEY_ALIAS")
@@ -58,26 +109,27 @@ android {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-
-            // Связываем нашу release-сборку с созданной конфигурацией подписи
             signingConfig = signingConfigs.getByName("release")
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    // Configure APK file name
+
+    // Настраиваем имя APK файла
     applicationVariants.all {
         val variant = this
         variant.outputs
             .map { it as com.android.build.gradle.internal.api.BaseVariantOutputImpl }
             .forEach { output ->
-                val outputFileName = "AiPromptMaster-${variant.baseName}-${variant.versionName}-${variant.versionCode}" +
+                val outputFileName = "AiPromptMaster-${variant.baseName}-v${variant.versionName}" +
                         ".apk"
                 output.outputFileName = outputFileName
             }
     }
+
     buildFeatures {
         viewBinding = true
         buildConfig = true
