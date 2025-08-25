@@ -35,8 +35,14 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      # ИСПРАВЛЕНО: Создаем keystore в правильной директории
       - name: Decode and Create Keystore File
-        run: echo "${{ secrets.SIGNING_KEY_STORE_BASE64 }}" | base64 --decode > my-release-key.jks
+        run: |
+          echo "${{ secrets.SIGNING_KEY_STORE_BASE64 }}" | base64 --decode > app/my-release-key.jks
+          ls -la app/my-release-key.jks
+        env:
+          # Убеждаемся, что переменная указывает на правильный путь
+          SIGNING_KEY_STORE_PATH: app/my-release-key.jks
 
       - name: Get Version and Tag
         id: get_version
@@ -51,11 +57,12 @@ jobs:
           echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION_NAME"
 
-      # Собираем APK с передачей версии
+      # ИСПРАВЛЕНО: Убираем --info для чистого вывода, добавляем правильные пути
       - name: Build Signed APK
-        run: ./gradlew assembleRelease -PversionName=${{ steps.get_version.outputs.version_name }} --info
+        run: ./gradlew assembleRelease -PversionName=${{ steps.get_version.outputs.version_name }}
         env:
-          SIGNING_KEY_STORE_PATH: my-release-key.jks
+          # ИСПРАВЛЕНО: Указываем правильный путь к keystore
+          SIGNING_KEY_STORE_PATH: app/my-release-key.jks
           SIGNING_KEY_STORE_PASSWORD: ${{ secrets.SIGNING_KEY_STORE_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
@@ -67,6 +74,8 @@ jobs:
           apk_path=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
           if [[ -z "$apk_path" ]]; then
             echo "APK file not found!"
+            echo "Contents of app/build/outputs/apk/release:"
+            ls -la app/build/outputs/apk/release/ || echo "Directory not found"
             exit 1
           fi
           
