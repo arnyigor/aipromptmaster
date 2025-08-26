@@ -90,6 +90,7 @@
     <string name="action_export">Поделиться</string>
     <string name="prompt_not_found">Промпт не найден</string>
     <string name="remove_error">Ошибка удаления</string>
+    <string name="main_variant">Основной</string>
 
     <string-array name="prompt_options">
         <item>Редактировать</item>

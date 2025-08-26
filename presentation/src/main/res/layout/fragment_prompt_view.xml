@@ -6,50 +6,128 @@
     android:layout_height="match_parent"
     android:background="?attr/colorSurface">
 
+
+    <!-- Основной контент -->
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
-        android:paddingBottom="88dp"> <!-- Увеличил padding, чтобы FAB не перекрывал контент -->
+        android:paddingBottom="88dp"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-        <androidx.constraintlayout.widget.ConstraintLayout
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- ИЗМЕНЕНО: textAppearance и textColor -->
-            <TextView
-                android:id="@+id/tvTitle"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:textAppearance="?attr/textAppearanceHeadlineSmall"
-                android:textColor="?attr/colorOnSurface"
-                app:layout_constraintEnd_toStartOf="@+id/btnFavorite"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                tools:text="Очень длинный заголовок промпта, который может занимать несколько строк" />
-
-            <!-- ИЗМЕНЕНО: app:tint -->
-            <ImageButton
-                android:id="@+id/btnFavorite"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/add_to_favorites"
-                android:src="@drawable/ic_favorite_selector"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                app:tint="?attr/colorPrimary" /> <!-- Используем основной цвет темы для акцента -->
-
-            <!-- ИЗМЕНЕНО: стиль карточки будет применен из темы -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/cardPromptRu"
-                style="?attr/materialCardViewStyle"
+            <!-- Заголовок промпта с иконкой избранного и тегами -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                app:layout_constraintTop_toBottomOf="@id/tvTitle">
+                android:layout_marginBottom="16dp"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:id="@+id/tvTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:textAppearance="?attr/textAppearanceHeadlineSmall"
+                        android:textColor="?attr/colorOnSurface"
+                        tools:text="Очень длинный заголовок промпта, который может занимать несколько строк" />
+
+                    <ImageButton
+                        android:id="@+id/btnFavorite"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/add_to_favorites"
+                        android:src="@drawable/ic_favorite_selector"
+                        app:tint="?attr/colorPrimary" />
+
+                </LinearLayout>
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chipGroupTags"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:chipSpacingHorizontal="4dp"
+                    app:chipSpacingVertical="4dp" />
+
+            </LinearLayout>
+
+            <!-- ID промпта -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardPromptId"
+                style="?attr/materialCardViewOutlinedStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="8dp">
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:id="@+id/tvIdLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="ID:"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                    <TextView
+                        android:id="@+id/tvPromptId"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textIsSelectable="true"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintEnd_toStartOf="@id/btnCopyId"
+                        app:layout_constraintHorizontal_weight="1"
+                        app:layout_constraintStart_toEndOf="@id/tvIdLabel"
+                        app:layout_constraintTop_toTopOf="parent"
+                        tools:text="prompt_12345" />
+
+                    <ImageButton
+                        android:id="@+id/btnCopyId"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/copy_prompt"
+                        android:src="@drawable/ic_content_copy"
+                        app:tint="?attr/colorOnSurfaceVariant"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Варианты промпта -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardVariants"
+                style="?attr/materialCardViewOutlinedStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="12dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -57,134 +135,174 @@
                     android:orientation="vertical"
                     android:padding="16dp">
 
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <!-- ИЗМЕНЕНО: textAppearance и textColor -->
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Русский"
-                            android:textAppearance="?attr/textAppearanceTitleMedium"
-                            android:textColor="?attr/colorOnSurface" />
-
-                        <!-- ИЗМЕНЕНО: app:iconTint и style -->
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnCopyRu"
-                            style="@style/Widget.Material3.Button.IconButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:contentDescription="@string/copy_prompt"
-                            app:icon="@drawable/ic_content_copy"
-                            app:iconTint="?attr/colorPrimary" />
-                    </LinearLayout>
-
-                    <!-- ИЗМЕНЕНО: textColor -->
                     <TextView
-                        android:id="@+id/tvPromptRu"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textColor="?attr/colorOnSurfaceVariant"
-                        android:textIsSelectable="true"
-                        tools:text="Русский текст промпта" />
+                        android:text="Варианты промпта"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:textColor="?attr/colorOnSurface" />
+
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/chipGroupVariants"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        app:selectionRequired="true"
+                        app:singleSelection="true" />
+
                 </LinearLayout>
+
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Аналогичные изменения для второй карточки -->
+            <!-- Основной контент промпта -->
             <com.google.android.material.card.MaterialCardView
-                android:id="@+id/cardPromptEn"
-                style="?attr/materialCardViewStyle"
+                android:id="@+id/cardPromptContent"
+                style="?attr/materialCardViewFilledStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                app:layout_constraintTop_toBottomOf="@id/cardPromptRu">
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="16dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="20dp">
 
+                    <!-- Русский вариант -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
+                        android:layout_marginBottom="16dp"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="8dp"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="🇷🇺 Русский"
+                                android:textAppearance="?attr/textAppearanceTitleMedium"
+                                android:textColor="?attr/colorOnSurface" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnCopyRu"
+                                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:contentDescription="@string/copy_prompt"
+                                app:icon="@drawable/ic_content_copy" />
+
+                        </LinearLayout>
 
                         <TextView
-                            android:layout_width="0dp"
+                            android:id="@+id/tvPromptRu"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="English"
-                            android:textAppearance="?attr/textAppearanceTitleMedium"
-                            android:textColor="?attr/colorOnSurface" />
+                            android:textAppearance="?attr/textAppearanceBodyLarge"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textIsSelectable="true"
+                            tools:text="Русский текст промпта с поддержкой Markdown форматирования" />
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnCopyEn"
-                            style="@style/Widget.Material3.Button.IconButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:contentDescription="@string/copy_prompt"
-                            app:icon="@drawable/ic_content_copy"
-                            app:iconTint="?attr/colorPrimary" />
                     </LinearLayout>
 
-                    <TextView
-                        android:id="@+id/tvPromptEn"
+                    <!-- Разделитель -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginVertical="12dp"
+                        android:background="?attr/colorOutlineVariant" />
+
+                    <!-- Английский вариант -->
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textColor="?attr/colorOnSurfaceVariant"
-                        android:textIsSelectable="true"
-                        tools:text="English prompt text" />
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="8dp"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="🇬🇧 English"
+                                android:textAppearance="?attr/textAppearanceTitleMedium"
+                                android:textColor="?attr/colorOnSurface" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnCopyEn"
+                                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:contentDescription="@string/copy_prompt"
+                                app:icon="@drawable/ic_content_copy" />
+
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/tvPromptEn"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textAppearance="?attr/textAppearanceBodyLarge"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textIsSelectable="true"
+                            tools:text="English prompt text with Markdown support" />
+
+                    </LinearLayout>
+
                 </LinearLayout>
+
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- ChipGroup будет использовать стиль из темы -->
-            <com.google.android.material.chip.ChipGroup
-                android:id="@+id/chipGroupTags"
+
+            <!-- Совместимые модели -->
+            <LinearLayout
+                android:id="@+id/modelsSection"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                app:layout_constraintTop_toBottomOf="@id/cardPromptEn" />
+                android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/tvModelsTitle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:text="@string/compatible_models"
-                android:textAppearance="?attr/textAppearanceTitleMedium"
-                android:textColor="?attr/colorOnSurface"
-                app:layout_constraintTop_toBottomOf="@id/chipGroupTags" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="@string/compatible_models"
+                    android:textAppearance="?attr/textAppearanceTitleSmall"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
 
-            <com.google.android.material.chip.ChipGroup
-                android:id="@+id/chipGroupModels"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                app:layout_constraintTop_toBottomOf="@id/tvModelsTitle" />
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chipGroupModels"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
 
-        </androidx.constraintlayout.widget.ConstraintLayout>
+            </LinearLayout>
+
+        </LinearLayout>
+
     </androidx.core.widget.NestedScrollView>
 
-    <!-- ИЗМЕНЕНО: FAB теперь использует цвета из темы -->
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
+    <!-- FAB для копирования всего контента -->
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
         android:id="@+id/fabCopy"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
         android:contentDescription="@string/copy_prompt"
+        android:text="Копировать"
         app:backgroundTint="?attr/colorPrimaryContainer"
-        app:srcCompat="@drawable/ic_content_copy"
+        app:icon="@drawable/ic_content_copy"
         app:tint="?attr/colorOnPrimaryContainer" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -19,6 +19,7 @@ import com.arny.aipromptmaster.presentation.utils.asString
 import com.arny.aipromptmaster.presentation.utils.launchWhenCreated
 import com.google.android.material.chip.Chip
 import com.google.android.material.snackbar.Snackbar
+import com.google.android.material.transition.MaterialFadeThrough
 import dagger.android.support.AndroidSupportInjection
 import dagger.assisted.AssistedFactory
 import io.noties.markwon.Markwon
@@ -27,6 +28,7 @@ import javax.inject.Inject
 class PromptViewFragment : Fragment() {
     private var _binding: FragmentPromptViewBinding? = null
     private val binding get() = _binding!!
+
     private val args: PromptViewFragmentArgs by navArgs()
 
     @AssistedFactory
@@ -34,7 +36,6 @@ class PromptViewFragment : Fragment() {
         fun create(id: String): PromptViewViewModel
     }
 
-    // Инжектируем наш синглтон Markwon
     @Inject
     lateinit var markwon: Markwon
 
@@ -45,6 +46,12 @@ class PromptViewFragment : Fragment() {
     override fun onAttach(context: Context) {
         AndroidSupportInjection.inject(this)
         super.onAttach(context)
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enterTransition = MaterialFadeThrough()
+        exitTransition = MaterialFadeThrough()
     }
 
     override fun onCreateView(
@@ -58,40 +65,64 @@ class PromptViewFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        requireActivity().setTitle(R.string.prompt_details)
+        setupToolbar()
         setupViews()
         observeViewModel()
         viewModel.loadPrompt()
     }
 
+    private fun setupToolbar() {
+        binding.btnFavorite.setOnClickListener {
+            viewModel.toggleFavorite()
+        }
+    }
+
     private fun setupViews() {
         with(binding) {
+            // Копирование ID промпта
+            btnCopyId.setOnClickListener {
+                val currentState = viewModel.uiState.value
+                if (currentState is PromptViewUiState.Content) {
+                    viewModel.copyContent(currentState.prompt.id, "ID промпта скопирован")
+                }
+            }
+
             // Копирование русского текста
             btnCopyRu.setOnClickListener {
-                copyToClipboard(tvPromptRu.text.toString())
+                val content = tvPromptRu.text.toString()
+                viewModel.copyContent(content, "Русский промпт скопирован")
             }
 
             // Копирование английского текста
             btnCopyEn.setOnClickListener {
-                copyToClipboard(tvPromptEn.text.toString())
+                val content = tvPromptEn.text.toString()
+                viewModel.copyContent(content, "Английский промпт скопирован")
             }
 
-            // Копирование обоих текстов
+            // Копирование всего контента
             fabCopy.setOnClickListener {
-                val fullText = buildString {
+                val fullContent = buildString {
                     append("🇷🇺 Русский:\n")
                     append(tvPromptRu.text)
                     append("\n\n")
                     append("🇬🇧 English:\n")
                     append(tvPromptEn.text)
                 }
-                copyToClipboard(fullText)
+                viewModel.copyContent(fullContent, "Полный промпт скопирован")
             }
 
-            // Избранное
-            btnFavorite.setOnClickListener {
-                viewModel.toggleFavorite()
-
+            // Обработка выбора варианта
+            chipGroupVariants.setOnCheckedStateChangeListener { group, checkedIds ->
+                val selectedChip = checkedIds.firstOrNull()
+                val variantIndex = when (selectedChip) {
+                    R.id.chipMain -> -1
+                    else -> {
+                        // Найти индекс выбранного варианта по ID чипа
+                        val chip = group.findViewById<Chip>(selectedChip ?: return@setOnCheckedStateChangeListener)
+                        chip.tag as? Int ?: -1
+                    }
+                }
+                viewModel.selectVariant(variantIndex)
             }
         }
     }
@@ -102,18 +133,10 @@ class PromptViewFragment : Fragment() {
                 updateUiState(state)
             }
         }
+
         launchWhenCreated {
             viewModel.uiEvent.collect { event ->
-                when (event) {
-                    is PromptViewUiEvent.PromptUpdated -> {
-                        val resultBundle = bundleOf(AppConstants.REQ_KEY_PROMPT_ID to event.id)
-                        setFragmentResult(AppConstants.REQ_KEY_PROMPT_VIEW_FAV, resultBundle)
-                    }
-
-                    is PromptViewUiEvent.ShowError -> {
-                        showMessage(event.stringHolder?.asString(requireContext()).orEmpty())
-                    }
-                }
+                handleUiEvent(event)
             }
         }
     }
@@ -122,31 +145,9 @@ class PromptViewFragment : Fragment() {
         with(binding) {
             when (state) {
                 is PromptViewUiState.Content -> {
-                    val prompt = state.prompt
-                    tvTitle.text = prompt.title
-                    tvPromptRu.text = markwon.toMarkdown(prompt.content.ru)
-                    tvPromptEn.text = markwon.toMarkdown(prompt.content.en)
-                    btnFavorite.isSelected = prompt.isFavorite
-
-                    // Очищаем и добавляем теги
-                    chipGroupTags.removeAllViews()
-                    prompt.tags.forEach { tag ->
-                        val chip = Chip(requireContext()).apply {
-                            text = tag
-                            isClickable = false
-                        }
-                        chipGroupTags.addView(chip)
-                    }
-
-                    // Очищаем и добавляем модели
-                    chipGroupModels.removeAllViews()
-                    prompt.compatibleModels.forEach { model ->
-                        val chip = Chip(requireContext()).apply {
-                            text = model
-                            isClickable = false
-                        }
-                        chipGroupModels.addView(chip)
-                    }
+                    updatePromptContent(state)
+                    updateVariants(state)
+                    updateTagsAndModels(state.prompt)
                 }
 
                 is PromptViewUiState.Error -> {
@@ -158,12 +159,123 @@ class PromptViewFragment : Fragment() {
         }
     }
 
+    private fun updatePromptContent(state: PromptViewUiState.Content) {
+        with(binding) {
+            tvTitle.text = state.prompt.title
+            tvPromptRu.text = markwon.toMarkdown(state.currentContent.ru)
+            tvPromptEn.text = markwon.toMarkdown(state.currentContent.en)
+            tvPromptId.text = state.prompt.id
+            btnFavorite.isSelected = state.prompt.isFavorite
+        }
+    }
+
+    private fun updateVariants(state: PromptViewUiState.Content) {
+        with(binding.chipGroupVariants) {
+            removeAllViews()
+
+            // Добавляем чип для основного контента
+            val mainChip = Chip(requireContext()).apply {
+                id = R.id.chipMain
+                text = getString(R.string.main_variant)
+                isCheckable = true
+                isChecked = state.selectedVariantIndex == -1
+                setChipBackgroundColorResource(R.color.chip_background_selector)
+                setTextColor(resources.getColorStateList(R.color.chip_text_selector, null))
+            }
+            addView(mainChip)
+
+            // Добавляем чипы для каждого варианта
+            state.availableVariants.forEachIndexed { index, variant ->
+                val variantChip = Chip(requireContext()).apply {
+                    id = View.generateViewId()
+                    text = getVariantDisplayName(variant.variantId)
+                    isCheckable = true
+                    isChecked = state.selectedVariantIndex == index
+                    tag = index
+                    setChipBackgroundColorResource(R.color.chip_background_selector)
+                    setTextColor(resources.getColorStateList(R.color.chip_text_selector, null))
+                }
+                addView(variantChip)
+            }
+
+            // Показываем группу вариантов только если есть варианты
+            binding.cardVariants.visibility = if (state.availableVariants.isNotEmpty()) View.VISIBLE else View.GONE
+        }
+    }
+
+    private fun updateTagsAndModels(prompt: com.arny.aipromptmaster.domain.models.Prompt) {
+        with(binding) {
+            // Обновляем теги
+            chipGroupTags.removeAllViews()
+            if (prompt.tags.isNotEmpty()) {
+                prompt.tags.forEach { tag ->
+                    val chip = Chip(requireContext()).apply {
+                        text = tag
+                        isClickable = false
+                        setChipBackgroundColorResource(R.color.chip_background_secondary)
+                        setTextColor(resources.getColorStateList(R.color.chip_text_secondary, null))
+                        chipStrokeWidth = 0f
+                    }
+                    chipGroupTags.addView(chip)
+                }
+                chipGroupTags.visibility = View.VISIBLE
+            } else {
+                chipGroupTags.visibility = View.GONE
+            }
+
+            // Обновляем модели
+            chipGroupModels.removeAllViews()
+            prompt.compatibleModels.forEach { model ->
+                val chip = Chip(requireContext()).apply {
+                    text = model
+                    isClickable = false
+                    setChipBackgroundColorResource(R.color.chip_background_secondary)
+                    setTextColor(resources.getColorStateList(R.color.chip_text_secondary, null))
+                }
+                chipGroupModels.addView(chip)
+            }
+
+            // Скрываем секцию совместимых моделей, если список пустой
+            modelsSection.visibility = if (prompt.compatibleModels.isEmpty()) View.GONE else View.VISIBLE
+        }
+    }
+
+    private fun handleUiEvent(event: PromptViewUiEvent) {
+        when (event) {
+            is PromptViewUiEvent.PromptUpdated -> {
+                val resultBundle = bundleOf(AppConstants.REQ_KEY_PROMPT_ID to event.id)
+                setFragmentResult(AppConstants.REQ_KEY_PROMPT_VIEW_FAV, resultBundle)
+            }
+
+            is PromptViewUiEvent.ShowError -> {
+                showMessage(event.stringHolder?.asString(requireContext()).orEmpty())
+            }
+
+            is PromptViewUiEvent.CopyContent -> {
+                copyToClipboard(event.content)
+                showMessage(event.label)
+            }
+
+            is PromptViewUiEvent.VariantSelected -> {
+                // Можно добавить анимацию или другие эффекты при выборе варианта
+                showMessage("Вариант изменен")
+            }
+        }
+    }
+
+    private fun getVariantDisplayName(variantId: com.arny.aipromptmaster.domain.models.DomainVariantId): String {
+        return when (variantId.type) {
+            "style" -> "Стиль ${variantId.id}"
+            "length" -> "Длина ${variantId.id}"
+            "complexity" -> "Сложность ${variantId.id}"
+            else -> "${variantId.type} ${variantId.id}"
+        }
+    }
+
     private fun copyToClipboard(text: String) {
-        val clipboard =
-            requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText("prompt", text)
         clipboard.setPrimaryClip(clip)
-        showMessage(getString(R.string.prompt_copied))
     }
 
     private fun showMessage(message: String) {

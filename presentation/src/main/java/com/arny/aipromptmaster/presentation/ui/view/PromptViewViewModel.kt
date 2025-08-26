@@ -33,7 +33,12 @@ class PromptViewViewModel @AssistedInject constructor(
             try {
                 val prompt = interactor.getPromptById(promptId)
                 if (prompt != null) {
-                    _uiState.value = PromptViewUiState.Content(prompt)
+                    _uiState.value = PromptViewUiState.Content(
+                        prompt = prompt,
+                        selectedVariantIndex = -1,
+                        availableVariants = prompt.promptVariants,
+                        currentContent = prompt.content
+                    )
                 } else {
                     _uiState.value =
                         PromptViewUiState.Error(StringHolder.Resource(R.string.prompt_not_found))
@@ -44,6 +49,35 @@ class PromptViewViewModel @AssistedInject constructor(
         }
     }
 
+    fun selectVariant(variantIndex: Int) {
+        viewModelScope.launch {
+            val currentState = _uiState.value
+            if (currentState is PromptViewUiState.Content) {
+                val newContent = if (variantIndex == -1) {
+                    // Выбран основной контент
+                    currentState.prompt.content
+                } else {
+                    // Выбран вариант
+                    currentState.availableVariants.getOrNull(variantIndex)?.content
+                        ?: currentState.prompt.content
+                }
+
+                _uiState.value = currentState.copy(
+                    selectedVariantIndex = variantIndex,
+                    currentContent = newContent
+                )
+
+                _uiEvent.emit(PromptViewUiEvent.VariantSelected(variantIndex))
+            }
+        }
+    }
+
+    fun copyContent(content: String, label: String) {
+        viewModelScope.launch {
+            _uiEvent.emit(PromptViewUiEvent.CopyContent(content, label))
+        }
+    }
+
     fun toggleFavorite() {
         viewModelScope.launch {
             try {
@@ -51,8 +85,8 @@ class PromptViewViewModel @AssistedInject constructor(
                 if (currentState is PromptViewUiState.Content) {
                     val promptId = currentState.prompt.id
                     interactor.toggleFavorite(promptId)
-                    _uiState.value = PromptViewUiState.Content(
-                        currentState.prompt.copy(
+                    _uiState.value = currentState.copy(
+                        prompt = currentState.prompt.copy(
                             isFavorite = !currentState.prompt.isFavorite
                         )
                     )
