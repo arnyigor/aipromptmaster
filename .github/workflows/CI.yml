@@ -35,14 +35,19 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # ИСПРАВЛЕНО: Создаем keystore в правильной директории
+      # Создаем keystore файл из base64
       - name: Decode and Create Keystore File
         run: |
+          if [[ -z "${{ secrets.SIGNING_KEY_STORE_BASE64 }}" ]]; then
+            echo "Error: SIGNING_KEY_STORE_BASE64 secret is not set"
+            exit 1
+          fi
           echo "${{ secrets.SIGNING_KEY_STORE_BASE64 }}" | base64 --decode > app/my-release-key.jks
+          if [[ ! -f "app/my-release-key.jks" ]]; then
+            echo "Error: Failed to create keystore file"
+            exit 1
+          fi
           ls -la app/my-release-key.jks
-        env:
-          # Убеждаемся, что переменная указывает на правильный путь
-          SIGNING_KEY_STORE_PATH: app/my-release-key.jks
 
       - name: Get Version and Tag
         id: get_version
@@ -57,11 +62,25 @@ jobs:
           echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION_NAME"
 
-      # ИСПРАВЛЕНО: Убираем --info для чистого вывода, добавляем правильные пути
+      - name: Validate Secrets
+        run: |
+          if [[ -z "${{ secrets.SIGNING_KEY_STORE_PASSWORD }}" ]]; then
+            echo "Error: SIGNING_KEY_STORE_PASSWORD secret is not set"
+            exit 1
+          fi
+          if [[ -z "${{ secrets.SIGNING_KEY_ALIAS }}" ]]; then
+            echo "Error: SIGNING_KEY_ALIAS secret is not set"
+            exit 1
+          fi
+          if [[ -z "${{ secrets.SIGNING_KEY_PASSWORD }}" ]]; then
+            echo "Error: SIGNING_KEY_PASSWORD secret is not set"
+            exit 1
+          fi
+          echo "All signing secrets are configured"
+
       - name: Build Signed APK
         run: ./gradlew assembleRelease -PversionName=${{ steps.get_version.outputs.version_name }}
         env:
-          # ИСПРАВЛЕНО: Указываем правильный путь к keystore
           SIGNING_KEY_STORE_PATH: app/my-release-key.jks
           SIGNING_KEY_STORE_PASSWORD: ${{ secrets.SIGNING_KEY_STORE_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
