@@ -42,12 +42,12 @@ jobs:
             echo "Error: SIGNING_KEY_STORE_BASE64 secret is not set"
             exit 1
           fi
-          echo "${{ secrets.SIGNING_KEY_STORE_BASE64 }}" | base64 --decode > app/my-release-key.jks
-          if [[ ! -f "app/my-release-key.jks" ]]; then
+          echo "${{ secrets.SIGNING_KEY_STORE_BASE64 }}" | base64 --decode > my-release-key.jks
+          if [[ ! -f "my-release-key.jks" ]]; then
             echo "Error: Failed to create keystore file"
             exit 1
           fi
-          ls -la app/my-release-key.jks
+          ls -la my-release-key.jks
 
       - name: Get Version and Tag
         id: get_version
@@ -61,6 +61,27 @@ jobs:
           echo "version_name=${VERSION_NAME}" >> $GITHUB_OUTPUT
           echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION_NAME"
+
+      - name: Sync version.properties with tag
+        run: |
+          VERSION_NAME="${{ steps.get_version.outputs.version_name }}"
+          echo "Syncing version.properties with version: $VERSION_NAME"
+
+          # Обновляем version.properties
+          echo "version=$VERSION_NAME" > version.properties
+
+          # Проверяем изменения
+          if git diff --quiet version.properties; then
+            echo "version.properties is already up to date"
+          else
+            echo "version.properties updated, committing changes..."
+            git config --global user.name "github-actions[bot]"
+            git config --global user.email "github-actions[bot]@users.noreply.github.com"
+            git add version.properties
+            git commit -m "chore: sync version.properties with tag v$VERSION_NAME"
+            git push
+            echo "version.properties synchronized and pushed"
+          fi
 
       - name: Validate Secrets
         run: |
@@ -81,7 +102,7 @@ jobs:
       - name: Build Signed APK
         run: ./gradlew assembleRelease -PversionName=${{ steps.get_version.outputs.version_name }}
         env:
-          SIGNING_KEY_STORE_PATH: app/my-release-key.jks
+          SIGNING_KEY_STORE_PATH: my-release-key.jks
           SIGNING_KEY_STORE_PASSWORD: ${{ secrets.SIGNING_KEY_STORE_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}

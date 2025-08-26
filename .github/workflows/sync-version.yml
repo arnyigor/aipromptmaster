@@ -1,0 +1,60 @@
+name: Sync Version Tag
+
+on:
+  push:
+    paths:
+      - 'version.properties'
+
+permissions:
+  contents: write
+
+jobs:
+  sync-tag:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from version.properties
+        id: get_version
+        run: |
+          if [[ -f "version.properties" ]]; then
+            VERSION=$(grep "^version=" version.properties | cut -d'=' -f2)
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "tag_name=v$VERSION" >> $GITHUB_OUTPUT
+            echo "Found version: $VERSION"
+          else
+            echo "Error: version.properties not found"
+            exit 1
+          fi
+
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          TAG_NAME="${{ steps.get_version.outputs.tag_name }}"
+          if git tag -l | grep -q "^$TAG_NAME$"; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Tag $TAG_NAME already exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Tag $TAG_NAME does not exist, will create it"
+          fi
+
+      - name: Create and push tag
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          TAG_NAME="${{ steps.get_version.outputs.tag_name }}"
+          VERSION="${{ steps.get_version.outputs.version }}"
+
+          echo "Creating tag $TAG_NAME for version $VERSION"
+
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          git tag "$TAG_NAME"
+          git push origin "$TAG_NAME"
+
+          echo "Tag $TAG_NAME created and pushed successfully"
