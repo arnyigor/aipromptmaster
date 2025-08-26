@@ -81,11 +81,12 @@ android {
             val keyPassword = project.findProperty("SIGNING_KEY_PASSWORD") ?: System.getenv("SIGNING_KEY_PASSWORD")
 
             if (storeFile != null) {
+                val storeFilePath = storeFile.toString()
                 // Если путь не абсолютный, считаем его относительно корня проекта
-                val keystoreFile = if (storeFile.startsWith("/")) {
-                    file(storeFile)
+                val keystoreFile = if (storeFilePath.startsWith("/")) {
+                    file(storeFilePath)
                 } else {
-                    rootProject.file(storeFile)
+                    rootProject.file(storeFilePath)
                 }
                 this.storeFile = keystoreFile
                 this.storePassword = storePassword as String?
