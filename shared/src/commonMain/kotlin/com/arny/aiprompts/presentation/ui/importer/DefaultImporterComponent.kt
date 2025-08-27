@@ -137,10 +137,12 @@ class DefaultImporterComponent(
         val postId = _state.value.selectedPostId ?: return
         val currentEditedData = _state.value.editedData[postId] ?: return
 
+        val normalizedText = normalizeLineBreaks(text)
+
         val newEditedData = when (target) {
-            BlockActionTarget.TITLE -> currentEditedData.copy(title = text.lines().firstOrNull()?.trim() ?: "")
-            BlockActionTarget.DESCRIPTION -> currentEditedData.copy(description = if (currentEditedData.description.isBlank()) text else "${currentEditedData.description}\n\n$text")
-            BlockActionTarget.CONTENT -> currentEditedData.copy(content = if (currentEditedData.content.isBlank()) text else "${currentEditedData.content}\n\n$text")
+            BlockActionTarget.TITLE -> currentEditedData.copy(title = normalizedText.lines().firstOrNull()?.trim() ?: "")
+            BlockActionTarget.DESCRIPTION -> currentEditedData.copy(description = normalizeLineBreaks(if (currentEditedData.description.isBlank()) normalizedText else "${currentEditedData.description}\n\n$normalizedText"))
+            BlockActionTarget.CONTENT -> currentEditedData.copy(content = normalizeLineBreaks(if (currentEditedData.content.isBlank()) normalizedText else "${currentEditedData.content}\n\n$normalizedText"))
         }
         _state.update {
             it.copy(editedData = it.editedData + (postId to newEditedData))
@@ -187,7 +189,7 @@ class DefaultImporterComponent(
         val currentEditedData = _state.value.editedData[postId] ?: return
 
         // Когда пользователь кликает на вариант, мы просто меняем основной контент в черновике
-        val newEditedData = currentEditedData.copy(content = variant.content)
+        val newEditedData = currentEditedData.copy(content = normalizeLineBreaks(variant.content))
         _state.update {
             it.copy(editedData = it.editedData + (postId to newEditedData))
         }
@@ -292,14 +294,25 @@ class DefaultImporterComponent(
         if (!_state.value.editedData.containsKey(post.postId)) {
             val extractedData = hybridParser.analyzeAndExtract(post.fullHtmlContent)
 
-            val newEditedData = extractedData ?: EditedPostData(
-                title = "Промпт от ${post.author.name} (${post.postId})",
-                description = post.fullHtmlContent
-                    .replace(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE), "\n")
-                    .replace(Regex("<.*?>"), "")
-                    .trim(),
-                content = ""
-            )
+            val newEditedData = if (extractedData != null) {
+                // Нормализуем переводы строк в извлеченных данных
+                extractedData.copy(
+                    title = normalizeLineBreaks(extractedData.title),
+                    description = normalizeLineBreaks(extractedData.description),
+                    content = normalizeLineBreaks(extractedData.content)
+                )
+            } else {
+                EditedPostData(
+                    title = "Промпт от ${post.author.name} (${post.postId})",
+                    description = normalizeLineBreaks(
+                        post.fullHtmlContent
+                            .replace(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE), "\n")
+                            .replace(Regex("<.*?>"), "")
+                            .trim()
+                    ),
+                    content = ""
+                )
+            }
             _state.update {
                 it.copy(editedData = it.editedData + (post.postId to newEditedData))
             }
@@ -667,6 +680,11 @@ class DefaultImporterComponent(
     }
 
     // --- ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ---
+
+    private fun normalizeLineBreaks(text: String): String {
+        // Заменяем множественные переводы строк на одинарные
+        return text.replace(Regex("\\n{2,}"), "\n").trim()
+    }
 
     private fun saveStateToHistory() {
         val currentState = _state.value
