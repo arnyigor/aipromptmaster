@@ -8,18 +8,43 @@ enum class BlockActionTarget { TITLE, DESCRIPTION, CONTENT }
 interface ImporterComponent {
     val state: StateFlow<ImporterState>
 
-    // --- События от списка постов ---
+    // --- Навигация и выбор ---
     fun onPostClicked(postId: String)
     fun onTogglePostForImport(postId: String, isChecked: Boolean)
+    fun onBackClicked()
 
-    // --- События от панели редактирования ---
-    fun onEditDataChanged(editedData: EditedPostData) // Универсальный метод
-    fun onBlockActionClicked(text: String, target: BlockActionTarget) // Для кнопок "T, D, C"
-    
-    // --- События от кнопок управления ---
+    // --- Фильтры и поиск ---
+    fun onSearchQueryChanged(query: String)
+    fun onFilterChanged(filter: PostFilters)
+    fun onGroupingChanged(grouping: PostGrouping)
+
+    // --- Редактирование ---
+    fun onEditDataChanged(editedData: EditedPostData)
+    fun onBlockActionClicked(text: String, target: BlockActionTarget)
+    fun onVariantSelected(variant: PromptVariantData)
+
+    // --- Управление процессом ---
     fun onSkipPostClicked()
     fun onSaveAndSelectNextClicked()
+    fun onSaveAndSelectPreviousClicked()
+    fun onSelectNextPost()
+    fun onSelectPreviousPost()
     fun onImportClicked()
-    fun onBackClicked()
-    fun onVariantSelected(variant: PromptVariantData)
+
+    // --- UI состояние ---
+    fun onTogglePreview()
+    fun onTogglePostExpansion(postId: String)
+    fun onDismissError()
+    fun onDismissSuccess()
+
+    // --- Работа с файлами ---
+    fun onDownloadFile(attachmentUrl: String, filename: String)
+    fun onPreviewFile(attachmentUrl: String, filename: String)
+    fun onOpenFileInSystem(attachmentUrl: String, filename: String)
+    fun onToggleFileExpansion(postId: String, attachmentUrl: String)
+    fun onOpenPostInBrowser(postUrl: String)
+
+    // --- Валидация ---
+    fun validateEditedData(postId: String): Boolean
+    fun getValidationErrors(postId: String): Map<String, Map<String, String>>
 }
