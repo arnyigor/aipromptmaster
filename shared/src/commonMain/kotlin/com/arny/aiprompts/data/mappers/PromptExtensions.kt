@@ -116,22 +116,29 @@ fun PromptJson.toDomain(): Prompt {
 fun PromptData.toPromptJson(): PromptJson {
     val createdAtString = Instant.fromEpochMilliseconds(this.createdAt).toString().removeSuffix("Z")
     val updatedAtString = Instant.fromEpochMilliseconds(this.updatedAt).toString().removeSuffix("Z")
+
     return PromptJson(
         id = this.id,
+        sourceId = this.sourceId, // Добавляем связь с постом
         title = this.title,
+        version = "1.0.0",
+        status = "active",
+        isLocal = false, // Импортированные промпты будут сразу отправляться в git
+        isFavorite = false,
         description = this.description,
         content = mapOf("ru" to (this.variants.firstOrNull()?.content ?: "")),
+        compatibleModels = emptyList(), // Пока пустой список
         category = this.category,
         tags = this.tags,
-        status = "active",
+        variables = emptyList(), // Пока пустой список
         metadata = PromptMetadata(
             author = Author(id = this.author.id, name = this.author.name),
-            source = this.source
+            source = this.source,
+            notes = "Импортировано из поста ${this.sourceId}"
         ),
-        // Преобразуем Instant? в строку ISO 8601. Если null - пустая строка
+        rating = Rating(), // Рейтинг по умолчанию
         createdAt = createdAtString,
-        updatedAt = updatedAtString,
-        rating = Rating() // Рейтинг по умолчанию
+        updatedAt = updatedAtString
     )
 }
 

@@ -180,7 +180,6 @@ private fun PostListWithFiltersPanel(
                 PostListItem(
                     post = post,
                     isSelected = state.selectedPostId == post.postId,
-                    isReadyToImport = post.postId in state.postsToImport,
                     isExpanded = post.postId in state.expandedPostIds,
                     editedData = state.editedData[post.postId],
                     state = state,
@@ -233,22 +232,33 @@ private fun FilterPanel(state: ImporterState, component: ImporterComponent) {
     }
 }
 
-// --- ЭЛЕМЕНТ СПИСКА ПОСТОВ ---
 @Composable
 private fun PostListItem(
     post: RawPostData,
     isSelected: Boolean,
-    isReadyToImport: Boolean,
     isExpanded: Boolean,
     editedData: EditedPostData?,
-    state: ImporterState,
+    state: ImporterState, // Требуется полный стейт для доступа к 'savedFiles' и 'postsToImport'
     component: ImporterComponent,
     onClick: () -> Unit,
     onToggleImport: (Boolean) -> Unit,
     onToggleExpansion: () -> Unit
 ) {
+    // --- КЛЮЧЕВАЯ ЛОГИКА ДЛЯ ОПРЕДЕЛЕНИЯ СОСТОЯНИЯ ---
+
+    // 1. Пост считается "отмеченным", если он уже импортирован ИЛИ выбран для импорта сейчас.
+    val isImportedOrSelected = post.postId in state.savedFiles || post.postId in state.postsToImport
+
+    // 2. Чекбокс можно изменять, только если пост ЕЩЕ НЕ был импортирован.
+    val isCheckboxEnabled = post.postId !in state.savedFiles
+
+    // 3. Пост считается уже импортированным, если для него есть запись в карте сохраненных файлов.
+    val isAlreadyImported = post.postId in state.savedFiles
+
     Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer
             else MaterialTheme.colorScheme.surface
@@ -259,47 +269,64 @@ private fun PostListItem(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Чекбокс для импорта
+                // --- ИСПРАВЛЕННЫЙ ЧЕКБОКС ---
                 Checkbox(
-                    checked = isReadyToImport,
-                    onCheckedChange = onToggleImport
+                    checked = isImportedOrSelected,
+                    onCheckedChange = onToggleImport,
+                    enabled = isCheckboxEnabled // Блокируем, если уже импортирован
                 )
 
-                // Статус иконки
+                // --- ИСПРАВЛЕННАЯ ЛОГИКА ИКОНОК СТАТУСА ---
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (editedData?.content?.isNotBlank() == true) {
-                        Icon(
-                            Icons.Default.CheckCircle,
-                            "Данные готовы",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    } else if (post.attachments.isNotEmpty()) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                    when {
+                        // Приоритет №1: Пост уже импортирован
+                        isAlreadyImported -> {
                             Icon(
-                                Icons.Default.Attachment,
-                                "Есть вложения (${post.attachments.size})",
-                                tint = MaterialTheme.colorScheme.secondary,
+                                imageVector = Icons.Default.TaskAlt, // Иконка "задача выполнена"
+                                contentDescription = "Пост уже импортирован",
+                                tint = MaterialTheme.colorScheme.tertiary, // Другой цвет для наглядности
                                 modifier = Modifier.size(16.dp)
                             )
-                            Text(
-                                "${post.attachments.size}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.padding(start = 2.dp)
+                        }
+                        // Приоритет №2: Данные отредактированы и готовы
+                        editedData?.content?.isNotBlank() == true -> {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = "Данные готовы к импорту",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
                             )
                         }
-                    } else if (post.isLikelyPrompt) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.HelpOutline,
-                            "Вероятно промпт",
-                            tint = MaterialTheme.colorScheme.tertiary,
-                            modifier = Modifier.size(16.dp)
-                        )
+                        // Приоритет №3: Есть вложения
+                        post.attachments.isNotEmpty() -> {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Attachment,
+                                    contentDescription = "Есть вложения (${post.attachments.size})",
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "${post.attachments.size}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.padding(start = 2.dp)
+                                )
+                            }
+                        }
+                        // Приоритет №4: Пост похож на промпт
+                        post.isLikelyPrompt -> {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.HelpOutline,
+                                contentDescription = "Вероятно промпт",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                 }
 
-                // Информация о посте
+                // Информация о посте (без изменений)
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         post.author.name,
@@ -314,7 +341,7 @@ private fun PostListItem(
                     )
                 }
 
-                // Кнопка развертывания
+                // Кнопка развертывания (без изменений)
                 IconButton(onClick = onToggleExpansion, modifier = Modifier.size(24.dp)) {
                     Icon(
                         if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
@@ -323,7 +350,7 @@ private fun PostListItem(
                 }
             }
 
-            // Развернутый контент
+            // --- ПОЛНЫЙ КОД ДЛЯ РАЗВЕРНУТОГО СОСТОЯНИЯ ---
             if (isExpanded) {
                 Spacer(Modifier.height(8.dp))
                 SelectionContainer {
@@ -1044,29 +1071,41 @@ private fun PreviewTab(editedData: EditedPostData, state: ImporterState, compone
         }
 
         Card(modifier = Modifier.fillMaxWidth()) {
-            SelectionContainer {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        editedData.title,
-                        style = MaterialTheme.typography.headlineSmall
-                    )
-                    if (editedData.description.isNotBlank()) {
-                        SelectionContainer {
-                            Text(
-                                formatTextWithMarkdown(editedData.description),
-                                style = MaterialTheme.typography.bodyMedium,
-                                lineHeight = MaterialTheme.typography.bodyMedium.lineHeight
-                            )
-                        }
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Стабильный ключ для remember - используем postId для предотвращения потери состояния
+                val previewKey = state.selectedPostId ?: "no-selection"
+
+                Text(
+                    editedData.title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                if (editedData.description.isNotBlank()) {
+                    val formattedDescription = remember(editedData.description, previewKey) {
+                        formatTextWithMarkdown(editedData.description)
                     }
-                    if (editedData.content.isNotBlank()) {
-                        SelectionContainer {
-                            Text(
-                                formatTextWithMarkdown(editedData.content),
-                                style = MaterialTheme.typography.bodyMedium,
-                                lineHeight = MaterialTheme.typography.bodyMedium.lineHeight
-                            )
-                        }
+                    SelectionContainer {
+                        Text(
+                            formattedDescription,
+                            style = MaterialTheme.typography.bodyMedium,
+                            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+
+                if (editedData.content.isNotBlank()) {
+                    val formattedContent = remember(editedData.content, previewKey) {
+                        formatTextWithMarkdown(editedData.content)
+                    }
+                    SelectionContainer {
+                        Text(
+                            formattedContent,
+                            style = MaterialTheme.typography.bodyMedium,
+                            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 }
             }
@@ -1342,48 +1381,17 @@ private fun ActionsCard(state: ImporterState, component: ImporterComponent) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Действия", style = MaterialTheme.typography.titleSmall)
 
-            // Навигация между постами
+            // Кнопки управления постом
             if (state.selectedPostId != null) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    OutlinedButton(
-                        onClick = component::onSelectPreviousPost,
+                    Button(
+                        onClick = component::onSaveAndSelectNextClicked,
                         modifier = Modifier.weight(1f),
                         enabled = !state.isLoading
                     ) {
-                        Icon(Icons.Outlined.ChevronLeft, "Предыдущий пост")
-                        Spacer(Modifier.width(4.dp))
-                        Text("Предыдущий")
-                    }
-
-                    OutlinedButton(
-                        onClick = component::onSelectNextPost,
-                        modifier = Modifier.weight(1f),
-                        enabled = !state.isLoading
-                    ) {
-                        Text("Следующий")
-                        Spacer(Modifier.width(4.dp))
-                        Icon(Icons.Outlined.ChevronRight, "Следующий пост")
-                    }
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                // Кнопки управления постом
-                Button(
-                    onClick = component::onSaveAndSelectNextClicked,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !state.isLoading
-                ) {
-                    Text("Сохранить и следующий")
-                }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    OutlinedButton(
-                        onClick = component::onSaveAndSelectPreviousClicked,
-                        modifier = Modifier.weight(1f),
-                        enabled = !state.isLoading
-                    ) {
-                        Text("Сохранить и предыдущий")
+                        Icon(Icons.Default.Save, "Сохранить")
+                        Spacer(Modifier.width(6.dp))
+                        Text("Сохранить")
                     }
 
                     OutlinedButton(
@@ -1391,6 +1399,8 @@ private fun ActionsCard(state: ImporterState, component: ImporterComponent) {
                         modifier = Modifier.weight(1f),
                         enabled = !state.isLoading
                     ) {
+                        Icon(Icons.Default.SkipNext, "Пропустить")
+                        Spacer(Modifier.width(6.dp))
                         Text("Пропустить")
                     }
                 }
@@ -1417,6 +1427,17 @@ private fun ActionsCard(state: ImporterState, component: ImporterComponent) {
 // --- КАРТОЧКА ОШИБОК ВАЛИДАЦИИ ---
 @Composable
 private fun ValidationErrorsCard(state: ImporterState) {
+    // Логируем состояние для отладки
+    println("🔍 ValidationErrorsCard: validationErrors.size=${state.validationErrors.size}, hasValidationErrors=${state.hasValidationErrors}")
+
+    // Детальное логирование ошибок
+    state.validationErrors.forEach { (postId, fieldErrors) ->
+        println("🔍 Пост $postId имеет ${fieldErrors.size} ошибок:")
+        fieldErrors.forEach { (field, error) ->
+            println("   - Поле '$field': '$error'")
+        }
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
@@ -1424,12 +1445,55 @@ private fun ValidationErrorsCard(state: ImporterState) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Ошибки валидации", style = MaterialTheme.typography.titleSmall)
 
-            state.validationErrors.forEach { (field, error) ->
+            if (state.validationErrors.isEmpty()) {
                 Text(
-                    "$field: $error",
+                    "Нет ошибок валидации",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            } else {
+                // Фильтруем только ошибки с непустыми сообщениями
+                val nonEmptyErrors = state.validationErrors.filterValues { it.isNotEmpty() }
+
+                if (nonEmptyErrors.isEmpty()) {
+                    Text(
+                        "Нет ошибок валидации",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    nonEmptyErrors.forEach { (postId, fieldErrors) ->
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                "Пост $postId:",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.error
+                            )
+
+                            fieldErrors.forEach { (field, error) ->
+                                if (error.isNotBlank()) {
+                                    Text(
+                                        "• $field: $error",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.padding(start = 16.dp)
+                                    )
+
+                                    // Логируем ошибки в консоль для отладки
+                                    println("❌ Ошибка валидации для поста $postId, поле $field: $error")
+                                }
+                            }
+                        }
+                    }
+
+                    // Дополнительная информация для отладки
+                    Text(
+                        "Всего ошибок: ${nonEmptyErrors.values.sumOf { it.size }}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
             }
         }
     }

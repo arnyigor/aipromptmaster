@@ -16,7 +16,8 @@ data class RawPostData(
     val isLikelyPrompt: Boolean,    // Флаг-подсказка от "детектора"
     val postUrl: String? = null,     // URL на страницу поста
     val fileAttachmentUrl: String? = null, // URL на .txt вложение, если есть (для обратной совместимости)
-    val attachments: List<FileAttachment> = emptyList() // Список всех вложений
+    val attachments: List<FileAttachment> = emptyList(), // Список всех вложений
+    val variables: List<String> = emptyList(), // при импорте пустые
 )
 
 /**

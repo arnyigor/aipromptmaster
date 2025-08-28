@@ -34,7 +34,9 @@ fun main() {
                 parseRawPostsUseCase = getKoin().get(),
                 savePromptsAsFilesUseCase = getKoin().get(),
                 hybridParser = getKoin().get(),
-                httpClient = getKoin().get()
+                httpClient = getKoin().get(),
+                systemInteraction = getKoin().get(),
+                fileMetadataReader = getKoin().get(),
             )
         }
 

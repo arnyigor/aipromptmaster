@@ -1,10 +1,13 @@
 package com.arny.aiprompts.data.model
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
-data class PromptJson(
+data class PromptJson @OptIn(ExperimentalSerializationApi::class) constructor(
 
     @SerialName("id") var id: String? = null,
     @SerialName("source_id") var sourceId: String? = null,
@@ -18,10 +21,9 @@ data class PromptJson(
     @SerialName("compatible_models") var compatibleModels: List<String> = emptyList(),
     @SerialName("category") var category: String? = null,
     @SerialName("tags") var tags: List<String> = emptyList(),
-    @SerialName("variables") var variables: List<PromptVariable> = emptyList(),
+    @SerialName("variables") @EncodeDefault var variables: List<PromptVariable> = emptyList(),
     @SerialName("metadata") var metadata: PromptMetadata? = PromptMetadata(),
     @SerialName("rating") var rating: Rating? = Rating(),
     @SerialName("created_at") var createdAt: String? = null,
     @SerialName("updated_at") var updatedAt: String? = null
-
 )

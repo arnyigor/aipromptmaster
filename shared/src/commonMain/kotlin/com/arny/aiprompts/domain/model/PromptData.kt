@@ -14,6 +14,7 @@ data class PromptData(
     val createdAt: Long,
     val updatedAt: Long,
     val tags: List<String> = emptyList(),
+    val variables: List<String> = emptyList(),
     val category: String = "general",
     val source: String = "4pda.to"
 )

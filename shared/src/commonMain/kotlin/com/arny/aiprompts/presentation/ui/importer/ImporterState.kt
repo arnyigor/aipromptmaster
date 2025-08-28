@@ -82,7 +82,8 @@ data class ImporterState(
 
     // Работа с файлами
     val downloadedFiles: Map<String, DownloadedFile> = emptyMap(), // URL -> DownloadedFile
-    val expandedFileIds: Set<String> = emptySet() // ID развернутых файлов
+    val expandedFileIds: Set<String> = emptySet(), // ID развернутых файлов
+    val savedFiles: Map<String, String> = emptyMap() // postId -> filePath
 ) {
     // Вычисляемые свойства
     val selectedPost: RawPostData?

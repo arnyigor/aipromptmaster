@@ -5,9 +5,12 @@ import com.arny.aiprompts.data.llm.NoOpLLMService
 import com.arny.aiprompts.data.repository.PromptsRepositoryImpl
 import com.arny.aiprompts.data.scraper.SeleniumWebScraper
 import com.arny.aiprompts.data.scraper.WebScraper
+import com.arny.aiprompts.domain.files.FileMetadataReader
 import com.arny.aiprompts.domain.interfaces.FileDataSource
 import com.arny.aiprompts.domain.interfaces.IPromptsRepository
 import com.arny.aiprompts.domain.interfaces.LLMService
+import com.arny.aiprompts.domain.system.ActualSystemInteraction
+import com.arny.aiprompts.domain.system.SystemInteraction
 import com.arny.aiprompts.domain.usecase.*
 import io.ktor.client.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -45,6 +48,8 @@ val commonDomainModule = module {
     singleOf(::ParseRawPostsUseCase)
     singleOf(::SavePromptsAsFilesUseCase)
     singleOf(::ImportJsonUseCase)
+    singleOf(::FileMetadataReader)
+    single<SystemInteraction> { ActualSystemInteraction() }
 }
 
 val llmModule = module {

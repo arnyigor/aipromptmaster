@@ -2,19 +2,22 @@ package com.arny.aiprompts.presentation.ui.importer
 
 import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.essenty.lifecycle.coroutines.coroutineScope
+import com.arny.aiprompts.data.mappers.toPromptJson
+import com.arny.aiprompts.data.model.PromptJson
+import com.arny.aiprompts.domain.files.FileMetadataReader
 import com.arny.aiprompts.domain.interfaces.IHybridParser
+import com.arny.aiprompts.domain.model.Author
 import com.arny.aiprompts.domain.model.PromptData
 import com.arny.aiprompts.domain.model.PromptVariant
 import com.arny.aiprompts.domain.model.RawPostData
+import com.arny.aiprompts.domain.system.SystemInteraction
 import com.arny.aiprompts.domain.usecase.ParseRawPostsUseCase
 import com.arny.aiprompts.domain.usecase.SavePromptsAsFilesUseCase
-import com.arny.aiprompts.presentation.ui.importer.DownloadState
-import com.arny.aiprompts.presentation.ui.importer.DownloadedFile
 import com.benasher44.uuid.uuid4
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
-import io.ktor.http.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -23,7 +26,6 @@ import java.awt.Desktop
 import java.io.File
 import java.io.IOException
 import java.net.URLDecoder
-import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 class DefaultImporterComponent(
@@ -33,11 +35,15 @@ class DefaultImporterComponent(
     private val savePromptsAsFilesUseCase: SavePromptsAsFilesUseCase,
     private val hybridParser: IHybridParser,
     private val httpClient: HttpClient,
+    private val systemInteraction: SystemInteraction,
+    private val fileMetadataReader: FileMetadataReader,
     private val onBack: () -> Unit
 ) : ImporterComponent, ComponentContext by componentContext {
 
     private val _state = MutableStateFlow(ImporterState(sourceHtmlFiles = filesToImport))
     override val state = _state.asStateFlow()
+
+    // Храним scope как поле класса, чтобы он был доступен во всех методах
     private val scope = coroutineScope()
 
     // История для undo/redo
@@ -45,7 +51,191 @@ class DefaultImporterComponent(
     private var historyIndex = -1
 
     init {
+        loadAvailableCategories()
         loadAndParseFiles()
+        loadInitialData()
+    }
+
+    private fun loadInitialData() {
+        scope.launch(Dispatchers.IO) {
+            _state.update { it.copy(isLoading = true, error = null) }
+
+            // --- Шаг 1: Асинхронная загрузка категорий ---
+            try {
+                // Пробуем найти папку prompts в разных местах
+                val promptsDirs = listOf(
+                    File("prompts"),  // относительно рабочей директории
+                    File("../prompts"),  // на уровень выше
+                    File("../../prompts"), // еще на уровень выше
+                    File(System.getProperty("user.dir"), "prompts"), // абсолютный путь
+                )
+                val promptsDir = promptsDirs.firstOrNull { it.exists() && it.isDirectory }
+                requireNotNull(promptsDir) // Без папки промптов ничего не получится
+                println("✅ Корневая директория промптов найдена: ${promptsDir.absolutePath}")
+
+                val savedFilesMap = fileMetadataReader.readAllSourceIds(promptsDir)
+                if (savedFilesMap.isNotEmpty()) {
+                    println("✅ Найдено ${savedFilesMap.size} связей в метаданных файлов:")
+                    savedFilesMap.forEach { (sourceId, path) ->
+                        println("   - sourceId: $sourceId -> Файл: $path")
+                    }
+                } else {
+                    println("ℹ️ Ранее импортированных файлов не найдено.")
+                }
+                _state.update { it.copy(savedFiles = savedFilesMap) }
+
+                val categories = promptsDir.listFiles { file -> file.isDirectory }
+                    ?.map { it.name }
+                    ?.sorted()
+                    ?: emptyList()
+
+                if (categories.isNotEmpty()) {
+                    _state.update { it.copy(availableCategories = categories) }
+                    println("📁 Загружено ${categories.size} категорий из папки prompts.")
+                } else {
+                    // Если категории не найдены, используем fallback
+                    val fallbackCategories = listOf(
+                        "business", "common_tasks", "creative", "education",
+                        "entertainment", "environment", "general", "healthcare",
+                        "legal", "marketing", "model_specific", "science", "technology"
+                    )
+                    _state.update { it.copy(availableCategories = fallbackCategories) }
+                    println("⚠️ Категории не найдены. Используем fallback категории.")
+                }
+            } catch (e: Exception) {
+                println("❌ Ошибка загрузки категорий: ${e.message}, используем fallback.")
+                // Обеспечиваем наличие fallback категорий даже в случае ошибки
+                _state.update {
+                    if (it.availableCategories.isEmpty()) {
+                        it.copy(
+                            availableCategories = listOf(
+                                "business", "common_tasks", "creative", "education",
+                                "entertainment", "environment", "general", "healthcare",
+                                "legal", "marketing", "model_specific", "science", "technology"
+                            )
+                        )
+                    } else {
+                        it
+                    }
+                }
+            }
+
+            // --- Шаг 2: Парсинг файлов с прогрессом ---
+            updateProgress(ImportStep.LOADING_FILES, 0f, "Подготовка файлов", filesToImport.size)
+
+            try {
+                val allPostsWithDuplicates = mutableListOf<RawPostData>()
+                filesToImport.forEachIndexed { index, file ->
+                    updateProgress(
+                        ImportStep.LOADING_FILES,
+                        (index + 1).toFloat() / filesToImport.size,
+                        file.name,
+                        filesToImport.size,
+                        index + 1
+                    )
+                    val posts = parseRawPostsUseCase(file).getOrElse { error ->
+                        _state.update { s -> s.copy(error = "Ошибка парсинга ${file.name}: ${error.message}") }
+                        emptyList()
+                    }
+                    allPostsWithDuplicates.addAll(posts)
+                }
+
+                updateProgress(ImportStep.LOADING_FILES, 1f, "Удаление дубликатов")
+                val allPosts = allPostsWithDuplicates
+                    .groupBy { it.postId }
+                    .map { it.value.first() }
+
+                updateProgress(ImportStep.LOADING_FILES, 1f, "Сортировка постов")
+                val sortedPosts = allPosts.sortedWith(
+                    compareByDescending<RawPostData> { it.attachments.isNotEmpty() }
+                        .thenByDescending { it.isLikelyPrompt }
+                        .thenByDescending { it.fullHtmlContent.length }
+                )
+
+                val firstPostToSelect = sortedPosts.firstOrNull()
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        rawPosts = sortedPosts,
+                        selectedPostId = firstPostToSelect?.postId,
+                        progress = ImportProgress() // Сброс прогресса
+                    )
+                }
+                if (firstPostToSelect != null) {
+                    ensureAndPrefillEditedData(firstPostToSelect)
+                }
+                _state.update { it.copy(successMessage = "Успешно загружено ${sortedPosts.size} постов") }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "Критическая ошибка загрузки: ${e.message}",
+                        progress = ImportProgress()
+                    )
+                }
+            }
+
+            val finalState = _state.value
+            println("--- 📊 Итоги начальной загрузки ---")
+            println("   - Загружено постов: ${finalState.rawPosts.size}")
+            println("   - Найдено связей с файлами: ${finalState.savedFiles.size}")
+            val matchedPosts = finalState.rawPosts.count { it.postId in finalState.savedFiles }
+            println("   - Постов, совпавших со связями: $matchedPosts")
+            println("------------------------------------")
+        }
+    }
+
+    private fun loadAvailableCategories() {
+        try {
+            // Пробуем найти папку prompts в разных местах
+            val promptsDirs = listOf(
+                File("prompts"),  // относительно рабочей директории
+                File("../prompts"),  // на уровень выше
+                File("../../prompts"),  // еще на уровень выше
+                File(System.getProperty("user.dir"), "prompts"),  // абсолютный путь
+            )
+
+            val promptsDir = promptsDirs.firstOrNull { it.exists() && it.isDirectory }
+
+            if (promptsDir != null) {
+                val categories = promptsDir.listFiles { file -> file.isDirectory }
+                    ?.map { it.name }
+                    ?.sorted()
+                    ?: emptyList()
+
+                _state.update {
+                    it.copy(availableCategories = categories)
+                }
+
+                println("📁 Загружено ${categories.size} категорий из папки prompts: ${categories.joinToString(", ")}")
+            } else {
+                // Fallback: используем hardcoded категории
+                val fallbackCategories = listOf(
+                    "business", "common_tasks", "creative", "education",
+                    "entertainment", "environment", "general", "healthcare",
+                    "legal", "marketing", "model_specific", "science", "technology"
+                )
+
+                _state.update {
+                    it.copy(availableCategories = fallbackCategories)
+                }
+
+                println("📁 Используем fallback категории: ${fallbackCategories.joinToString(", ")}")
+            }
+        } catch (e: Exception) {
+            // В случае ошибки используем fallback
+            val fallbackCategories = listOf(
+                "business", "common_tasks", "creative", "education",
+                "entertainment", "environment", "general", "healthcare",
+                "legal", "marketing", "model_specific", "science", "technology"
+            )
+
+            _state.update {
+                it.copy(availableCategories = fallbackCategories)
+            }
+
+            println("❌ Ошибка загрузки категорий: ${e.message}, используем fallback")
+        }
     }
 
     private fun loadAndParseFiles() {
@@ -140,7 +330,10 @@ class DefaultImporterComponent(
         val normalizedText = normalizeLineBreaks(text)
 
         val newEditedData = when (target) {
-            BlockActionTarget.TITLE -> currentEditedData.copy(title = normalizedText.lines().firstOrNull()?.trim() ?: "")
+            BlockActionTarget.TITLE -> currentEditedData.copy(
+                title = normalizedText.lines().firstOrNull()?.trim() ?: ""
+            )
+
             BlockActionTarget.DESCRIPTION -> currentEditedData.copy(description = normalizeLineBreaks(if (currentEditedData.description.isBlank()) normalizedText else "${currentEditedData.description}\n\n$normalizedText"))
             BlockActionTarget.CONTENT -> currentEditedData.copy(content = normalizeLineBreaks(if (currentEditedData.content.isBlank()) normalizedText else "${currentEditedData.content}\n\n$normalizedText"))
         }
@@ -157,7 +350,8 @@ class DefaultImporterComponent(
     override fun onSaveAndSelectNextClicked() {
         val postId = _state.value.selectedPostId ?: return
         onTogglePostForImport(postId, true)
-        selectNextUnprocessedPost()
+        // Теперь просто сохраняем пост без перехода к следующему
+        println("✅ Пост $postId сохранен для импорта")
     }
 
     override fun onSaveAndSelectPreviousClicked() {
@@ -197,49 +391,56 @@ class DefaultImporterComponent(
 
     override fun onImportClicked() {
         scope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
+            println("🚀 Начинаем процесс импорта...")
+            // Сбрасываем предыдущие ошибки и ставим флаг загрузки
+            _state.update { it.copy(isLoading = true, error = null, validationErrors = emptyMap()) }
             updateProgress(ImportStep.GENERATING_JSON, 0f, "Валидация данных")
 
             try {
                 val postsToImport = _state.value.postsToImport
-                val validationErrors = mutableMapOf<String, String>()
+                var hasValidationErrors = false
 
-                // Валидация всех постов
+                // --- ШАГ 1: ВАЛИДАЦИЯ ---
+                // Используем ваш существующий метод, который сам обновляет стейт с ошибками
                 postsToImport.forEachIndexed { index, postId ->
                     updateProgress(
                         ImportStep.GENERATING_JSON,
-                        (index + 1).toFloat() / (postsToImport.size * 2),
+                        (index + 1).toFloat() / (postsToImport.size * 2), // Прогресс валидации (первая половина)
                         "Валидация: ${index + 1}/${postsToImport.size}"
                     )
 
                     if (!validateEditedData(postId)) {
-                        validationErrors[postId] = "Ошибки валидации"
+                        hasValidationErrors = true
                     }
                 }
 
-                if (validationErrors.isNotEmpty()) {
+                // Если после цикла нашлись ошибки, прерываем процесс
+                if (hasValidationErrors) {
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            error = "Найдены ошибки валидации в ${validationErrors.size} постах",
+                            error = "Найдены ошибки валидации. Проверьте отмеченные поля.",
                             progress = ImportProgress()
                         )
                     }
+                    println("❌ Найдены ошибки валидации, прерываем импорт.")
                     return@launch
                 }
 
+                println("✅ Все посты прошли валидацию, продолжаем импорт.")
                 updateProgress(ImportStep.GENERATING_JSON, 0.5f, "Генерация JSON файлов")
 
-                // Генерация финальных промптов
+                // --- ШАГ 2: ГЕНЕРАЦИЯ ДАННЫХ ДЛЯ JSON ---
                 val finalPrompts = postsToImport.mapIndexedNotNull { index, postId ->
                     updateProgress(
                         ImportStep.GENERATING_JSON,
-                        0.5f + (index + 1).toFloat() / (postsToImport.size * 2),
+                        0.5f + (index + 1).toFloat() / (postsToImport.size * 2), // Прогресс генерации (вторая половина)
                         "Создание промпта: ${index + 1}/${postsToImport.size}"
                     )
 
                     val rawPost = _state.value.rawPosts.find { it.postId == postId }
                     val editedData = _state.value.editedData[postId]
+
                     if (rawPost != null && editedData != null) {
                         PromptData(
                             id = uuid4().toString(),
@@ -251,25 +452,59 @@ class DefaultImporterComponent(
                             createdAt = rawPost.date.toEpochMilliseconds(),
                             updatedAt = rawPost.date.toEpochMilliseconds(),
                             category = editedData.category,
-                            tags = editedData.tags
+                            tags = editedData.tags,
+                            variables = editedData.variables
                         )
-                    } else null
+                    } else {
+                        null // Если данных нет, пропускаем этот пост
+                    }
                 }
 
                 updateProgress(ImportStep.GENERATING_JSON, 1f, "Сохранение файлов")
+                println("💾 Начинаем сохранение ${finalPrompts.size} промптов...")
 
+                // --- ШАГ 3: СОХРАНЕНИЕ ФАЙЛОВ ---
                 savePromptsAsFilesUseCase(finalPrompts)
                     .onSuccess { savedFiles ->
+                        println("✅ Успешно сохранено ${savedFiles.size} промптов.")
+                        savedFiles.forEachIndexed { index, file ->
+                            println("   ${index + 1}. ${file.absolutePath}")
+                        }
+
+                        val successMessage = buildString {
+                            append("✅ Успешно импортировано ${savedFiles.size} промптов!\n\n")
+                            append("📁 Файлы сохранены в папках:\n")
+                            savedFiles.groupBy { it.parentFile?.name ?: "unknown" }
+                                .forEach { (category, files) ->
+                                    append("• $category: ${files.size} файлов\n")
+                                }
+                        }
+
+                        // Обновляем карту связей в состоянии ТЕКУЩЕЙ СЕССИИ,
+                        // чтобы UI сразу отразил изменения (например, показал иконку "импортировано")
+                        val newSavedFiles = finalPrompts.associate { prompt ->
+                            prompt.sourceId to (savedFiles.find { it.nameWithoutExtension == prompt.id }?.absolutePath
+                                ?: "")
+                        }.filterValues { it.isNotEmpty() }
+
                         _state.update {
                             it.copy(
                                 isLoading = false,
-                                successMessage = "Успешно сохранено ${savedFiles.size} промптов",
-                                progress = ImportProgress()
+                                successMessage = successMessage,
+                                progress = ImportProgress(),
+                                savedFiles = it.savedFiles + newSavedFiles // Добавляем новые связи к старым
                             )
                         }
-                        // Не закрываем экран сразу, даем пользователю увидеть результат
+
+                        // Вызываем абстрактный метод для показа уведомления
+                        systemInteraction.showNotification(
+                            "Импорт завершен",
+                            "Успешно сохранено ${savedFiles.size} промптов"
+                        )
                     }
                     .onFailure { error ->
+                        println("❌ Ошибка сохранения: ${error.message}")
+                        error.printStackTrace()
                         _state.update {
                             it.copy(
                                 isLoading = false,
@@ -282,7 +517,7 @@ class DefaultImporterComponent(
                 _state.update {
                     it.copy(
                         isLoading = false,
-                        error = "Критическая ошибка: ${e.message}",
+                        error = "Критическая ошибка во время импорта: ${e.message}",
                         progress = ImportProgress()
                     )
                 }
@@ -653,23 +888,78 @@ class DefaultImporterComponent(
     }
 
     override fun validateEditedData(postId: String): Boolean {
+        var resultJson: PromptJson?=null
         val editedData = _state.value.editedData[postId] ?: return false
         val errors = mutableMapOf<String, String>()
 
         if (editedData.title.isBlank()) {
-            errors["Заголовок"] = "Заголовок не может быть пустым"
+            errors["title"] = "Заголовок не может быть пустым"
         }
 
         if (editedData.content.isBlank()) {
-            errors["Контент"] = "Контент промпта не может быть пустым"
+            errors["content"] = "Контент промпта не может быть пустым"
         }
 
         if (editedData.category.isBlank()) {
-            errors["Категория"] = "Категория не может быть пустой"
+            errors["category"] = "Категория не может быть пустой"
         }
 
+        // Дополнительная валидация: проверка корректности данных после маппинга
+        try {
+            val testPromptData = PromptData(
+                id = "test-id",
+                sourceId = postId,
+                title = editedData.title.ifBlank { "Test Title" },
+                description = editedData.description,
+                variants = listOf(PromptVariant(content = editedData.content)),
+                author = _state.value.rawPosts.find { it.postId == postId }?.author ?: Author("", ""),
+                createdAt = 0L,
+                updatedAt = 0L,
+                variables = emptyList(),
+                category = editedData.category,
+                tags = editedData.tags
+            )
+
+            // Проверяем, что JSON можно создать без ошибок
+            testPromptData.toPromptJson()
+
+            // Проверяем, что content не пустой после маппинга
+            val promptJson = testPromptData.toPromptJson()
+            resultJson = promptJson
+            if (promptJson.content.values.all { it.isBlank() }) {
+                errors["content"] = "Контент промпта не может быть пустым после обработки"
+            }
+
+        } catch (e: Exception) {
+            errors["json"] = "Ошибка при создании JSON структуры: ${e.message}"
+        }
+
+        // Очищаем предыдущие ошибки для этого поста перед добавлением новых
         _state.update {
-            it.copy(validationErrors = it.validationErrors + (postId to errors.toMap()))
+            it.copy(validationErrors = it.validationErrors - postId)
+        }
+
+        // Добавляем только непустые ошибки
+        if (errors.isNotEmpty()) {
+            _state.update {
+                it.copy(validationErrors = it.validationErrors + (postId to errors))
+            }
+        }
+
+        // Логируем результаты валидации
+        if (errors.isEmpty()) {
+            println("✅ Валидация успешна для поста $postId")
+            // Выводим полную структуру JSON
+            try {
+                println("📄 Полная JSON-структура:\n${resultJson}")
+            } catch (e: Exception) {
+                println("⚠️ Не удалось сериализовать JSON: ${e.message}")
+            }
+        } else {
+            println("❌ Найдены ошибки валидации для поста $postId:")
+            errors.forEach { (field, error) ->
+                println("   - $field: '$error'")
+            }
         }
 
         return errors.isEmpty()
@@ -702,7 +992,13 @@ class DefaultImporterComponent(
         }
     }
 
-    private fun updateProgress(step: ImportStep, progress: Float, currentItem: String = "", totalItems: Int = 0, processedItems: Int = 0) {
+    private fun updateProgress(
+        step: ImportStep,
+        progress: Float,
+        currentItem: String = "",
+        totalItems: Int = 0,
+        processedItems: Int = 0
+    ) {
         _state.update {
             it.copy(
                 progress = ImportProgress(
