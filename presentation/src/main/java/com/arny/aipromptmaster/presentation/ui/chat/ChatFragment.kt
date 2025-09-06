@@ -14,10 +14,8 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.Toolbar
 import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -44,6 +42,7 @@ import com.xwray.groupie.GroupieAdapter
 import dagger.android.support.AndroidSupportInjection
 import dagger.assisted.AssistedFactory
 import es.dmoral.toasty.Toasty
+import io.noties.markwon.Markwon
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -61,6 +60,8 @@ class ChatFragment : Fragment() {
     internal interface ViewModelFactory {
         fun create(chatid: String?): ChatViewModel
     }
+    @Inject
+    lateinit var markwon: Markwon
 
     private val groupAdapter by autoClean { GroupieAdapter() }
 
@@ -377,6 +378,7 @@ class ChatFragment : Fragment() {
                 )
 
                 ChatRole.ASSISTANT -> AiMessageItem(
+                    markwon = markwon,
                     message = message,
                     onCopyClicked = { textToCopy ->
                         copyToClipboard(textToCopy)

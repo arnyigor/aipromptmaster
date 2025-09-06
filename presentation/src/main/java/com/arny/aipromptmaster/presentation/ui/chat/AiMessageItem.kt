@@ -7,8 +7,10 @@ import com.arny.aipromptmaster.domain.models.ChatMessage
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.ItemAiMessageBinding
 import com.xwray.groupie.viewbinding.BindableItem
+import io.noties.markwon.Markwon
 
 class AiMessageItem(
+    private val markwon: Markwon,
     private val message: ChatMessage,
     private val onCopyClicked: (String) -> Unit,
 ) : BindableItem<ItemAiMessageBinding>() {
@@ -19,7 +21,7 @@ class AiMessageItem(
         viewBinding.btnCopy.isVisible = !emptyContent
         viewBinding.tvMessage.isVisible = !emptyContent
         if (!emptyContent) {
-            viewBinding.tvMessage.text = message.content
+            viewBinding.tvMessage.text = markwon.toMarkdown(message.content)
             viewBinding.tvMessage.movementMethod = LinkMovementMethod.getInstance()
         }
         viewBinding.btnCopy.setOnClickListener {
