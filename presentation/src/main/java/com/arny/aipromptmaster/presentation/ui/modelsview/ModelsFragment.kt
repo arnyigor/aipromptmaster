@@ -2,7 +2,6 @@ package com.arny.aipromptmaster.presentation.ui.modelsview
 
 import android.content.Context
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
@@ -95,27 +94,36 @@ class ModelsFragment : Fragment() {
                 searchView?.let { searchView ->
                     searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
                         override fun onQueryTextSubmit(query: String?): Boolean {
-                            viewModel.filterModels(query.orEmpty())
+                            // Используем метод для обновления поискового запроса
+                            viewModel.updateSearchQuery(query.orEmpty())
+                            // Скрываем клавиатуру после поиска
+                            searchView.clearFocus()
+                            requireActivity().hideKeyboard()
                             return true
                         }
 
                         override fun onQueryTextChange(newText: String?): Boolean {
-                            viewModel.filterModels(newText.orEmpty())
+                            // Обновляем поисковый запрос в реальном времени
+                            viewModel.updateSearchQuery(newText.orEmpty())
                             return true
                         }
                     })
 
                     searchMenuItem?.setOnActionExpandListener(object :
                         MenuItem.OnActionExpandListener {
-                        override fun onMenuItemActionExpand(item: MenuItem): Boolean = true
+                        override fun onMenuItemActionExpand(item: MenuItem): Boolean {
+                            return true
+                        }
 
                         override fun onMenuItemActionCollapse(item: MenuItem): Boolean {
-                            viewModel.filterModels("")
+                            // Очищаем поисковый запрос при сворачивании
+                            viewModel.updateSearchQuery("")
                             requireActivity().hideKeyboard()
                             return true
                         }
                     })
                 }
+
             }
 
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean =
@@ -174,22 +182,22 @@ class ModelsFragment : Fragment() {
     private fun setupFragmentResultListener() {
         // Используем childFragmentManager, так как мы вызываем диалог из фрагмента
         childFragmentManager.setFragmentResultListener(
-            ModelsFilterBottomSheetDialogFragment.REQUEST_KEY,
+            ModelsFilterBottomSheetDialog.REQUEST_KEY,
             viewLifecycleOwner // Привязка к жизненному циклу фрагмента
         ) { requestKey, bundle ->
             // Получаем результат
-            val result = bundle.getParcelable<FilterState>(ModelsFilterBottomSheetDialogFragment.RESULT_KEY)
+            val result = bundle.getParcelable<FilterState>(ModelsFilterBottomSheetDialog.RESULT_KEY)
             if (result != null) {
                 // Передаем новые фильтры в ViewModel
-//                viewModel.applyFilters(result)
+                viewModel.applyFilters(result)
             }
         }
     }
 
     private fun showFilterDialog() {
         val currentFilters = FilterState() //viewModel.currentFilters.value
-        val dialog = ModelsFilterBottomSheetDialogFragment.newInstance(currentFilters)
-        dialog.show(childFragmentManager, ModelsFilterBottomSheetDialogFragment.TAG)
+        val dialog = ModelsFilterBottomSheetDialog.newInstance(currentFilters)
+        dialog.show(childFragmentManager, ModelsFilterBottomSheetDialog.TAG)
     }
 
     override fun onDestroyView() {

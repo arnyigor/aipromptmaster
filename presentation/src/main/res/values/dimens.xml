@@ -12,4 +12,17 @@
     <dimen name="fab_margin">16dp</dimen>
     <dimen name="bottom_nav_height">56dp</dimen>
     <dimen name="fab_margin_bottom">72dp</dimen>
+
+
+    <!-- Размеры обводки карточек фильтров -->
+    <dimen name="active_card_stroke_width">2dp</dimen>
+    <dimen name="default_card_stroke_width">1dp</dimen>
+
+    <!-- Другие размеры для фильтров -->
+    <dimen name="filter_card_elevation">2dp</dimen>
+    <dimen name="filter_card_corner_radius">12dp</dimen>
+    <dimen name="sort_button_size">40dp</dimen>
+    <dimen name="filter_section_spacing">20dp</dimen>
+    <dimen name="filter_item_spacing">8dp</dimen>
+    <dimen name="filter_card_padding">12dp</dimen>
 </resources>

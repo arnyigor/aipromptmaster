@@ -104,4 +104,11 @@
     <color name="neutral_dark_gray_2">#616161</color>
     <color name="neutral_dark_gray_3">#757575</color>
     <color name="neutral_light_gray">#BDBDBD</color>
+
+
+    <!-- Цвета для карточек фильтров -->
+    <color name="filter_card_stroke_active">@color/material_dynamic_primary50</color>
+    <color name="filter_card_stroke_inactive">@color/material_dynamic_neutral_variant50</color>
+    <color name="filter_card_background_active">@color/material_dynamic_primary95</color>
+    <color name="filter_card_background_inactive">@android:color/transparent</color>
 </resources>

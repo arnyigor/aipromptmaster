@@ -66,7 +66,7 @@
     <string name="tags">Теги</string>
     <string name="apply">Применить</string>
     <string name="add_to_favorites">Добавить в избранное</string>
-    <string name="sorting">сортировка</string>
+    <string name="sorting">Сортировка</string>
     <string name="reset">сбросить</string>
     <string name="reverse">обратная</string>
     <string name="filters">Фильтры</string>
@@ -95,6 +95,21 @@
     <string name="pricing_image">🖼️ $%1$s</string>
     <string name="created_icon">📅</string>
     <string name="context_icon">📝</string>
+    <string name="sort_default">По умолчанию</string>
+    <string name="sorting_by_pricing">По цене</string>
+    <string name="sorting_by_name">По имени</string>
+    <string name="sorting_by_context_size">По контексту</string>
+    <string name="filter_favorite">Только выбранные</string>
+    <string name="filter_image_support">Поддержка изображений</string>
+    <string name="filter_extend">Расширенные</string>
+    <string name="filter_apply">Применить</string>
+    <string name="models_opportunities">Возможности модели</string>
+    <string name="sorting_by_date">По дате</string>
+    <string name="filter_free_models">Бесплатные модели</string>
+
+    <!-- Направления сортировки -->
+    <string name="sort_direction_ascending">По возрастанию</string>
+    <string name="sort_direction_descending">По убыванию</string>
 
     <string-array name="prompt_options">
         <item>Редактировать</item>
