@@ -91,6 +91,10 @@
     <string name="prompt_not_found">Промпт не найден</string>
     <string name="remove_error">Ошибка удаления</string>
     <string name="main_variant">Основной</string>
+    <string name="pricing_tokens">💰 $%1$s/%2$s/1M</string>
+    <string name="pricing_image">🖼️ $%1$s</string>
+    <string name="created_icon">📅</string>
+    <string name="context_icon">📝</string>
 
     <string-array name="prompt_options">
         <item>Редактировать</item>

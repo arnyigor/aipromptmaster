@@ -107,15 +107,47 @@ private val ONE_MILLION = BigDecimal(1_000_000)
 
 fun LlmModel.formatDescription(context: Context): String {
     return buildString {
+        // Дата создания
         append(context.getString(R.string.created))
         append(" ")
         append(created.toReadableDate())
-        append(",")
+
+        // Контекст
+        append("\n")
         append(context.getString(R.string.context))
         append(" ")
         append(contextLength.toCompactString())
+
+        // Цены
+        append("\n")
+        append(formatPricingWithEmojis())
     }
 }
+
+private fun LlmModel.formatPricingWithEmojis(): String {
+    return buildString {
+        val promptPrice = (pricingPrompt * BigDecimal(1_000_000)).toCompactString()
+        val completionPrice = (pricingCompletion * BigDecimal(1_000_000)).toCompactString()
+
+        // 📥 - входящие (ваш запрос к модели)
+        append("📥$")
+        append(promptPrice)
+        append("/")
+
+        // 📤 - исходящие (ответ модели)
+        append("📤$")
+        append(completionPrice)
+        append("/1M")
+
+        pricingImage?.let { imagePrice ->
+            if (imagePrice > BigDecimal.ZERO) {
+                append(" | 🖼️$")
+                append(imagePrice.toCompactString())
+            }
+        }
+    }
+}
+
 
 fun Long.toReadableDate(): String {
     val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())

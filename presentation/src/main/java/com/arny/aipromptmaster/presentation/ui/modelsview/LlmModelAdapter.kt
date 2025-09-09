@@ -1,6 +1,5 @@
 package com.arny.aipromptmaster.presentation.ui.modelsview
 
-// LlmModelAdapter.kt
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ViewGroup
