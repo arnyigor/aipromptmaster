@@ -12,16 +12,6 @@
         android:layout_height="wrap_content"
         android:fitsSystemWindows="true"
         app:elevation="0dp">
-
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            app:navigationIcon="@drawable/outline_close_24"
-            app:navigationContentDescription="@string/action_close"
-            app:title="@string/add_prompt_title"
-            app:titleTextAppearance="?attr/textAppearanceTitleLarge" />
-
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
@@ -228,6 +218,7 @@
         android:layout_margin="16dp"
         android:contentDescription="@string/action_save"
         android:text="@string/action_save"
+        android:textColor="@color/blue_on_secondary_container_text_dark"
         app:icon="@android:drawable/ic_menu_save"
         app:iconTint="?attr/colorOnPrimary"
         app:backgroundTint="?attr/colorPrimary" />
