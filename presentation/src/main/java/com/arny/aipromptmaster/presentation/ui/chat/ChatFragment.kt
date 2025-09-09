@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
@@ -162,6 +163,7 @@ class ChatFragment : Fragment() {
                         val action = ChatFragmentDirections.actionNavChatToEditPromptDialogFragment(
                             currentPrompt
                         )
+                        Log.i(this::class.java.simpleName, "onMenuItemSelected: currentPrompt:$currentPrompt")
                         findNavController().navigate(action)
                         true
                     }

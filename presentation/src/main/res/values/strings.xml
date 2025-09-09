@@ -107,11 +107,14 @@
     <string name="models_opportunities">Возможности модели</string>
     <string name="sorting_by_date">По дате</string>
     <string name="filter_free_models">Бесплатные модели</string>
+    <string name="system_prompt_description">Системный промпт задает поведение и стиль ответов AI модели</string>
+    <string name="system_prompt_helper_text">Опишите роль и поведение AI</string>
 
     <!-- Направления сортировки -->
     <string name="sort_direction_ascending">По возрастанию</string>
     <string name="sort_direction_descending">По убыванию</string>
     <string name="attach_txt_file">прикрепить текстовый файл</string>
+    <string name="action_close">Закрыть</string>
 
     <string-array name="prompt_options">
         <item>Редактировать</item>

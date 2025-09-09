@@ -6,55 +6,108 @@
     android:layout_height="match_parent"
     android:background="?attr/colorSurface"
     android:clickable="true"
-    android:focusable="true">
+    android:focusable="true"
+    android:fitsSystemWindows="true">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:fitsSystemWindows="true"
+        app:elevation="0dp">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             app:navigationIcon="@drawable/outline_close_24"
-            app:title="@string/system_prompt_dialog_title" />
+            app:navigationContentDescription="@string/action_close"
+            app:title="@string/system_prompt_dialog_title"
+            app:titleTextAppearance="?attr/textAppearanceTitleLarge" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:scrollbars="vertical"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-        <com.google.android.material.textfield.TextInputLayout
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_margin="16dp"
-            app:hintEnabled="false">
+            android:orientation="vertical"
+            android:padding="16dp">
 
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/et_system_prompt"
+            <!-- Описание и подсказки -->
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@android:color/transparent"
-                android:gravity="top|start"
-                android:hint="@string/system_prompt_dialog_hint"
-                android:inputType="textMultiLine|textCapSentences"
-                android:minHeight="200dp"
-                tools:text="Ты — шеф-повар из Италии, который дает рецепты только в стихах." />
+                android:layout_marginBottom="8dp"
+                android:text="@string/system_prompt_description"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant" />
 
-        </com.google.android.material.textfield.TextInputLayout>
+            <!-- Карточка с текстовым полем -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:layout_marginBottom="80dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:strokeColor="?attr/colorOutline"
+                app:strokeWidth="1dp">
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_margin="16dp"
+                    app:boxBackgroundMode="none"
+                    app:counterEnabled="true"
+                    app:counterMaxLength="2000"
+                    app:hintAnimationEnabled="true"
+                    app:hintEnabled="true"
+                    app:helperText="@string/system_prompt_helper_text"
+                    app:helperTextEnabled="true">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/et_system_prompt"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@android:color/transparent"
+                        android:gravity="top|start"
+                        android:hint="@string/system_prompt_dialog_hint"
+                        android:inputType="textMultiLine|textCapSentences|textAutoCorrect"
+                        android:lineSpacingExtra="4dp"
+                        android:minHeight="300dp"
+                        android:padding="12dp"
+                        android:scrollbars="vertical"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textColorHint="?attr/colorOnSurfaceVariant"
+                        tools:text="Ты — шеф-повар из Италии, который дает рецепты только в стихах." />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
 
     </androidx.core.widget.NestedScrollView>
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
+    <!-- Улучшенный FAB -->
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
         android:id="@+id/fab_save"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
+        android:textColor="@color/blue_on_secondary_container_text_dark"
         android:contentDescription="@string/action_save"
-        android:src="@android:drawable/ic_menu_save"
-        app:tint="?attr/colorOnPrimary" />
+        android:text="@string/action_save"
+        app:icon="@android:drawable/ic_menu_save"
+        app:iconTint="?attr/colorOnPrimary"
+        app:backgroundTint="?attr/colorPrimary" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

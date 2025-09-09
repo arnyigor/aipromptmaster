@@ -101,14 +101,7 @@ class PromptViewFragment : Fragment() {
 
             // Копирование всего контента
             fabCopy.setOnClickListener {
-                val fullContent = buildString {
-                    append("🇷🇺 Русский:\n")
-                    append(tvPromptRu.text)
-                    append("\n\n")
-                    append("🇬🇧 English:\n")
-                    append(tvPromptEn.text)
-                }
-                viewModel.copyContent(fullContent, "Полный промпт скопирован")
+                viewModel.copyContent(getFullContent(), "Полный промпт скопирован")
             }
 
             // Обработка выбора варианта
@@ -125,6 +118,36 @@ class PromptViewFragment : Fragment() {
                 viewModel.selectVariant(variantIndex)
             }
         }
+    }
+
+    private fun getFullContent(): String {
+        val ruText = binding.tvPromptRu.text.toString().trim()
+        val enText = binding.tvPromptEn.text.toString().trim()
+        val fullContent = buildString {
+            when {
+                enText.isNotEmpty() && ruText.isNotEmpty() -> {
+                    append("🇷🇺 Русский:\n")
+                    append(ruText)
+                    append("\n\n")
+                    append("🇬🇧 English:\n")
+                    append(enText)
+                }
+
+                enText.isNotEmpty() -> {
+                    append(enText)
+                }
+
+                ruText.isNotEmpty() -> {
+                    append(ruText)
+                }
+
+                else -> {
+                    // Оба пусты — можно оставить пустую строку или по умолчанию
+                    append("")
+                }
+            }
+        }
+        return fullContent
     }
 
     private fun observeViewModel() {

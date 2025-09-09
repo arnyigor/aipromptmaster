@@ -99,7 +99,9 @@ class OpenRouterRepositoryImpl @Inject constructor(
     ): Flow<DataResult<String>> = flow {
         val request = ChatCompletionRequestDTO(
             model = model,
-            messages = messages.map { MessageDTO(it.role.toString(), it.content) },
+            messages = messages
+                .map { MessageDTO(it.role.toString(), it.content) }
+                .filter { !it.content.isNullOrBlank() },
             maxTokens = 4096,
             stream = true
         )
