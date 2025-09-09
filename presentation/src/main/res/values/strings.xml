@@ -120,4 +120,16 @@
         <item>Редактировать</item>
         <item>Удалить</item>
     </string-array>
+
+    <!-- Add Prompt Screen -->
+    <string name="add_prompt_title">Добавить промпт</string>
+    <string name="prompt_title_hint">Название промпта</string>
+    <string name="prompt_category_hint">Категория</string>
+    <string name="prompt_description_hint">Описание промпта</string>
+    <string name="prompt_content_ru_label">Содержимое (Русский)</string>
+    <string name="prompt_content_ru_hint">Введите текст промпта на русском языке</string>
+    <string name="prompt_content_en_label">Содержимое (English)</string>
+    <string name="prompt_content_en_hint">Enter prompt text in English</string>
+    <string name="error_saving_prompt">Ошибка сохранения промпта</string>
+    <string name="prompt_saved_successfully">Промпт успешно сохранен</string>
 </resources>

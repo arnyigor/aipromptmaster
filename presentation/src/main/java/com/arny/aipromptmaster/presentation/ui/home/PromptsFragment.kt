@@ -110,7 +110,9 @@ class PromptsFragment : Fragment() {
             }
 
             fabAdd.setOnClickListener {
-                // TODO: Navigate to add prompt screen
+                findNavController().navigate(
+                    PromptsFragmentDirections.actionNavHomeToAddPromptFragment()
+                )
             }
 
             btnRetry.setOnClickListener {

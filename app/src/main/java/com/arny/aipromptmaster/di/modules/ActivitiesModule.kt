@@ -1,6 +1,7 @@
 package com.arny.aipromptmaster.di.modules
 
 import com.arny.aipromptmaster.core.di.scopes.ActivityScope
+import com.arny.aipromptmaster.di.AddPromptFragmentModule
 import com.arny.aipromptmaster.di.HistoryFragmentModule
 import com.arny.aipromptmaster.di.PromptsFragmentModule
 import com.arny.aipromptmaster.di.LibraryFragmentModule
@@ -18,6 +19,7 @@ abstract class ActivitiesModule {
         modules = [
             PromptsFragmentModule::class,
             PromptViewFragmentModule::class,
+            AddPromptFragmentModule::class,
             HistoryFragmentModule::class,
             LibraryFragmentModule::class,
             SettingsFragmentModule::class,

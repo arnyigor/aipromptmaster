@@ -12,6 +12,9 @@
         <action
             android:id="@+id/action_nav_home_to_promptViewFragment"
             app:destination="@id/promptViewFragment" />
+        <action
+            android:id="@+id/action_nav_home_to_addPromptFragment"
+            app:destination="@id/addPromptFragment" />
     </fragment>
     <fragment
         android:id="@+id/nav_history"
@@ -53,6 +56,11 @@
             android:name="promptId"
             app:argType="string" />
     </fragment>
+    <fragment
+        android:id="@+id/addPromptFragment"
+        android:name="com.arny.aipromptmaster.presentation.ui.addprompt.AddPromptFragment"
+        android:label="@string/add_prompt_title"
+        tools:layout="@layout/fragment_add_prompt" />
     <fragment
         android:id="@+id/settingsFragment"
         android:name="com.arny.aipromptmaster.presentation.ui.settings.SettingsFragment"
