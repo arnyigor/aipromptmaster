@@ -99,7 +99,8 @@
     <string name="sorting_by_pricing">По цене</string>
     <string name="sorting_by_name">По имени</string>
     <string name="sorting_by_context_size">По контексту</string>
-    <string name="filter_favorite">Только выбранные</string>
+    <string name="filter_favorite">Только избранные</string>
+    <string name="filter_selected">Только выбранные</string>
     <string name="filter_image_support">Поддержка изображений</string>
     <string name="filter_extend">Расширенные</string>
     <string name="filter_apply">Применить</string>
@@ -110,6 +111,7 @@
     <!-- Направления сортировки -->
     <string name="sort_direction_ascending">По возрастанию</string>
     <string name="sort_direction_descending">По убыванию</string>
+    <string name="attach_txt_file">прикрепить текстовый файл</string>
 
     <string-array name="prompt_options">
         <item>Редактировать</item>

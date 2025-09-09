@@ -134,4 +134,8 @@ interface ILLMInteractor {
      * @return Отформатированная строка с полной историей чата.
      */
     suspend fun getFullChatForExport(conversationId: String): String
+
+    suspend fun toggleModelFavorite(modelId: String)
+
+    fun getFavoriteModels(): Flow<List<LlmModel>>
 }

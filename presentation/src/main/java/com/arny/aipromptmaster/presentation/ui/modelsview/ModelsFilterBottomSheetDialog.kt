@@ -53,6 +53,7 @@ class ModelsFilterBottomSheetDialog : BottomSheetDialogFragment() {
         initialFilters?.let { filters ->
             // Настраиваем переключатели
             binding.switchOnlySelected.isChecked = filters.showOnlySelected
+            binding.switchOnlyFavorite.isChecked = filters.showOnlyFavorites
             binding.switchOnlyFree.isChecked = filters.showOnlyFree
             binding.switchSupportsImages.isChecked =
                 ModalityType.IMAGE in filters.requiredModalities
@@ -175,9 +176,6 @@ class ModelsFilterBottomSheetDialog : BottomSheetDialogFragment() {
     }
 
 
-
-
-
     private fun updateDirectionButton(button: MaterialButton, direction: SortDirection) {
         val iconRes = when (direction) {
             SortDirection.ASC -> android.R.drawable.arrow_up_float
@@ -199,7 +197,7 @@ class ModelsFilterBottomSheetDialog : BottomSheetDialogFragment() {
     }
 
     private fun buildFiltersFromUi(): FilterState {
-        val currentFilters = arguments?.getParcelable<FilterState>(ARG_FILTERS) ?: FilterState()
+        val currentFilters = arguments?.getParcelable(ARG_FILTERS) ?: FilterState()
 
         // Собираем активные сортировки
         val activeSortOptions = mutableListOf<SortCriteria>()
@@ -252,6 +250,7 @@ class ModelsFilterBottomSheetDialog : BottomSheetDialogFragment() {
         return currentFilters.copy(
             sortOptions = activeSortOptions,
             showOnlySelected = binding.switchOnlySelected.isChecked,
+            showOnlyFavorites = binding.switchOnlyFavorite.isChecked,
             showOnlyFree = binding.switchOnlyFree.isChecked,
             requiredModalities = modalities
         )

@@ -53,6 +53,22 @@ class LLMInteractor @Inject constructor(
         historyRepository.deleteConversation(conversationId)
     }
 
+    override suspend fun toggleModelFavorite(modelId: String) {
+        if (settingsRepository.isFavorite(modelId)) {
+            settingsRepository.removeFromFavorites(modelId)
+        } else {
+            settingsRepository.addToFavorites(modelId)
+        }
+    }
+
+    override fun getFavoriteModels(): Flow<List<LlmModel>> = getModels()
+        .map { result ->
+            when (result) {
+                is DataResult.Success -> result.data.filter { it.isFavorite }
+                else -> emptyList()
+            }
+        }
+
     override suspend fun getFullChatForExport(conversationId: String): String {
         val conversation = historyRepository.getConversation(conversationId)
             ?: throw DomainError.local(R.string.dialog_not_found) // Или вернуть строку с ошибкой
@@ -214,7 +230,7 @@ class LLMInteractor @Inject constructor(
                 if (cause != null) {
                     // Это перехватит ошибки, если вы вдруг вернетесь к подходу с `throw` в репозитории.
                     // При текущей реализации репозитория с DataResult, этот блок не должен выполниться.
-                    streamError = when(cause) {
+                    streamError = when (cause) {
                         is DomainError -> cause
                         else -> DomainError.Generic(cause.localizedMessage ?: "Unknown flow error")
                     }
@@ -235,6 +251,7 @@ class LLMInteractor @Inject constructor(
                         historyRepository.appendContentToMessage(messageId, result.data)
                         receivedAnyData = true // Помечаем, что данные были
                     }
+
                     is DataResult.Error -> {
                         val exception = result.exception
                         streamError = when (exception) {
@@ -245,7 +262,9 @@ class LLMInteractor @Inject constructor(
                             )
                         }
                     }
-                    DataResult.Loading -> { /* Игнорируем */ }
+
+                    DataResult.Loading -> { /* Игнорируем */
+                    }
                 }
             }
 
@@ -271,13 +290,20 @@ class LLMInteractor @Inject constructor(
     override fun getModels(): Flow<DataResult<List<LlmModel>>> {
         val selectedIdFlow: Flow<String?> = settingsRepository.getSelectedModelId()
         val modelsListFlow: Flow<List<LlmModel>> = modelsRepository.getModelsFlow()
-        return combine(selectedIdFlow, modelsListFlow) { selectedId, modelsList ->
-            // Эта лямбда будет выполняться каждый раз, когда меняется ID или список моделей.
+        val favoriteModelIds = settingsRepository.getFavoriteModelIds()
+        return combine(
+            selectedIdFlow,
+            modelsListFlow,
+            favoriteModelIds
+        ) { selectedId, modelsList, favoriteModelIds ->
             if (modelsList.isEmpty()) {
                 DataResult.Loading
             } else {
                 val mappedList = modelsList.map { model ->
-                    model.copy(isSelected = model.id == selectedId)
+                    model.copy(
+                        isSelected = model.id == selectedId,
+                        isFavorite = model.id in favoriteModelIds
+                    )
                 }
                 DataResult.Success(mappedList)
             }

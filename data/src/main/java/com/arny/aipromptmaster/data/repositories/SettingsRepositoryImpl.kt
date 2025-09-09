@@ -1,9 +1,9 @@
 package com.arny.aipromptmaster.data.repositories
 
 import android.content.SharedPreferences
+import android.util.Log
 import com.arny.aipromptmaster.data.prefs.Prefs
 import com.arny.aipromptmaster.data.prefs.PrefsConstants
-import com.arny.aipromptmaster.data.prefs.PrefsConstants.PREFS_SELECTED_MODEL
 import com.arny.aipromptmaster.data.prefs.SecurePrefs
 import com.arny.aipromptmaster.domain.repositories.ISettingsRepository
 import kotlinx.coroutines.CoroutineDispatcher
@@ -19,13 +19,20 @@ class SettingsRepositoryImpl @Inject constructor(
     private val prefs: Prefs,
     private val dispatcher: CoroutineDispatcher
 ) : ISettingsRepository {
+
     private var cachedApiKey: String? = null
     private var cacheTime: Long = 0
 
     private companion object {
         const val CACHE_EXPIRATION_MS = 60 * 60 * 1000L // 60 minutes
+
+        // Константы для ключей
+        const val PREFS_SELECTED_MODEL = "selected_model_id"
+        const val PREFS_FAVORITE_MODELS = "favorite_model_ids"
+        const val FAVORITES_SEPARATOR = "," // Разделитель для списка избранных
     }
 
+    // Существующие методы для API ключа
     override fun saveApiKey(apiKey: String) {
         securePrefs.put(PrefsConstants.OR_API_KEY, apiKey)
         cachedApiKey = apiKey
@@ -47,10 +54,7 @@ class SettingsRepositoryImpl @Inject constructor(
                 (System.currentTimeMillis() - cacheTime) < CACHE_EXPIRATION_MS
     }
 
-    /**
-     * Сохраняет ID выбранной модели.
-     * Этот метод будет триггерить обновление в getSelectedModelIdFlow().
-     */
+    // Методы для выбранной модели
     override fun setSelectedModelId(id: String?) {
         if (id == null) {
             prefs.remove(PREFS_SELECTED_MODEL)
@@ -59,34 +63,99 @@ class SettingsRepositoryImpl @Inject constructor(
         }
     }
 
-    /**
-     * Предоставляет РЕАКТИВНЫЙ поток с ID выбранной модели.
-     * Эмитит новое значение каждый раз, когда оно меняется в SharedPreferences.
-     */
     override fun getSelectedModelId(): Flow<String?> = callbackFlow<String?> {
-        // 1. Создаем слушателя изменений
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            // Реагируем только на изменение НАШЕГО ключа
             if (key == PREFS_SELECTED_MODEL) {
-                // Запускаем корутину в контексте flow, чтобы безопасно считать значение
-                // и отправить его в поток.
                 launch {
                     send(prefs.get(PREFS_SELECTED_MODEL))
                 }
             }
         }
 
-        // 2. Эмитим самое первое, текущее значение.
-        // Это важно, чтобы подписчик сразу получил состояние.
+        // Эмитим текущее значение
         send(prefs.get(PREFS_SELECTED_MODEL))
 
-        // 3. Регистрируем нашего слушателя
+        // Регистрируем слушателя
         prefs.settings.registerOnSharedPreferenceChangeListener(listener)
 
-        // 4. awaitClose будет вызван, когда Flow будет отменен (например, viewModelScope завершится).
-        // Здесь мы ОБЯЗАНЫ отписаться, чтобы избежать утечек памяти.
         awaitClose {
             prefs.settings.unregisterOnSharedPreferenceChangeListener(listener)
         }
-    }.flowOn(dispatcher) // Выполнять всю логику в фоновом потоке
+    }.flowOn(dispatcher)
+
+
+    override fun getFavoriteModelIds(): Flow<Set<String>> = callbackFlow<Set<String>> {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPrefs, key ->
+            if (key == PREFS_FAVORITE_MODELS) {
+                launch {
+                    val favoriteIds = getCurrentFavoriteIds()
+                    send(favoriteIds)
+                }
+            }
+        }
+
+        // Эмитим текущее значение
+        val initial = getCurrentFavoriteIds()
+        send(initial)
+
+        // Регистрируем слушателя
+        prefs.settings.registerOnSharedPreferenceChangeListener(listener)
+
+        awaitClose {
+            prefs.settings.unregisterOnSharedPreferenceChangeListener(listener)
+        }
+    }.flowOn(dispatcher)
+
+
+    override suspend fun setFavoriteModelIds(favoriteIds: Set<String>) {
+        val serializedIds = serializeFavoriteIds(favoriteIds)
+        if (serializedIds.isEmpty()) {
+            prefs.remove(PREFS_FAVORITE_MODELS)
+        } else {
+            prefs.put(PREFS_FAVORITE_MODELS, serializedIds)
+        }
+    }
+
+    override suspend fun addToFavorites(modelId: String) {
+        val currentFavorites = getCurrentFavoriteIds()
+        val updatedFavorites = currentFavorites + modelId
+        setFavoriteModelIds(updatedFavorites)
+    }
+
+    override suspend fun removeFromFavorites(modelId: String) {
+        val currentFavorites = getCurrentFavoriteIds()
+        val updatedFavorites = currentFavorites - modelId
+        setFavoriteModelIds(updatedFavorites)
+    }
+
+    override suspend fun isFavorite(modelId: String): Boolean {
+        return getCurrentFavoriteIds().contains(modelId)
+    }
+
+    /**
+     * Синхронно получает текущие избранные ID из SharedPreferences
+     */
+    private fun getCurrentFavoriteIds(): Set<String> =
+        parseFavoriteIds(prefs.get<String?>(PREFS_FAVORITE_MODELS))
+
+    /**
+     * Преобразует строку из SharedPreferences в Set<String>
+     */
+    private fun parseFavoriteIds(serializedIds: String?): Set<String> =
+        if (serializedIds.isNullOrBlank()) {
+            emptySet()
+        } else {
+            serializedIds.split(FAVORITES_SEPARATOR)
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .toSet()
+        }
+
+    /**
+     * Преобразует Set<String> в строку для хранения в SharedPreferences
+     */
+    private fun serializeFavoriteIds(favoriteIds: Set<String>): String = favoriteIds
+        .filter { it.isNotBlank() }
+        .joinToString(FAVORITES_SEPARATOR)
 }
+

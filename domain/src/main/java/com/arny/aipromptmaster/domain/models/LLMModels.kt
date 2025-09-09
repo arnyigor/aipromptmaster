@@ -61,4 +61,5 @@ data class LlmModel(
     val inputModalities: List<String>,
     val outputModalities: List<String>,
     val isSelected: Boolean,
+    val isFavorite: Boolean = false
 )

@@ -29,15 +29,14 @@ data class ChatCompletionResponseDTO(
 @Serializable
 data class ApiErrorResponse(
     @SerialName("error") val error: ApiError,
-    @SerialName("user_id")
-    val userId: String?
+    @SerialName("user_id") val userId: String? = null
 )
 
 @Serializable
 data class ApiError(
     @SerialName("message") val message: String,
-    @SerialName("code")  val code: Int,
-    @SerialName("metadata")  val metadata: ErrorMetadata? // Делаем nullable на случай, если metadata может отсутствовать
+    @SerialName("code") val code: Int,
+    @SerialName("metadata") val metadata: ErrorMetadata? // Делаем nullable на случай, если metadata может отсутствовать
 )
 
 @Serializable

@@ -4,9 +4,9 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginStart="16dp"
+    android:layout_marginStart="8dp"
     android:layout_marginTop="8dp"
-    android:layout_marginEnd="16dp"
+    android:layout_marginEnd="8dp"
     android:layout_marginBottom="8dp"
     app:cardCornerRadius="12dp"
     app:cardElevation="4dp"
@@ -21,7 +21,7 @@
         android:focusable="true"
         android:padding="16dp">
 
-        <!-- Иконка провайдера (опционально, но улучшает UX) -->
+        <!-- Иконка провайдера -->
         <ImageView
             android:id="@+id/ivProviderIcon"
             android:layout_width="24dp"
@@ -31,23 +31,23 @@
             app:layout_constraintTop_toTopOf="@+id/tvModelName"
             tools:src="@drawable/ic_deepseek_model" />
 
-        <!-- Название модели (основная информация) -->
+        <!-- Название модели -->
         <TextView
             android:id="@+id/tvModelName"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
             android:ellipsize="end"
             android:maxLines="2"
             android:textAppearance="?attr/textAppearanceSubtitle1"
             android:textStyle="bold"
-            app:layout_constraintEnd_toStartOf="@+id/switchModelActive"
+            app:layout_constraintEnd_toStartOf="@+id/btnFavorite"
             app:layout_constraintStart_toEndOf="@id/ivProviderIcon"
             app:layout_constraintTop_toTopOf="parent"
             tools:text="OpenAI: GPT-4o" />
 
-        <!-- Провайдер/описание модели (вторичная информация) -->
+        <!-- Описание модели -->
         <TextView
             android:id="@+id/tvModelProvider"
             android:layout_width="0dp"
@@ -59,9 +59,26 @@
             app:layout_constraintEnd_toEndOf="@+id/tvModelName"
             app:layout_constraintStart_toStartOf="@+id/tvModelName"
             app:layout_constraintTop_toBottomOf="@+id/tvModelName"
-            tools:text="Context: 128k, Vision" />
+            tools:text="Created Mar 15, 2024, context 128K • ↑$0.03 / ↓$0.06/1M" />
 
-        <!-- Switch для выбора активной модели -->
+        <!-- Кнопка избранного -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnFavorite"
+            style="@style/Widget.Material3.Button.TextButton.Icon"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="@string/add_to_favorites"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            app:icon="@drawable/ic_favorite_border"
+            app:iconPadding="0dp"
+            app:iconSize="24dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/switchModelActive"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <!-- Switch для активации модели -->
         <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/switchModelActive"
             android:layout_width="wrap_content"

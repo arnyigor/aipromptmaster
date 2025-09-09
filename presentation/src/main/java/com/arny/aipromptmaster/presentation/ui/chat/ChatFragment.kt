@@ -7,6 +7,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.Menu
@@ -15,6 +16,8 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
@@ -43,15 +46,21 @@ import dagger.android.support.AndroidSupportInjection
 import dagger.assisted.AssistedFactory
 import es.dmoral.toasty.Toasty
 import io.noties.markwon.Markwon
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.withContext
+import java.io.IOException
 import javax.inject.Inject
 
 class ChatFragment : Fragment() {
     private var _binding: FragmentChatBinding? = null
     private val binding get() = _binding!!
+
+    private lateinit var filePickerLauncher: ActivityResultLauncher<String>
+
 
     // Получаем аргументы навигации с помощью Safe Args
     private val args: ChatFragmentArgs by navArgs()
@@ -60,6 +69,7 @@ class ChatFragment : Fragment() {
     internal interface ViewModelFactory {
         fun create(chatid: String?): ChatViewModel
     }
+
     @Inject
     lateinit var markwon: Markwon
 
@@ -77,6 +87,23 @@ class ChatFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setHasOptionsMenu(true)
+        // Инициализация лаунчера
+        filePickerLauncher =
+            registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+                uri?.let {
+                    if (isTxtFile(it)) {
+                        readTextFile(it) { text ->
+                            binding.etUserInput.setText(text)
+                        }
+                    } else {
+                        Toast.makeText(
+                            requireContext(),
+                            "Пожалуйста, выберите TXT-файл",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }
     }
 
     override fun onCreateView(
@@ -112,6 +139,7 @@ class ChatFragment : Fragment() {
                         )
                         true
                     }
+
                     R.id.action_model_select -> {
                         findNavController().navigate(
                             ChatFragmentDirections.actionNavChatToModelsFragment()
@@ -180,6 +208,39 @@ class ChatFragment : Fragment() {
             binding.tvErrorMessage.text = ""
             binding.errorCard.isVisible = false
         }
+
+        binding.btnAttachFile.setOnClickListener {
+            filePickerLauncher.launch("text/plain")
+        }
+    }
+
+    private fun readTextFile(uri: Uri, callback: (String) -> Unit) {
+        lifecycleScope.launch {
+            try {
+                val text = withContext(Dispatchers.IO) {
+                    requireContext().contentResolver.openInputStream(uri)?.use { inputStream ->
+                        inputStream.bufferedReader().use { reader -> reader.readText() }
+                    } ?: throw IOException("Не удалось открыть файл")
+                }
+                withContext(Dispatchers.Main) {
+                    callback(text)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        requireContext(),
+                        "Не удалось прочитать файл: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
+    }
+
+    private fun isTxtFile(uri: Uri): Boolean {
+        val mimeType = requireContext().contentResolver.getType(uri)
+        return mimeType == "text/plain"
     }
 
     private fun observeViewModel() {
@@ -337,14 +398,16 @@ class ChatFragment : Fragment() {
      */
     private fun showApiErrorDialog(error: DomainError.Api) {
         val title = when (error.code) {
+            400 -> "Ошибка сервера"
             401, 403 -> "Ошибка авторизации"
             500, 502, 503 -> "Ошибка сервера"
             else -> "Ошибка API"
         }
 
+        val holderMessage = error.stringHolder.asString(requireContext())
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(title)
-            .setMessage(error.detailedMessage)
+            .setMessage(error.detailedMessage.takeIf { it.isNotBlank() } ?: holderMessage)
             .setPositiveButton("ОК") { dialog, _ -> dialog.dismiss() }
             .apply {
                 // Для ошибок авторизации добавляем кнопку настроек

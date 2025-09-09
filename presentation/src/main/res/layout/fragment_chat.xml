@@ -91,12 +91,26 @@
             android:paddingEnd="8dp"
             android:paddingBottom="4dp">
 
+            <!-- Иконка прикрепления файла -->
+            <ImageButton
+                android:id="@+id/btn_attach_file"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/attach_txt_file"
+                android:scaleType="centerInside"
+                android:src="@drawable/outline_attach_file_24"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:tint="@color/fab_background_tint" />
 
             <!-- Поле ввода -->
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/et_user_input"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
                 android:layout_marginEnd="8dp"
                 android:background="@android:color/transparent"
                 android:hint="@string/enter_message"
@@ -107,7 +121,7 @@
                 android:paddingBottom="12dp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@id/btn_send"
-                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintStart_toEndOf="@id/btn_attach_file"
                 app:layout_constraintTop_toTopOf="parent" />
 
             <!-- Кнопка отправки -->

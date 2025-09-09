@@ -12,7 +12,8 @@ data class FilterState(
         SortCriteria(SortType.BY_PRICE, SortDirection.ASC)  // По умолчанию: дешевые сверху
     ),
     val showOnlySelected: Boolean = false,
-    val showOnlyFree: Boolean = true, // По умолчанию показываем только бесплатные
+    val showOnlyFavorites: Boolean = false,
+    val showOnlyFree: Boolean = true,
     val requiredModalities: Set<ModalityType> = setOf(ModalityType.TEXT)
 ) : Parcelable
 

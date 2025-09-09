@@ -27,7 +27,7 @@ class ModelsViewModel @AssistedInject constructor(
 
     // Приватные StateFlow для управления состоянием
     private val searchQuery = MutableStateFlow("")
-    private val filters = MutableStateFlow(FilterState()) // Уже содержит дефолтные настройки
+    private val filters = MutableStateFlow(FilterState())
 
     /**
      * Основной поток UI состояния с комбинированием данных моделей, поискового запроса и фильтров
@@ -44,6 +44,7 @@ class ModelsViewModel @AssistedInject constructor(
                     val processedModels = processModels(dataResult.data, query, filterState)
                     DataResult.Success(processedModels)
                 }
+
                 is DataResult.Loading, is DataResult.Error -> dataResult
             }
         }.stateIn(
@@ -51,11 +52,6 @@ class ModelsViewModel @AssistedInject constructor(
             started = SharingStarted.WhileSubscribed(5000L),
             initialValue = DataResult.Loading
         )
-
-    /**
-     * Публичный доступ к текущим фильтрам
-     */
-    val currentFilters: StateFlow<FilterState> = filters
 
     /**
      * Переключает выбор модели
@@ -84,28 +80,19 @@ class ModelsViewModel @AssistedInject constructor(
     }
 
     /**
-     * Сбрасывает все фильтры к дефолтным значениям
-     */
-    fun resetFilters() {
-        searchQuery.value = ""
-        filters.value = FilterState() // Дефолтное состояние
-    }
-
-    /**
      * Основная логика обработки моделей: фильтрация и сортировка
      */
     private fun processModels(
         models: List<LlmModel>,
         query: String,
         filterState: FilterState
-    ): List<LlmModel> {
-        return models
-            .let { applySearchFilter(it, query) }
-            .let { applySelectionFilter(it, filterState) }
-            .let { applyPriceFilter(it, filterState) }
-            .let { applyModalityFilter(it, filterState) }
-            .let { applySorting(it, filterState.sortOptions) }
-    }
+    ): List<LlmModel> = models
+        .let { applySearchFilter(it, query) }
+        .let { applySelectionFilter(it, filterState) }
+        .let { applyFavoriteFilter(it, filterState) }
+        .let { applyPriceFilter(it, filterState) }
+        .let { applyModalityFilter(it, filterState) }
+        .let { applySorting(it, filterState.sortOptions) }
 
     /**
      * Применяет поисковый фильтр по названию, ID и описанию модели
@@ -124,12 +111,25 @@ class ModelsViewModel @AssistedInject constructor(
     /**
      * Применяет фильтр по выбранным моделям
      */
-    private fun applySelectionFilter(models: List<LlmModel>, filterState: FilterState): List<LlmModel> {
-        return if (filterState.showOnlySelected) {
-            models.filter { it.isSelected }
-        } else {
-            models
-        }
+    private fun applySelectionFilter(
+        models: List<LlmModel>,
+        filterState: FilterState
+    ): List<LlmModel> = if (filterState.showOnlySelected) {
+        models.filter { it.isSelected }
+    } else {
+        models
+    }
+
+    /**
+     * Применяет фильтр по избранным моделям
+     */
+    private fun applyFavoriteFilter(
+        models: List<LlmModel>,
+        filterState: FilterState
+    ): List<LlmModel> = if (filterState.showOnlyFavorites) {
+        models.filter { it.isFavorite }
+    } else {
+        models
     }
 
     /**
@@ -151,7 +151,10 @@ class ModelsViewModel @AssistedInject constructor(
     /**
      * Применяет фильтр по модальностям (возможностям модели)
      */
-    private fun applyModalityFilter(models: List<LlmModel>, filterState: FilterState): List<LlmModel> {
+    private fun applyModalityFilter(
+        models: List<LlmModel>,
+        filterState: FilterState
+    ): List<LlmModel> {
         if (filterState.requiredModalities.isEmpty()) return models
 
         return models.filter { model ->
@@ -164,7 +167,10 @@ class ModelsViewModel @AssistedInject constructor(
     /**
      * Применяет множественную сортировку по приоритету
      */
-    private fun applySorting(models: List<LlmModel>, sortOptions: List<SortCriteria>): List<LlmModel> {
+    private fun applySorting(
+        models: List<LlmModel>,
+        sortOptions: List<SortCriteria>
+    ): List<LlmModel> {
         if (sortOptions.isEmpty()) return models
 
         return models.sortedWith { model1, model2 ->
@@ -192,7 +198,11 @@ class ModelsViewModel @AssistedInject constructor(
     /**
      * Сравнивает две модели по конкретному критерию
      */
-    private fun compareModelsByCriteria(model1: LlmModel, model2: LlmModel, sortType: SortType): Int {
+    private fun compareModelsByCriteria(
+        model1: LlmModel,
+        model2: LlmModel,
+        sortType: SortType
+    ): Int {
         return when (sortType) {
             SortType.NONE -> 0
             SortType.BY_NAME -> model1.name.compareTo(model2.name, ignoreCase = true)
@@ -201,6 +211,7 @@ class ModelsViewModel @AssistedInject constructor(
                 val avgPrice2 = calculateAveragePrice(model2)
                 avgPrice1.compareTo(avgPrice2)
             }
+
             SortType.BY_DATE -> model1.created.compareTo(model2.created)
             SortType.BY_CONTEXT -> model1.contextLength.compareTo(model2.contextLength)
         }
@@ -216,10 +227,9 @@ class ModelsViewModel @AssistedInject constructor(
     /**
      * Проверяет, является ли модель бесплатной
      */
-    private fun isModelFree(model: LlmModel): Boolean {
-        return model.pricingPrompt == BigDecimal.ZERO &&
-                model.pricingCompletion == BigDecimal.ZERO
-    }
+    private fun isModelFree(model: LlmModel): Boolean = model.pricingPrompt == BigDecimal.ZERO &&
+            model.pricingCompletion == BigDecimal.ZERO &&
+            (model.pricingImage == null || model.pricingImage == BigDecimal.ZERO)
 
     /**
      * Проверяет, поддерживает ли модель определенную модальность
@@ -237,71 +247,11 @@ class ModelsViewModel @AssistedInject constructor(
     }
 
     /**
-     * Возвращает статистику по текущим отфильтрованным моделям
+     * Переключает избранное для модели
      */
-    fun getFilteredModelsStats(): StateFlow<ModelsStats> {
-        return combine(uiState, llmInteractor.getModels()) { filteredResult, allModelsResult ->
-            when {
-                filteredResult is DataResult.Success && allModelsResult is DataResult.Success -> {
-                    val filteredCount = filteredResult.data.size
-                    val totalCount = allModelsResult.data.size
-                    val selectedCount = filteredResult.data.count { it.isSelected }
-
-                    ModelsStats(
-                        totalModels = totalCount,
-                        filteredModels = filteredCount,
-                        selectedModels = selectedCount
-                    )
-                }
-                else -> ModelsStats(0, 0, 0)
-            }
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000L),
-            initialValue = ModelsStats(0, 0, 0)
-        )
+    fun toggleFavorite(modelId: String) {
+        viewModelScope.launch {
+            llmInteractor.toggleModelFavorite(modelId)
+        }
     }
-
-    // Вспомогательные методы для удобства использования из UI
-
-    /**
-     * Быстрый доступ для установки сортировки только по одному критерию
-     */
-    fun setSingleSort(sortType: SortType, direction: SortDirection) {
-        val currentFilters = filters.value
-        filters.value = currentFilters.copy(
-            sortOptions = listOf(SortCriteria(sortType, direction))
-        )
-    }
-
-    /**
-     * Переключает фильтр "только выбранные"
-     */
-    fun toggleShowOnlySelected() {
-        val currentFilters = filters.value
-        filters.value = currentFilters.copy(
-            showOnlySelected = !currentFilters.showOnlySelected
-        )
-    }
-
-    /**
-     * Переключает фильтр "только бесплатные"
-     */
-    fun toggleShowOnlyFree() {
-        val currentFilters = filters.value
-        filters.value = currentFilters.copy(
-            showOnlyFree = !currentFilters.showOnlyFree
-        )
-    }
-}
-
-/**
- * Статистика по моделям для отображения в UI
- */
-data class ModelsStats(
-    val totalModels: Int,
-    val filteredModels: Int,
-    val selectedModels: Int
-) {
-    val isFiltered: Boolean get() = filteredModels != totalModels
 }

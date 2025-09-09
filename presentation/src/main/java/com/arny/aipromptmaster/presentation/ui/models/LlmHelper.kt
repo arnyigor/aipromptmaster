@@ -120,22 +120,20 @@ fun LlmModel.formatDescription(context: Context): String {
 
         // Цены
         append("\n")
-        append(formatPricingWithEmojis())
+        append(formatPricing())
     }
 }
 
-private fun LlmModel.formatPricingWithEmojis(): String {
+private fun LlmModel.formatPricing(): String {
     return buildString {
         val promptPrice = (pricingPrompt * BigDecimal(1_000_000)).toCompactString()
         val completionPrice = (pricingCompletion * BigDecimal(1_000_000)).toCompactString()
 
-        // 📥 - входящие (ваш запрос к модели)
-        append("📥$")
+        append("↓$")
         append(promptPrice)
         append("/")
 
-        // 📤 - исходящие (ответ модели)
-        append("📤$")
+        append("↑$")
         append(completionPrice)
         append("/1M")
 

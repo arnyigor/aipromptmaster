@@ -233,9 +233,8 @@
         app:layout_constraintTop_toBottomOf="@id/divider"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Переключатели -->
     <com.google.android.material.switchmaterial.SwitchMaterial
-        android:id="@+id/switch_only_selected"
+        android:id="@+id/switch_only_favorite"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
@@ -244,6 +243,17 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/text_filters_title" />
+
+    <com.google.android.material.switchmaterial.SwitchMaterial
+        android:id="@+id/switch_only_selected"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/filter_selected"
+        android:textAppearance="?attr/textAppearanceBodyLarge"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/switch_only_favorite" />
 
     <com.google.android.material.switchmaterial.SwitchMaterial
         android:id="@+id/switch_only_free"

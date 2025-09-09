@@ -1,5 +1,6 @@
 package com.arny.aipromptmaster.presentation.ui.modelsview
 
+import ModelsFilterBottomSheetDialog
 import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -44,9 +45,14 @@ class ModelsFragment : Fragment() {
     }
 
     private val modelsAdapter by autoClean {
-        LlmModelAdapter { modelId ->
-            viewModel.selectModel(modelId)
-        }
+        LlmModelAdapter(
+            onItemClick = { modelId ->
+                viewModel.selectModel(modelId)
+            },
+            onFavoriteClick = { modelId ->
+                viewModel.toggleFavorite(modelId)
+            }
+        )
     }
 
     @Inject
