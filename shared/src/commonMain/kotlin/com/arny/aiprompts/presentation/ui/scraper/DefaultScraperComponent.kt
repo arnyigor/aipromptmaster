@@ -18,7 +18,8 @@ class DefaultScraperComponent(
     private val webScraper: WebScraper,
     private val parseRawPostsUseCase: ParseRawPostsUseCase,
     private val savePromptsAsFilesUseCase: SavePromptsAsFilesUseCase,
-    private val onNavigateToImporter: (files: List<File>) -> Unit
+    private val onNavigateToImporter: (files: List<File>) -> Unit,
+    private val onBack: () -> Unit
 ) : ScraperComponent, ComponentContext by componentContext {
 
     private val _state = MutableStateFlow(ScraperState())
@@ -103,6 +104,10 @@ class DefaultScraperComponent(
 
     override fun onOpenDirectoryClicked() { try { webScraper.openSaveDirectory() } catch (e: Exception) { e.printStackTrace() } }
     override fun onNavigateToImporterClicked() { onNavigateToImporter(_state.value.savedHtmlFiles) }
+    override fun onBackClicked() {
+        onBack()
+    }
+
     override fun onDialogDismissed() { _state.update { it.copy(preScrapeCheckResult = null) } }
 
     override fun onOverwriteConfirmed() {

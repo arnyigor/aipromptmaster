@@ -3,11 +3,13 @@ package com.arny.aiprompts.presentation.ui.prompts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -157,6 +159,16 @@ private fun MainContent(
     state: PromptsListState,
     component: PromptListComponent
 ) {
+
+    val listState = rememberLazyListState()
+
+    // Скролл к первому элементу при изменении списка промптов
+    LaunchedEffect(state.currentPrompts) {
+        if (state.currentPrompts.isNotEmpty()) {
+            listState.animateScrollToItem(0)
+        }
+    }
+
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -173,6 +185,7 @@ private fun MainContent(
             state.currentPrompts.isEmpty() -> EmptyState(message = "Промпты не найдены")
             else -> {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {

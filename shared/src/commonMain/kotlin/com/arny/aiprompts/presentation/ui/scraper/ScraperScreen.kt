@@ -5,6 +5,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -15,10 +17,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ScraperScreen(component: ScraperComponent) {
+fun ScraperScreen(
+    component: ScraperComponent,
+) {
     val state by component.state.collectAsState()
     val logListState = rememberLazyListState()
+
     // Автопрокрутка логов
     LaunchedEffect(state.logs.size) {
         if (state.logs.isNotEmpty()) {
@@ -26,88 +32,129 @@ fun ScraperScreen(component: ScraperComponent) {
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        // --- ПАНЕЛЬ УПРАВЛЕНИЯ ---
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                value = state.pagesToScrape,
-                onValueChange = component::onPagesChanged,
-                modifier = Modifier.width(180.dp),
-                // 1. Более точный и контекстный label
-                label = { Text("Страницы для сканирования") },
-                // 2. Placeholder с примером, который исчезнет при вводе
-                placeholder = { Text("Напр: 1-10, 15, 22") },
-                // 3. Чтобы ввод не переносился на новую строку
-                singleLine = true,
-                // 4. (Опционально) Вспомогательный текст под полем
-                supportingText = { Text("Укажите номера или диапазоны") }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Скрапер") },
+                navigationIcon = {
+                    IconButton(onClick = component::onBackClicked) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Назад"
+                        )
+                    }
+                }
             )
-            Button(
-                onClick = component::onStartScrapingClicked,
-                enabled = !state.inProgress && state.pagesToScrape.isNotBlank()
-            ) { Text("Запустить скрапер") }
-
-            IconButton(onClick = component::onOpenDirectoryClicked, enabled = !state.inProgress) {
-                Icon(Icons.Default.FolderOpen, "Открыть директорию")
-            }
-
-            if (state.inProgress) {
-                CircularProgressIndicator(modifier = Modifier.size(24.dp))
-            }
-
-            Button(
-                onClick = component::onParseAndSaveClicked,
-                enabled = state.savedHtmlFiles.isNotEmpty() && !state.inProgress
-            ) {
-                Text("Парсить и сохранить")
-            }
-
-            Spacer(Modifier.weight(1f))
-
-            Button(onClick = component::onNavigateToImporterClicked, enabled = state.savedHtmlFiles.isNotEmpty()) {
-                Text("Перейти к Ассистенту")
-            }
         }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // --- ПАНЕЛЬ УПРАВЛЕНИЯ ---
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = state.pagesToScrape,
+                    onValueChange = component::onPagesChanged,
+                    modifier = Modifier.width(180.dp),
+                    label = { Text("Страницы для сканирования") },
+                    placeholder = { Text("Напр: 1-10, 15, 22") },
+                    singleLine = true,
+                    supportingText = { Text("Укажите номера или диапазоны") }
+                )
 
-        // --- ПАНЕЛИ РЕЗУЛЬТАТОВ ---
-        Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            LazyColumn(modifier = Modifier.weight(1f), state = logListState) {
-                items(state.logs) { log -> Text(log, style = MaterialTheme.typography.bodySmall) }
+                Button(
+                    onClick = component::onStartScrapingClicked,
+                    enabled = !state.inProgress && state.pagesToScrape.isNotBlank()
+                ) {
+                    Text("Запустить скрапер")
+                }
+
+                IconButton(
+                    onClick = component::onOpenDirectoryClicked,
+                    enabled = !state.inProgress
+                ) {
+                    Icon(Icons.Default.FolderOpen, "Открыть директорию")
+                }
+
+                if (state.inProgress) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                }
+
+                Button(
+                    onClick = component::onParseAndSaveClicked,
+                    enabled = state.savedHtmlFiles.isNotEmpty() && !state.inProgress
+                ) {
+                    Text("Парсить и сохранить")
+                }
+
+                Spacer(Modifier.weight(1f))
+
+                Button(
+                    onClick = component::onNavigateToImporterClicked,
+                    enabled = state.savedHtmlFiles.isNotEmpty()
+                ) {
+                    Text("Перейти к Ассистенту")
+                }
             }
-            LazyColumn(modifier = Modifier.weight(1f)) {
-                item {
-                    Text(
-                        "Сохраненные HTML (${state.savedHtmlFiles.size} шт.):",
-                        style = MaterialTheme.typography.titleMedium
-                    )
+
+            // --- ПАНЕЛИ РЕЗУЛЬТАТОВ ---
+            Row(
+                Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                LazyColumn(modifier = Modifier.weight(1f), state = logListState) {
+                    items(state.logs) { log ->
+                        Text(log, style = MaterialTheme.typography.bodySmall)
+                    }
                 }
-                items(state.savedHtmlFiles) { file -> Text("• ${file.name}") }
-            }
-            LazyColumn(modifier = Modifier.weight(1f)) {
-                item {
-                    Text(
-                        "Спарсенные промпты (${state.parsedPrompts.size}):",
-                        style = MaterialTheme.typography.titleMedium
-                    )
+
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    item {
+                        Text(
+                            "Сохраненные HTML (${state.savedHtmlFiles.size} шт.):",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                    items(state.savedHtmlFiles) { file ->
+                        Text("• ${file.name}")
+                    }
                 }
-                items(state.parsedPrompts) { prompt ->
-                    Text(
-                        "• ${prompt.title}",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-                item { Spacer(Modifier.height(16.dp)) }
-                item {
-                    Text(
-                        "Сохраненные JSON (${state.lastSavedJsonFiles.size}):",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
-                items(state.lastSavedJsonFiles) { file ->
-                    Text(
-                        "• ${file.name}",
-                        style = MaterialTheme.typography.bodySmall
-                    )
+
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    item {
+                        Text(
+                            "Спарсенные промпты (${state.parsedPrompts.size}):",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                    items(state.parsedPrompts) { prompt ->
+                        Text(
+                            "• ${prompt.title}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
+                    item { Spacer(Modifier.height(16.dp)) }
+
+                    item {
+                        Text(
+                            "Сохраненные JSON (${state.lastSavedJsonFiles.size}):",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                    items(state.lastSavedJsonFiles) { file ->
+                        Text(
+                            "• ${file.name}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
         }
@@ -121,21 +168,27 @@ fun ScraperScreen(component: ScraperComponent) {
             title = { Text("Обнаружены пропуски") },
             text = {
                 Text(
-                    "Найдено ${checkResult.existingFileCount} из ${state.pagesToScrape} страниц.\nОтсутствуют страницы: ${
-                        checkResult.missingPages.map { it + 1 }.joinToString()
-                    }. \n\nЧто вы хотите сделать?"
+                    "Найдено ${checkResult.existingFileCount} из ${state.pagesToScrape} страниц.\n" +
+                            "Отсутствуют страницы: ${checkResult.missingPages.map { it + 1 }.joinToString()}. \n\n" +
+                            "Что вы хотите сделать?"
                 )
             },
             confirmButton = {
                 if (checkResult.missingPages.isNotEmpty()) {
-                    Button(onClick = component::onContinueConfirmed) { Text("Докачать (${checkResult.missingPages.size})") }
+                    Button(onClick = component::onContinueConfirmed) {
+                        Text("Докачать (${checkResult.missingPages.size})")
+                    }
                 }
             },
             dismissButton = {
                 Row {
-                    TextButton(onClick = component::onOverwriteConfirmed) { Text("Перезаписать все") }
+                    TextButton(onClick = component::onOverwriteConfirmed) {
+                        Text("Перезаписать все")
+                    }
                     Spacer(Modifier.width(8.dp))
-                    TextButton(onClick = component::onDialogDismissed) { Text("Отмена") }
+                    TextButton(onClick = component::onDialogDismissed) {
+                        Text("Отмена")
+                    }
                 }
             }
         )

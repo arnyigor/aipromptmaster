@@ -81,7 +81,8 @@ class DefaultRootComponent(
                         if (files.isNotEmpty()) {
                             navigation.push(ScreenConfig.Importer(files))
                         }
-                    }
+                    },
+                    onBack = { navigation.pop() }
                 )
             )
 

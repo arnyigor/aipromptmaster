@@ -14,12 +14,14 @@ interface ScraperComponent {
     fun onParseAndSaveClicked()
     fun onOpenDirectoryClicked()
     fun onNavigateToImporterClicked()
+    fun onBackClicked()
 
     // События от диалога
     fun onOverwriteConfirmed()
     fun onContinueConfirmed()
     fun onDialogDismissed()
 }
+
 /**
  * Data-класс, представляющий полное состояние экрана скрапера (ScraperScreen).
  * Является единым источником правды для UI.
