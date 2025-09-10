@@ -222,10 +222,10 @@ class PromptsViewModel @AssistedInject constructor(
         )
     }
 
-    fun updateFavorite(promptId: String?) {
+    fun omPromptUpdated(promptUpdated: Boolean) {
         viewModelScope.launch {
             try {
-                if (!promptId.isNullOrBlank()) {
+                if (promptUpdated) {
                     _event.emit(PromptsUiEvent.PromptUpdated)
                 }
             } catch (e: Exception) {

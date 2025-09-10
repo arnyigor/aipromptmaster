@@ -7,4 +7,7 @@ sealed class PromptViewUiEvent {
     data class PromptUpdated(val id: String?) : PromptViewUiEvent()
     data class VariantSelected(val variantIndex: Int) : PromptViewUiEvent()
     data class CopyContent(val content: String, val label: String) : PromptViewUiEvent()
+    data object ShowDeleteConfirmation : PromptViewUiEvent()
+    data class PromptDeleted(val id: String) : PromptViewUiEvent()
+    data object NavigateBack : PromptViewUiEvent()
 }

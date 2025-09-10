@@ -165,6 +165,18 @@
 
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
+        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+            android:id="@+id/fabAdd"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/add_prompt"
+            app:icon="@drawable/ic_plus"
+            android:textColor="?attr/colorOnPrimary"
+            app:iconTint="?attr/colorOnPrimary"
+            android:layout_marginBottom="32dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <com.google.android.material.bottomappbar.BottomAppBar
@@ -173,13 +185,6 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom" />
 
-    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-        android:id="@+id/fabAdd"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/add_prompt"
-        app:icon="@drawable/ic_plus"
-        android:layout_marginBottom="?attr/actionBarSize"
-        app:layout_anchor="@id/bottomAppBar" />
+
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

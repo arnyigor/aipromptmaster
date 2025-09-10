@@ -6,26 +6,22 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
-import android.widget.AutoCompleteTextView
+import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
-import androidx.lifecycle.lifecycleScope
+import androidx.fragment.app.setFragmentResult
 import androidx.navigation.fragment.findNavController
 import com.arny.aipromptmaster.core.di.scopes.viewModelFactory
+import com.arny.aipromptmaster.domain.models.AppConstants
 import com.arny.aipromptmaster.domain.models.PromptContent
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.FragmentAddPromptBinding
-import com.arny.aipromptmaster.presentation.ui.home.PromptsFragment
-import com.arny.aipromptmaster.presentation.ui.home.PromptsViewModel
 import com.arny.aipromptmaster.presentation.utils.asString
-import com.arny.aipromptmaster.presentation.utils.hideKeyboard
 import com.arny.aipromptmaster.presentation.utils.launchWhenCreated
 import com.arny.aipromptmaster.presentation.utils.toastMessage
 import com.google.android.material.snackbar.Snackbar
 import dagger.android.support.AndroidSupportInjection
 import dagger.assisted.AssistedFactory
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 class AddPromptFragment : Fragment() {
@@ -67,15 +63,8 @@ class AddPromptFragment : Fragment() {
 
     private fun setupViews() {
         with(binding) {
-            // Setup toolbar navigation
-            toolbar.setNavigationOnClickListener {
-                findNavController().navigateUp()
-            }
-
-            // Setup category dropdown
             setupCategoryDropdown()
 
-            // Setup save button
             fabSave.setOnClickListener {
                 savePrompt()
             }
@@ -88,7 +77,7 @@ class AddPromptFragment : Fragment() {
             android.R.layout.simple_dropdown_item_1line,
             mutableListOf()
         )
-        (binding.dropdownCategory as? AutoCompleteTextView)?.setAdapter(categoryAdapter)
+        binding.dropdownCategory.setAdapter(categoryAdapter)
     }
 
     private fun observeViewModel() {
@@ -118,11 +107,12 @@ class AddPromptFragment : Fragment() {
             when (state) {
                 is AddPromptUiState.Loading -> {
                     fabSave.isVisible = false
-                    // Show loading indicator if needed
                 }
+
                 is AddPromptUiState.Content -> {
                     fabSave.isVisible = true
                 }
+
                 is AddPromptUiState.Error -> {
                     fabSave.isVisible = true
                     showError(state.error.asString(requireContext()))
@@ -135,8 +125,11 @@ class AddPromptFragment : Fragment() {
         when (event) {
             is AddPromptUiEvent.PromptSaved -> {
                 toastMessage(getString(R.string.prompt_saved_successfully))
+                val resultBundle = bundleOf(AppConstants.REQ_KEY_PROMPT_ID to true)
+                setFragmentResult(AppConstants.REQ_KEY_PROMPT_ADDED, resultBundle)
                 findNavController().navigateUp()
             }
+
             is AddPromptUiEvent.ValidationError -> {
                 showValidationError(event.field, event.message)
             }

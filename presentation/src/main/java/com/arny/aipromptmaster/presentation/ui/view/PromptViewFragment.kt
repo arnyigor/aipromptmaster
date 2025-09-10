@@ -5,11 +5,17 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.os.bundleOf
+import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResult
+import androidx.lifecycle.Lifecycle
+import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.arny.aipromptmaster.core.di.scopes.viewModelFactory
 import com.arny.aipromptmaster.domain.models.AppConstants
@@ -18,6 +24,7 @@ import com.arny.aipromptmaster.presentation.databinding.FragmentPromptViewBindin
 import com.arny.aipromptmaster.presentation.utils.asString
 import com.arny.aipromptmaster.presentation.utils.launchWhenCreated
 import com.google.android.material.chip.Chip
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.transition.MaterialFadeThrough
 import dagger.android.support.AndroidSupportInjection
@@ -43,6 +50,9 @@ class PromptViewFragment : Fragment() {
     internal lateinit var viewModelFactory: ViewModelFactory
     private val viewModel: PromptViewViewModel by viewModelFactory { viewModelFactory.create(args.promptId) }
 
+    private var deleteMenuItem: MenuItem? = null
+    private var isDeleteMenuVisible = false
+
     override fun onAttach(context: Context) {
         AndroidSupportInjection.inject(this)
         super.onAttach(context)
@@ -66,6 +76,7 @@ class PromptViewFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupToolbar()
+        setupMenu()
         setupViews()
         observeViewModel()
         viewModel.loadPrompt()
@@ -75,6 +86,35 @@ class PromptViewFragment : Fragment() {
         binding.btnFavorite.setOnClickListener {
             viewModel.toggleFavorite()
         }
+    }
+
+    private fun setupMenu() {
+        requireActivity().addMenuProvider(object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+                menuInflater.inflate(R.menu.prompt_view_menu, menu)
+                deleteMenuItem = menu.findItem(R.id.action_delete)
+                updateMenuVisibility()
+            }
+
+            override fun onPrepareMenu(menu: Menu) {
+                super.onPrepareMenu(menu)
+                updateMenuVisibility()
+            }
+
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                return when (menuItem.itemId) {
+                    R.id.action_delete -> {
+                        viewModel.showDeleteConfirmation()
+                        true
+                    }
+                    else -> false
+                }
+            }
+        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
+    }
+
+    private fun updateMenuVisibility() {
+        deleteMenuItem?.isVisible = isDeleteMenuVisible
     }
 
     private fun setupViews() {
@@ -171,6 +211,8 @@ class PromptViewFragment : Fragment() {
                     updatePromptContent(state)
                     updateVariants(state)
                     updateTagsAndModels(state.prompt)
+                    isDeleteMenuVisible = state.isLocal
+                    requireActivity().invalidateMenu()
                 }
 
                 is PromptViewUiState.Error -> {
@@ -283,6 +325,20 @@ class PromptViewFragment : Fragment() {
                 // Можно добавить анимацию или другие эффекты при выборе варианта
                 showMessage("Вариант изменен")
             }
+
+            is PromptViewUiEvent.ShowDeleteConfirmation -> {
+                showDeleteConfirmationDialog()
+            }
+
+            is PromptViewUiEvent.PromptDeleted -> {
+                val resultBundle = bundleOf(AppConstants.REQ_KEY_PROMPT_ID to event.id)
+                setFragmentResult(AppConstants.REQ_KEY_PROMPT_DELETED, resultBundle)
+                showMessage(getString(R.string.prompt_deleted))
+            }
+
+            is PromptViewUiEvent.NavigateBack -> {
+                findNavController().navigateUp()
+            }
         }
     }
 
@@ -307,6 +363,20 @@ class PromptViewFragment : Fragment() {
             message,
             Snackbar.LENGTH_SHORT
         ).setAnchorView(binding.fabCopy)
+            .show()
+    }
+
+    private fun showDeleteConfirmationDialog() {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.delete_prompt_title)
+            .setMessage(R.string.delete_prompt_message)
+            .setNegativeButton(R.string.cancel) { dialog, _ ->
+                dialog.dismiss()
+            }
+            .setPositiveButton(R.string.delete) { dialog, _ ->
+                viewModel.deletePrompt()
+                dialog.dismiss()
+            }
             .show()
     }
 

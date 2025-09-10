@@ -71,8 +71,6 @@ class AddPromptViewModel @AssistedInject constructor(
                     compatibleModels = emptyList(), // Default empty list
                     status = "active"
                 )
-
-                // Save prompt
                 interactor.savePrompt(prompt)
 
                 _event.emit(AddPromptUiEvent.PromptSaved)

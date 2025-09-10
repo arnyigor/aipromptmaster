@@ -132,4 +132,11 @@
     <string name="prompt_content_en_hint">Enter prompt text in English</string>
     <string name="error_saving_prompt">Ошибка сохранения промпта</string>
     <string name="prompt_saved_successfully">Промпт успешно сохранен</string>
+
+    <!-- Delete Prompt -->
+    <string name="delete">Удалить</string>
+    <string name="delete_prompt_title">Удалить промпт?</string>
+    <string name="delete_prompt_message">Это действие нельзя будет отменить.</string>
+    <string name="cancel">Отмена</string>
+    <string name="prompt_deleted">Промпт удален</string>
 </resources>

@@ -37,7 +37,8 @@ class PromptViewViewModel @AssistedInject constructor(
                         prompt = prompt,
                         selectedVariantIndex = -1,
                         availableVariants = prompt.promptVariants,
-                        currentContent = prompt.content
+                        currentContent = prompt.content,
+                        isLocal = prompt.isLocal
                     )
                 } else {
                     _uiState.value =
@@ -91,6 +92,27 @@ class PromptViewViewModel @AssistedInject constructor(
                         )
                     )
                     _uiEvent.emit(PromptViewUiEvent.PromptUpdated(promptId))
+                }
+            } catch (e: Exception) {
+                showError(e)
+            }
+        }
+    }
+
+    fun showDeleteConfirmation() {
+        viewModelScope.launch {
+            _uiEvent.emit(PromptViewUiEvent.ShowDeleteConfirmation)
+        }
+    }
+
+    fun deletePrompt() {
+        viewModelScope.launch {
+            try {
+                val currentState = _uiState.value
+                if (currentState is PromptViewUiState.Content && currentState.isLocal) {
+                    interactor.deletePrompt(promptId)
+                    _uiEvent.emit(PromptViewUiEvent.PromptDeleted(promptId))
+                    _uiEvent.emit(PromptViewUiEvent.NavigateBack)
                 }
             } catch (e: Exception) {
                 showError(e)

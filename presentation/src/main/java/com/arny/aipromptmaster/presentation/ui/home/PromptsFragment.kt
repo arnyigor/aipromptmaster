@@ -23,7 +23,6 @@ import com.arny.aipromptmaster.domain.models.SyncConflict
 import com.arny.aipromptmaster.domain.models.strings.StringHolder
 import com.arny.aipromptmaster.domain.models.strings.StringHolder.*
 import com.arny.aipromptmaster.presentation.R
-import com.arny.aipromptmaster.domain.R as domainR
 import com.arny.aipromptmaster.presentation.databinding.FragmentHomeBinding
 import com.arny.aipromptmaster.presentation.utils.asString
 import com.arny.aipromptmaster.presentation.utils.autoClean
@@ -91,7 +90,15 @@ class PromptsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setFragmentResultListener(AppConstants.REQ_KEY_PROMPT_VIEW_FAV) { key, bundle ->
             val promptId = bundle.getString(AppConstants.REQ_KEY_PROMPT_ID)
-            viewModel.updateFavorite(promptId)
+            viewModel.omPromptUpdated(!promptId.isNullOrBlank())
+        }
+        setFragmentResultListener(AppConstants.REQ_KEY_PROMPT_DELETED) { key, bundle ->
+            val promptId = bundle.getString(AppConstants.REQ_KEY_PROMPT_ID)
+            viewModel.omPromptUpdated(!promptId.isNullOrBlank())
+        }
+        setFragmentResultListener(AppConstants.REQ_KEY_PROMPT_ADDED) { key, bundle ->
+            val added = bundle.getBoolean(AppConstants.REQ_KEY_PROMPT_ID, false)
+            viewModel.omPromptUpdated(added)
         }
         initMenu()
         observeViewModel()

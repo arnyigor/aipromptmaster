@@ -30,12 +30,14 @@ sealed class PromptViewUiState {
      * @property selectedVariantIndex Индекс выбранного варианта (-1 для основного контента).
      * @property availableVariants Список доступных вариантов для отображения.
      * @property currentContent Текущий отображаемый контент (основной или выбранного варианта).
+     * @property isLocal Флаг, указывающий, является ли промпт локальным (для управления видимостью кнопки удаления).
      */
     data class Content(
         val prompt: Prompt,
         val selectedVariantIndex: Int = -1,
         val availableVariants: List<DomainPromptVariant> = emptyList(),
-        val currentContent: PromptContent = prompt.content
+        val currentContent: PromptContent = prompt.content,
+        val isLocal: Boolean = prompt.isLocal
     ) : PromptViewUiState()
 
     /**
