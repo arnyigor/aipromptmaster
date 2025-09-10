@@ -1,20 +1,23 @@
 package com.arny.aipromptmaster.presentation.ui.modelsview
 
-import ModelsFilterBottomSheetDialog
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import androidx.appcompat.widget.SearchView
+import androidx.core.os.BundleCompat
 import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.arny.aipromptmaster.core.di.scopes.viewModelFactory
 import com.arny.aipromptmaster.domain.models.LlmModel
 import com.arny.aipromptmaster.domain.models.strings.StringHolder
@@ -22,6 +25,7 @@ import com.arny.aipromptmaster.domain.results.DataResult
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.FragmentModelsBinding
 import com.arny.aipromptmaster.presentation.ui.models.FilterState
+import com.arny.aipromptmaster.presentation.ui.modelsview.ModelsFilterBottomSheetDialog
 import com.arny.aipromptmaster.presentation.utils.autoClean
 import com.arny.aipromptmaster.presentation.utils.hideKeyboard
 import com.arny.aipromptmaster.presentation.utils.launchWhenCreated
@@ -177,31 +181,46 @@ class ModelsFragment : Fragment() {
                     }
 
                     is DataResult.Success<List<LlmModel>> -> {
-                        modelsAdapter.submitList(state.data)
-                        binding.progressBar.isVisible = false
+                        updateAdapter(state)
                     }
                 }
             }
         }
     }
 
+    private fun updateAdapter(state: DataResult.Success<List<LlmModel>>) {
+        // Скрываем прогресс-бар
+        binding.progressBar.isVisible = false
+
+        // Обновляем данные
+        modelsAdapter.submitList(state.data)
+
+        // Если список не пустой, планируем плавную прокрутку
+        if (state.data.isNotEmpty()) {
+            // Планируем прокрутку на следующий цикл обработки сообщений
+            binding.rvModels.post {
+                // Дополнительная проверка, что список все еще не пустой
+                if (modelsAdapter.itemCount > 0) {
+                    binding.rvModels.smoothScrollToPosition(0)
+                }
+            }
+        }
+    }
+
     private fun setupFragmentResultListener() {
-        // Используем childFragmentManager, так как мы вызываем диалог из фрагмента
-        childFragmentManager.setFragmentResultListener(
-            ModelsFilterBottomSheetDialog.REQUEST_KEY,
-            viewLifecycleOwner // Привязка к жизненному циклу фрагмента
-        ) { requestKey, bundle ->
-            // Получаем результат
-            val result = bundle.getParcelable<FilterState>(ModelsFilterBottomSheetDialog.RESULT_KEY)
+        childFragmentManager.setFragmentResultListener(/* requestKey = */
+            ModelsFilterBottomSheetDialog.REQUEST_KEY,/* lifecycleOwner = */
+            viewLifecycleOwner) { _, bundle ->
+            val result = BundleCompat.getParcelable(bundle,ModelsFilterBottomSheetDialog.RESULT_KEY,FilterState::class.java)
+            Log.i(this::class.java.simpleName, "setupFragmentResultListener: result:$result")
             if (result != null) {
-                // Передаем новые фильтры в ViewModel
                 viewModel.applyFilters(result)
             }
         }
     }
 
     private fun showFilterDialog() {
-        val currentFilters = FilterState() //viewModel.currentFilters.value
+        val currentFilters = FilterState()
         val dialog = ModelsFilterBottomSheetDialog.newInstance(currentFilters)
         dialog.show(childFragmentManager, ModelsFilterBottomSheetDialog.TAG)
     }

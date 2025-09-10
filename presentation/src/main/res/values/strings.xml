@@ -81,6 +81,7 @@
     <string name="system_prompt_dialog_message">Задайте роль или поведение для ассистента в этом чате.</string>
     <string name="system_prompt_dialog_hint">Например: "Ты — шеф-повар из Италии"</string>
     <string name="action_save">Сохранить</string>
+    <string name="action_clear">Стереть</string>
     <string name="action_cancel">Отмена</string>
     <string name="no_messages">Нет сообщений</string>
     <string name="no_model_selected">Не выбрана модель. Выберите модель в настройках</string>
@@ -139,4 +140,6 @@
     <string name="delete_prompt_message">Это действие нельзя будет отменить.</string>
     <string name="cancel">Отмена</string>
     <string name="prompt_deleted">Промпт удален</string>
+    <string name="sort_type_hint">Сортировать по</string>
+    <string name="sort_direction_toggle">Изменить направление сортировки</string>
 </resources>

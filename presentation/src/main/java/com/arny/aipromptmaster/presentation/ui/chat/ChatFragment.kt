@@ -37,7 +37,7 @@ import com.arny.aipromptmaster.domain.models.ChatRole
 import com.arny.aipromptmaster.domain.models.errors.DomainError
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.FragmentChatBinding
-import com.arny.aipromptmaster.presentation.ui.editprompt.EditPromptDialogFragment
+import com.arny.aipromptmaster.presentation.ui.editprompt.EditSystemPromptDialogFragment
 import com.arny.aipromptmaster.presentation.utils.AnimationUtils
 import com.arny.aipromptmaster.presentation.utils.asString
 import com.arny.aipromptmaster.presentation.utils.autoClean
@@ -174,9 +174,8 @@ class ChatFragment : Fragment() {
     }
 
     private fun setupFragmentResultListener() {
-        setFragmentResultListener(EditPromptDialogFragment.REQUEST_KEY) { _, bundle ->
-            val newPrompt = bundle.getString(EditPromptDialogFragment.BUNDLE_KEY)
-            // Проверяем, что результат не null, хотя он должен всегда быть String
+        setFragmentResultListener(EditSystemPromptDialogFragment.REQUEST_KEY) { _, bundle ->
+            val newPrompt = bundle.getString(EditSystemPromptDialogFragment.BUNDLE_KEY)
             if (newPrompt != null) {
                 viewModel.setSystemPrompt(newPrompt)
             }

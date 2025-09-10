@@ -7,10 +7,7 @@ import java.math.BigDecimal
 @Parcelize
 data class FilterState(
     val searchQuery: String = "",
-    val sortOptions: List<SortCriteria> = listOf(
-        SortCriteria(SortType.BY_DATE, SortDirection.DESC), // По умолчанию: новые сверху
-        SortCriteria(SortType.BY_PRICE, SortDirection.ASC)  // По умолчанию: дешевые сверху
-    ),
+    val sortOptions: List<SortCriteria> = emptyList(),
     val showOnlySelected: Boolean = false,
     val showOnlyFavorites: Boolean = false,
     val showOnlyFree: Boolean = true,

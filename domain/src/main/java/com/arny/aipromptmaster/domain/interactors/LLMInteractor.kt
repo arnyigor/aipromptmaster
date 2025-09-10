@@ -172,7 +172,6 @@ class LLMInteractor @Inject constructor(
             val apiKey = settingsRepository.getApiKey()?.trim()
                 ?: throw DomainError.Local("API ключ не указан.")
 
-            // --- НОВАЯ ЛОГИКА ПОСТРОЕНИЯ КОНТЕКСТА ---
             // 1. Получаем системный промпт
             val systemPrompt = historyRepository.getSystemPrompt(currentConversationId)
 
@@ -190,7 +189,6 @@ class LLMInteractor @Inject constructor(
                 systemMessage?.let { add(it) } // Добавляем системное сообщение, если оно есть
                 addAll(history)
             }
-            // --- КОНЕЦ НОВОЙ ЛОГИКИ ---
 
             runStreamingAttempt(model, messagesForApi, apiKey, assistantMessageId)
         } catch (e: Exception) { // Ловим стриминг и другие ошибки

@@ -152,9 +152,7 @@ class ChatViewModel @AssistedInject constructor(
                 val selectedModelId = uiState.value.selectedModel?.id
                     ?: throw DomainError.local(R.string.title_llm_interaction_model_not_selected)
 
-                // Интерактор теперь пробрасывает ошибку (как мы делали в прошлый раз)
                 interactor.sendMessageWithFallback(selectedModelId, conversationId)
-
             } catch (e: Exception) {
                 // Ловим ошибку и превращаем ее в СОБЫТИЕ
                 _uiEvents.emit(ChatUiEvent.ShowError(e))

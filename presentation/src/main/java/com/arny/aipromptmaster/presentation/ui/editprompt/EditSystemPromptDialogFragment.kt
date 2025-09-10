@@ -12,13 +12,12 @@ import androidx.navigation.fragment.navArgs
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.FragmentEditPromptBinding
 
-class EditPromptDialogFragment : DialogFragment() {
+class EditSystemPromptDialogFragment : DialogFragment() {
 
     private var _binding: FragmentEditPromptBinding? = null
     private val binding get() = _binding!!
 
-    // Получаем аргументы через Safe Args
-    private val args: EditPromptDialogFragmentArgs by navArgs()
+    private val args: EditSystemPromptDialogFragmentArgs by navArgs()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,21 +34,20 @@ class EditPromptDialogFragment : DialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        // Устанавливаем начальный текст из аргументов
         binding.etSystemPrompt.setText(args.initialPrompt)
 
-        // Закрытие диалога
         binding.toolbar.setNavigationOnClickListener {
             findNavController().navigateUp()
         }
 
-        // Сохранение и возврат результата
         binding.fabSave.setOnClickListener {
             val newPrompt = binding.etSystemPrompt.text.toString()
-            // Используем Fragment Result API для возврата данных
             setFragmentResult(REQUEST_KEY, bundleOf(BUNDLE_KEY to newPrompt))
             findNavController().navigateUp()
+        }
+
+        binding.fabClear.setOnClickListener {
+            binding.etSystemPrompt.setText("")
         }
     }
 

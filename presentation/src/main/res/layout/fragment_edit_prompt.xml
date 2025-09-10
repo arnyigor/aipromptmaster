@@ -6,8 +6,8 @@
     android:layout_height="match_parent"
     android:background="?attr/colorSurface"
     android:clickable="true"
-    android:focusable="true"
-    android:fitsSystemWindows="true">
+    android:fitsSystemWindows="true"
+    android:focusable="true">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
@@ -19,8 +19,8 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:navigationIcon="@drawable/outline_close_24"
             app:navigationContentDescription="@string/action_close"
+            app:navigationIcon="@drawable/outline_close_24"
             app:title="@string/system_prompt_dialog_title"
             app:titleTextAppearance="?attr/textAppearanceTitleLarge" />
 
@@ -52,8 +52,8 @@
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_weight="1"
                 android:layout_marginBottom="80dp"
+                android:layout_weight="1"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="2dp"
                 app:strokeColor="?attr/colorOutline"
@@ -66,10 +66,10 @@
                     app:boxBackgroundMode="none"
                     app:counterEnabled="true"
                     app:counterMaxLength="2000"
-                    app:hintAnimationEnabled="true"
-                    app:hintEnabled="true"
                     app:helperText="@string/system_prompt_helper_text"
-                    app:helperTextEnabled="true">
+                    app:helperTextEnabled="true"
+                    app:hintAnimationEnabled="true"
+                    app:hintEnabled="true">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_system_prompt"
@@ -96,18 +96,40 @@
 
     </androidx.core.widget.NestedScrollView>
 
-    <!-- Улучшенный FAB -->
-    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-        android:id="@+id/fab_save"
-        android:layout_width="wrap_content"
+    <!-- Кнопки внизу -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="16dp"
-        android:textColor="@color/blue_on_secondary_container_text_dark"
-        android:contentDescription="@string/action_save"
-        android:text="@string/action_save"
-        app:icon="@android:drawable/ic_menu_save"
-        app:iconTint="?attr/colorOnPrimary"
-        app:backgroundTint="?attr/colorPrimary" />
+        android:layout_gravity="bottom"
+        android:gravity="end"
+        android:orientation="horizontal"
+        android:padding="16dp">
+
+        <!-- Кнопка Стереть -->
+        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+            android:id="@+id/fab_clear"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="12dp"
+            android:contentDescription="@string/action_clear"
+            android:text="@string/action_clear"
+            android:textColor="?attr/colorSurface"
+            app:backgroundTint="?attr/colorPrimary"
+            app:icon="@android:drawable/ic_menu_delete"
+            app:iconTint="?attr/colorOnPrimary" />
+
+        <!-- Кнопка Сохранить -->
+        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+            android:id="@+id/fab_save"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/action_save"
+            android:text="@string/action_save"
+            android:textColor="?attr/colorSurface"
+            app:backgroundTint="?attr/colorPrimary"
+            app:icon="@android:drawable/ic_menu_save"
+            app:iconTint="?attr/colorOnPrimary" />
+
+    </LinearLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -1,11 +1,13 @@
-import android.graphics.Color
+package com.arny.aipromptmaster.presentation.ui.modelsview
+
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.content.ContextCompat
+import android.widget.ArrayAdapter
 import androidx.core.os.bundleOf
 import androidx.fragment.app.setFragmentResult
+import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.ModelsBottomSheetFiltersBinding
 import com.arny.aipromptmaster.presentation.ui.models.FilterState
@@ -14,22 +16,20 @@ import com.arny.aipromptmaster.presentation.ui.models.SortCriteria
 import com.arny.aipromptmaster.presentation.ui.models.SortDirection
 import com.arny.aipromptmaster.presentation.ui.models.SortType
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
-import com.google.android.material.button.MaterialButton
-import com.google.android.material.card.MaterialCardView
-import com.google.android.material.checkbox.MaterialCheckBox
 
 class ModelsFilterBottomSheetDialog : BottomSheetDialogFragment() {
 
     private var _binding: ModelsBottomSheetFiltersBinding? = null
     private val binding get() = _binding!!
 
-    // Состояние направлений сортировки
-    private val sortDirections = mutableMapOf<SortType, SortDirection>().apply {
-        put(SortType.BY_NAME, SortDirection.ASC)
-        put(SortType.BY_PRICE, SortDirection.ASC)
-        put(SortType.BY_DATE, SortDirection.DESC) // По умолчанию новые сверху
-        put(SortType.BY_CONTEXT, SortDirection.DESC) // По умолчанию большие сверху
-    }
+    // Текущее состояние сортировки
+    private var currentSortType = SortType.BY_PRICE
+    private var currentSortDirection = SortDirection.ASC
+
+    // Опции сортировки для dropdown
+    private data class SortOption(val type: SortType, val displayName: String)
+
+    private lateinit var sortOptions: List<SortOption>
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -43,152 +43,75 @@ class ModelsFilterBottomSheetDialog : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        initializeSortOptions()
+        setupDropdown()
         setupInitialState()
         setupClickListeners()
-        setupSortCards()
+    }
+
+    private fun initializeSortOptions() {
+        sortOptions = listOf(
+            SortOption(SortType.BY_NAME, getString(R.string.sorting_by_name)),
+            SortOption(SortType.BY_PRICE, getString(R.string.sorting_by_pricing)),
+            SortOption(SortType.BY_DATE, getString(R.string.sorting_by_date)),
+            SortOption(SortType.BY_CONTEXT, getString(R.string.sorting_by_context_size))
+        )
+    }
+
+    private fun setupDropdown() {
+        val adapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_dropdown_item_1line,
+            sortOptions.map { it.displayName }
+        )
+
+        binding.sortTypeDropdown.setAdapter(adapter)
+
+        binding.sortTypeDropdown.setOnItemClickListener { _, _, position, _ ->
+            val selectedOption = sortOptions[position]
+            currentSortType = selectedOption.type
+            updateSortDirectionButton()
+        }
     }
 
     private fun setupInitialState() {
         val initialFilters = arguments?.getParcelable<FilterState>(ARG_FILTERS)
         initialFilters?.let { filters ->
-            // Настраиваем переключатели
+            // Настраиваем фильтры-переключатели
             binding.switchOnlySelected.isChecked = filters.showOnlySelected
             binding.switchOnlyFavorite.isChecked = filters.showOnlyFavorites
             binding.switchOnlyFree.isChecked = filters.showOnlyFree
             binding.switchSupportsImages.isChecked =
                 ModalityType.IMAGE in filters.requiredModalities
 
-            // Настраиваем сортировки
-            val activeSorts = filters.sortOptions.associateBy { it.type }
+            // Определяем текущую активную сортировку
+            if (filters.sortOptions.isNotEmpty()) {
+                val activeSortCriteria = filters.sortOptions.first()
+                currentSortType = activeSortCriteria.type
+                currentSortDirection = activeSortCriteria.direction
 
-            binding.checkboxSortName.isChecked = activeSorts.containsKey(SortType.BY_NAME)
-            binding.checkboxSortPrice.isChecked = activeSorts.containsKey(SortType.BY_PRICE)
-            binding.checkboxSortDate.isChecked = activeSorts.containsKey(SortType.BY_DATE)
-            binding.checkboxSortContext.isChecked = activeSorts.containsKey(SortType.BY_CONTEXT)
-
-            // Обновляем направления из сохраненного состояния
-            activeSorts.forEach { (type, criteria) ->
-                sortDirections[type] = criteria.direction
-            }
-
-            // Обновляем UI направлений
-            updateDirectionButton(binding.buttonNameDirection, sortDirections[SortType.BY_NAME]!!)
-            updateDirectionButton(binding.buttonPriceDirection, sortDirections[SortType.BY_PRICE]!!)
-            updateDirectionButton(binding.buttonDateDirection, sortDirections[SortType.BY_DATE]!!)
-            updateDirectionButton(
-                binding.buttonContextDirection,
-                sortDirections[SortType.BY_CONTEXT]!!
-            )
-
-            // Обновляем визуальное состояние карточек
-            updateCardState(binding.cardSortName, binding.checkboxSortName.isChecked)
-            updateCardState(binding.cardSortPrice, binding.checkboxSortPrice.isChecked)
-            updateCardState(binding.cardSortDate, binding.checkboxSortDate.isChecked)
-            updateCardState(binding.cardSortContext, binding.checkboxSortContext.isChecked)
-        }
-    }
-
-    private fun setupSortCards() {
-        // Настраиваем карточки сортировок
-        setupSortCard(
-            binding.cardSortName,
-            binding.checkboxSortName,
-            binding.buttonNameDirection,
-            SortType.BY_NAME
-        )
-        setupSortCard(
-            binding.cardSortPrice,
-            binding.checkboxSortPrice,
-            binding.buttonPriceDirection,
-            SortType.BY_PRICE
-        )
-        setupSortCard(
-            binding.cardSortDate,
-            binding.checkboxSortDate,
-            binding.buttonDateDirection,
-            SortType.BY_DATE
-        )
-        setupSortCard(
-            binding.cardSortContext,
-            binding.checkboxSortContext,
-            binding.buttonContextDirection,
-            SortType.BY_CONTEXT
-        )
-    }
-
-    private fun setupSortCard(
-        card: MaterialCardView,
-        checkbox: MaterialCheckBox,
-        directionButton: MaterialButton,
-        sortType: SortType
-    ) {
-        // Клик по карточке или чекбоксу переключает активность
-        val toggleListener = View.OnClickListener {
-            checkbox.isChecked = !checkbox.isChecked
-            updateCardState(card, checkbox.isChecked)
-        }
-
-        card.setOnClickListener(toggleListener)
-        checkbox.setOnCheckedChangeListener { _, isChecked ->
-            updateCardState(card, isChecked)
-        }
-
-        // Клик по кнопке направления меняет направление
-        directionButton.setOnClickListener {
-            if (checkbox.isChecked) {
-                val currentDirection = sortDirections[sortType]!!
-                val newDirection = if (currentDirection == SortDirection.ASC) {
-                    SortDirection.DESC
-                } else {
-                    SortDirection.ASC
+                // Устанавливаем выбранный элемент в dropdown
+                val selectedIndex = sortOptions.indexOfFirst { it.type == currentSortType }
+                if (selectedIndex >= 0) {
+                    binding.sortTypeDropdown.setText(sortOptions[selectedIndex].displayName, false)
                 }
-                sortDirections[sortType] = newDirection
-                updateDirectionButton(directionButton, newDirection)
+            } else {
+                // Дефолтная сортировка
+                binding.sortTypeDropdown.setText(sortOptions[2].displayName, false)
+                currentSortDirection = SortDirection.ASC
             }
-        }
-    }
 
-    private fun updateCardState(card: MaterialCardView, isActive: Boolean) {
-        // Устанавливаем состояние для автоматического применения селекторов
-        card.isSelected = isActive
-
-        // Применяем цвета через селекторы
-        card.strokeColor = ContextCompat.getColor(requireContext(), R.color.filter_card_stroke_color)
-        card.setCardBackgroundColor(ContextCompat.getColorStateList(requireContext(), R.color.filter_card_background_color))
-
-        // Устанавливаем ширину обводки в зависимости от состояния
-        card.strokeWidth = resources.getDimensionPixelSize(
-            if (isActive) R.dimen.active_card_stroke_width
-            else R.dimen.default_card_stroke_width
-        )
-
-        // Анимированное изменение elevation
-        val targetElevation = if (isActive) {
-            resources.getDimension(R.dimen.filter_card_elevation)
-        } else {
-            0f
-        }
-
-        card.animate()
-            .translationZ(targetElevation)
-            .setDuration(150)
-            .start()
-    }
-
-
-    private fun updateDirectionButton(button: MaterialButton, direction: SortDirection) {
-        val iconRes = when (direction) {
-            SortDirection.ASC -> android.R.drawable.arrow_up_float
-            SortDirection.DESC -> android.R.drawable.arrow_down_float
-        }
-        button.setIconResource(iconRes)
-        button.contentDescription = when (direction) {
-            SortDirection.ASC -> getString(R.string.sort_direction_ascending)
-            SortDirection.DESC -> getString(R.string.sort_direction_descending)
+            updateSortDirectionButton()
         }
     }
 
     private fun setupClickListeners() {
+        // Кнопка изменения направления
+        binding.buttonSortDirection.setOnClickListener {
+            toggleSortDirection()
+        }
+
+        // Кнопка применения фильтров
         binding.buttonApply.setOnClickListener {
             val newFilters = buildFiltersFromUi()
             setFragmentResult(REQUEST_KEY, bundleOf(RESULT_KEY to newFilters))
@@ -196,50 +119,36 @@ class ModelsFilterBottomSheetDialog : BottomSheetDialogFragment() {
         }
     }
 
+    private fun toggleSortDirection() {
+        currentSortDirection = if (currentSortDirection == SortDirection.ASC) {
+            SortDirection.DESC
+        } else {
+            SortDirection.ASC
+        }
+
+        updateSortDirectionButton()
+    }
+
+    private fun updateSortDirectionButton() {
+        val iconRes = when (currentSortDirection) {
+            SortDirection.ASC -> android.R.drawable.arrow_up_float
+            SortDirection.DESC -> android.R.drawable.arrow_down_float
+        }
+
+        binding.buttonSortDirection.setIconResource(iconRes)
+
+        val contentDescription = when (currentSortDirection) {
+            SortDirection.ASC -> getString(R.string.sort_direction_ascending)
+            SortDirection.DESC -> getString(R.string.sort_direction_descending)
+        }
+        binding.buttonSortDirection.contentDescription = contentDescription
+    }
+
     private fun buildFiltersFromUi(): FilterState {
         val currentFilters = arguments?.getParcelable(ARG_FILTERS) ?: FilterState()
 
-        // Собираем активные сортировки
-        val activeSortOptions = mutableListOf<SortCriteria>()
-
-        if (binding.checkboxSortName.isChecked) {
-            activeSortOptions.add(
-                SortCriteria(
-                    SortType.BY_NAME,
-                    sortDirections[SortType.BY_NAME]!!
-                )
-            )
-        }
-        if (binding.checkboxSortPrice.isChecked) {
-            activeSortOptions.add(
-                SortCriteria(
-                    SortType.BY_PRICE,
-                    sortDirections[SortType.BY_PRICE]!!
-                )
-            )
-        }
-        if (binding.checkboxSortDate.isChecked) {
-            activeSortOptions.add(
-                SortCriteria(
-                    SortType.BY_DATE,
-                    sortDirections[SortType.BY_DATE]!!
-                )
-            )
-        }
-        if (binding.checkboxSortContext.isChecked) {
-            activeSortOptions.add(
-                SortCriteria(
-                    SortType.BY_CONTEXT,
-                    sortDirections[SortType.BY_CONTEXT]!!
-                )
-            )
-        }
-
-        // Если ничего не выбрано, используем дефолтную сортировку
-        if (activeSortOptions.isEmpty()) {
-            activeSortOptions.add(SortCriteria(SortType.BY_DATE, SortDirection.DESC))
-            activeSortOptions.add(SortCriteria(SortType.BY_PRICE, SortDirection.ASC))
-        }
+        // Создаем единственный активный критерий сортировки
+        val sortCriteria = SortCriteria(currentSortType, currentSortDirection)
 
         // Собираем модальности
         val modalities = mutableSetOf<ModalityType>().apply {
@@ -248,7 +157,7 @@ class ModelsFilterBottomSheetDialog : BottomSheetDialogFragment() {
         }
 
         return currentFilters.copy(
-            sortOptions = activeSortOptions,
+            sortOptions = listOf(sortCriteria), // Только один критерий
             showOnlySelected = binding.switchOnlySelected.isChecked,
             showOnlyFavorites = binding.switchOnlyFavorite.isChecked,
             showOnlyFree = binding.switchOnlyFree.isChecked,
@@ -262,8 +171,8 @@ class ModelsFilterBottomSheetDialog : BottomSheetDialogFragment() {
     }
 
     companion object {
-        const val TAG = "SmartFilterBottomSheet"
-        const val REQUEST_KEY = "smart_filter_request"
+        const val TAG = "ModelsFilterBottomSheet"
+        const val REQUEST_KEY = "models_filter_request"
         const val RESULT_KEY = "filters"
         private const val ARG_FILTERS = "arg_filters"
 

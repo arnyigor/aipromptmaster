@@ -69,7 +69,7 @@ class OpenRouterRepositoryImpl @Inject constructor(
         val request = ChatCompletionRequestDTO(
             model = model,
             messages = messages.map { MessageDTO(it.role.toString(), it.content) },
-            maxTokens = 4096
+            maxTokens = 4096 // Нужно будет вынести в настройки
         )
 
         try {
@@ -102,7 +102,7 @@ class OpenRouterRepositoryImpl @Inject constructor(
             messages = messages
                 .map { MessageDTO(it.role.toString(), it.content) }
                 .filter { !it.content.isNullOrBlank() },
-            maxTokens = 4096,
+            maxTokens = 4096, // Нужно будет вынести в настройки
             stream = true
         )
 

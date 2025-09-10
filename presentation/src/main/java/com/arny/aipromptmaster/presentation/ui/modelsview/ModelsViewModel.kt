@@ -36,7 +36,7 @@ class ModelsViewModel @AssistedInject constructor(
     val uiState: StateFlow<DataResult<List<LlmModel>>> =
         combine(
             llmInteractor.getModels(),
-            searchQuery.debounce(300L), // Дебаунс для производительности при вводе
+            searchQuery.debounce(300L),
             filters
         ) { dataResult, query, filterState ->
             when (dataResult) {
@@ -202,19 +202,17 @@ class ModelsViewModel @AssistedInject constructor(
         model1: LlmModel,
         model2: LlmModel,
         sortType: SortType
-    ): Int {
-        return when (sortType) {
-            SortType.NONE -> 0
-            SortType.BY_NAME -> model1.name.compareTo(model2.name, ignoreCase = true)
-            SortType.BY_PRICE -> {
-                val avgPrice1 = calculateAveragePrice(model1)
-                val avgPrice2 = calculateAveragePrice(model2)
-                avgPrice1.compareTo(avgPrice2)
-            }
-
-            SortType.BY_DATE -> model1.created.compareTo(model2.created)
-            SortType.BY_CONTEXT -> model1.contextLength.compareTo(model2.contextLength)
+    ): Int = when (sortType) {
+        SortType.NONE -> 0
+        SortType.BY_NAME -> model1.name.compareTo(model2.name, ignoreCase = true)
+        SortType.BY_PRICE -> {
+            val avgPrice1 = calculateAveragePrice(model1)
+            val avgPrice2 = calculateAveragePrice(model2)
+            avgPrice1.compareTo(avgPrice2)
         }
+
+        SortType.BY_DATE -> model1.created.compareTo(model2.created)
+        SortType.BY_CONTEXT -> model1.contextLength.compareTo(model2.contextLength)
     }
 
     /**

@@ -75,7 +75,7 @@
     </fragment>
     <dialog
         android:id="@+id/editPromptDialogFragment"
-        android:name="com.arny.aipromptmaster.presentation.ui.editprompt.EditPromptDialogFragment"
+        android:name="com.arny.aipromptmaster.presentation.ui.editprompt.EditSystemPromptDialogFragment"
         android:label="EditPromptDialogFragment" >
         <argument
             android:name="initialPrompt"
