@@ -70,8 +70,11 @@
     <td align="center"><b>Чат с ИИ</b></td>
   </tr>
   <tr>
-    <td><img src="screenshots/home_screen.png" alt="Главная" width="300"/></td>
-    <td><img src="screenshots/chat_screen.png" alt="Чат" width="300"/></td>
+    <td><img src="screenshots/home_screen.png" alt="Главная" width="1080"/></td>
+    <td><img src="screenshots/view_screen.png" alt="Просмотр промпта" width="1080"/></td>
+    <td><img src="screenshots/chat_screen.png" alt="Чат" width="1080"/></td>
+    <td><img src="screenshots/add_screen.png" alt="Добавление промпта" width="1080"/></td>
+    <td><img src="screenshots/chat_history_screen.png" alt="История чатов" width="1080"/></td>
   </tr>
   <tr>
     <td align="center"><i>Список промптов с поиском в реальном времени.</i></td>
