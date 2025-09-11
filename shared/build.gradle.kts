@@ -8,22 +8,24 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.compose)
+    alias(libs.plugins.androidLibrary)
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.room)
     alias(libs.plugins.ksp)
 }
 
 kotlin {
+    // Android target
+    androidTarget {
+        compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
+    }
+
+    // Desktop target
     jvm("desktop") {
         compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
-        testRuns["test"].executionTask.configure {
-            useJUnitPlatform()
-        }
-        compilations.all {
-            compilerOptions.configure {
-                freeCompilerArgs.add("-Xexpect-actual-classes")
-            }
-        }
+//        testRuns["test"].executionTask.configure {
+//            useJUnitPlatform()
+//        }
     }
 
     configurations.all {
@@ -64,20 +66,29 @@ kotlin {
         }
 
         val desktopMain by getting {
-            dependsOn(commonMain)
+            dependencies {
+                // desktop-специфичные зависимости если нужны
+            }
+        }
+
+        val desktopTest by getting {
+            dependencies {
+                // Убираем все test зависимости временно
+            }
+        }
+
+        val androidMain by getting {
+            dependencies {
+                implementation(libs.androidx.core.ktx)
+                implementation(libs.kotlinx.coroutines.android) // ПРАВИЛЬНОЕ МЕСТО
+                implementation(libs.koin.android)
+                implementation(libs.koin.androidx.compose) // Для viewModel()
+            }
         }
 
         val commonTest by getting {
             dependencies {
                 implementation(kotlin("test"))
-            }
-        }
-
-        val desktopTest by getting {
-            dependsOn(commonTest)
-            dependencies {
-                // Временно уберите JUnit 5, используйте только kotlin.test
-                // implementation(libs.junit)
             }
         }
     }
@@ -111,4 +122,20 @@ dependencies {
     // Указываем, что room-compiler - это KSP процессор для каждой цели
     add("kspCommonMainMetadata", libs.androidx.room.compiler)
     add("kspDesktop", libs.androidx.room.compiler)
+    add("kspAndroid", libs.androidx.room.compiler)
+}
+
+
+android {
+    namespace = "com.arny.aiprompts.shared"
+    compileSdk = libs.versions.android.compileSdk.get().toInt()
+
+    defaultConfig {
+        minSdk = libs.versions.android.minSdk.get().toInt()
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
 }

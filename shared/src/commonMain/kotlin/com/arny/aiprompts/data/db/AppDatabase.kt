@@ -36,22 +36,6 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        // ИСПРАВЛЕННЫЙ МЕТОД
-        private fun buildDatabase(): AppDatabase {
-            val dbFile = File(System.getProperty("user.home"), ".aiprompts/$DBNAME")
-            dbFile.parentFile.mkdirs()
-
-            // Создаем builder
-            val builder = Room.databaseBuilder<AppDatabase>(
-                name = dbFile.absolutePath,
-            )
-
-            // --- ВОТ КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ ---
-            // Применяем настройки, которые раньше были в getRoomDatabase()
-            return builder
-                .setDriver(BundledSQLiteDriver()) // Явно указываем драйвер
-                .setQueryCoroutineContext(Dispatchers.IO) // Явно указываем диспатчер для запросов
-                .build()
-        }
+        private fun buildDatabase(): AppDatabase = getDatabaseBuilder().build()
     }
 }

@@ -1,3 +1,5 @@
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
 pluginManagement {
     repositories {
         google()
@@ -17,3 +19,4 @@ dependencyResolutionManagement {
 rootProject.name = "aiprompts-kmp"
 include(":shared")
 include(":desktopApp")
+include(":androidApp")

@@ -1,4 +1,7 @@
 [versions]
+android-compileSdk = "36"
+android-minSdk = "24"
+android-targetSdk = "36"
 # Core
 kotlin = "2.1.0"
 compose-plugin = "1.8.2"
@@ -6,10 +9,10 @@ decompose ="3.3.0"
 lifecycle-coroutines ="2.5.0"
 icons = "1.7.2"
 # Android (не используется сейчас, но полезно для будущего)
-agp = "8.2.2"
-android-compileSdk = "34"
-android-minSdk = "24"
+agp = "8.9.1"
+androidx-core = "1.17.0"
 androidx-activity = "1.8.2"
+androidx-lifecycle = "2.9.3"
 ksp = "2.1.0-1.0.28"
 # Libraries
 ktor = "3.1.3"
@@ -56,6 +59,12 @@ koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
 koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
 koin-androidx-compose = { group = "io.insert-koin", name = "koin-androidx-compose", version.ref = "koin" }
 
+# --- Android ---
+androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
+androidx-lifecycle-viewmodelCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidx-lifecycle" }
+
 # --- KTOR ---
 ktor-bom = { module = "io.ktor:ktor-bom", version.ref = "ktor" }
 ktor-client-core = { module = "io.ktor:ktor-client-core" }
@@ -89,5 +98,8 @@ compose = { id = "org.jetbrains.compose", version.ref = "compose-plugin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 room = { id = "androidx.room", version.ref = "room" }
 kotlinx-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 # Android (не используется сейчас, но полезно для будущего)
-android-application = { id = "com.android.application", version.ref = "agp" }
+androidApplication = { id = "com.android.application", version.ref = "agp" }
+kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+androidLibrary = { id = "com.android.library", version.ref = "agp" }
