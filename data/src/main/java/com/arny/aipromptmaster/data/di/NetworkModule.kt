@@ -32,11 +32,14 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    fun provideLoggingInterceptor(): HttpLoggingInterceptor = HttpLoggingInterceptor().apply {
+        level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
+    }
+
+    @Provides
+    @Singleton
     @DefaultOkHttpClient
-    fun provideOkHttpClient(): OkHttpClient {
-        val logging = HttpLoggingInterceptor().apply {
-            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
-        }
+    fun provideOkHttpClient(logging: HttpLoggingInterceptor): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor(logging)
             .build()
@@ -45,23 +48,19 @@ object NetworkModule {
     @Provides
     @Singleton
     @VercelOkHttpClient
-    fun provideVercelOkHttpClient(): OkHttpClient {
-        val logging = HttpLoggingInterceptor().apply {
-            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
-        }
-
-        // Создаем Interceptor, который будет добавлять наш ключ в заголовок
+    fun provideVercelOkHttpClient(logging: HttpLoggingInterceptor): OkHttpClient {
         val apiKeyInterceptor = Interceptor { chain ->
             val originalRequest = chain.request()
             val newRequest = originalRequest.newBuilder()
                 .header("X-API-Key", BuildConfig.API_SECRET_KEY)
+                .header("Origin", "android-app://com.arny.aipromptmaster")
                 .build()
             chain.proceed(newRequest)
         }
 
         return OkHttpClient.Builder()
-            .addInterceptor(logging)
             .addInterceptor(apiKeyInterceptor)
+            .addInterceptor(logging)
             .build()
     }
 

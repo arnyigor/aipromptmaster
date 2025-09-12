@@ -1,27 +1,28 @@
 package com.arny.aipromptmaster.data.models
 
-import com.google.gson.annotations.SerializedName
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-// Внешний объект запроса
+@Serializable
 data class FeedbackRequestDto(
-    @SerializedName("appname")
+    @SerialName("appname")
     val appInfo: AppInfoDto,
 
-    @SerializedName("content")
+    @SerialName("content")
     val content: String
 )
 
-// Вложенный объект с информацией о приложении
+@Serializable
 data class AppInfoDto(
-    @SerializedName("name")
+    @SerialName("name")
     val name: String,
 
-    @SerializedName("id")
+    @SerialName("id")
     val id: String,
 
-    @SerializedName("version")
+    @SerialName("version")
     val version: String,
 
-    @SerializedName("packagename")
+    @SerialName("packagename")
     val packageName: String
 )

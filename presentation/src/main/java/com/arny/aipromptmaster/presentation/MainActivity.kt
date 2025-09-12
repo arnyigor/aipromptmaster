@@ -48,10 +48,12 @@ class MainActivity : AppCompatActivity(), HasAndroidInjector {
                 R.id.nav_home,
                 R.id.nav_history
                     -> {
+                    supportActionBar?.show()
                     navView.visibility = View.VISIBLE
                 }
 
                 else -> {
+                    supportActionBar?.show()
                     navView.visibility = View.GONE
                 }
             }

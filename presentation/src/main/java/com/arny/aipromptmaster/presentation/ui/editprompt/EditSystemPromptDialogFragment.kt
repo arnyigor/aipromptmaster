@@ -10,11 +10,11 @@ import androidx.fragment.app.setFragmentResult
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.arny.aipromptmaster.presentation.R
-import com.arny.aipromptmaster.presentation.databinding.FragmentEditPromptBinding
+import com.arny.aipromptmaster.presentation.databinding.FragmentEditSystemPromptBinding
 
 class EditSystemPromptDialogFragment : DialogFragment() {
 
-    private var _binding: FragmentEditPromptBinding? = null
+    private var _binding: FragmentEditSystemPromptBinding? = null
     private val binding get() = _binding!!
 
     private val args: EditSystemPromptDialogFragmentArgs by navArgs()
@@ -28,7 +28,7 @@ class EditSystemPromptDialogFragment : DialogFragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentEditPromptBinding.inflate(inflater, container, false)
+        _binding = FragmentEditSystemPromptBinding.inflate(inflater, container, false)
         return binding.root
     }
 

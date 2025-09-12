@@ -169,7 +169,7 @@
             android:id="@+id/fabAdd"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/add_prompt"
+            android:text="@string/action_add_prompt"
             app:icon="@drawable/ic_plus"
             android:textColor="?attr/colorOnPrimary"
             app:iconTint="?attr/colorOnPrimary"

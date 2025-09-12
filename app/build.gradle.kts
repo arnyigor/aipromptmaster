@@ -148,6 +148,7 @@ dependencies {
     implementation(libs.dagger.android)
     implementation(libs.dagger.android.support)
     implementation (libs.okhttp)
+    implementation (libs.logging.interceptor)
     implementation (libs.retrofit2.retrofit)
     implementation(libs.gson)
     kapt(libs.dagger.android.processor)

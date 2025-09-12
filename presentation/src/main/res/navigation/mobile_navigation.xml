@@ -55,12 +55,20 @@
         <argument
             android:name="promptId"
             app:argType="string" />
+        <action
+            android:id="@+id/action_promptViewFragment_to_addPromptFragment"
+            app:destination="@id/addPromptFragment" />
     </fragment>
     <fragment
         android:id="@+id/addPromptFragment"
-        android:name="com.arny.aipromptmaster.presentation.ui.addprompt.AddPromptFragment"
-        android:label="@string/add_prompt_title"
-        tools:layout="@layout/fragment_add_prompt" />
+        android:name="com.arny.aipromptmaster.presentation.ui.addprompt.EditPromptFragment"
+        android:label="@string/edit_prompt_title"
+        tools:layout="@layout/fragment_edit_prompt">
+        <argument
+            android:name="promptId"
+            app:argType="string"
+            app:nullable="true" />
+    </fragment>
     <fragment
         android:id="@+id/settingsFragment"
         android:name="com.arny.aipromptmaster.presentation.ui.settings.SettingsFragment"

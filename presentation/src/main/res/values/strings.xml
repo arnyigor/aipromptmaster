@@ -27,7 +27,7 @@
     <string name="retry">Повторить</string>
     <string name="all">Все</string>
     <string name="favorites">Избранное</string>
-    <string name="add_prompt">Добавить промпт</string>
+    <string name="action_add_prompt">Добавить промпт</string>
     <string name="sync_success">Синхронизация завершена. Обновлено промптов: %d</string>
     <string name="sync_conflicts_found">Найдены конфликты синхронизации</string>
     <string name="error_loading_prompts">Ошибка загрузки промптов</string>
@@ -124,9 +124,11 @@
 
     <!-- Add Prompt Screen -->
     <string name="add_prompt_title">Добавить промпт</string>
+    <string name="edit_prompt_title">Редактировать промпт</string>
     <string name="prompt_title_hint">Название промпта</string>
     <string name="prompt_category_hint">Категория</string>
     <string name="prompt_description_hint">Описание промпта</string>
+    <string name="prompt_tags_hint">Теги (через запятую)</string>
     <string name="prompt_content_ru_label">Содержимое (Русский)</string>
     <string name="prompt_content_ru_hint">Введите текст промпта на русском языке</string>
     <string name="prompt_content_en_label">Содержимое (English)</string>
@@ -135,6 +137,7 @@
     <string name="prompt_saved_successfully">Промпт успешно сохранен</string>
 
     <!-- Delete Prompt -->
+    <string name="edit">Редактировать</string>
     <string name="delete">Удалить</string>
     <string name="delete_prompt_title">Удалить промпт?</string>
     <string name="delete_prompt_message">Это действие нельзя будет отменить.</string>

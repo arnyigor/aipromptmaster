@@ -2,6 +2,7 @@ package com.arny.aipromptmaster.data.repositories
 
 import android.content.Context
 import android.content.pm.PackageManager
+import android.util.Log
 import com.arny.aipromptmaster.data.BuildConfig
 import com.arny.aipromptmaster.data.api.FeedbackApiService
 import com.arny.aipromptmaster.data.models.AppInfoDto
@@ -49,11 +50,14 @@ class FeedbackRepositoryImpl @Inject constructor(
             if (response.isSuccessful) {
                 Result.success(Unit)
             } else {
+                Log.e(this::class.java.simpleName, "sendFeedback: response:$response" )
                 // Ошибка сервера (4xx, 5xx)
                 val errorMsg = "Ошибка сервера: ${response.code()} ${response.message()}"
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
+            e.printStackTrace()
+            Log.e(this::class.java.simpleName, "sendFeedback: e:$e", )
             // Сетевая ошибка или другая проблема
             Result.failure(e)
         }

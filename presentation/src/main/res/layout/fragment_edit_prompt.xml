@@ -4,32 +4,13 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface"
-    android:clickable="true"
-    android:fitsSystemWindows="true"
-    android:focusable="true">
-
-    <com.google.android.material.appbar.AppBarLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:fitsSystemWindows="true"
-        app:elevation="0dp">
-
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            app:navigationContentDescription="@string/action_close"
-            app:navigationIcon="@drawable/outline_close_24"
-            app:title="@string/system_prompt_dialog_title"
-            app:titleTextAppearance="?attr/textAppearanceTitleLarge" />
-
-    </com.google.android.material.appbar.AppBarLayout>
+    android:background="?attr/colorSurface">
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:fillViewport="true"
+        android:fitsSystemWindows="true"
         android:scrollbars="vertical"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
@@ -39,56 +20,203 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- Описание и подсказки -->
-            <TextView
+            <!-- Title Field -->
+            <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
-                android:text="@string/system_prompt_description"
-                android:textAppearance="?attr/textAppearanceBodyMedium"
-                android:textColor="?attr/colorOnSurfaceVariant" />
+                android:layout_marginBottom="16dp"
+                app:hintAnimationEnabled="true"
+                app:hintEnabled="true"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
 
-            <!-- Карточка с текстовым полем -->
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/prompt_title_hint"
+                    android:inputType="textCapWords|textAutoCorrect"
+                    android:maxLines="2"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textColorHint="?attr/colorOnSurfaceVariant"
+                    tools:text="Мой новый промпт" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- Category Dropdown -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:hintAnimationEnabled="true"
+                app:hintEnabled="true"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+
+                <AutoCompleteTextView
+                    android:id="@+id/dropdown_category"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/prompt_category_hint"
+                    android:inputType="none"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textColorHint="?attr/colorOnSurfaceVariant"
+                    tools:text="Общий" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- Description Field -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:hintAnimationEnabled="true"
+                app:hintEnabled="true">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_description"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/prompt_description_hint"
+                    android:inputType="textMultiLine|textCapSentences|textAutoCorrect"
+                    android:minLines="2"
+                    android:maxLines="4"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textColorHint="?attr/colorOnSurfaceVariant"
+                    tools:text="Описание промпта для лучшего понимания его назначения" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- Tags Field -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:hintAnimationEnabled="true"
+                app:hintEnabled="true">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_tags"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/prompt_tags_hint"
+                    android:inputType="text"
+                    android:maxLines="3"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textColorHint="?attr/colorOnSurfaceVariant"
+                    tools:text="тег1, тег2, тег3" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- Content RU Field -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_marginBottom="80dp"
-                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="2dp"
                 app:strokeColor="?attr/colorOutline"
                 app:strokeWidth="1dp">
 
-                <com.google.android.material.textfield.TextInputLayout
+                <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:layout_margin="16dp"
-                    app:boxBackgroundMode="none"
-                    app:counterEnabled="true"
-                    app:counterMaxLength="2000"
-                    app:helperText="@string/system_prompt_helper_text"
-                    app:helperTextEnabled="true"
-                    app:hintAnimationEnabled="true"
-                    app:hintEnabled="true">
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
 
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_system_prompt"
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:text="@string/prompt_content_ru_label"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:textColor="?attr/colorOnSurface" />
+
+                    <com.google.android.material.textfield.TextInputLayout
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:background="@android:color/transparent"
-                        android:gravity="top|start"
-                        android:hint="@string/system_prompt_dialog_hint"
-                        android:inputType="textMultiLine|textCapSentences|textAutoCorrect"
-                        android:lineSpacingExtra="4dp"
-                        android:minHeight="300dp"
-                        android:padding="12dp"
-                        android:scrollbars="vertical"
-                        android:textAppearance="?attr/textAppearanceBodyLarge"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textColorHint="?attr/colorOnSurfaceVariant"
-                        tools:text="Ты — шеф-повар из Италии, который дает рецепты только в стихах." />
+                        android:layout_height="wrap_content"
+                        app:boxBackgroundMode="none"
+                        app:hintAnimationEnabled="true"
+                        app:hintEnabled="true">
 
-                </com.google.android.material.textfield.TextInputLayout>
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_content_ru"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="@android:color/transparent"
+                            android:gravity="top|start"
+                            android:hint="@string/prompt_content_ru_hint"
+                            android:inputType="textMultiLine|textCapSentences|textAutoCorrect"
+                            android:lineSpacingExtra="4dp"
+                            android:minHeight="120dp"
+                            android:padding="8dp"
+                            android:scrollbars="vertical"
+                            android:textAppearance="?attr/textAppearanceBodyLarge"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textColorHint="?attr/colorOnSurfaceVariant"
+                            tools:text="Ты - полезный ассистент, который помогает пользователям..." />
+
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Content EN Field -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="80dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:strokeColor="?attr/colorOutline"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:text="@string/prompt_content_en_label"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:textColor="?attr/colorOnSurface" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:boxBackgroundMode="none"
+                        app:hintAnimationEnabled="true"
+                        app:hintEnabled="true">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_content_en"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="@android:color/transparent"
+                            android:gravity="top|start"
+                            android:hint="@string/prompt_content_en_hint"
+                            android:inputType="textMultiLine|textCapSentences|textAutoCorrect"
+                            android:lineSpacingExtra="4dp"
+                            android:minHeight="120dp"
+                            android:padding="8dp"
+                            android:scrollbars="vertical"
+                            android:textAppearance="?attr/textAppearanceBodyLarge"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textColorHint="?attr/colorOnSurfaceVariant"
+                            tools:text="You are a helpful assistant who helps users..." />
+
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                </LinearLayout>
 
             </com.google.android.material.card.MaterialCardView>
 
@@ -96,40 +224,18 @@
 
     </androidx.core.widget.NestedScrollView>
 
-    <!-- Кнопки внизу -->
-    <LinearLayout
-        android:layout_width="match_parent"
+    <!-- Save FAB -->
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+        android:id="@+id/fab_save"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:gravity="end"
-        android:orientation="horizontal"
-        android:padding="16dp">
-
-        <!-- Кнопка Стереть -->
-        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-            android:id="@+id/fab_clear"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="12dp"
-            android:contentDescription="@string/action_clear"
-            android:text="@string/action_clear"
-            android:textColor="?attr/colorSurface"
-            app:backgroundTint="?attr/colorPrimary"
-            app:icon="@android:drawable/ic_menu_delete"
-            app:iconTint="?attr/colorOnPrimary" />
-
-        <!-- Кнопка Сохранить -->
-        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-            android:id="@+id/fab_save"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:contentDescription="@string/action_save"
-            android:text="@string/action_save"
-            android:textColor="?attr/colorSurface"
-            app:backgroundTint="?attr/colorPrimary"
-            app:icon="@android:drawable/ic_menu_save"
-            app:iconTint="?attr/colorOnPrimary" />
-
-    </LinearLayout>
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        android:contentDescription="@string/action_save"
+        android:text="@string/action_save"
+        android:textColor="@color/blue_on_secondary_container_text_dark"
+        app:icon="@android:drawable/ic_menu_save"
+        app:iconTint="?attr/colorOnPrimary"
+        app:backgroundTint="?attr/colorPrimary" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

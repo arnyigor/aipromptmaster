@@ -118,7 +118,7 @@ class PromptsFragment : Fragment() {
 
             fabAdd.setOnClickListener {
                 findNavController().navigate(
-                    PromptsFragmentDirections.actionNavHomeToAddPromptFragment()
+                    PromptsFragmentDirections.actionNavHomeToAddPromptFragment(null)
                 )
             }
 

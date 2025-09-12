@@ -1,7 +1,7 @@
 package com.arny.aipromptmaster.di
 
 import com.arny.aipromptmaster.core.di.scopes.FragmentScope
-import com.arny.aipromptmaster.presentation.ui.addprompt.AddPromptFragment
+import com.arny.aipromptmaster.presentation.ui.addprompt.EditPromptFragment
 import dagger.Module
 import dagger.android.ContributesAndroidInjector
 
@@ -9,5 +9,5 @@ import dagger.android.ContributesAndroidInjector
 interface AddPromptFragmentModule {
     @FragmentScope
     @ContributesAndroidInjector
-    fun contributeFragmentInjector(): AddPromptFragment
+    fun contributeFragmentInjector(): EditPromptFragment
 }

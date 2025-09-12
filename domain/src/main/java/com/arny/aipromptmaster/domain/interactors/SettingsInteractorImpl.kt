@@ -12,9 +12,8 @@ class SettingsInteractorImpl @Inject constructor(
         settingsRepository.saveApiKey(apiKey)
     }
 
-    override suspend fun sendFeedback(content: String): Result<Unit> {
-        return feedbackRepository.sendFeedback(content)
-    }
+    override suspend fun sendFeedback(content: String): Result<Unit> =
+        feedbackRepository.sendFeedback(content)
 
     override fun getApiKey(): String? = settingsRepository.getApiKey()
 }

@@ -12,6 +12,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.os.bundleOf
 import androidx.core.view.MenuProvider
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResult
 import androidx.lifecycle.Lifecycle
@@ -51,7 +52,9 @@ class PromptViewFragment : Fragment() {
     private val viewModel: PromptViewViewModel by viewModelFactory { viewModelFactory.create(args.promptId) }
 
     private var deleteMenuItem: MenuItem? = null
+    private var editMenuItem: MenuItem? = null
     private var isDeleteMenuVisible = false
+    private var isEditMenuVisible = false
 
     override fun onAttach(context: Context) {
         AndroidSupportInjection.inject(this)
@@ -93,6 +96,7 @@ class PromptViewFragment : Fragment() {
             override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
                 menuInflater.inflate(R.menu.prompt_view_menu, menu)
                 deleteMenuItem = menu.findItem(R.id.action_delete)
+                editMenuItem = menu.findItem(R.id.action_edit)
                 updateMenuVisibility()
             }
 
@@ -103,10 +107,20 @@ class PromptViewFragment : Fragment() {
 
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
                 return when (menuItem.itemId) {
+                    R.id.action_edit -> {
+                        val action =
+                            PromptViewFragmentDirections.actionPromptViewFragmentToAddPromptFragment(
+                                args.promptId
+                            )
+                        findNavController().navigate(action)
+                        true
+                    }
+
                     R.id.action_delete -> {
                         viewModel.showDeleteConfirmation()
                         true
                     }
+
                     else -> false
                 }
             }
@@ -115,6 +129,7 @@ class PromptViewFragment : Fragment() {
 
     private fun updateMenuVisibility() {
         deleteMenuItem?.isVisible = isDeleteMenuVisible
+        editMenuItem?.isVisible = isEditMenuVisible
     }
 
     private fun setupViews() {
@@ -151,7 +166,9 @@ class PromptViewFragment : Fragment() {
                     R.id.chipMain -> -1
                     else -> {
                         // Найти индекс выбранного варианта по ID чипа
-                        val chip = group.findViewById<Chip>(selectedChip ?: return@setOnCheckedStateChangeListener)
+                        val chip = group.findViewById<Chip>(
+                            selectedChip ?: return@setOnCheckedStateChangeListener
+                        )
                         chip.tag as? Int ?: -1
                     }
                 }
@@ -212,6 +229,7 @@ class PromptViewFragment : Fragment() {
                     updateVariants(state)
                     updateTagsAndModels(state.prompt)
                     isDeleteMenuVisible = state.isLocal
+                    isEditMenuVisible = state.isLocal
                     requireActivity().invalidateMenu()
                 }
 
@@ -264,7 +282,8 @@ class PromptViewFragment : Fragment() {
             }
 
             // Показываем группу вариантов только если есть варианты
-            binding.cardVariants.visibility = if (state.availableVariants.isNotEmpty()) View.VISIBLE else View.GONE
+            binding.cardVariants.visibility =
+                if (state.availableVariants.isNotEmpty()) View.VISIBLE else View.GONE
         }
     }
 
@@ -300,8 +319,7 @@ class PromptViewFragment : Fragment() {
                 chipGroupModels.addView(chip)
             }
 
-            // Скрываем секцию совместимых моделей, если список пустой
-            modelsSection.visibility = if (prompt.compatibleModels.isEmpty()) View.GONE else View.VISIBLE
+            modelsSection.isVisible = prompt.compatibleModels.any { it.isNotBlank() }
         }
     }
 
@@ -352,7 +370,8 @@ class PromptViewFragment : Fragment() {
     }
 
     private fun copyToClipboard(text: String) {
-        val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clipboard =
+            requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText("prompt", text)
         clipboard.setPrimaryClip(clip)
     }
