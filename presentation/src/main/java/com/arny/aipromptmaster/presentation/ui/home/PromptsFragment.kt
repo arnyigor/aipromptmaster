@@ -89,9 +89,6 @@ class PromptsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        (requireActivity() as AppCompatActivity).supportActionBar?.apply {
-            setDisplayHomeAsUpEnabled(true)
-        }
         setFragmentResultListener(AppConstants.REQ_KEY_PROMPT_VIEW_FAV) { key, bundle ->
             val promptId = bundle.getString(AppConstants.REQ_KEY_PROMPT_ID)
             viewModel.omPromptUpdated(!promptId.isNullOrBlank())
