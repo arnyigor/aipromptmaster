@@ -145,5 +145,10 @@
     <string name="prompt_deleted">Промпт удален</string>
     <string name="sort_type_hint">Сортировать по</string>
     <string name="sort_direction_toggle">Изменить направление сортировки</string>
+    <string name="nav_header_title">AI Prompt Master</string>
+    <string name="nav_header_subtitle">Управление промптами</string>
+    <string name="nav_header_desc">Логотип приложения</string>
+    <string name="navigation_drawer_open">Открыть навигацию</string>
+    <string name="navigation_drawer_close">Закрыть навигацию</string>
     <string name="error_add_category">Ошибка сохранения категории</string>
 </resources>

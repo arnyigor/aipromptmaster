@@ -23,6 +23,11 @@
         <item name="colorOnSurfaceVariant">#49454F</item>
         <item name="colorOutline">#79747E</item>
 
+        <!-- Статус-бар и навигационный бар -->
+        <item name="android:statusBarColor">?attr/colorSurface</item>
+        <item name="android:windowLightStatusBar">true</item> <!-- Иконки статус-бара будут темными -->
+        <item name="android:navigationBarColor">?attr/colorSurface</item>
+
     </style>
 
     <style name="Theme.App.FullScreenDialog" parent="Theme.MaterialComponents.DayNight.Dialog">

@@ -81,6 +81,10 @@
             android:id="@+id/action_modelsFragment_to_settingsFragment"
             app:destination="@id/settingsFragment" />
     </fragment>
+    <fragment
+        android:id="@+id/nav_settings"
+        android:name="com.arny.aipromptmaster.presentation.ui.settings.SettingsFragment"
+        android:label="@string/ai_settings" />
     <dialog
         android:id="@+id/editPromptDialogFragment"
         android:name="com.arny.aipromptmaster.presentation.ui.editprompt.EditSystemPromptDialogFragment"

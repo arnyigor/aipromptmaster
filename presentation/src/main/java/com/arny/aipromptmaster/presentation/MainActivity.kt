@@ -1,7 +1,6 @@
 package com.arny.aipromptmaster.presentation
 
 import android.os.Bundle
-import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
@@ -9,7 +8,6 @@ import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
 import com.arny.aipromptmaster.presentation.databinding.ActivityMainBinding
-import com.google.android.material.bottomnavigation.BottomNavigationView
 import dagger.android.AndroidInjection
 import dagger.android.AndroidInjector
 import dagger.android.DispatchingAndroidInjector
@@ -33,31 +31,20 @@ class MainActivity : AppCompatActivity(), HasAndroidInjector {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
-        val navView: BottomNavigationView = binding.navView
+
         val navController = findNavController(R.id.nav_host_fragment_activity_main)
+
+        binding.navView.setupWithNavController(navController)
+
         appBarConfiguration = AppBarConfiguration(
             setOf(
-                R.id.nav_home, R.id.nav_history
-            )
+                R.id.nav_home, R.id.nav_history, R.id.nav_models, R.id.nav_settings
+            ),
+            binding.drawerLayout // Передаем DrawerLayout в AppBarConfiguration
         )
+
+        // Navigation Controller автоматически управляет drawer toggle
         setupActionBarWithNavController(navController, appBarConfiguration)
-        navView.setupWithNavController(navController)
-
-        navController.addOnDestinationChangedListener { _, destination, _ ->
-            when (destination.id) {
-                R.id.nav_home,
-                R.id.nav_history
-                    -> {
-                    supportActionBar?.show()
-                    navView.visibility = View.VISIBLE
-                }
-
-                else -> {
-                    supportActionBar?.show()
-                    navView.visibility = View.GONE
-                }
-            }
-        }
     }
 
     override fun onSupportNavigateUp(): Boolean {
