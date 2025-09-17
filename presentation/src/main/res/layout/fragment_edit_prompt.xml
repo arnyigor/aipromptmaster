@@ -47,21 +47,21 @@
 
             <!-- Category Dropdown -->
             <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
+                app:endIconMode="dropdown_menu"
                 app:hintAnimationEnabled="true"
-                app:hintEnabled="true"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                app:endIconMode="dropdown_menu">
+                app:hintEnabled="true">
 
                 <AutoCompleteTextView
                     android:id="@+id/dropdown_category"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:completionThreshold="1"
                     android:hint="@string/prompt_category_hint"
                     android:inputType="textCapWords|textAutoCorrect"
-                    android:completionThreshold="1"
                     android:textAppearance="?attr/textAppearanceBodyLarge"
                     android:textColor="?attr/colorOnSurface"
                     android:textColorHint="?attr/colorOnSurfaceVariant"
@@ -83,8 +83,8 @@
                     android:layout_height="wrap_content"
                     android:hint="@string/prompt_description_hint"
                     android:inputType="textMultiLine|textCapSentences|textAutoCorrect"
-                    android:minLines="2"
                     android:maxLines="4"
+                    android:minLines="2"
                     android:textAppearance="?attr/textAppearanceBodyLarge"
                     android:textColor="?attr/colorOnSurface"
                     android:textColorHint="?attr/colorOnSurfaceVariant"
@@ -232,12 +232,13 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
-        android:layout_margin="16dp"
+        android:layout_marginEnd="@dimen/margin_16"
+        android:layout_marginBottom="@dimen/margin_16"
         android:contentDescription="@string/action_save"
         android:text="@string/action_save"
-        android:textColor="@color/blue_on_secondary_container_text_dark"
+        android:textColor="?attr/colorOnPrimary"
+        app:backgroundTint="?attr/colorPrimary"
         app:icon="@android:drawable/ic_menu_save"
-        app:iconTint="?attr/colorOnPrimary"
-        app:backgroundTint="?attr/colorPrimary" />
+        app:iconTint="?attr/colorOnPrimary" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -6,7 +6,6 @@
     android:layout_height="match_parent"
     android:background="?attr/colorSurface">
 
-    <!-- Основной контент -->
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -20,7 +19,6 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- Заголовок промпта с иконкой избранного и тегами -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -81,7 +79,7 @@
                         android:id="@+id/tvIdLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="ID:"
+                        android:text="@string/id_for_prompt"
                         android:textAppearance="?attr/textAppearanceBodyMedium"
                         android:textColor="?attr/colorOnSurfaceVariant"
                         app:layout_constraintBottom_toBottomOf="parent"
@@ -137,7 +135,7 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Варианты промпта"
+                        android:text="@string/prompt_variants"
                         android:textAppearance="?attr/textAppearanceTitleMedium"
                         android:textColor="?attr/colorOnSurface" />
 
@@ -186,7 +184,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="🇷🇺 Русский"
+                                android:text="@string/ru_lang"
                                 android:textAppearance="?attr/textAppearanceTitleMedium"
                                 android:textColor="?attr/colorOnSurface" />
 
@@ -235,7 +233,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="🇬🇧 English"
+                                android:text="@string/en_lang"
                                 android:textAppearance="?attr/textAppearanceTitleMedium"
                                 android:textColor="?attr/colorOnSurface" />
 
@@ -265,7 +263,6 @@
             </com.google.android.material.card.MaterialCardView>
 
 
-            <!-- Совместимые модели -->
             <LinearLayout
                 android:id="@+id/modelsSection"
                 android:layout_width="match_parent"
@@ -291,7 +288,6 @@
 
     </androidx.core.widget.NestedScrollView>
 
-    <!-- FAB для копирования всего контента -->
     <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
         android:id="@+id/fabCopy"
         android:layout_width="wrap_content"

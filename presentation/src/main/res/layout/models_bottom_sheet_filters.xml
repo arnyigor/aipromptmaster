@@ -17,7 +17,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- Контейнер для сортировки -->
     <LinearLayout
         android:id="@+id/sorting_container"
         android:layout_width="0dp"
@@ -64,7 +63,6 @@
 
     </LinearLayout>
 
-    <!-- Разделитель -->
     <com.google.android.material.divider.MaterialDivider
         android:id="@+id/divider"
         android:layout_width="0dp"
@@ -74,7 +72,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/sorting_container" />
 
-    <!-- Заголовок фильтров -->
     <TextView
         android:id="@+id/text_filters_title"
         android:layout_width="0dp"
@@ -86,7 +83,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/divider" />
 
-    <!-- Группа фильтров -->
     <LinearLayout
         android:id="@+id/filters_container"
         android:layout_width="0dp"
@@ -135,7 +131,6 @@
 
     </LinearLayout>
 
-    <!-- Кнопка применить -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/button_apply"
         android:layout_width="0dp"
@@ -146,5 +141,16 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/filters_container" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_reset"
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        android:layout_marginTop="8dp"
+        android:text="@string/reset_button"
+        android:textSize="16sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/button_apply" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

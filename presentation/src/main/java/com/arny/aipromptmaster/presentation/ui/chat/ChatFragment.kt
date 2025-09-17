@@ -136,14 +136,14 @@ class ChatFragment : Fragment() {
                 when (menuItem.itemId) {
                     R.id.action_settings -> {
                         findNavController().navigate(
-                            ChatFragmentDirections.actionNavChatToSettingsFragment()
+                            ChatFragmentDirections.actionNavChatToNavSettings()
                         )
                         true
                     }
 
                     R.id.action_model_select -> {
                         findNavController().navigate(
-                            ChatFragmentDirections.actionNavChatToModelsFragment()
+                            ChatFragmentDirections.actionNavChatToNavModels()
                         )
                         true
                     }
@@ -415,7 +415,7 @@ class ChatFragment : Fragment() {
                 if (error.code in listOf(401, 403)) {
                     setNegativeButton("Настройки") { dialog, _ ->
                         // Перейти к настройкам API ключа
-                        findNavController().navigate(ChatFragmentDirections.actionNavChatToSettingsFragment())
+                        findNavController().navigate(ChatFragmentDirections.actionNavChatToNavSettings())
                         dialog.dismiss()
                     }
                 }

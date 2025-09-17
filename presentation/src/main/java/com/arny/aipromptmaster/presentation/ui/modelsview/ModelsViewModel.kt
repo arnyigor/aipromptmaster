@@ -53,6 +53,22 @@ class ModelsViewModel @AssistedInject constructor(
             initialValue = DataResult.Loading
         )
 
+    init {
+        // Принудительно стартуем загрузку данных при создании ViewModel
+        loadModels()
+    }
+
+    /**
+     * Принудительно загружает модели
+     */
+    private fun loadModels() {
+        viewModelScope.launch {
+            // Если ваш llmInteractor.getModels() возвращает Flow,
+            // то вам может потребоваться метод для принудительного обновления
+            llmInteractor.refreshModels()
+        }
+    }
+
     /**
      * Переключает выбор модели
      */

@@ -25,8 +25,8 @@
             android:id="@+id/action_nav_history_to_nav_chat"
             app:destination="@id/nav_chat" />
         <action
-            android:id="@+id/action_nav_history_to_modelsFragment"
-            app:destination="@id/modelsFragment" />
+            android:id="@+id/action_nav_history_to_nav_models"
+            app:destination="@id/nav_models" />
     </fragment>
     <fragment
         android:id="@+id/nav_chat"
@@ -38,11 +38,11 @@
             app:argType="string"
             app:nullable="true" />
         <action
-            android:id="@+id/action_nav_chat_to_settingsFragment"
-            app:destination="@id/settingsFragment" />
+            android:id="@+id/action_nav_chat_to_nav_settings"
+            app:destination="@id/nav_settings" />
         <action
-            android:id="@+id/action_nav_chat_to_modelsFragment"
-            app:destination="@id/modelsFragment" />
+            android:id="@+id/action_nav_chat_to_nav_models"
+            app:destination="@id/nav_models" />
         <action
             android:id="@+id/action_nav_chat_to_editPromptDialogFragment"
             app:destination="@id/editPromptDialogFragment" />
@@ -70,16 +70,12 @@
             app:nullable="true" />
     </fragment>
     <fragment
-        android:id="@+id/settingsFragment"
-        android:name="com.arny.aipromptmaster.presentation.ui.settings.SettingsFragment"
-        android:label="@string/ai_settings" />
-    <fragment
-        android:id="@+id/modelsFragment"
+        android:id="@+id/nav_models"
         android:name="com.arny.aipromptmaster.presentation.ui.modelsview.ModelsFragment"
         android:label="@string/choose_model" >
         <action
             android:id="@+id/action_modelsFragment_to_settingsFragment"
-            app:destination="@id/settingsFragment" />
+            app:destination="@id/nav_settings" />
     </fragment>
     <fragment
         android:id="@+id/nav_settings"

@@ -195,13 +195,10 @@ class ModelsFragment : Fragment() {
         // Обновляем данные
         modelsAdapter.submitList(state.data)
 
-        // Если список не пустой, планируем плавную прокрутку
         if (state.data.isNotEmpty()) {
-            // Планируем прокрутку на следующий цикл обработки сообщений
             binding.rvModels.post {
-                // Дополнительная проверка, что список все еще не пустой
                 if (modelsAdapter.itemCount > 0) {
-                    binding.rvModels.smoothScrollToPosition(0)
+                    binding.rvModels.scrollToPosition(0)
                 }
             }
         }
@@ -212,7 +209,6 @@ class ModelsFragment : Fragment() {
             ModelsFilterBottomSheetDialog.REQUEST_KEY,/* lifecycleOwner = */
             viewLifecycleOwner) { _, bundle ->
             val result = BundleCompat.getParcelable(bundle,ModelsFilterBottomSheetDialog.RESULT_KEY,FilterState::class.java)
-            Log.i(this::class.java.simpleName, "setupFragmentResultListener: result:$result")
             if (result != null) {
                 viewModel.applyFilters(result)
             }

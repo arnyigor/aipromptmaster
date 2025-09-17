@@ -11,6 +11,29 @@
     <string name="send_feedback_question">Вы хотите отправить обратную связь?</string>
     <string name="review_current_issues_on_github">Просмотрите текущие issues. Возможно уже подобная проблема или вопросы уже обсуждался</string>
     <string name="github_issues_link" translatable="false">https://github.com/arnyigor/aipromptmaster/issues</string>
+
+    <!-- Основные строки фидбека -->
+    <string name="feedback_type">Тип обращения</string>
+    <string name="feedback_type_question">Вопрос</string>
+    <string name="feedback_type_other">Другое</string>
+    <string name="feedback_empty_message">Пожалуйста, введите сообщение</string>
+    <string name="include_device_info">Включить информацию об устройстве</string>
+
+    <!-- Строки из предыдущего кода -->
+    <string name="choose_feedback_option">Выберите способ отправки обратной связи:</string>
+    <string name="quick_feedback">Быстрый отзыв</string>
+    <string name="quick_feedback_description">Отправить текстовое сообщение напрямую</string>
+    <string name="create_github_issue">Создать GitHub Issue</string>
+    <string name="github_issue_description">Для детальных отчетов, прикрепления файлов или скриншотов</string>
+    <string name="feedback_type_suggestion">Предложение</string>
+    <string name="feedback_type_bug_simple">Простая ошибка</string>
+    <string name="feedback_files_note">💡 Для прикрепления файлов или скриншотов используйте GitHub Issues</string>
+    <string name="feedback_sent_success">Отзыв отправлен! Спасибо за обратную связь</string>
+    <string name="github_issue_tip">Вы можете прикреплять изображения, перетаскивая их в текстовое поле</string>
+    <string name="error_opening_browser_link_copied">Не удалось открыть браузер. Ссылка скопирована в буфер обмена</string>
+    <string name="action_back">Назад</string>
+
+
     <string name="title_home">Главная</string>
     <string name="title_history">История</string>
     <string name="not_implemented_yet">Пока не готово</string>
@@ -68,7 +91,19 @@
     <string name="add_to_favorites">Добавить в избранное</string>
     <string name="sorting">Сортировка</string>
     <string name="reset">сбросить</string>
+    <string name="reset_button">Сбросить фильтр</string>
     <string name="reverse">обратная</string>
+
+    <!--Сортировка моделей-->
+    <string name="sort_direction_ascending">По возрастанию</string>
+    <string name="sort_direction_descending">По убыванию</string>
+    <string name="sorting_by_name">По названию</string>
+    <string name="sorting_by_pricing">По цене</string>
+    <string name="sorting_by_date">По дате</string>
+    <string name="sorting_by_context_size">По размеру контекста</string>
+
+
+
     <string name="filters">Фильтры</string>
     <string name="clear_history">Очистить историю</string>
     <string name="ai_reasoning">Думает…</string>
@@ -97,23 +132,17 @@
     <string name="created_icon">📅</string>
     <string name="context_icon">📝</string>
     <string name="sort_default">По умолчанию</string>
-    <string name="sorting_by_pricing">По цене</string>
-    <string name="sorting_by_name">По имени</string>
-    <string name="sorting_by_context_size">По контексту</string>
     <string name="filter_favorite">Только избранные</string>
     <string name="filter_selected">Только выбранные</string>
     <string name="filter_image_support">Поддержка изображений</string>
     <string name="filter_extend">Расширенные</string>
     <string name="filter_apply">Применить</string>
     <string name="models_opportunities">Возможности модели</string>
-    <string name="sorting_by_date">По дате</string>
     <string name="filter_free_models">Бесплатные модели</string>
     <string name="system_prompt_description">Системный промпт задает поведение и стиль ответов AI модели</string>
     <string name="system_prompt_helper_text">Опишите роль и поведение AI</string>
 
     <!-- Направления сортировки -->
-    <string name="sort_direction_ascending">По возрастанию</string>
-    <string name="sort_direction_descending">По убыванию</string>
     <string name="attach_txt_file">прикрепить текстовый файл</string>
     <string name="action_close">Закрыть</string>
 
@@ -151,4 +180,8 @@
     <string name="navigation_drawer_open">Открыть навигацию</string>
     <string name="navigation_drawer_close">Закрыть навигацию</string>
     <string name="error_add_category">Ошибка сохранения категории</string>
+    <string name="id_for_prompt">ID:</string>
+    <string name="prompt_variants">Варианты промпта</string>
+    <string name="ru_lang">🇷🇺 Русский</string>
+    <string name="en_lang">🇬🇧 English</string>
 </resources>

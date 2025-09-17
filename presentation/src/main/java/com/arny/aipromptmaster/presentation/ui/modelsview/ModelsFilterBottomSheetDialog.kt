@@ -7,7 +7,6 @@ import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import androidx.core.os.bundleOf
 import androidx.fragment.app.setFragmentResult
-import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.ModelsBottomSheetFiltersBinding
 import com.arny.aipromptmaster.presentation.ui.models.FilterState
@@ -44,8 +43,8 @@ class ModelsFilterBottomSheetDialog : BottomSheetDialogFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         initializeSortOptions()
-        setupDropdown()
-        setupInitialState()
+        setupInitialState() // Сначала устанавливаем состояние
+        setupDropdown() // Потом настраиваем dropdown
         setupClickListeners()
     }
 
@@ -58,6 +57,34 @@ class ModelsFilterBottomSheetDialog : BottomSheetDialogFragment() {
         )
     }
 
+    private fun setupInitialState() {
+        val initialFilters = arguments?.getParcelable<FilterState>(ARG_FILTERS)
+
+        if (initialFilters != null) {
+            // Настраиваем фильтры-переключатели
+            binding.switchOnlySelected.isChecked = initialFilters.showOnlySelected
+            binding.switchOnlyFavorite.isChecked = initialFilters.showOnlyFavorites
+            binding.switchOnlyFree.isChecked = initialFilters.showOnlyFree
+            binding.switchSupportsImages.isChecked =
+                ModalityType.IMAGE in initialFilters.requiredModalities
+
+            // Определяем текущую активную сортировку
+            if (initialFilters.sortOptions.isNotEmpty()) {
+                val activeSortCriteria = initialFilters.sortOptions.first()
+                currentSortType = activeSortCriteria.type
+                currentSortDirection = activeSortCriteria.direction
+            } else {
+                // Дефолтные значения, если сортировка не задана
+                currentSortType = SortType.BY_PRICE
+                currentSortDirection = SortDirection.ASC
+            }
+        } else {
+            // Если нет переданных фильтров, используем дефолтные значения
+            currentSortType = SortType.BY_PRICE
+            currentSortDirection = SortDirection.ASC
+        }
+    }
+
     private fun setupDropdown() {
         val adapter = ArrayAdapter(
             requireContext(),
@@ -67,41 +94,20 @@ class ModelsFilterBottomSheetDialog : BottomSheetDialogFragment() {
 
         binding.sortTypeDropdown.setAdapter(adapter)
 
+        // Устанавливаем текущий выбранный элемент в dropdown
+        val selectedIndex = sortOptions.indexOfFirst { it.type == currentSortType }
+        if (selectedIndex >= 0) {
+            binding.sortTypeDropdown.setText(sortOptions[selectedIndex].displayName, false)
+        }
+
+        // Обновляем UI кнопки направления
+        updateSortDirectionButton()
+
+        // Обработчик выбора элемента из dropdown
         binding.sortTypeDropdown.setOnItemClickListener { _, _, position, _ ->
             val selectedOption = sortOptions[position]
             currentSortType = selectedOption.type
-            updateSortDirectionButton()
-        }
-    }
-
-    private fun setupInitialState() {
-        val initialFilters = arguments?.getParcelable<FilterState>(ARG_FILTERS)
-        initialFilters?.let { filters ->
-            // Настраиваем фильтры-переключатели
-            binding.switchOnlySelected.isChecked = filters.showOnlySelected
-            binding.switchOnlyFavorite.isChecked = filters.showOnlyFavorites
-            binding.switchOnlyFree.isChecked = filters.showOnlyFree
-            binding.switchSupportsImages.isChecked =
-                ModalityType.IMAGE in filters.requiredModalities
-
-            // Определяем текущую активную сортировку
-            if (filters.sortOptions.isNotEmpty()) {
-                val activeSortCriteria = filters.sortOptions.first()
-                currentSortType = activeSortCriteria.type
-                currentSortDirection = activeSortCriteria.direction
-
-                // Устанавливаем выбранный элемент в dropdown
-                val selectedIndex = sortOptions.indexOfFirst { it.type == currentSortType }
-                if (selectedIndex >= 0) {
-                    binding.sortTypeDropdown.setText(sortOptions[selectedIndex].displayName, false)
-                }
-            } else {
-                // Дефолтная сортировка
-                binding.sortTypeDropdown.setText(sortOptions[2].displayName, false)
-                currentSortDirection = SortDirection.ASC
-            }
-
-            updateSortDirectionButton()
+            updateSortDirectionButton() // Обновляем UI после изменения
         }
     }
 
@@ -116,6 +122,11 @@ class ModelsFilterBottomSheetDialog : BottomSheetDialogFragment() {
             val newFilters = buildFiltersFromUi()
             setFragmentResult(REQUEST_KEY, bundleOf(RESULT_KEY to newFilters))
             dismiss()
+        }
+
+        // Кнопка сброса фильтров (опционально)
+        binding.buttonReset.setOnClickListener {
+            resetFilters()
         }
     }
 
@@ -137,17 +148,42 @@ class ModelsFilterBottomSheetDialog : BottomSheetDialogFragment() {
 
         binding.buttonSortDirection.setIconResource(iconRes)
 
-        val contentDescription = when (currentSortDirection) {
+        // Обновляем текст на кнопке для ясности
+        val directionText = when (currentSortDirection) {
             SortDirection.ASC -> getString(R.string.sort_direction_ascending)
             SortDirection.DESC -> getString(R.string.sort_direction_descending)
         }
-        binding.buttonSortDirection.contentDescription = contentDescription
+
+        // Если у кнопки есть текст, обновляем его
+        binding.buttonSortDirection.text = directionText
+        binding.buttonSortDirection.contentDescription = directionText
+    }
+
+    private fun resetFilters() {
+        // Сбрасываем все переключатели
+        binding.switchOnlySelected.isChecked = false
+        binding.switchOnlyFavorite.isChecked = false
+        binding.switchOnlyFree.isChecked = false
+        binding.switchSupportsImages.isChecked = false
+
+        // Сбрасываем сортировку на дефолтную
+        currentSortType = SortType.BY_PRICE
+        currentSortDirection = SortDirection.ASC
+
+        // Обновляем dropdown
+        val defaultIndex = sortOptions.indexOfFirst { it.type == currentSortType }
+        if (defaultIndex >= 0) {
+            binding.sortTypeDropdown.setText(sortOptions[defaultIndex].displayName, false)
+        }
+
+        // Обновляем UI кнопки направления
+        updateSortDirectionButton()
     }
 
     private fun buildFiltersFromUi(): FilterState {
         val currentFilters = arguments?.getParcelable(ARG_FILTERS) ?: FilterState()
 
-        // Создаем единственный активный критерий сортировки
+        // Создаем критерий сортировки с текущими значениями
         val sortCriteria = SortCriteria(currentSortType, currentSortDirection)
 
         // Собираем модальности
@@ -157,7 +193,7 @@ class ModelsFilterBottomSheetDialog : BottomSheetDialogFragment() {
         }
 
         return currentFilters.copy(
-            sortOptions = listOf(sortCriteria), // Только один критерий
+            sortOptions = listOf(sortCriteria), // Текущий критерий сортировки
             showOnlySelected = binding.switchOnlySelected.isChecked,
             showOnlyFavorites = binding.switchOnlyFavorite.isChecked,
             showOnlyFree = binding.switchOnlyFree.isChecked,
@@ -183,4 +219,3 @@ class ModelsFilterBottomSheetDialog : BottomSheetDialogFragment() {
         }
     }
 }
-

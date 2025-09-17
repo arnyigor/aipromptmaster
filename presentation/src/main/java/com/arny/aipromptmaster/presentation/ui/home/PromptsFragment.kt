@@ -1,6 +1,12 @@
 package com.arny.aipromptmaster.presentation.ui.home
 
+import android.app.ActivityManager
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.Menu
@@ -8,9 +14,13 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
+import android.widget.AutoCompleteTextView
+import android.widget.LinearLayout
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.SearchView
+import androidx.core.net.toUri
 import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -21,8 +31,7 @@ import com.arny.aipromptmaster.core.di.scopes.viewModelFactory
 import com.arny.aipromptmaster.domain.models.AppConstants
 import com.arny.aipromptmaster.domain.models.Prompt
 import com.arny.aipromptmaster.domain.models.SyncConflict
-import com.arny.aipromptmaster.domain.models.strings.StringHolder
-import com.arny.aipromptmaster.domain.models.strings.StringHolder.*
+import com.arny.aipromptmaster.domain.models.strings.StringHolder.Formatted
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.FragmentHomeBinding
 import com.arny.aipromptmaster.presentation.utils.asString
@@ -31,6 +40,8 @@ import com.arny.aipromptmaster.presentation.utils.getParcelableCompat
 import com.arny.aipromptmaster.presentation.utils.hideKeyboard
 import com.arny.aipromptmaster.presentation.utils.launchWhenCreated
 import com.arny.aipromptmaster.presentation.utils.toastMessage
+import com.google.android.material.card.MaterialCardView
+import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
@@ -39,6 +50,7 @@ import dagger.android.support.AndroidSupportInjection
 import dagger.assisted.AssistedFactory
 import es.dmoral.toasty.Toasty
 import kotlinx.coroutines.flow.collectLatest
+import java.util.Locale
 import javax.inject.Inject
 
 class PromptsFragment : Fragment() {
@@ -194,8 +206,6 @@ class PromptsFragment : Fragment() {
         }
     }
 
-// PromptsFragment.kt
-
     private fun updateDynamicFilterChips(state: SearchState) {
         binding.chipGroupDynamicFilters.removeAllViews()
 
@@ -211,8 +221,6 @@ class PromptsFragment : Fragment() {
         }
     }
 
-
-    // НОВЫЙ МЕТОД для создания одного чипа
     private fun createFilterChip(text: String): Chip {
         return Chip(requireContext()).apply {
             this.text = text
@@ -223,7 +231,6 @@ class PromptsFragment : Fragment() {
         }
     }
 
-    // НОВЫЙ МЕТОД для синхронизации состояния статических чипов
     private fun updateStaticFilterChips(state: SearchState) {
         // Временно отключаем слушатель, чтобы программное изменение не вызывало его снова
         binding.chipGroupFilters.setOnCheckedChangeListener(null)
@@ -297,7 +304,7 @@ class PromptsFragment : Fragment() {
                     adapterRefresh()
                 }
 
-                is PromptsUiEvent.ShowInfoMessage ->{
+                is PromptsUiEvent.ShowInfoMessage -> {
                     toastMessage(event.stringHolder)
                 }
 
@@ -372,27 +379,176 @@ class PromptsFragment : Fragment() {
     }
 
     private fun showFeedBackDialog() {
-        val dialogView =
-            LayoutInflater.from(requireContext()).inflate(R.layout.dialog_feedback, null)
-        val editText = dialogView.findViewById<TextInputEditText>(R.id.et_feedback)
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_feedback, null)
 
-        MaterialAlertDialogBuilder(requireContext())
+        val optionsContainer = dialogView.findViewById<LinearLayout>(R.id.options_container)
+        val feedbackForm = dialogView.findViewById<LinearLayout>(R.id.feedback_form)
+        val cardQuickFeedback = dialogView.findViewById<MaterialCardView>(R.id.card_quick_feedback)
+        val cardGithubIssue = dialogView.findViewById<MaterialCardView>(R.id.card_github_issue)
+
+        val dialog = MaterialAlertDialogBuilder(requireContext())
             .setTitle(getString(R.string.send_feedback_question))
             .setView(dialogView)
             .setNegativeButton(android.R.string.cancel, null)
+            .create()
+
+        // Обработчик быстрого фидбека
+        cardQuickFeedback.setOnClickListener {
+            dialog.dismiss() // Сначала закрываем текущий диалог
+            showQuickFeedbackForm() // Затем показываем новый
+        }
+
+        // Обработчик GitHub Issues
+        cardGithubIssue.setOnClickListener {
+            dialog.dismiss()
+            openGithubIssues()
+        }
+
+        dialog.show()
+    }
+
+    private fun showQuickFeedbackForm() {
+        // Создаем НОВЫЙ dialogView для формы фидбека
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_feedback, null)
+
+        val optionsContainer = dialogView.findViewById<LinearLayout>(R.id.options_container)
+        val feedbackForm = dialogView.findViewById<LinearLayout>(R.id.feedback_form)
+        val feedbackTypeSpinner = dialogView.findViewById<AutoCompleteTextView>(R.id.feedback_type_spinner)
+        val editText = dialogView.findViewById<TextInputEditText>(R.id.et_feedback)
+        val cbIncludeDeviceInfo = dialogView.findViewById<MaterialCheckBox>(R.id.cb_include_device_info)
+
+        // Скрываем опции и показываем форму
+        optionsContainer.visibility = View.GONE
+        feedbackForm.visibility = View.VISIBLE
+
+        // Настройка спиннера
+        setupFeedbackTypeSpinner(feedbackTypeSpinner)
+
+        // Создаем новый диалог с кнопками
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(getString(R.string.quick_feedback))
+            .setView(dialogView)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setNeutralButton(R.string.action_back) { _, _ ->
+                // Возвращаемся к выбору опций
+                showFeedBackDialog()
+            }
             .setPositiveButton(R.string.action_send) { _, _ ->
-                val feedbackText = editText.text.toString().trim()
-                if (feedbackText.isNotEmpty()) {
-                    viewModel.sendFeedback(feedbackText)
-                } else {
-                    Toasty.warning(
-                        requireContext(),
-                        getString(android.R.string.cancel),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
+                sendQuickFeedback(editText, feedbackTypeSpinner, cbIncludeDeviceInfo)
             }
             .show()
+    }
+
+    private fun setupFeedbackTypeSpinner(spinner: AutoCompleteTextView) {
+        val feedbackTypes = arrayOf(
+            getString(R.string.feedback_type_suggestion),
+            getString(R.string.feedback_type_bug_simple),
+            getString(R.string.feedback_type_question),
+            getString(R.string.feedback_type_other)
+        )
+
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, feedbackTypes)
+        spinner.setAdapter(adapter)
+        spinner.setText(feedbackTypes[0], false)
+    }
+
+    private fun sendQuickFeedback(
+        editText: TextInputEditText,
+        feedbackTypeSpinner: AutoCompleteTextView,
+        cbIncludeDeviceInfo: MaterialCheckBox
+    ) {
+        val feedbackText = editText.text.toString().trim()
+        val feedbackType = feedbackTypeSpinner.text.toString()
+
+        if (feedbackText.isNotEmpty()) {
+            val fullFeedback = buildString {
+                appendLine("Тип: $feedbackType")
+                appendLine()
+                appendLine(feedbackText)
+
+                if (cbIncludeDeviceInfo.isChecked) {
+                    appendLine()
+                    appendLine("--- Информация об устройстве ---")
+                    appendLine(getDeviceInfo())
+                }
+            }
+
+            viewModel.sendFeedback(fullFeedback)
+
+            Toasty.success(
+                requireContext(),
+                getString(R.string.feedback_sent_success),
+                Toast.LENGTH_SHORT
+            ).show()
+        } else {
+            Toasty.warning(
+                requireContext(),
+                getString(R.string.feedback_empty_message),
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    private fun openGithubIssues() {
+        val intent = Intent(Intent.ACTION_VIEW, getString(R.string.github_issues_link).toUri())
+        try {
+            startActivity(intent)
+
+            // Показываем подсказку
+            Toasty.info(
+                requireContext(),
+                getString(R.string.github_issue_tip),
+                Toast.LENGTH_LONG
+            ).show()
+        } catch (e: Exception) {
+            // Копируем ссылку в буфер обмена как fallback
+            val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("GitHub Issues", getString(R.string.github_issues_link))
+            clipboard.setPrimaryClip(clip)
+
+            Toasty.error(
+                requireContext(),
+                getString(R.string.error_opening_browser_link_copied),
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    private fun getAppVersion(): String {
+        return try {
+            val packageInfo = requireContext().packageManager.getPackageInfo(requireContext().packageName, 0)
+            "${packageInfo.versionName} (${packageInfo.versionCode})"
+        } catch (e: Exception) {
+            "Unknown"
+        }
+    }
+
+    private fun getDeviceInfo(): String {
+        return buildString {
+            appendLine("Device: ${Build.MANUFACTURER} ${Build.MODEL}")
+            appendLine("Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+            appendLine("App Version: ${getAppVersion()}")
+            appendLine("Locale: ${Locale.getDefault()}")
+
+            try {
+                appendLine("Screen: ${getScreenInfo()}")
+                appendLine("RAM: ${getAvailableMemory()}")
+            } catch (e: Exception) {
+                appendLine("Additional info: unavailable")
+            }
+        }
+    }
+
+    private fun getScreenInfo(): String {
+        val displayMetrics = resources.displayMetrics
+        return "${displayMetrics.widthPixels}x${displayMetrics.heightPixels} (${displayMetrics.densityDpi}dpi)"
+    }
+
+    private fun getAvailableMemory(): String {
+        val activityManager = requireContext().getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val memoryInfo = ActivityManager.MemoryInfo()
+        activityManager.getMemoryInfo(memoryInfo)
+        return "${memoryInfo.availMem / (1024 * 1024)}MB available"
     }
 
     private fun updateUiState(state: PromptsUiState) {
@@ -455,24 +611,6 @@ class PromptsFragment : Fragment() {
 
     private fun adapterRefresh() {
         promptsAdapter.refresh()
-    }
-
-    private fun showError(stringHolder: StringHolder) {
-        val errorMessage = stringHolder.asString(requireContext())
-        with(binding) {
-            // При показе ошибки скрываем все остальные состояния
-            recyclerView.isVisible = false
-            tvEmpty.isVisible = false
-            errorView.isVisible = true
-            tvError.text = errorMessage
-        }
-        Snackbar.make(
-            binding.root,
-            errorMessage,
-            Snackbar.LENGTH_LONG
-        ).setAction(R.string.retry) {
-            viewModel.synchronize()
-        }.show()
     }
 
     private fun showMessage(message: String) {
