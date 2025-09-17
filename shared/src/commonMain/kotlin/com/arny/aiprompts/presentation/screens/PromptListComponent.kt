@@ -83,7 +83,7 @@ class DefaultPromptListComponent(
         // Обновляем ID выбранного элемента для правой панели
         _state.update { it.copy(selectedPromptId = id) }
         // Можно и сразу навигацию делать, если на desktop не нужна правая панель
-        onNavigateToDetails(id) // Просто вызываем коллбэк, переданный из RootComponent
+        onNavigateToDetails(id)
     }
 
     override fun onFavoriteClicked(id: String) {

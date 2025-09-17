@@ -95,7 +95,7 @@ class DefaultPromptDetailComponent(
 
 
     private suspend fun loadPromptDetails() {
-       /* // Убедимся, что при каждом вызове (например, для Refresh) показывается индикатор
+         // Убедимся, что при каждом вызове (например, для Refresh) показывается индикатор
         _state.update { it.copy(isLoading = true, error = null) }
 
         try {
@@ -126,6 +126,6 @@ class DefaultPromptDetailComponent(
                     error = "Не удалось загрузить данные: ${e.message}"
                 )
             }
-        }*/
+        }
     }
 }

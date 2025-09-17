@@ -14,6 +14,11 @@ sealed interface ScreenConfig {
     data object PromptList : ScreenConfig
 
     @Serializable
+    data class PromptDetails(
+        val promptId: String
+    ) : ScreenConfig
+
+    @Serializable
     data object Scraper : ScreenConfig
 
     @Serializable

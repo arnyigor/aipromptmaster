@@ -11,7 +11,9 @@ import com.arny.aiprompts.domain.interfaces.IHybridParser
 import com.arny.aiprompts.domain.system.SystemInteraction
 import com.arny.aiprompts.domain.usecase.*
 import com.arny.aiprompts.presentation.navigation.RootComponent.Child
+import com.arny.aiprompts.presentation.screens.DefaultPromptDetailComponent
 import com.arny.aiprompts.presentation.screens.DefaultPromptListComponent
+import com.arny.aiprompts.presentation.screens.PromptDetailComponent
 import com.arny.aiprompts.presentation.screens.PromptListComponent
 import com.arny.aiprompts.presentation.ui.importer.DefaultImporterComponent
 import com.arny.aiprompts.presentation.ui.importer.ImporterComponent
@@ -26,6 +28,7 @@ interface RootComponent {
         data class List(val component: PromptListComponent) : Child
         data class Scraper(val component: ScraperComponent) : Child
         data class Importer(val component: ImporterComponent) : Child
+        data class Details(val component: PromptDetailComponent) : Child
     }
 }
 
@@ -65,10 +68,22 @@ class DefaultRootComponent(
                     getPromptsUseCase = getPromptsUseCase,
                     toggleFavoriteUseCase = toggleFavoriteUseCase,
                     importJsonUseCase = importJsonUseCase,
-                    onNavigateToDetails = { /* TODO */ },
+                    onNavigateToDetails = { promptId ->
+                        navigation.push(ScreenConfig.PromptDetails(promptId))
+                    },
                     onNavigateToScraper = { navigation.push(ScreenConfig.Scraper) }
                 )
             )
+
+            is ScreenConfig.PromptDetails -> {
+                Child.Details(
+                    DefaultPromptDetailComponent(
+                        componentContext = context,
+                        onNavigateBack = { navigation.pop() },
+                        promptId = config.promptId
+                    )
+                )
+            }
 
             is ScreenConfig.Scraper -> Child.Scraper(
                 DefaultScraperComponent(

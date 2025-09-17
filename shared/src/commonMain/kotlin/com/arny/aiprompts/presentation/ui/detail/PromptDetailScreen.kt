@@ -43,10 +43,11 @@ fun ErrorState(
     }
 }
 
+@Suppress("UnusedBoxWithConstraintsScope")
 @Composable
 fun AdaptivePromptDetailLayout(component: PromptDetailComponent) {
     val state by component.state.collectAsState()
-
+    println("AdaptivePromptDetailLayout state:$state")
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         if (maxWidth > 800.dp) {
             // --- DESKTOP LAYOUT ---
