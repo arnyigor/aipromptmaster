@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
+import androidx.appcompat.app.AlertDialog
 import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -84,7 +85,47 @@ class EditPromptFragment : Fragment() {
             android.R.layout.simple_dropdown_item_1line,
             mutableListOf()
         )
+
+        // Разрешаем фильтрацию и показ всех элементов
+        categoryAdapter.setNotifyOnChange(true)
         binding.dropdownCategory.setAdapter(categoryAdapter)
+        binding.dropdownCategory.threshold = 1
+
+        // Обработка ввода новой категории
+        binding.dropdownCategory.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) {
+                val enteredText = binding.dropdownCategory.text.toString().trim()
+                if (enteredText.isNotEmpty() && categoryAdapter.getPosition(enteredText) < 0) {
+                    // Новая категория - можно добавить подтверждение
+                    showAddCategoryDialog(enteredText)
+                }
+            }
+        }
+    }
+
+    private fun showAddCategoryDialog(categoryName: String) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Добавить новую категорию")
+            .setMessage("Добавить категорию \"$categoryName\"?")
+            .setPositiveButton("Добавить") { _, _ ->
+                addNewCategory(categoryName)
+            }
+            .setNegativeButton("Отмена") { _, _ ->
+                // Можно очистить поле или оставить как есть
+            }
+            .show()
+    }
+
+    private fun addNewCategory(categoryName: String) {
+        // Добавляем категорию в адаптер
+        categoryAdapter.add(categoryName)
+        categoryAdapter.notifyDataSetChanged()
+
+        // Устанавливаем новую категорию как выбранную
+        binding.dropdownCategory.setText(categoryName, false)
+
+        // Опционально: сохраняем новую категорию через ViewModel
+        viewModel.addNewCategory(categoryName)
     }
 
     private fun observeViewModel() {

@@ -137,4 +137,18 @@ class EditPromptViewModel @AssistedInject constructor(
 
         else -> null
     }
+
+    fun addNewCategory(categoryName: String) {
+        viewModelScope.launch {
+            try {
+                interactor.addCategory(categoryName)
+                val categories = interactor.getPromptsSortData().categories
+                _categories.value = categories
+            } catch (e: Exception) {
+                _uiState.value = EditPromptUiState.Error(
+                    StringHolder.Resource(R.string.error_add_category)
+                )
+            }
+        }
+    }
 }

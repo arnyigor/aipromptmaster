@@ -29,6 +29,19 @@ class PromptsInteractorImpl @Inject constructor(
         limit = limit
     )
 
+    override suspend fun addCategory(categoryName: String) {
+        // Добавить категорию в кэширование
+        val currentSortData = getPromptsSortData()
+        val updatedCategories = currentSortData.categories.toMutableList()
+        if (!updatedCategories.contains(categoryName)) {
+            updatedCategories.add(categoryName)
+            val updatedSortData = currentSortData.copy(
+                categories = updatedCategories.toList()
+            )
+            repository.cacheSortData(updatedSortData)
+        }
+    }
+
     override suspend fun getPromptsSortData(): PromptsSortData =
         repository.getCacheSortData() ?: loadAndCacheSortData()
 

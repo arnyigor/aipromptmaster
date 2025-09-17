@@ -52,14 +52,16 @@
                 android:layout_marginBottom="16dp"
                 app:hintAnimationEnabled="true"
                 app:hintEnabled="true"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                app:endIconMode="dropdown_menu">
 
                 <AutoCompleteTextView
                     android:id="@+id/dropdown_category"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="@string/prompt_category_hint"
-                    android:inputType="none"
+                    android:inputType="textCapWords|textAutoCorrect"
+                    android:completionThreshold="1"
                     android:textAppearance="?attr/textAppearanceBodyLarge"
                     android:textColor="?attr/colorOnSurface"
                     android:textColorHint="?attr/colorOnSurfaceVariant"
