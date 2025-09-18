@@ -165,9 +165,6 @@ private fun MainContent(
 
     // Скролл к первому элементу при изменении списка промптов
     LaunchedEffect(state.currentPrompts) {
-        println("MainContent: currentPrompts size = ${state.currentPrompts.size}")
-        println("MainContent: isLoading = ${state.isLoading}")
-        println("MainContent: error = ${state.error}")
         if (state.currentPrompts.isNotEmpty()) {
             listState.animateScrollToItem(0)
         }

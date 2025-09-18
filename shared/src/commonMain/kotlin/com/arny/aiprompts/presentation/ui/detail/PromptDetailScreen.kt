@@ -65,6 +65,7 @@ fun AdaptivePromptDetailLayout(component: PromptDetailComponent) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DesktopPromptDetailLayout(
     component: PromptDetailComponent,
@@ -72,196 +73,215 @@ private fun DesktopPromptDetailLayout(
     clipboardManager: ClipboardManager
 ) {
     val promptToDisplay = if (state.isEditing) state.draftPrompt else state.prompt
-    Row(
-        modifier = Modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Левая панель (70%): Основной контент
-        LazyColumn(
-            modifier = Modifier.weight(0.7f).padding(16.dp),
-            contentPadding = PaddingValues(bottom = 80.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            when {
-                state.isLoading -> item(key = "loading") {
-                    Box(
-                        Modifier.fillParentMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) { CircularProgressIndicator() }
-                }
 
-                state.error != null -> item(key = "error") {
-                    ErrorState(state.error.orEmpty()) {
-                        component.onEvent(PromptDetailEvent.Refresh)
-                    }
-                }
-
-                promptToDisplay != null -> {
-                    // Редактируемый заголовок
-                    if (state.isEditing) {
-                        item(key = "title") {
-                            OutlinedTextField(
-                                value = promptToDisplay.title,
-                                onValueChange = { component.onEvent(PromptDetailEvent.TitleChanged(it)) },
-                                label = { Text("Заголовок") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    }
-
-                    // Контент на русском
-                    promptToDisplay.content?.ru?.let { ruContent ->
-                        item(key = "content_ru") {
-                            EditablePromptContentCard(
-                                language = "Русский",
-                                viewText = ruContent,
-                                editText = ruContent,
-                                isEditing = state.isEditing,
-                                onValueChange = { newText ->
-                                    component.onEvent(
-                                        PromptDetailEvent.ContentChanged(
-                                            PromptLanguage.RU, newText
-                                        )
-                                    )
-                                },
-                                onCopyClick = { clipboardManager.setText(AnnotatedString(ruContent)) }
-                            )
-                        }
-                    }
-
-                    // Контент на английском
-                    promptToDisplay.content?.en?.let { enContent ->
-                        item(key = "content_en") {
-                            EditablePromptContentCard(
-                                language = "English",
-                                viewText = enContent,
-                                editText = enContent,
-                                isEditing = state.isEditing,
-                                onValueChange = { newText ->
-                                    component.onEvent(
-                                        PromptDetailEvent.ContentChanged(
-                                            PromptLanguage.EN, newText
-                                        )
-                                    )
-                                },
-                                onCopyClick = { clipboardManager.setText(AnnotatedString(enContent)) }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // Правая панель (30%): Метаданные и действия
-        Column(
-            modifier = Modifier.weight(0.3f).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Заголовок панели
-            if (!state.isEditing && promptToDisplay != null) {
-                Text(
-                    text = promptToDisplay.title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            // Теги
-            promptToDisplay?.let { prompt ->
-                Card {
-                    Column(modifier = Modifier.padding(16.dp)) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    if (!state.isEditing) {
                         Text(
-                            "Теги",
-                            style = MaterialTheme.typography.titleMedium
+                            text = promptToDisplay?.title ?: "Загрузка...",
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                    } else {
+                        Text("Редактирование промпта")
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = { component.onEvent(PromptDetailEvent.BackClicked) }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                    }
+                },
+                actions = {
+                    if (state.isEditing) {
+                        // Кнопка отмены в режиме редактирования
+                        TextButton(onClick = { component.onEvent(PromptDetailEvent.CancelClicked) }) {
+                            Text("ОТМЕНА")
+                        }
+                    } else {
+                        // Кнопка "В избранное" в режиме просмотра
+                        promptToDisplay?.let { prompt ->
+                            IconButton(onClick = { component.onEvent(PromptDetailEvent.FavoriteClicked) }) {
+                                Icon(
+                                    imageVector = if (prompt.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                                    contentDescription = "В избранное",
+                                    tint = if (prompt.isFavorite) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                                )
+                            }
+                        }
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues), // Добавляем paddingValues от Scaffold
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Левая панель (70%): Основной контент
+            LazyColumn(
+                modifier = Modifier.weight(0.7f).padding(16.dp),
+                contentPadding = PaddingValues(bottom = 16.dp), // Убираем большой отступ снизу
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                when {
+                    state.isLoading -> item(key = "loading") {
+                        Box(
+                            Modifier.fillParentMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) { CircularProgressIndicator() }
+                    }
 
+                    state.error != null -> item(key = "error") {
+                        ErrorState(state.error) {
+                            component.onEvent(PromptDetailEvent.Refresh)
+                        }
+                    }
+
+                    promptToDisplay != null -> {
+                        // Редактируемый заголовок (только в режиме редактирования)
                         if (state.isEditing) {
-                            // Редактируемые теги
+                            item(key = "title") {
+                                OutlinedTextField(
+                                    value = promptToDisplay.title,
+                                    onValueChange = { component.onEvent(PromptDetailEvent.TitleChanged(it)) },
+                                    label = { Text("Заголовок") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+
+                        // Контент на русском
+                        promptToDisplay.content?.ru?.let { ruContent ->
+                            item(key = "content_ru") {
+                                EditablePromptContentCard(
+                                    language = "Русский",
+                                    viewText = ruContent,
+                                    editText = ruContent,
+                                    isEditing = state.isEditing,
+                                    onValueChange = { newText ->
+                                        component.onEvent(
+                                            PromptDetailEvent.ContentChanged(
+                                                PromptLanguage.RU, newText
+                                            )
+                                        )
+                                    },
+                                    onCopyClick = { clipboardManager.setText(AnnotatedString(ruContent)) }
+                                )
+                            }
+                        }
+
+                        // Контент на английском
+                        promptToDisplay.content?.en?.let { enContent ->
+                            item(key = "content_en") {
+                                EditablePromptContentCard(
+                                    language = "English",
+                                    viewText = enContent,
+                                    editText = enContent,
+                                    isEditing = state.isEditing,
+                                    onValueChange = { newText ->
+                                        component.onEvent(
+                                            PromptDetailEvent.ContentChanged(
+                                                PromptLanguage.EN, newText
+                                            )
+                                        )
+                                    },
+                                    onCopyClick = { clipboardManager.setText(AnnotatedString(enContent)) }
+                                )
+                            }
+                        }
+
+                        // Теги в левой панели (для desktop удобнее)
+                        item(key = "tags") {
                             EditableTagsSection(
-                                title = "",
-                                tags = prompt.tags,
-                                isEditing = true,
+                                title = "Теги",
+                                tags = promptToDisplay.tags,
+                                isEditing = state.isEditing,
                                 onAddTag = { /* component.onEvent(...) */ },
                                 onRemoveTag = { /* component.onEvent(...) */ }
                             )
-                        } else {
-                            // Теги только для чтения
-                            if (prompt.tags.isNotEmpty()) {
-                                LazyVerticalStaggeredGrid(
-                                    columns = StaggeredGridCells.Adaptive(100.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    verticalItemSpacing = 4.dp
-                                ) {
-                                    items(prompt.tags) { tag ->
-                                        SuggestionChip(
-                                            onClick = { },
-                                            label = { Text(tag) }
-                                        )
-                                    }
-                                }
-                            } else {
-                                Text(
-                                    "Нет тегов",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
                         }
                     }
                 }
             }
 
-            // Кнопки действий
-            if (promptToDisplay != null && !state.isLoading) {
-                Card {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            "Действия",
-                            style = MaterialTheme.typography.titleMedium
-                        )
+            // Правая панель (30%): Метаданные и действия
+            Column(
+                modifier = Modifier.weight(0.3f).padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Информационная карточка
+                if (!state.isEditing && promptToDisplay != null) {
+                    Card {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                "Информация о промпте",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = promptToDisplay.title,
+                                style = MaterialTheme.typography.bodyLarge,
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
 
-                        if (state.isEditing) {
-                            Button(
-                                onClick = { component.onEvent(PromptDetailEvent.SaveClicked) },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(Icons.Default.Done, contentDescription = null)
-                                Spacer(Modifier.width(8.dp))
-                                Text("Сохранить")
-                            }
+                // Кнопки действий
+                if (promptToDisplay != null && !state.isLoading) {
+                    Card {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                "Действия",
+                                style = MaterialTheme.typography.titleMedium
+                            )
 
-                            OutlinedButton(
-                                onClick = { component.onEvent(PromptDetailEvent.CancelClicked) },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("Отмена")
-                            }
-                        } else {
-                            Button(
-                                onClick = { component.onEvent(PromptDetailEvent.EditClicked) },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(Icons.Default.Edit, contentDescription = null)
-                                Spacer(Modifier.width(8.dp))
-                                Text("Редактировать")
-                            }
+                            if (state.isEditing) {
+                                Button(
+                                    onClick = { component.onEvent(PromptDetailEvent.SaveClicked) },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(Icons.Default.Done, contentDescription = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Сохранить")
+                                }
 
-                            OutlinedButton(
-                                onClick = { component.onEvent(PromptDetailEvent.FavoriteClicked) },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(
-                                    if (promptToDisplay.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                                    contentDescription = null,
-                                    tint = if (promptToDisplay.isFavorite) MaterialTheme.colorScheme.primary else LocalContentColor.current
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text(if (promptToDisplay.isFavorite) "Убрать из избранного" else "В избранное")
+                                OutlinedButton(
+                                    onClick = { component.onEvent(PromptDetailEvent.CancelClicked) },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Отмена")
+                                }
+                            } else {
+                                Button(
+                                    onClick = { component.onEvent(PromptDetailEvent.EditClicked) },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(Icons.Default.Edit, contentDescription = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Редактировать")
+                                }
+
+                                OutlinedButton(
+                                    onClick = { component.onEvent(PromptDetailEvent.FavoriteClicked) },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(
+                                        if (promptToDisplay.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                                        contentDescription = null,
+                                        tint = if (promptToDisplay.isFavorite) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(if (promptToDisplay.isFavorite) "Убрать из избранного" else "В избранное")
+                                }
                             }
                         }
                     }
