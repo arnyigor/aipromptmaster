@@ -233,7 +233,7 @@ private fun DesktopPromptDetailLayout(
                 }
 
                 // Кнопки действий
-                if (promptToDisplay != null && !state.isLoading) {
+                if (promptToDisplay != null && !state.isLoading && promptToDisplay.isLocal) {
                     Card {
                         Column(
                             modifier = Modifier.padding(16.dp),
