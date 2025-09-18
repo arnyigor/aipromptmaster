@@ -22,7 +22,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          # Важно: получаем полную историю для доступа к тегам
+          ref: master
           fetch-depth: 0
 
       - name: Set up JDK 17
