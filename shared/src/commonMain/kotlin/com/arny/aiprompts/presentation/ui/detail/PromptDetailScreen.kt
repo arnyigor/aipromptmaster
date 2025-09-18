@@ -2,9 +2,6 @@ package com.arny.aiprompts.presentation.ui.detail
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
-import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Done
@@ -13,6 +10,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -22,8 +20,10 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.mohamedrejeb.richeditor.ui.material3.RichText
 import com.arny.aiprompts.presentation.screens.PromptDetailComponent
 import com.arny.aiprompts.presentation.screens.PromptDetailEvent
+import com.mohamedrejeb.richeditor.model.rememberRichTextState
 
 @Composable
 fun PromptDetailScreen(component: PromptDetailComponent) {
@@ -290,6 +290,29 @@ private fun DesktopPromptDetailLayout(
         }
     }
 }
+
+@Composable
+fun RichMarkdownDisplay(
+    content: String,
+    modifier: Modifier = Modifier
+) {
+    // Создаем состояние для RichText
+    val richTextState = rememberRichTextState()
+
+    // Устанавливаем markdown контент при изменении
+    LaunchedEffect(content) {
+        richTextState.setMarkdown(content)
+    }
+
+    RichText(
+        state = richTextState, // Передаем state, а не text!
+        modifier = modifier,
+        style = MaterialTheme.typography.bodyMedium.copy(
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    )
+}
+
 
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)

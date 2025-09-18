@@ -47,7 +47,7 @@ kotlin {
                 api("com.arkivanov.decompose:extensions-compose:${libs.versions.decompose.get()}")
                 api("com.arkivanov.essenty:lifecycle-coroutines:${libs.versions.lifecycle.coroutines.get()}")
                 api("androidx.room:room-runtime:${libs.versions.room.get()}")
-                api("androidx.room:room-ktx:${libs.versions.room.get()}")
+                api(libs.androidx.room.ktx)
                 api("io.insert-koin:koin-compose:${libs.versions.koin.get()}")
                 api(libs.kotlinx.datetime)
                 api(libs.kotlinx.coroutines.core)
@@ -62,6 +62,8 @@ kotlin {
                 api(libs.uuid)
                 api(libs.jsoup)
                 implementation(libs.selenium.java)
+                implementation(libs.compose.markdown)
+                implementation(libs.richeditor.compose)
             }
         }
 
