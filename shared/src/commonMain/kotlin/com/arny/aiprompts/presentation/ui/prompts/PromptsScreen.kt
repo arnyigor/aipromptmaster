@@ -5,19 +5,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.rememberCoroutineScope
 import com.arny.aiprompts.domain.model.Prompt
 import com.arny.aiprompts.presentation.screens.PromptListComponent
 
@@ -25,13 +22,10 @@ import com.arny.aiprompts.presentation.screens.PromptListComponent
 @Composable
 fun PromptsScreen(component: PromptListComponent) {
     val state by component.state.collectAsState()
-
-    // Определяем лейаут один раз наверху
     BoxWithConstraints {
         val isDesktopLayout = maxWidth > 840.dp
 
         val snackbarHostState = remember { SnackbarHostState() }
-        val scope = rememberCoroutineScope()
 
         Scaffold(
             topBar = {
@@ -42,7 +36,6 @@ fun PromptsScreen(component: PromptListComponent) {
                 )
             },
             floatingActionButton = {
-                // Показываем FAB только на мобильной версии
                 if (!isDesktopLayout) {
                     FloatingActionButton(onClick = component::onAddPromptClicked) {
                         Icon(Icons.Default.Add, contentDescription = "Добавить промпт")
@@ -76,11 +69,8 @@ private fun DesktopLayout(state: PromptsListState, component: PromptListComponen
         ActionPanel(
             modifier = Modifier.width(220.dp),
             onAdd = component::onAddPromptClicked,
-            onEdit = component::onEditPromptClicked,
-            onDelete = component::onDeletePromptClicked,
-            onSettings = component::onSettingsClicked, // Передаем обработчик настроек
-            onScraperNavigate = component::onNavigateToScraperClicked,
-            isActionEnabled = state.selectedPromptId != null
+            onSettings = component::onSettingsClicked,
+            onScraperNavigate = component::onNavigateToScraperClicked
         )
     }
 }
@@ -203,7 +193,6 @@ private fun MainContent(
         }
     }
 }
-
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable

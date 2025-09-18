@@ -453,6 +453,7 @@ class DefaultImporterComponent(
                             updatedAt = rawPost.date.toEpochMilliseconds(),
                             category = editedData.category,
                             tags = editedData.tags,
+                            isLocal = true,
                             variables = editedData.variables
                         )
                     } else {
@@ -660,6 +661,7 @@ class DefaultImporterComponent(
     }
 
     // Вспомогательная функция для декодирования URL с кириллицей
+    @Suppress("NewApi")
     private fun decodeUrlWithCyrillic(url: String): String {
         return try {
             // Сначала пробуем декодировать как UTF-8

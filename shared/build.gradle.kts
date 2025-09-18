@@ -107,6 +107,40 @@ if (localPropertiesFile.exists()) {
     localProperties.load(FileInputStream(localPropertiesFile))
 }
 
+// Получаем значения из local.properties
+val isDebug = localProperties.getProperty("app.debug", "false").toBoolean()
+
+val generateDesktopBuildConfig by tasks.registering {
+    val outputFile = file("src/desktopMain/kotlin/com/arny/aiprompts/BuildConfig.kt")
+
+    inputs.property("debug", isDebug)
+    outputs.file(outputFile)
+
+    doLast {
+        outputFile.parentFile?.mkdirs()
+        outputFile.writeText("""
+            package com.arny.aiprompts
+            
+            object BuildConfig {
+                const val DEBUG = ${inputs.properties["debug"]}
+            }
+        """.trimIndent())
+    }
+}
+
+// Только основная зависимость компиляции
+tasks.named("compileKotlinDesktop") {
+    dependsOn(generateDesktopBuildConfig)
+}
+
+// Находим все KSP задачи динамически
+afterEvaluate {
+    tasks.names.filter { it.startsWith("ksp") }.forEach { taskName ->
+        tasks.named(taskName) {
+            dependsOn(generateDesktopBuildConfig)
+        }
+    }
+}
 
 compose.desktop {
     application {
@@ -139,5 +173,9 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    buildFeatures{
+        buildConfig = true
     }
 }

@@ -16,6 +16,7 @@ data class PromptData(
     val tags: List<String> = emptyList(),
     val variables: List<String> = emptyList(),
     val category: String = "general",
+    val isLocal: Boolean = true,
     val source: String = "4pda.to"
 )
 
