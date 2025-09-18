@@ -34,6 +34,7 @@ fun main() {
             DefaultRootComponent(
                 componentContext = DefaultComponentContext(lifecycle = lifecycle),
                 getPromptsUseCase = getKoin().get(),
+                getPromptUseCase = getKoin().get(),
                 toggleFavoriteUseCase = getKoin().get(),
                 importJsonUseCase = getKoin().get(),
                 scrapeUseCase = getKoin().get(),

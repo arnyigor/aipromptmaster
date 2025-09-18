@@ -1,13 +1,14 @@
 package com.arny.aiprompts.presentation.screens
 
 import com.arkivanov.decompose.ComponentContext
+import com.arkivanov.essenty.lifecycle.coroutines.coroutineScope
+import com.arny.aiprompts.domain.usecase.GetPromptUseCase
+import com.arny.aiprompts.presentation.ui.detail.PromptDetailState
+import com.arny.aiprompts.presentation.ui.detail.PromptLanguage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import com.arkivanov.essenty.lifecycle.coroutines.coroutineScope
-import com.arny.aiprompts.presentation.ui.detail.PromptDetailState
-import com.arny.aiprompts.presentation.ui.detail.PromptLanguage
 import kotlinx.coroutines.launch
 
 // Добавим события для управления редактированием
@@ -34,8 +35,9 @@ interface PromptDetailComponent {
 
 class DefaultPromptDetailComponent(
     componentContext: ComponentContext,
-    private val promptId: String, // Получаем ID из навигации
-    private val onNavigateBack: () -> Unit, // Коллбэк для возврата назад
+    private val getPromptUseCase: GetPromptUseCase,
+    private val promptId: String,
+    private val onNavigateBack: () -> Unit,
 ) : PromptDetailComponent, ComponentContext by componentContext {
 
     private val _state = MutableStateFlow(PromptDetailState(isLoading = true))
@@ -94,38 +96,18 @@ class DefaultPromptDetailComponent(
     }
 
 
-    private suspend fun loadPromptDetails() {
-         // Убедимся, что при каждом вызове (например, для Refresh) показывается индикатор
+    private fun loadPromptDetails() {
         _state.update { it.copy(isLoading = true, error = null) }
 
-        try {
-            val loadedPrompt = promptsInteractor.getPromptById(promptId)
-            if (loadedPrompt != null) {
-                // Успех: обновляем состояние с полученными данными
-                _state.update {
-                    it.copy(
-                        isLoading = false,
-                        prompt = loadedPrompt
-                    )
+        scope.launch {
+            getPromptUseCase.getPromptFlow(promptId)
+                .collect { result ->
+                    result.onSuccess { prompt ->
+                        _state.update { it.copy(prompt = prompt, isLoading = false) }
+                    }.onFailure { error ->
+                        _state.update { it.copy(error = error.message, isLoading = false) }
+                    }
                 }
-            } else {
-                // Ошибка: промпт с таким ID не найден
-                _state.update {
-                    it.copy(
-                        isLoading = false,
-                        error = "Промпт с ID '$promptId' не найден."
-                    )
-                }
-            }
-        } catch (e: Exception) {
-            // Ошибка: произошло исключение при загрузке
-            Logger.e(e) { "Ошибка загрузки деталей промпта" }
-            _state.update {
-                it.copy(
-                    isLoading = false,
-                    error = "Не удалось загрузить данные: ${e.message}"
-                )
-            }
         }
     }
 }

@@ -8,7 +8,6 @@ data class PromptDetailState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val isEditing: Boolean = false,
-    // Хранит копию промпта, которую мы меняем в режиме редактирования
     val draftPrompt: Prompt? = null
 )
 

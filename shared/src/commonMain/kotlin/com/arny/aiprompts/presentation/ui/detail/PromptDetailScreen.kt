@@ -2,15 +2,22 @@ package com.arny.aiprompts.presentation.ui.detail
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
@@ -47,31 +54,223 @@ fun ErrorState(
 @Composable
 fun AdaptivePromptDetailLayout(component: PromptDetailComponent) {
     val state by component.state.collectAsState()
-    println("AdaptivePromptDetailLayout state:$state")
+    println("AdaptivePromptDetailLayout state:${state.prompt?.id}")
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val clipboardManager = LocalClipboardManager.current
         if (maxWidth > 800.dp) {
-            // --- DESKTOP LAYOUT ---
-            Row(
-                modifier = Modifier.fillMaxSize(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Левая панель (70%): Основной контент (редакторы)
-                LazyColumn(modifier = Modifier.weight(0.7f)) {
-                    // Здесь размещаем EditablePromptContentCard для RU, EN и т.д.
-                }
-                // Правая панель (30%): Метаданные
-                Column(modifier = Modifier.weight(0.3f)) {
-                    // Здесь секции с тегами, переменными, моделями.
-                    // Они тоже могут быть редактируемыми.
-                }
-            }
+            DesktopPromptDetailLayout(component, state, clipboardManager)
         } else {
-            // --- MOBILE LAYOUT ---
-            // Наш уже существующий LazyColumn-лейаут
             MobilePromptDetailLayout(component, state)
         }
     }
 }
+
+@Composable
+private fun DesktopPromptDetailLayout(
+    component: PromptDetailComponent,
+    state: PromptDetailState,
+    clipboardManager: ClipboardManager
+) {
+    val promptToDisplay = if (state.isEditing) state.draftPrompt else state.prompt
+    Row(
+        modifier = Modifier.fillMaxSize(),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Левая панель (70%): Основной контент
+        LazyColumn(
+            modifier = Modifier.weight(0.7f).padding(16.dp),
+            contentPadding = PaddingValues(bottom = 80.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            when {
+                state.isLoading -> item(key = "loading") {
+                    Box(
+                        Modifier.fillParentMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) { CircularProgressIndicator() }
+                }
+
+                state.error != null -> item(key = "error") {
+                    ErrorState(state.error.orEmpty()) {
+                        component.onEvent(PromptDetailEvent.Refresh)
+                    }
+                }
+
+                promptToDisplay != null -> {
+                    // Редактируемый заголовок
+                    if (state.isEditing) {
+                        item(key = "title") {
+                            OutlinedTextField(
+                                value = promptToDisplay.title,
+                                onValueChange = { component.onEvent(PromptDetailEvent.TitleChanged(it)) },
+                                label = { Text("Заголовок") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+
+                    // Контент на русском
+                    promptToDisplay.content?.ru?.let { ruContent ->
+                        item(key = "content_ru") {
+                            EditablePromptContentCard(
+                                language = "Русский",
+                                viewText = ruContent,
+                                editText = ruContent,
+                                isEditing = state.isEditing,
+                                onValueChange = { newText ->
+                                    component.onEvent(
+                                        PromptDetailEvent.ContentChanged(
+                                            PromptLanguage.RU, newText
+                                        )
+                                    )
+                                },
+                                onCopyClick = { clipboardManager.setText(AnnotatedString(ruContent)) }
+                            )
+                        }
+                    }
+
+                    // Контент на английском
+                    promptToDisplay.content?.en?.let { enContent ->
+                        item(key = "content_en") {
+                            EditablePromptContentCard(
+                                language = "English",
+                                viewText = enContent,
+                                editText = enContent,
+                                isEditing = state.isEditing,
+                                onValueChange = { newText ->
+                                    component.onEvent(
+                                        PromptDetailEvent.ContentChanged(
+                                            PromptLanguage.EN, newText
+                                        )
+                                    )
+                                },
+                                onCopyClick = { clipboardManager.setText(AnnotatedString(enContent)) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Правая панель (30%): Метаданные и действия
+        Column(
+            modifier = Modifier.weight(0.3f).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Заголовок панели
+            if (!state.isEditing && promptToDisplay != null) {
+                Text(
+                    text = promptToDisplay.title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            // Теги
+            promptToDisplay?.let { prompt ->
+                Card {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            "Теги",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        if (state.isEditing) {
+                            // Редактируемые теги
+                            EditableTagsSection(
+                                title = "",
+                                tags = prompt.tags,
+                                isEditing = true,
+                                onAddTag = { /* component.onEvent(...) */ },
+                                onRemoveTag = { /* component.onEvent(...) */ }
+                            )
+                        } else {
+                            // Теги только для чтения
+                            if (prompt.tags.isNotEmpty()) {
+                                LazyVerticalStaggeredGrid(
+                                    columns = StaggeredGridCells.Adaptive(100.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalItemSpacing = 4.dp
+                                ) {
+                                    items(prompt.tags) { tag ->
+                                        SuggestionChip(
+                                            onClick = { },
+                                            label = { Text(tag) }
+                                        )
+                                    }
+                                }
+                            } else {
+                                Text(
+                                    "Нет тегов",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Кнопки действий
+            if (promptToDisplay != null && !state.isLoading) {
+                Card {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            "Действия",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+
+                        if (state.isEditing) {
+                            Button(
+                                onClick = { component.onEvent(PromptDetailEvent.SaveClicked) },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.Done, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Сохранить")
+                            }
+
+                            OutlinedButton(
+                                onClick = { component.onEvent(PromptDetailEvent.CancelClicked) },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Отмена")
+                            }
+                        } else {
+                            Button(
+                                onClick = { component.onEvent(PromptDetailEvent.EditClicked) },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.Edit, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Редактировать")
+                            }
+
+                            OutlinedButton(
+                                onClick = { component.onEvent(PromptDetailEvent.FavoriteClicked) },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(
+                                    if (promptToDisplay.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                                    contentDescription = null,
+                                    tint = if (promptToDisplay.isFavorite) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(if (promptToDisplay.isFavorite) "Убрать из избранного" else "В избранное")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -156,6 +355,7 @@ private fun MobilePromptDetailLayout(
                         contentAlignment = Alignment.Center
                     ) { CircularProgressIndicator() }
                 }
+
                 state.error != null -> item { ErrorState(state.error) { component.onEvent(PromptDetailEvent.Refresh) } }
                 promptToDisplay != null -> {
                     // --- Редактируемый Заголовок ---

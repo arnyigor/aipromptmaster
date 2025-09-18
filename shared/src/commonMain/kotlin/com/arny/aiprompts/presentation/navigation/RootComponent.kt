@@ -36,6 +36,7 @@ class DefaultRootComponent(
     componentContext: ComponentContext,
     // Все зависимости, которые понадобятся дочерним компонентам
     private val getPromptsUseCase: GetPromptsUseCase,
+    private val getPromptUseCase: GetPromptUseCase,
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
     private val importJsonUseCase: ImportJsonUseCase,
     private val scrapeUseCase: ScrapeWebsiteUseCase,
@@ -80,6 +81,7 @@ class DefaultRootComponent(
                     DefaultPromptDetailComponent(
                         componentContext = context,
                         onNavigateBack = { navigation.pop() },
+                        getPromptUseCase = getPromptUseCase,
                         promptId = config.promptId
                     )
                 )

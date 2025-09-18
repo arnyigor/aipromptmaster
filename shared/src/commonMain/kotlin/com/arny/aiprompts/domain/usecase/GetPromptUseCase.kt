@@ -16,7 +16,7 @@ class GetPromptUseCase(
 ) {
     suspend fun getPromptFlow(promptId: String): Flow<Result<Prompt?>> {
         return flow {
-            emit(promptsRepository.getPromptById(promptId).firstOrNull())
+            emit(promptsRepository.getPromptById(promptId))
         }
             .map { prompt ->
                 Result.success(prompt)

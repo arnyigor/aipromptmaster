@@ -43,6 +43,7 @@ val scraperModule = module {
 // Модуль для доменного слоя (UseCases)
 val commonDomainModule = module {
     singleOf(::GetPromptsUseCase)
+    singleOf(::GetPromptUseCase)
     singleOf(::ToggleFavoriteUseCase)
     singleOf(::ParseHtmlUseCase)
     singleOf(::ParseRawPostsUseCase)
