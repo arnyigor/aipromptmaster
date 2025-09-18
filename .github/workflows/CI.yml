@@ -22,8 +22,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: master
           fetch-depth: 0
+
+      - name: Switch to master branch
+        run: |
+          git fetch origin
+          git checkout master
+          git pull origin master
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
