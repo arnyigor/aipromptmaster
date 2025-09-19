@@ -55,6 +55,7 @@ val commonDomainModule = module {
     singleOf(::SavePromptsAsFilesUseCase)
     singleOf(::ImportJsonUseCase)
     singleOf(::FileMetadataReader)
+    singleOf(::LLMInteractor) { bind<ILLMInteractor>() }
     single<SystemInteraction> { ActualSystemInteraction() }
 }
 

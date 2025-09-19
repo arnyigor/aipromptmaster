@@ -18,6 +18,7 @@ import com.arny.aiprompts.data.scraper.WebScraper
 import com.arny.aiprompts.presentation.features.llm.DefaultLlmComponent
 import com.arny.aiprompts.presentation.features.llm.LlmComponent
 import com.arny.aiprompts.domain.interfaces.*
+import com.arny.aiprompts.di.SettingsFactory
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import kotlinx.coroutines.Dispatchers

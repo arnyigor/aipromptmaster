@@ -36,7 +36,7 @@ kotlin {
 
 compose.desktop {
     application {
-        mainClass = "MainKt"
+        mainClass = "com.arny.aiprompts.MainKt"
         nativeDistributions {
             targetFormats(
                 TargetFormat.Dmg,
