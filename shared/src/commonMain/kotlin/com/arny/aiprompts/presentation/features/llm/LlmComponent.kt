@@ -18,4 +18,5 @@ interface LlmComponent {
     fun onModelSelected(modelId: String)
     fun onGenerateClicked()
     fun refreshModels()
+    fun clearChat()
 }

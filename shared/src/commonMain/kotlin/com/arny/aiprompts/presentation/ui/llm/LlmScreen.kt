@@ -4,6 +4,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -25,7 +27,8 @@ fun LlmScreen(component: LlmComponent) {
         state = uiState,
         onPromptChanged = component::onPromptChanged,
         onModelSelected = component::onModelSelected,
-        onGenerateClicked = component::onGenerateClicked
+        onGenerateClicked = component::onGenerateClicked,
+        onClearChat = component::clearChat
     )
 }
 
@@ -36,39 +39,53 @@ fun LlmContent(
     state: LlmUiState,
     onPromptChanged: (String) -> Unit,
     onModelSelected: (String) -> Unit,
-    onGenerateClicked: () -> Unit
+    onGenerateClicked: () -> Unit,
+    onClearChat: () -> Unit
 ) {
-    BoxWithConstraints {
-        // Проверяем доступную ширину
-        if (maxWidth > 600.dp) {
-            // --- ЛЭЙАУТ ДЛЯ ШИРОКИХ ЭКРАНОВ (DESKTOP, ПЛАНШЕТ) ---
-            Row(modifier = Modifier.fillMaxSize()) {
-                ModelListPanel(
-                    modifier = Modifier.fillMaxHeight().width(350.dp),
-                    state = state,
-                    onModelSelected = onModelSelected
-                )
-                VerticalDivider(modifier = Modifier.fillMaxHeight())
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("LLM Chat") },
+                actions = {
+                    IconButton(onClick = onClearChat) {
+                        Icon(Icons.Default.Clear, contentDescription = "Очистить чат")
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        BoxWithConstraints(modifier = Modifier.padding(paddingValues)) {
+            // Проверяем доступную ширину
+            if (maxWidth > 600.dp) {
+                // --- ЛЭЙАУТ ДЛЯ ШИРОКИХ ЭКРАНОВ (DESKTOP, ПЛАНШЕТ) ---
+                Row(modifier = Modifier.fillMaxSize()) {
+                    ModelListPanel(
+                        modifier = Modifier.fillMaxHeight().width(350.dp),
+                        state = state,
+                        onModelSelected = onModelSelected
+                    )
+                    VerticalDivider(modifier = Modifier.fillMaxHeight())
+                    ChatPanel(
+                        modifier = Modifier.fillMaxHeight().weight(1f),
+                        state = state,
+                        onPromptChanged = onPromptChanged,
+                        onGenerateClicked = onGenerateClicked
+                    )
+                }
+            } else {
+                // --- ЛЭЙАУТ ДЛЯ УЗКИХ ЭКРАНОВ (ТЕЛЕФОН) ---
+                // TODO: Реализовать навигацию между списком моделей и чатом.
+                // Например, можно использовать BottomNavigation, или показывать сначала
+                // чат, а выбор модели вынести в выпадающий список или отдельный экран.
+                // Для простоты, покажем только панель чата.
                 ChatPanel(
-                    modifier = Modifier.fillMaxHeight().weight(1f),
+                    modifier = Modifier.fillMaxSize(),
                     state = state,
                     onPromptChanged = onPromptChanged,
                     onGenerateClicked = onGenerateClicked
                 )
+                // Выбор модели можно сделать через DropdownMenu в TopAppBar или по кнопке
             }
-        } else {
-            // --- ЛЭЙАУТ ДЛЯ УЗКИХ ЭКРАНОВ (ТЕЛЕФОН) ---
-            // TODO: Реализовать навигацию между списком моделей и чатом.
-            // Например, можно использовать BottomNavigation, или показывать сначала
-            // чат, а выбор модели вынести в выпадающий список или отдельный экран.
-            // Для простоты, покажем только панель чата.
-            ChatPanel(
-                modifier = Modifier.fillMaxSize(),
-                state = state,
-                onPromptChanged = onPromptChanged,
-                onGenerateClicked = onGenerateClicked
-            )
-            // Выбор модели можно сделать через DropdownMenu в TopAppBar или по кнопке
         }
     }
 }

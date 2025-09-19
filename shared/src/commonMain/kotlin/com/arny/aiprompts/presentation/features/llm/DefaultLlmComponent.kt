@@ -78,4 +78,8 @@ class DefaultLlmComponent(
             llmInteractor.refreshModels()
         }
     }
+
+    override fun clearChat() {
+        _uiState.update { it.copy(prompt = "", responseText = "") }
+    }
 }
