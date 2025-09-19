@@ -31,7 +31,7 @@ koin = "4.0.4"
 
 junit = "5.10.2"
 truth = "1.1.4"
-mockk = "1.13.8"
+mockk = "1.14.5"
 kotlinx-coroutines-test = "1.7.3"
 security-crypto = "1.1.0"
 datastore-preferences = "1.1.7"
@@ -96,8 +96,7 @@ jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 # --- TESTING ---
 junit = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
 truth = { module = "com.google.truth:truth", version.ref = "truth" }
-mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
-mockk-common = { module = "io.mockk:mockk-common", version.ref = "mockk" }
+mockk-common = { module = "io.mockk:mockk", version.ref = "mockk" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines-test" }
 
 # Logging
