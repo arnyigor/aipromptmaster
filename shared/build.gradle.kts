@@ -12,6 +12,7 @@ plugins {
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.room)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kover)
 }
 
 kotlin {
@@ -99,6 +100,10 @@ kotlin {
         val commonTest by getting {
             dependencies {
                 implementation(kotlin("test"))
+                implementation(libs.junit)
+                implementation(libs.truth)
+                implementation(libs.mockk.common)
+                implementation(libs.kotlinx.coroutines.test)
             }
         }
     }
@@ -185,5 +190,19 @@ android {
 
     buildFeatures{
         buildConfig = true
+    }
+}
+
+// Kover configuration
+kover {
+    reports {
+        total {
+            xml {
+                onCheck = true
+            }
+            html {
+                onCheck = true
+            }
+        }
     }
 }

@@ -42,6 +42,7 @@ keytarJava = "1.0.0"
 multiplatform-settings = "1.3.0"
 okio = "3.9.0"
 nirmato-ollama = "0.2.0"
+kover = "0.8.3"
 
 [libraries]
 # Ktor for networking
@@ -119,6 +120,7 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 room = { id = "androidx.room", version.ref = "room" }
 kotlinx-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
 # Android (не используется сейчас, но полезно для будущего)
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
