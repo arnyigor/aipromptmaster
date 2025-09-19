@@ -17,6 +17,8 @@ class LLMInteractor(
     private val historyRepository: IChatHistoryRepository
 ) : ILLMInteractor {
 
+    private val _refreshError = MutableStateFlow<Exception?>(null)
+
     override fun sendMessage(model: String, userMessage: String): Flow<DataResult<String>> =
         flow {
             emit(DataResult.Loading)
@@ -86,11 +88,15 @@ class LLMInteractor(
     override fun getModels(): Flow<DataResult<List<LlmModel>>> {
         val selectedIdFlow: Flow<String?> = settingsRepository.getSelectedModelId()
         val modelsListFlow: Flow<List<LlmModel>> = modelsRepository.getModelsFlow()
-        return combine(selectedIdFlow, modelsListFlow) { selectedId, modelsList ->
-            println("${this::class.java.simpleName} getModels: selectedId: $selectedId, modelsList: ${modelsList.size}")
-            // Эта лямбда будет выполняться каждый раз, когда меняется ID или список моделей.
+        return combine(selectedIdFlow, modelsListFlow, _refreshError) { selectedId, modelsList, refreshError ->
+            println("${this::class.java.simpleName} getModels: selectedId: $selectedId, modelsList: ${modelsList.size}, refreshError: $refreshError")
+            // Эта лямбда будет выполняться каждый раз, когда меняется ID, список моделей или ошибка.
             if (modelsList.isEmpty()) {
-                DataResult.Loading
+                if (refreshError != null) {
+                    DataResult.Error(refreshError)
+                } else {
+                    DataResult.Loading
+                }
             } else {
                 val mappedList = modelsList.map { model ->
                     model.copy(isSelected = model.id == selectedId)
@@ -131,7 +137,15 @@ class LLMInteractor(
     /**
      * Запускает принудительное обновление списка моделей.
      */
-    override suspend fun refreshModels(): Result<Unit> = modelsRepository.refreshModels()
+    override suspend fun refreshModels(): Result<Unit> {
+        val result = modelsRepository.refreshModels()
+        if (result.isFailure) {
+            _refreshError.value = result.exceptionOrNull() as Exception?
+        } else {
+            _refreshError.value = null
+        }
+        return result
+    }
 
     /**
      * НОВЫЙ МЕТОД: Обрабатывает клик, решая, выбрать или отменить выбор.

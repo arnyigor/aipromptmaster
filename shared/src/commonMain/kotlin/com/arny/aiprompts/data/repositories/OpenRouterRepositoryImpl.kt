@@ -4,7 +4,8 @@ import com.arny.aiprompts.data.model.ChatCompletionRequest
 import com.arny.aiprompts.data.model.ChatCompletionResponse
 import com.arny.aiprompts.data.model.LlmModel
 import com.arny.aiprompts.data.model.ChatMessage
-import com.arny.aiprompts.data.model.OpenRouterModelsResponse
+import com.arny.aiprompts.data.model.ModelsResponseDTO
+import com.arny.aiprompts.data.model.toDomain
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -21,8 +22,8 @@ class OpenRouterRepositoryImpl(private val httpClient: HttpClient) : IOpenRouter
 
     override suspend fun refreshModels(): Result<Unit> = try {
         println("Refreshing models...")
-        val response: OpenRouterModelsResponse = httpClient.get("https://openrouter.ai/api/v1/models").body()
-        _modelsFlow.value = response.data.map { dto -> dto.toDomain() }
+        val response: ModelsResponseDTO = httpClient.get("https://openrouter.ai/api/v1/models").body()
+        _modelsFlow.value = response.models.map { dto -> dto.toDomain() }
         println("Models refreshed successfully.")
         Result.success(Unit)
     } catch (e: Exception) {

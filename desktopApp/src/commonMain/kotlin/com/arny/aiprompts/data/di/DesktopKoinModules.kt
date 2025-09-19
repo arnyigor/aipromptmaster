@@ -21,6 +21,8 @@ import com.arny.aiprompts.domain.interfaces.*
 import com.arny.aiprompts.di.SettingsFactory
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.Dispatchers
 import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.singleOf
@@ -47,7 +49,13 @@ val desktopParserModule = module {
 }
 
 val desktopLlmModule = module {
-    single { HttpClient(CIO) }
+    single {
+        HttpClient(CIO) {
+            install(ContentNegotiation) {
+                json()
+            }
+        }
+    }
     single<LLMService> { NoOpLLMService() }
 }
 

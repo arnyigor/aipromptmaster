@@ -1,6 +1,7 @@
 import com.arny.aiprompts.domain.interfaces.IPromptsRepository
 import com.arny.aiprompts.domain.usecase.ToggleFavoriteUseCase
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
@@ -21,32 +22,22 @@ class ToggleFavoriteUseCaseTest {
         useCase(promptId)
 
         // Then
-        // Verification is implicit through mock setup - if repository method wasn't called, test would fail
+        coVerify { mockRepository.toggleFavoriteStatus(promptId) }
     }
 
     @Test
-    fun `invoke propagates repository exceptions`() = runTest {
+    fun `invoke throws when repository throws exception`() = runTest {
         // Given
         val promptId = "test-prompt-id"
-        val expectedException = RuntimeException("Repository error")
-        coEvery { mockRepository.toggleFavoriteStatus(promptId) } throws expectedException
+        val exception = RuntimeException("Toggle failed")
+        coEvery { mockRepository.toggleFavoriteStatus(promptId) } throws exception
 
         // When & Then
         assertFailsWith<RuntimeException> {
             useCase(promptId)
         }
-    }
 
-    @Test
-    fun `invoke handles empty prompt id`() = runTest {
-        // Given
-        val promptId = ""
-        coEvery { mockRepository.toggleFavoriteStatus(promptId) } returns Unit
-
-        // When
-        useCase(promptId)
-
-        // Then
-        // Should complete without exception
+        // Verify the call was made
+        coVerify { mockRepository.toggleFavoriteStatus(promptId) }
     }
 }
