@@ -52,7 +52,9 @@ val desktopLlmModule = module {
     single {
         HttpClient(CIO) {
             install(ContentNegotiation) {
-                json()
+                json(json = kotlinx.serialization.json.Json {
+                    ignoreUnknownKeys = true
+                })
             }
         }
     }

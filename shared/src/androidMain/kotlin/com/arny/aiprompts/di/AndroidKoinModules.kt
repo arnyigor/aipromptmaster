@@ -24,7 +24,9 @@ val androidModules = module {
     single {
         HttpClient(OkHttp) {
             install(ContentNegotiation) {
-                json()
+                json(json = kotlinx.serialization.json.Json {
+                    ignoreUnknownKeys = true
+                })
             }
         }
     }
