@@ -28,6 +28,9 @@ sealed interface ScreenConfig {
         @Serializable(with = FilePathListSerializer::class)
         val files: List<File>
     ) : ScreenConfig
+
+    @Serializable
+    data object LLM : ScreenConfig
 }
 
 /**

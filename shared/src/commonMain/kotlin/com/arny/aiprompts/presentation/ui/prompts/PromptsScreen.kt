@@ -70,7 +70,8 @@ private fun DesktopLayout(state: PromptsListState, component: PromptListComponen
             modifier = Modifier.width(220.dp),
             onAdd = component::onAddPromptClicked,
             onSettings = component::onSettingsClicked,
-            onScraperNavigate = component::onNavigateToScraperClicked
+            onScraperNavigate = component::onNavigateToScraperClicked,
+            onLLMNavigate = component::onNavigateToLLMClicked
         )
     }
 }

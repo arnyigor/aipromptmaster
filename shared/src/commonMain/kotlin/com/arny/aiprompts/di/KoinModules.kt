@@ -6,6 +6,11 @@ import com.arny.aiprompts.data.repository.PromptsRepositoryImpl
 import com.arny.aiprompts.data.scraper.SeleniumWebScraper
 import com.arny.aiprompts.data.scraper.WebScraper
 import com.arny.aiprompts.domain.files.FileMetadataReader
+import com.arny.aiprompts.domain.interactors.ILLMInteractor
+import com.arny.aiprompts.domain.interactors.LLMInteractor
+import com.arny.aiprompts.data.repositories.IOpenRouterRepository
+import com.arny.aiprompts.data.repositories.ISettingsRepository
+import com.arny.aiprompts.data.repositories.IChatHistoryRepository
 import com.arny.aiprompts.domain.interfaces.FileDataSource
 import com.arny.aiprompts.domain.interfaces.IPromptsRepository
 import com.arny.aiprompts.domain.interfaces.LLMService

@@ -24,6 +24,7 @@ actual fun RootContent(component: RootComponent) {
                 is RootComponent.Child.Scraper -> ScraperScreen(component = instance.component)
                 is RootComponent.Child.Importer -> {}
                 is RootComponent.Child.Details-> PromptDetailScreen(component = instance.component)
+                is RootComponent.Child.LLM -> {} // LLM not supported on Android yet
             }
         }
     }

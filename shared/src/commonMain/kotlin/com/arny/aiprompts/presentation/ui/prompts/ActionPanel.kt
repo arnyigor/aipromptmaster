@@ -14,7 +14,8 @@ fun ActionPanel(
     modifier: Modifier = Modifier,
     onAdd: () -> Unit,
     onSettings: () -> Unit,
-    onScraperNavigate: () -> Unit
+    onScraperNavigate: () -> Unit,
+    onLLMNavigate: () -> Unit
 ) {
     Card(modifier = modifier) {
         Column(
@@ -22,6 +23,9 @@ fun ActionPanel(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) { Text("Добавить промпт") }
+            OutlinedButton(onClick = onLLMNavigate, modifier = Modifier.fillMaxWidth()) {
+                Text("LLM Чат")
+            }
             Spacer(Modifier.weight(1f)) // Этот Spacer отодвигает кнопку настроек вниз
             if (BuildsConfig.DEBUG) {
                 OutlinedButton(onClick = onScraperNavigate, modifier = Modifier.fillMaxWidth()) {

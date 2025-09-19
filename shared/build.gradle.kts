@@ -40,7 +40,7 @@ kotlin {
                 api(compose.foundation)
                 api(compose.material3)
                 api(compose.ui)
-                api(compose.materialIconsExtended)
+                api(libs.compose.material.icons.extended)
                 @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
                 api(compose.components.resources)
                 api("com.arkivanov.decompose:decompose:${libs.versions.decompose.get()}")
@@ -64,12 +64,17 @@ kotlin {
                 implementation(libs.selenium.java)
                 implementation(libs.compose.markdown)
                 implementation(libs.richeditor.compose)
+                implementation(libs.russhwolf.settings)
+                implementation(libs.russhwolf.settings.datastore)
             }
         }
 
         val desktopMain by getting {
             dependencies {
-                // desktop-специфичные зависимости если нужны
+                implementation(libs.ktor.client.cio)
+                implementation(libs.keytar.java)
+                // Платформенные реализации
+                implementation(libs.kotlinx.coroutines.swing) // ПРАВИЛЬНОЕ МЕСТО
             }
         }
 
@@ -84,7 +89,10 @@ kotlin {
                 implementation(libs.androidx.core.ktx)
                 implementation(libs.kotlinx.coroutines.android) // ПРАВИЛЬНОЕ МЕСТО
                 implementation(libs.koin.android)
+                implementation(libs.androidx.security.crypto)
+                implementation(libs.androidx.datastore.preferences)
                 implementation(libs.koin.androidx.compose) // Для viewModel()
+                implementation(libs.ktor.client.okhttp)
             }
         }
 

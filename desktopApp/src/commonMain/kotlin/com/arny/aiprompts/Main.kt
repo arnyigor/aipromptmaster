@@ -45,6 +45,7 @@ fun main() {
                 httpClient = getKoin().get(),
                 systemInteraction = getKoin().get(),
                 fileMetadataReader = getKoin().get(),
+                llmInteractor = getKoin().get(),
             )
         }
 

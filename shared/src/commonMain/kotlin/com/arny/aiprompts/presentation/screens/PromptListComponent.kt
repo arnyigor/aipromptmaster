@@ -37,6 +37,7 @@ interface PromptListComponent {
     fun onMoreMenuToggle(isVisible: Boolean)
     fun onSettingsClicked()
     fun onNavigateToScraperClicked()
+    fun onNavigateToLLMClicked()
 }
 
 class DefaultPromptListComponent(
@@ -46,6 +47,7 @@ class DefaultPromptListComponent(
     private val importJsonUseCase: ImportJsonUseCase,
     private val onNavigateToDetails: (promptId: String) -> Unit,
     private val onNavigateToScraper: () -> Unit,
+    private val onNavigateToLLM: () -> Unit,
 ) : PromptListComponent, ComponentContext by componentContext {
 
     private companion object {
@@ -135,6 +137,10 @@ class DefaultPromptListComponent(
 
     override fun onNavigateToScraperClicked() {
         onNavigateToScraper()
+    }
+
+    override fun onNavigateToLLMClicked() {
+        onNavigateToLLM()
     }
 
     // А этот метод для полного обновления с нуля (pull-to-refresh)

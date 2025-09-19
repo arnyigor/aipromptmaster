@@ -19,6 +19,8 @@ import com.arny.aiprompts.presentation.ui.importer.DefaultImporterComponent
 import com.arny.aiprompts.presentation.ui.importer.ImporterComponent
 import com.arny.aiprompts.presentation.ui.scraper.DefaultScraperComponent
 import com.arny.aiprompts.presentation.ui.scraper.ScraperComponent
+import com.arny.aiprompts.presentation.features.llm.DefaultLlmComponent
+import com.arny.aiprompts.domain.interactors.ILLMInteractor
 import io.ktor.client.*
 
 interface RootComponent {
@@ -29,6 +31,7 @@ interface RootComponent {
         data class Scraper(val component: ScraperComponent) : Child
         data class Importer(val component: ImporterComponent) : Child
         data class Details(val component: PromptDetailComponent) : Child
+        data class LLM(val component: com.arny.aiprompts.presentation.features.llm.LlmComponent) : Child
     }
 }
 
@@ -47,6 +50,7 @@ class DefaultRootComponent(
     private val httpClient: HttpClient,
     private val systemInteraction: SystemInteraction,
     private val fileMetadataReader: FileMetadataReader,
+    private val llmInteractor: ILLMInteractor,
 ) : RootComponent, ComponentContext by componentContext {
 
     private val navigation = StackNavigation<ScreenConfig>()
@@ -72,7 +76,8 @@ class DefaultRootComponent(
                     onNavigateToDetails = { promptId ->
                         navigation.push(ScreenConfig.PromptDetails(promptId))
                     },
-                    onNavigateToScraper = { navigation.push(ScreenConfig.Scraper) }
+                    onNavigateToScraper = { navigation.push(ScreenConfig.Scraper) },
+                    onNavigateToLLM = { navigation.push(ScreenConfig.LLM) }
                 )
             )
 
@@ -114,6 +119,13 @@ class DefaultRootComponent(
                     systemInteraction = systemInteraction,
                     fileMetadataReader = fileMetadataReader,
                     onBack = { navigation.pop() }
+                )
+            )
+
+            is ScreenConfig.LLM -> Child.LLM(
+                DefaultLlmComponent(
+                    componentContext = context,
+                    llmInteractor = llmInteractor
                 )
             )
         }

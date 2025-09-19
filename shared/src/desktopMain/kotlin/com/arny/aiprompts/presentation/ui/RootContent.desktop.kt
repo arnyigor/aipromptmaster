@@ -7,6 +7,7 @@ import com.arkivanov.decompose.extensions.compose.stack.animation.stackAnimation
 import com.arny.aiprompts.presentation.navigation.RootComponent
 import com.arny.aiprompts.presentation.ui.detail.PromptDetailScreen
 import com.arny.aiprompts.presentation.ui.importer.ImporterScreen
+import com.arny.aiprompts.presentation.ui.llm.LlmScreen
 import com.arny.aiprompts.presentation.ui.prompts.PromptsScreen
 import com.arny.aiprompts.presentation.ui.scraper.ScraperScreen
 
@@ -24,6 +25,7 @@ actual fun RootContent(component: RootComponent) {
                 is RootComponent.Child.Scraper -> ScraperScreen(component = instance.component)
                 is RootComponent.Child.Importer -> ImporterScreen(component = instance.component)
                 is RootComponent.Child.Details -> PromptDetailScreen(component = instance.component)
+                is RootComponent.Child.LLM -> LlmScreen(component = instance.component)
             }
         }
     }
