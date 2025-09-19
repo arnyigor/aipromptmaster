@@ -15,11 +15,13 @@ fun cleanHtmlToText(element: Element?): String {
     // Создаем клон, чтобы не изменять оригинальный DOM, что может повлиять на другие селекторы
     val cleanElement = element.clone()
 
-    // 1. Заменяем <br> на символ переноса строки. Это ключевой шаг для сохранения абзацев.
+    // 1. Заменяем <br> на символ переноса строки.
     cleanElement.select("br").forEach { it.replaceWith(TextNode("\n")) }
-    
-    // 2. Jsoup автоматически обрабатывает блочные теги типа <p>, <div>, добавляя переносы.
-    // Используем .text(), который извлекает весь видимый текст.
+
+    // 2. Добавляем переносы строк после блочных элементов типа <p>, <div>
+    cleanElement.select("p, div").forEach { it.after(TextNode("\n")) }
+
+    // 3. Используем .wholeText(), который сохраняет пробелы и переносы.
     // trim() убирает лишние пробелы и переносы в начале и конце.
-    return cleanElement.text().trim()
+    return cleanElement.wholeText().trim()
 }

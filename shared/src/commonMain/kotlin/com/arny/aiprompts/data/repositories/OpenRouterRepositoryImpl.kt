@@ -3,8 +3,8 @@ package com.arny.aiprompts.data.repositories
 import com.arny.aiprompts.data.model.ChatCompletionRequest
 import com.arny.aiprompts.data.model.ChatCompletionResponse
 import com.arny.aiprompts.data.model.LlmModel
-import com.arny.aiprompts.data.model.OpenRouterModelsResponse
 import com.arny.aiprompts.data.model.ChatMessage
+import com.arny.aiprompts.data.model.OpenRouterModelsResponse
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*

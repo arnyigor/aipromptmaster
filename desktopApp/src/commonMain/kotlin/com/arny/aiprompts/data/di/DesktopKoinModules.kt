@@ -52,6 +52,7 @@ val desktopLlmModule = module {
 
 val desktopLlmRepositoriesModule = module {
     singleOf(::OpenRouterRepositoryImpl) { bind<IOpenRouterRepository>() }
+    single { SettingsFactory() }
     singleOf(::SettingsRepositoryImpl) { bind<ISettingsRepository>() }
     singleOf(::ChatHistoryRepositoryImpl) { bind<IChatHistoryRepository>() }
 }

@@ -6,9 +6,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 
-class SettingsRepositoryImpl : ISettingsRepository {
+class SettingsRepositoryImpl(private val settingsFactory: SettingsFactory) : ISettingsRepository {
 
-    private val settings: Settings = SettingsFactory().create("app_settings")
+    private val settings: Settings = settingsFactory.create("app_settings")
     private val _selectedId = MutableStateFlow<String?>(null)
 
     init {

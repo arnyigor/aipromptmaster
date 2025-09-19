@@ -8,5 +8,6 @@ import com.russhwolf.settings.Settings
  */
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 expect class SettingsFactory {
+    val context: Any?
     fun create(name: String): Settings
 }

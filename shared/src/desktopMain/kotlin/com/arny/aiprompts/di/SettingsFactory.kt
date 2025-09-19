@@ -9,7 +9,7 @@ import java.util.prefs.Preferences
 import javax.crypto.SecretKey
 import javax.crypto.spec.SecretKeySpec
 
-actual class SettingsFactory {
+actual class SettingsFactory(actual val context: Any? = null) {
     // Используем нашу обертку над Keytar/Keychain/Credential Manager
     private val secureStorage = SecureKeyStorage()
     private val keyAlias = "app-settings-encryption-key"

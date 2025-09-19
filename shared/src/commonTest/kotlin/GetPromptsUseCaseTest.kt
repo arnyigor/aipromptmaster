@@ -37,9 +37,7 @@ class GetPromptsUseCaseTest {
     fun `getPromptsFlow emits failure result when repository fails`() = runTest {
         // Given
         val exception = RuntimeException("Database error")
-        every { mockRepository.getAllPrompts() } returns flowOf<List<Prompt>>().also {
-            throw exception
-        }
+        every { mockRepository.getAllPrompts() } returns kotlinx.coroutines.flow.flow { throw exception }
 
         // When
         val results = useCase.getPromptsFlow().toList()

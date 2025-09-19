@@ -47,8 +47,7 @@ class GetPromptsUseCase(
         offset: Int = 0,
         limit: Int = 20
     ): Result<List<Prompt>> {
-        // runCatching автоматически ловит исключения и оборачивает в Result
-        return runCatching {
+        val result = runCatching {
             promptsRepository.getPrompts(
                 search = query,
                 category = category,
@@ -57,15 +56,15 @@ class GetPromptsUseCase(
                 offset = offset,
                 limit = limit
             )
-        }.recover { throwable ->
-            // Блок recover позволяет нам преобразовать один тип ошибки в другой.
-            // Если произошла любая ошибка, мы преобразуем ее в наш DomainError
-            throw when (throwable) {
-                is DomainError -> throwable // Пробрасываем нашу ошибку без изменений
-                // Здесь можно добавить более сложную логику
-                // например, проверку на IOException для DomainError.Network
+        }
+        return if (result.isSuccess) {
+            result
+        } else {
+            val error = when (val throwable = result.exceptionOrNull()!!) {
+                is DomainError -> throwable
                 else -> DomainError.Local("Failed to perform search.")
             }
+            Result.failure(error)
         }
     }
 }
