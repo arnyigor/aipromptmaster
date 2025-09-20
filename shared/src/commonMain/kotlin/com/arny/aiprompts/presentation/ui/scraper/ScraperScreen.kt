@@ -45,7 +45,8 @@ fun ScraperScreen(
                     }
                 }
             )
-        }
+        },
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets.systemBars
     ) { paddingValues ->
         Column(
             modifier = Modifier

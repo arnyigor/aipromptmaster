@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
@@ -100,8 +101,17 @@ private fun DesktopPromptDetailLayout(
                             Text("ОТМЕНА")
                         }
                     } else {
-                        // Кнопка "В избранное" в режиме просмотра
+                        // Кнопки в режиме просмотра
                         promptToDisplay?.let { prompt ->
+                            if (prompt.isLocal) {
+                                IconButton(onClick = { component.onEvent(PromptDetailEvent.DeleteClicked) }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Delete,
+                                        contentDescription = "Удалить",
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
                             IconButton(onClick = { component.onEvent(PromptDetailEvent.FavoriteClicked) }) {
                                 Icon(
                                     imageVector = if (prompt.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
@@ -113,7 +123,8 @@ private fun DesktopPromptDetailLayout(
                     }
                 }
             )
-        }
+        },
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets.systemBars
     ) { paddingValues ->
         Row(
             modifier = Modifier
@@ -352,8 +363,17 @@ private fun MobilePromptDetailLayout(
                             Text("ОТМЕНА")
                         }
                     } else {
-                        // Кнопка "В избранное" в режиме просмотра
+                        // Кнопки в режиме просмотра
                         promptToDisplay?.let { prompt ->
+                            if (prompt.isLocal) {
+                                IconButton(onClick = { component.onEvent(PromptDetailEvent.DeleteClicked) }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Delete,
+                                        contentDescription = "Удалить",
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
                             IconButton(onClick = { component.onEvent(PromptDetailEvent.FavoriteClicked) }) {
                                 Icon(
                                     imageVector = if (prompt.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
@@ -379,7 +399,8 @@ private fun MobilePromptDetailLayout(
                     Icon(icon, contentDescription = if (state.isEditing) "Сохранить" else "Редактировать")
                 }
             }
-        }
+        },
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets.systemBars
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(paddingValues),

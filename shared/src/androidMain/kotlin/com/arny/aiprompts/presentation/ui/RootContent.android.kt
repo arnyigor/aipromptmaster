@@ -1,7 +1,11 @@
 package com.arny.aiprompts.presentation.ui
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import com.arkivanov.decompose.extensions.compose.stack.Children
 import com.arkivanov.decompose.extensions.compose.stack.animation.slide
 import com.arkivanov.decompose.extensions.compose.stack.animation.stackAnimation
@@ -15,7 +19,8 @@ actual fun RootContent(component: RootComponent) {
     MaterialTheme {
         Children(
             stack = component.stack,
-            animation = stackAnimation(slide())
+            animation = stackAnimation(slide()),
+            modifier = Modifier.consumeWindowInsets(WindowInsets.systemBars)
         ) { child ->
             // Этот `when` теперь находится в desktopMain и может "видеть"
             // все экраны из desktopMain, такие как ImporterScreen.

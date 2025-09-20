@@ -56,7 +56,8 @@ fun PromptsScreen(component: PromptListComponent) {
                     // BottomAppBar { ... }
                 }
             },
-            snackbarHost = { SnackbarHost(snackbarHostState) }
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            contentWindowInsets = androidx.compose.foundation.layout.WindowInsets.systemBars
         ) { paddingValues ->
             // Основной контент
             Box(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
@@ -146,25 +147,6 @@ private fun PromptsTopAppBar(
                         expanded = state.isMoreMenuVisible,
                         onDismissRequest = { component.onMoreMenuToggle(false) }
                     ) {
-                        DropdownMenuItem(
-                            text = { Text("Редактировать") },
-                            onClick = {
-                                component.onEditPromptClicked()
-                                component.onMoreMenuToggle(false)
-                            },
-                            enabled = state.selectedPromptId != null &&
-                                state.allPrompts.find { it.id == state.selectedPromptId }?.isLocal == true
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Удалить") },
-                            onClick = {
-                                component.onDeletePromptClicked()
-                                component.onMoreMenuToggle(false)
-                            },
-                            enabled = state.selectedPromptId != null &&
-                                state.allPrompts.find { it.id == state.selectedPromptId }?.isLocal == true
-                        )
-                        HorizontalDivider()
                         DropdownMenuItem(
                             text = { Text("Настройки") },
                             onClick = {

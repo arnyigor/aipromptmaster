@@ -7,7 +7,9 @@ import com.arny.aiprompts.domain.model.PromptContent
 import com.arny.aiprompts.domain.usecase.GetPromptUseCase
 import com.arny.aiprompts.domain.usecase.UpdatePromptUseCase
 import com.arny.aiprompts.domain.usecase.CreatePromptUseCase
+import com.arny.aiprompts.domain.usecase.DeletePromptUseCase
 import com.arny.aiprompts.domain.usecase.GetAvailableTagsUseCase
+import com.arny.aiprompts.domain.usecase.ToggleFavoriteUseCase
 import com.arny.aiprompts.presentation.ui.detail.PromptDetailState
 import com.arny.aiprompts.presentation.ui.detail.PromptLanguage
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +27,7 @@ sealed interface PromptDetailEvent {
     object EditClicked : PromptDetailEvent
     object CancelClicked : PromptDetailEvent
     object SaveClicked : PromptDetailEvent
+    object DeleteClicked : PromptDetailEvent
     data class TitleChanged(val newTitle: String) : PromptDetailEvent
     data class ContentChanged(val lang: PromptLanguage, val newContent: String) : PromptDetailEvent
     data class TagAdded(val tag: String) : PromptDetailEvent
@@ -46,6 +49,8 @@ class DefaultPromptDetailComponent(
     private val getPromptUseCase: GetPromptUseCase,
     private val updatePromptUseCase: UpdatePromptUseCase,
     private val createPromptUseCase: CreatePromptUseCase,
+    private val deletePromptUseCase: DeletePromptUseCase,
+    private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
     private val getAvailableTagsUseCase: GetAvailableTagsUseCase,
     private val promptId: String,
     private val onNavigateBack: () -> Unit,
@@ -186,7 +191,27 @@ class DefaultPromptDetailComponent(
                     state.copy(draftPrompt = state.draftPrompt?.copy(content = newContent))
                 }
             }
-            PromptDetailEvent.FavoriteClicked -> {}
+            PromptDetailEvent.DeleteClicked -> {
+                if (_state.value.prompt?.isLocal == true) {
+                    scope.launch {
+                        deletePromptUseCase(currentPromptId).onSuccess {
+                            onNavigateBack()
+                        }
+                    }
+                }
+            }
+            PromptDetailEvent.FavoriteClicked -> {
+                scope.launch {
+                    toggleFavoriteUseCase(currentPromptId)
+                    // После изменения статуса получаем обновленный промпт
+                    getPromptUseCase.getPromptFlow(currentPromptId)
+                        .collect { result ->
+                            result.onSuccess { updatedPrompt ->
+                                _state.update { it.copy(prompt = updatedPrompt) }
+                            }
+                        }
+                }
+            }
             PromptDetailEvent.Refresh -> {}
             is PromptDetailEvent.TagAdded -> {
                 _state.update {

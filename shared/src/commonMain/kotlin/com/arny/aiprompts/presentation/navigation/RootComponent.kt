@@ -94,6 +94,8 @@ class DefaultRootComponent(
                         getPromptUseCase = getPromptUseCase,
                         updatePromptUseCase = updatePromptUseCase,
                         createPromptUseCase = createPromptUseCase,
+                        deletePromptUseCase = deletePromptUseCase,
+                        toggleFavoriteUseCase = toggleFavoriteUseCase,
                         getAvailableTagsUseCase = getAvailableTagsUseCase,
                         promptId = config.promptId
                     )
