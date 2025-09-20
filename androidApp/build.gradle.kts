@@ -45,7 +45,7 @@ dependencies {
     // Android специфичные зависимости
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.ktx)
-
+    implementation(libs.koin.android)
     // Compose для Android
     implementation(compose.runtime)
     implementation(compose.foundation)

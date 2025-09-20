@@ -22,4 +22,5 @@ interface IPromptsRepository {
     ): List<Prompt>
 
     suspend fun deletePromptsByIds(promptIds: List<String>)
+    suspend fun getAllUniqueTags(): List<String>
 }

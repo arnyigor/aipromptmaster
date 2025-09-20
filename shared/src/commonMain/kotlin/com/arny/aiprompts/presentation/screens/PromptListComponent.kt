@@ -7,6 +7,9 @@ import com.arny.aiprompts.domain.model.Prompt
 import com.arny.aiprompts.domain.usecase.GetPromptsUseCase
 import com.arny.aiprompts.domain.usecase.ImportJsonUseCase
 import com.arny.aiprompts.domain.usecase.ToggleFavoriteUseCase
+import com.arny.aiprompts.domain.usecase.CreatePromptUseCase
+import com.arny.aiprompts.domain.usecase.UpdatePromptUseCase
+import com.arny.aiprompts.domain.usecase.DeletePromptUseCase
 import com.arny.aiprompts.presentation.ui.prompts.PromptsListState
 import com.arny.aiprompts.presentation.ui.prompts.SortOrder
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +28,7 @@ interface PromptListComponent {
     fun onFavoriteClicked(id: String)
     fun onSearchQueryChanged(query: String)
     fun onCategoryChanged(category: String)
+    fun onTagsChanged(tags: List<String>)
     fun onSortOrderChanged(sortOrder: SortOrder)
     fun onFavoritesToggleChanged(isFavoritesOnly: Boolean)
     fun onSortDirectionToggle()
@@ -45,6 +49,9 @@ class DefaultPromptListComponent(
     private val getPromptsUseCase: GetPromptsUseCase,
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
     private val importJsonUseCase: ImportJsonUseCase,
+    private val createPromptUseCase: CreatePromptUseCase,
+    private val updatePromptUseCase: UpdatePromptUseCase,
+    private val deletePromptUseCase: DeletePromptUseCase,
     private val onNavigateToDetails: (promptId: String) -> Unit,
     private val onNavigateToScraper: () -> Unit,
     private val onNavigateToLLM: () -> Unit,
@@ -99,6 +106,11 @@ class DefaultPromptListComponent(
         applyFiltersAndSorting()
     }
 
+    override fun onTagsChanged(tags: List<String>) {
+        _state.update { it.copy(selectedTags = tags) }
+        applyFiltersAndSorting()
+    }
+
     override fun onSortDirectionToggle() {
         _state.update { it.copy(isSortAscending = !it.isSortAscending) }
         applyFiltersAndSorting() // <-- Важно переприменить сортировку
@@ -114,17 +126,74 @@ class DefaultPromptListComponent(
         applyFiltersAndSorting()
     }
 
-    override fun onAddPromptClicked() { /* TODO: Навигация на экран создания */
+    override fun onAddPromptClicked() {
+        scope.launch {
+            _state.update { it.copy(isCreatingPrompt = true, createError = null) }
+
+            val result = createPromptUseCase(
+                title = "Новый промпт",
+                contentRu = "",
+                contentEn = "",
+                description = null,
+                category = "general",
+                tags = emptyList(),
+                compatibleModels = emptyList()
+            )
+
+            result.onSuccess { promptId ->
+                _state.update { it.copy(isCreatingPrompt = false) }
+                // Навигация к созданному промпту для редактирования
+                onNavigateToDetails(promptId.toString())
+            }.onFailure { error ->
+                _state.update {
+                    it.copy(
+                        isCreatingPrompt = false,
+                        createError = error.message ?: "Failed to create prompt"
+                    )
+                }
+            }
+        }
     }
 
     override fun onEditPromptClicked() {
-        state.value.selectedPromptId?.let {
-
+        val selectedPromptId = state.value.selectedPromptId
+        if (selectedPromptId != null) {
+            val selectedPrompt = state.value.allPrompts.find { it.id == selectedPromptId }
+            if (selectedPrompt?.isLocal == true) {
+                // Навигация к экрану редактирования
+                onNavigateToDetails(selectedPromptId)
+            }
         }
     }
 
     override fun onDeletePromptClicked() {
-        state.value.selectedPromptId?.let { /* TODO: Показать диалог и удалить по ID */ }
+        val promptId = state.value.selectedPromptId
+        if (promptId != null) {
+            val selectedPrompt = state.value.allPrompts.find { it.id == promptId }
+            if (selectedPrompt?.isLocal == true) {
+                scope.launch {
+                    _state.update { it.copy(isDeletingPrompt = true, deleteError = null) }
+
+                    val result = deletePromptUseCase(promptId)
+
+                    result.onSuccess {
+                        _state.update {
+                            it.copy(
+                                isDeletingPrompt = false,
+                                selectedPromptId = null // Сбрасываем выбор
+                            )
+                        }
+                    }.onFailure { error ->
+                        _state.update {
+                            it.copy(
+                                isDeletingPrompt = false,
+                                deleteError = error.message ?: "Failed to delete prompt"
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 
     override fun onMoreMenuToggle(isVisible: Boolean) {
@@ -232,19 +301,35 @@ class DefaultPromptListComponent(
             val favoriteMatch = if (currentState.isFavoritesOnly) prompt.isFavorite else true
             val categoryMatch =
                 currentState.selectedCategory == "Все категории" || prompt.category == currentState.selectedCategory
+            val tagsMatch = if (currentState.selectedTags.isEmpty()) {
+                true
+            } else {
+                currentState.selectedTags.all { selectedTag ->
+                    prompt.tags.any { promptTag -> promptTag.equals(selectedTag, ignoreCase = true) }
+                }
+            }
             val queryMatch = if (currentState.searchQuery.isBlank()) {
                 true
             } else {
                 val query = currentState.searchQuery.trim().lowercase()
-                prompt.title.lowercase().contains(query) || prompt.description?.lowercase()?.contains(query) == true
+                prompt.title.lowercase().contains(query) ||
+                prompt.description?.lowercase()?.contains(query) == true ||
+                prompt.content?.ru?.lowercase()?.contains(query) == true ||
+                prompt.content?.en?.lowercase()?.contains(query) == true ||
+                prompt.tags.any { it.lowercase().contains(query) }
             }
-            favoriteMatch && categoryMatch && queryMatch
+            favoriteMatch && categoryMatch && tagsMatch && queryMatch
         }
 
         val sortedList = when (currentState.selectedSortOrder) {
             SortOrder.BY_FAVORITE_DESC -> filteredList.sortedWith(compareByDescending<Prompt> { it.isFavorite }.thenByDescending { it.modifiedAt })
             SortOrder.BY_NAME_ASC -> filteredList.sortedBy { it.title }
-            SortOrder.BY_DATE_DESC -> filteredList.sortedByDescending { it.modifiedAt }
+            SortOrder.BY_NAME_DESC -> filteredList.sortedByDescending { it.title }
+            SortOrder.BY_DATE_DESC -> filteredList.sortedByDescending { it.modifiedAt ?: it.createdAt }
+            SortOrder.BY_DATE_ASC -> filteredList.sortedBy { it.modifiedAt ?: it.createdAt }
+            SortOrder.BY_POPULARITY_DESC -> filteredList.sortedByDescending { it.rating }
+            SortOrder.BY_SIZE_DESC -> filteredList.sortedByDescending { (it.content?.ru?.length ?: 0) + (it.content?.en?.length ?: 0) }
+            SortOrder.BY_SIZE_ASC -> filteredList.sortedBy { (it.content?.ru?.length ?: 0) + (it.content?.en?.length ?: 0) }
             SortOrder.BY_CATEGORY -> filteredList.sortedBy { it.category }
         }
         _state.update {

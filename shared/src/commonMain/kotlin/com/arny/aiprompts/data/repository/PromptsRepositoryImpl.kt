@@ -131,4 +131,8 @@ class PromptsRepositoryImpl(
 
         prompts.map { it.toDomain() }
     }
+
+    override suspend fun getAllUniqueTags(): List<String> = withContext(dispatcher) {
+        promptDao.getAllUniqueTags()
+    }
 }

@@ -200,8 +200,10 @@ private fun DesktopPromptDetailLayout(
                                 title = "Теги",
                                 tags = promptToDisplay.tags,
                                 isEditing = state.isEditing,
-                                onAddTag = { /* component.onEvent(...) */ },
-                                onRemoveTag = { /* component.onEvent(...) */ }
+                                onAddTag = { tag -> component.onEvent(PromptDetailEvent.TagAdded(tag)) },
+                                onRemoveTag = { tag -> component.onEvent(PromptDetailEvent.TagRemoved(tag)) },
+                                availableTags = state.availableTags,
+                                enableColorCoding = true
                             )
                         }
                     }
@@ -365,7 +367,7 @@ private fun MobilePromptDetailLayout(
             )
         },
         floatingActionButton = {
-            if (state.prompt != null && !state.isLoading) {
+            if (state.prompt != null && !state.isLoading && state.prompt.isLocal) {
                 FloatingActionButton(
                     onClick = {
                         val event =
@@ -457,8 +459,10 @@ private fun MobilePromptDetailLayout(
                             title = "Теги",
                             tags = promptToDisplay.tags,
                             isEditing = state.isEditing,
-                            onAddTag = { /* component.onEvent(...) */ },
-                            onRemoveTag = { /* component.onEvent(...) */ }
+                            onAddTag = { tag -> component.onEvent(PromptDetailEvent.TagAdded(tag)) },
+                            onRemoveTag = { tag -> component.onEvent(PromptDetailEvent.TagRemoved(tag)) },
+                            availableTags = state.availableTags,
+                            enableColorCoding = true
                         )
                     }
                 }

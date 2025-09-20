@@ -8,7 +8,10 @@ data class PromptDetailState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val isEditing: Boolean = false,
-    val draftPrompt: Prompt? = null
+    val draftPrompt: Prompt? = null,
+    val isSaving: Boolean = false,
+    val saveError: String? = null,
+    val availableTags: List<String> = emptyList()
 )
 
 enum class PromptLanguage {

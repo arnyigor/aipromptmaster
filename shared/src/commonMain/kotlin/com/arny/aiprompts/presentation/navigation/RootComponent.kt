@@ -42,6 +42,10 @@ class DefaultRootComponent(
     private val getPromptUseCase: GetPromptUseCase,
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
     private val importJsonUseCase: ImportJsonUseCase,
+    private val createPromptUseCase: CreatePromptUseCase,
+    private val updatePromptUseCase: UpdatePromptUseCase,
+    private val deletePromptUseCase: DeletePromptUseCase,
+    private val getAvailableTagsUseCase: GetAvailableTagsUseCase,
     private val scrapeUseCase: ScrapeWebsiteUseCase,
     private val webScraper: WebScraper,
     private val parseRawPostsUseCase: ParseRawPostsUseCase,
@@ -73,6 +77,9 @@ class DefaultRootComponent(
                     getPromptsUseCase = getPromptsUseCase,
                     toggleFavoriteUseCase = toggleFavoriteUseCase,
                     importJsonUseCase = importJsonUseCase,
+                    createPromptUseCase = createPromptUseCase,
+                    updatePromptUseCase = updatePromptUseCase,
+                    deletePromptUseCase = deletePromptUseCase,
                     onNavigateToDetails = { promptId ->
                         navigation.push(ScreenConfig.PromptDetails(promptId))
                     },
@@ -87,6 +94,8 @@ class DefaultRootComponent(
                         componentContext = context,
                         onNavigateBack = { navigation.pop() },
                         getPromptUseCase = getPromptUseCase,
+                        updatePromptUseCase = updatePromptUseCase,
+                        getAvailableTagsUseCase = getAvailableTagsUseCase,
                         promptId = config.promptId
                     )
                 )

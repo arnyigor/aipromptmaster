@@ -18,12 +18,22 @@ import androidx.compose.ui.unit.dp
 import com.arny.aiprompts.domain.model.Prompt
 import com.arny.aiprompts.presentation.screens.PromptListComponent
 
+enum class ScreenSize {
+    MOBILE,
+    TABLET,
+    DESKTOP
+}
+
 @Suppress("UnusedBoxWithConstraintsScope")
 @Composable
 fun PromptsScreen(component: PromptListComponent) {
     val state by component.state.collectAsState()
     BoxWithConstraints {
-        val isDesktopLayout = maxWidth > 840.dp
+        val screenSize = when {
+            maxWidth >= 1024.dp -> ScreenSize.DESKTOP
+            maxWidth >= 768.dp -> ScreenSize.TABLET
+            else -> ScreenSize.MOBILE
+        }
 
         val snackbarHostState = remember { SnackbarHostState() }
 
@@ -31,25 +41,31 @@ fun PromptsScreen(component: PromptListComponent) {
             topBar = {
                 PromptsTopAppBar(
                     state = state,
-                    isDesktopLayout = isDesktopLayout,
+                    screenSize = screenSize,
                     component = component
                 )
             },
             floatingActionButton = {
-                if (!isDesktopLayout) {
+                if (screenSize == ScreenSize.MOBILE) {
                     FloatingActionButton(onClick = component::onAddPromptClicked) {
                         Icon(Icons.Default.Add, contentDescription = "Добавить промпт")
                     }
+                }
+            },
+            bottomBar = {
+                if (screenSize == ScreenSize.MOBILE) {
+                    // Можно добавить bottom navigation для мобильных устройств
+                    // BottomAppBar { ... }
                 }
             },
             snackbarHost = { SnackbarHost(snackbarHostState) }
         ) { paddingValues ->
             // Основной контент
             Box(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
-                if (isDesktopLayout) {
-                    DesktopLayout(state, component)
-                } else {
-                    MobileLayout(state, component)
+                when (screenSize) {
+                    ScreenSize.DESKTOP -> DesktopLayout(state, component)
+                    ScreenSize.TABLET -> TabletLayout(state, component)
+                    ScreenSize.MOBILE -> MobileLayout(state, component)
                 }
             }
         }
@@ -77,6 +93,26 @@ private fun DesktopLayout(state: PromptsListState, component: PromptListComponen
 }
 
 @Composable
+private fun TabletLayout(state: PromptsListState, component: PromptListComponent) {
+    Column {
+        // Верхняя панель с действиями
+        ActionPanel(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            onAdd = component::onAddPromptClicked,
+            onSettings = component::onSettingsClicked,
+            onScraperNavigate = component::onNavigateToScraperClicked,
+            onLLMNavigate = component::onNavigateToLLMClicked
+        )
+        // Основной контент
+        MainContent(
+            modifier = Modifier.weight(1f),
+            state = state,
+            component = component
+        )
+    }
+}
+
+@Composable
 private fun MobileLayout(state: PromptsListState, component: PromptListComponent) {
     MainContent(
         modifier = Modifier.fillMaxSize(),
@@ -89,22 +125,22 @@ private fun MobileLayout(state: PromptsListState, component: PromptListComponent
 @Composable
 private fun PromptsTopAppBar(
     state: PromptsListState,
-    isDesktopLayout: Boolean,
+    screenSize: ScreenSize,
     component: PromptListComponent
 ) {
     TopAppBar(
         title = {
             // Разный заголовок для разных лейаутов
-            val titleText = if (isDesktopLayout) {
-                "Prompt Manager - Показано ${state.currentPrompts.size} из ${state.allPrompts.size}"
-            } else {
-                "Prompts"
+            val titleText = when (screenSize) {
+                ScreenSize.DESKTOP -> "Prompt Manager - Показано ${state.currentPrompts.size} из ${state.allPrompts.size}"
+                ScreenSize.TABLET -> "Prompts (${state.currentPrompts.size})"
+                ScreenSize.MOBILE -> "Prompts"
             }
             Text(titleText)
         },
         actions = {
-            // Показываем меню "три точки" только на мобильной версии
-            if (!isDesktopLayout) {
+            // Показываем меню "три точки" только на мобильной и планшетной версиях
+            if (screenSize != ScreenSize.DESKTOP) {
                 Box {
                     IconButton(onClick = { component.onMoreMenuToggle(true) }) {
                         Icon(Icons.Default.MoreVert, contentDescription = "Дополнительные действия")
@@ -120,7 +156,8 @@ private fun PromptsTopAppBar(
                                 component.onEditPromptClicked()
                                 component.onMoreMenuToggle(false)
                             },
-                            enabled = state.selectedPromptId != null // Активируем, только если промпт выбран
+                            enabled = state.selectedPromptId != null &&
+                                state.allPrompts.find { it.id == state.selectedPromptId }?.isLocal == true
                         )
                         DropdownMenuItem(
                             text = { Text("Удалить") },
@@ -128,7 +165,8 @@ private fun PromptsTopAppBar(
                                 component.onDeletePromptClicked()
                                 component.onMoreMenuToggle(false)
                             },
-                            enabled = state.selectedPromptId != null
+                            enabled = state.selectedPromptId != null &&
+                                state.allPrompts.find { it.id == state.selectedPromptId }?.isLocal == true
                         )
                         HorizontalDivider()
                         DropdownMenuItem(

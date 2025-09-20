@@ -50,10 +50,16 @@ val commonDomainModule = module {
     singleOf(::GetPromptsUseCase)
     singleOf(::GetPromptUseCase)
     singleOf(::ToggleFavoriteUseCase)
+    singleOf(::CreatePromptUseCase)
+    singleOf(::UpdatePromptUseCase)
+    singleOf(::DeletePromptUseCase)
+    singleOf(::GetAvailableTagsUseCase)
     singleOf(::ParseHtmlUseCase)
     singleOf(::ParseRawPostsUseCase)
     singleOf(::SavePromptsAsFilesUseCase)
     singleOf(::ImportJsonUseCase)
+    singleOf(::ImportFromFileUseCase)
+    singleOf(::ExportPromptsUseCase)
     singleOf(::FileMetadataReader)
     singleOf(::LLMInteractor) { bind<ILLMInteractor>() }
     single<SystemInteraction> { ActualSystemInteraction() }
