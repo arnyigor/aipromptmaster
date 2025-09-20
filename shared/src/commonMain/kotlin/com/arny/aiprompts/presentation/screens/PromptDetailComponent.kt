@@ -2,8 +2,11 @@ package com.arny.aiprompts.presentation.screens
 
 import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.essenty.lifecycle.coroutines.coroutineScope
+import com.arny.aiprompts.domain.model.Prompt
+import com.arny.aiprompts.domain.model.PromptContent
 import com.arny.aiprompts.domain.usecase.GetPromptUseCase
 import com.arny.aiprompts.domain.usecase.UpdatePromptUseCase
+import com.arny.aiprompts.domain.usecase.CreatePromptUseCase
 import com.arny.aiprompts.domain.usecase.GetAvailableTagsUseCase
 import com.arny.aiprompts.presentation.ui.detail.PromptDetailState
 import com.arny.aiprompts.presentation.ui.detail.PromptLanguage
@@ -12,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 
 // Добавим события для управления редактированием
 sealed interface PromptDetailEvent {
@@ -41,10 +45,13 @@ class DefaultPromptDetailComponent(
     componentContext: ComponentContext,
     private val getPromptUseCase: GetPromptUseCase,
     private val updatePromptUseCase: UpdatePromptUseCase,
+    private val createPromptUseCase: CreatePromptUseCase,
     private val getAvailableTagsUseCase: GetAvailableTagsUseCase,
     private val promptId: String,
     private val onNavigateBack: () -> Unit,
 ) : PromptDetailComponent, ComponentContext by componentContext {
+
+    private var currentPromptId = promptId
 
     private val _state = MutableStateFlow(PromptDetailState(isLoading = true))
     override val state: StateFlow<PromptDetailState> = _state.asStateFlow()
@@ -53,9 +60,44 @@ class DefaultPromptDetailComponent(
 
     init {
         scope.launch {
-            loadPromptDetails()
+            // Проверяем, существует ли промпт с таким ID
+            getPromptUseCase.getPromptFlow(currentPromptId)
+                .collect { result ->
+                    result.onSuccess { existingPrompt ->
+                        if (existingPrompt == null) {
+                            // Новый промпт - инициализируем пустое состояние в режиме редактирования
+                            _state.update { createNewPrompt() }
+                            loadAvailableTags()
+                        } else {
+                            // Существующий промпт - загружаем его
+                            loadPromptDetails()
+                        }
+                    }.onFailure { error ->
+                        // В случае ошибки считаем, что промпт новый
+                        _state.update { createNewPrompt() }
+                        loadAvailableTags()
+                    }
+                }
         }
     }
+
+    private fun createNewPrompt(): PromptDetailState = PromptDetailState(
+        isLoading = false,
+        isEditing = true,
+        draftPrompt = Prompt(
+            id = currentPromptId,
+            title = "",
+            content = PromptContent(ru = "", en = ""),
+            description = null,
+            category = "general",
+            tags = emptyList(),
+            compatibleModels = emptyList(),
+            status = "draft",
+            isLocal = true,
+            createdAt = Clock.System.now(),
+            modifiedAt = Clock.System.now()
+        )
+    )
 
     override fun onEvent(event: PromptDetailEvent) {
         when (event) {
@@ -78,25 +120,45 @@ class DefaultPromptDetailComponent(
                     scope.launch {
                         _state.update { it.copy(isSaving = true, saveError = null) }
 
-                        val result = updatePromptUseCase(
-                            promptId = promptId,
-                            title = draftPrompt.title,
-                            contentRu = draftPrompt.content?.ru.orEmpty(),
-                            contentEn = draftPrompt.content?.en.orEmpty(),
-                            description = draftPrompt.description,
-                            category = draftPrompt.category,
-                            tags = draftPrompt.tags,
-                            compatibleModels = draftPrompt.compatibleModels
-                        )
+                        val result = if (_state.value.prompt == null) {
+                            // Новый промпт
+                            createPromptUseCase(
+                                title = draftPrompt.title,
+                                contentRu = draftPrompt.content?.ru.orEmpty(),
+                                contentEn = draftPrompt.content?.en.orEmpty(),
+                                description = draftPrompt.description,
+                                category = draftPrompt.category,
+                                tags = draftPrompt.tags,
+                                compatibleModels = draftPrompt.compatibleModels,
+                                status = "active"
+                            )
+                        } else {
+                            // Существующий промпт
+                            updatePromptUseCase(
+                                promptId = currentPromptId,
+                                title = draftPrompt.title,
+                                contentRu = draftPrompt.content?.ru.orEmpty(),
+                                contentEn = draftPrompt.content?.en.orEmpty(),
+                                description = draftPrompt.description,
+                                category = draftPrompt.category,
+                                tags = draftPrompt.tags,
+                                compatibleModels = draftPrompt.compatibleModels
+                            )
+                        }
 
-                        result.onSuccess {
+                        result.onSuccess { newPromptId ->
+                            val savedPromptId = if (_state.value.prompt == null) newPromptId.toString() else currentPromptId
                             _state.update {
                                 it.copy(
                                     isEditing = false,
-                                    prompt = draftPrompt, // Обновляем основной prompt
+                                    prompt = draftPrompt.copy(id = savedPromptId), // Обновляем основной prompt
                                     draftPrompt = null,
                                     isSaving = false
                                 )
+                            }
+                            // Если это новый промпт, обновляем currentPromptId для дальнейших операций
+                            if (_state.value.prompt == null) {
+                                currentPromptId = savedPromptId
                             }
                         }.onFailure { error ->
                             _state.update {
@@ -157,6 +219,10 @@ class DefaultPromptDetailComponent(
                 }
         }
 
+        loadAvailableTags()
+    }
+
+    private fun loadAvailableTags() {
         // Загружаем доступные теги для автодополнения
         scope.launch {
             getAvailableTagsUseCase().onSuccess { tags ->

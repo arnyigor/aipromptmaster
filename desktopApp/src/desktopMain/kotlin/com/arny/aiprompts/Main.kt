@@ -46,6 +46,10 @@ fun main() {
                 systemInteraction = getKoin().get(),
                 fileMetadataReader = getKoin().get(),
                 llmInteractor = getKoin().get(),
+                createPromptUseCase = getKoin().get(),
+                getAvailableTagsUseCase = getKoin().get(),
+                updatePromptUseCase = getKoin().get(),
+                deletePromptUseCase = getKoin().get()
             )
         }
 

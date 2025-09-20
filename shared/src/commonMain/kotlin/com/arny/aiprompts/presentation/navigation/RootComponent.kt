@@ -77,8 +77,6 @@ class DefaultRootComponent(
                     getPromptsUseCase = getPromptsUseCase,
                     toggleFavoriteUseCase = toggleFavoriteUseCase,
                     importJsonUseCase = importJsonUseCase,
-                    createPromptUseCase = createPromptUseCase,
-                    updatePromptUseCase = updatePromptUseCase,
                     deletePromptUseCase = deletePromptUseCase,
                     onNavigateToDetails = { promptId ->
                         navigation.push(ScreenConfig.PromptDetails(promptId))
@@ -95,6 +93,7 @@ class DefaultRootComponent(
                         onNavigateBack = { navigation.pop() },
                         getPromptUseCase = getPromptUseCase,
                         updatePromptUseCase = updatePromptUseCase,
+                        createPromptUseCase = createPromptUseCase,
                         getAvailableTagsUseCase = getAvailableTagsUseCase,
                         promptId = config.promptId
                     )

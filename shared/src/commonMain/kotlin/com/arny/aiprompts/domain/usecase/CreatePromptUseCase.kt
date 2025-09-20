@@ -2,6 +2,7 @@ package com.arny.aiprompts.domain.usecase
 
 import com.arny.aiprompts.domain.interfaces.IPromptsRepository
 import com.arny.aiprompts.domain.model.Prompt
+import com.benasher44.uuid.uuid4
 import kotlinx.datetime.Clock
 
 /**
@@ -17,12 +18,13 @@ class CreatePromptUseCase(
         description: String? = null,
         category: String = "",
         tags: List<String> = emptyList(),
-        compatibleModels: List<String> = emptyList()
+        compatibleModels: List<String> = emptyList(),
+        status: String = "active"
     ): Result<Long> {
         return runCatching {
             val now = Clock.System.now()
             val prompt = Prompt(
-                id = "", // Пустой ID для генерации нового
+                id = uuid4().toString(), // Генерируем UUID для нового промпта
                 title = title,
                 content = com.arny.aiprompts.domain.model.PromptContent(
                     ru = contentRu,
@@ -32,8 +34,8 @@ class CreatePromptUseCase(
                 category = category,
                 tags = tags,
                 compatibleModels = compatibleModels,
-                status = "active",
-                isLocal = true, // Обязательный важный параметр для локальных промптов
+                status = status,
+                isLocal = true, // Всегда true для локальных промптов
                 createdAt = now,
                 modifiedAt = now
             )

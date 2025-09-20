@@ -7,9 +7,8 @@ import com.arny.aiprompts.domain.model.Prompt
 import com.arny.aiprompts.domain.usecase.GetPromptsUseCase
 import com.arny.aiprompts.domain.usecase.ImportJsonUseCase
 import com.arny.aiprompts.domain.usecase.ToggleFavoriteUseCase
-import com.arny.aiprompts.domain.usecase.CreatePromptUseCase
-import com.arny.aiprompts.domain.usecase.UpdatePromptUseCase
 import com.arny.aiprompts.domain.usecase.DeletePromptUseCase
+import com.benasher44.uuid.uuid4
 import com.arny.aiprompts.presentation.ui.prompts.PromptsListState
 import com.arny.aiprompts.presentation.ui.prompts.SortOrder
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
 interface PromptListComponent {
     val state: StateFlow<PromptsListState>
@@ -49,8 +49,6 @@ class DefaultPromptListComponent(
     private val getPromptsUseCase: GetPromptsUseCase,
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
     private val importJsonUseCase: ImportJsonUseCase,
-    private val createPromptUseCase: CreatePromptUseCase,
-    private val updatePromptUseCase: UpdatePromptUseCase,
     private val deletePromptUseCase: DeletePromptUseCase,
     private val onNavigateToDetails: (promptId: String) -> Unit,
     private val onNavigateToScraper: () -> Unit,
@@ -127,32 +125,9 @@ class DefaultPromptListComponent(
     }
 
     override fun onAddPromptClicked() {
-        scope.launch {
-            _state.update { it.copy(isCreatingPrompt = true, createError = null) }
-
-            val result = createPromptUseCase(
-                title = "Новый промпт",
-                contentRu = "",
-                contentEn = "",
-                description = null,
-                category = "general",
-                tags = emptyList(),
-                compatibleModels = emptyList()
-            )
-
-            result.onSuccess { promptId ->
-                _state.update { it.copy(isCreatingPrompt = false) }
-                // Навигация к созданному промпту для редактирования
-                onNavigateToDetails(promptId.toString())
-            }.onFailure { error ->
-                _state.update {
-                    it.copy(
-                        isCreatingPrompt = false,
-                        createError = error.message ?: "Failed to create prompt"
-                    )
-                }
-            }
-        }
+        // Генерируем UUID для нового промпта и открываем экран редактирования
+        val newPromptId = uuid4().toString()
+        onNavigateToDetails(newPromptId)
     }
 
     override fun onEditPromptClicked() {

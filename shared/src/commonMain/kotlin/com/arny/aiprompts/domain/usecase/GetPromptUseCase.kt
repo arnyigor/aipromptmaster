@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.map
 class GetPromptUseCase(
     private val promptsRepository: IPromptsRepository
 ) {
-    suspend fun getPromptFlow(promptId: String): Flow<Result<Prompt?>> {
+    fun getPromptFlow(promptId: String): Flow<Result<Prompt?>> {
         return flow {
             emit(promptsRepository.getPromptById(promptId))
         }
