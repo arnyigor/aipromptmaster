@@ -28,7 +28,8 @@ class CreatePromptUseCaseTest {
             description = "Test description",
             category = "test",
             tags = listOf("tag1", "tag2"),
-            compatibleModels = listOf("gpt-4")
+            compatibleModels = listOf("gpt-4"),
+            status = "active"
         )
 
         // Then
@@ -47,7 +48,8 @@ class CreatePromptUseCaseTest {
         // When
         val result = useCase(
             title = "Test Prompt",
-            contentRu = "Тестовый контент"
+            contentRu = "Тестовый контент",
+            status = "active"
         )
 
         // Then
@@ -65,7 +67,8 @@ class CreatePromptUseCaseTest {
 
         // When
         val result = useCase(
-            title = "Minimal Prompt"
+            title = "Minimal Prompt",
+            status = "active"
         )
 
         // Then
