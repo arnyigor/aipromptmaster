@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import com.arny.aiprompts.presentation.screens.PromptDetailComponent
 import com.arny.aiprompts.presentation.screens.PromptDetailEvent
 import com.mohamedrejeb.richeditor.model.rememberRichTextState
@@ -298,8 +299,142 @@ private fun DesktopPromptDetailLayout(
                             }
                         }
                     }
+            
+                    // Диалог подтверждения удаления
+                    if (state.showDeleteDialog) {
+                        AlertDialog(
+                            onDismissRequest = { component.onEvent(PromptDetailEvent.HideDeleteDialog) },
+                            title = { Text("Подтверждение удаления") },
+                            text = {
+                                Text("Вы действительно хотите удалить этот промпт? Это действие нельзя отменить.")
+                            },
+                            confirmButton = {
+                                Button(
+                                    onClick = { component.onEvent(PromptDetailEvent.ConfirmDelete) },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.error
+                                    )
+                                ) {
+                                    Text("Удалить", color = MaterialTheme.colorScheme.onError)
+                                }
+                            },
+                            dismissButton = {
+                                OutlinedButton(onClick = { component.onEvent(PromptDetailEvent.HideDeleteDialog) }) {
+                                    Text("Отмена")
+                                }
+                            },
+                            properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
+                        )
+                    }
                 }
             }
+
+            // Правая панель (30%): Метаданные и действия
+            Column(
+                modifier = Modifier.weight(0.3f).padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Информационная карточка
+                if (!state.isEditing && promptToDisplay != null) {
+                    Card {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                "Информация о промпте",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = promptToDisplay.title,
+                                style = MaterialTheme.typography.bodyLarge,
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+
+                // Кнопки действий
+                if (promptToDisplay != null && !state.isLoading && promptToDisplay.isLocal) {
+                    Card {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                "Действия",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+
+                            if (state.isEditing) {
+                                Button(
+                                    onClick = { component.onEvent(PromptDetailEvent.SaveClicked) },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(Icons.Default.Done, contentDescription = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Сохранить")
+                                }
+
+                                OutlinedButton(
+                                    onClick = { component.onEvent(PromptDetailEvent.CancelClicked) },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Отмена")
+                                }
+                            } else {
+                                Button(
+                                    onClick = { component.onEvent(PromptDetailEvent.EditClicked) },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(Icons.Default.Edit, contentDescription = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Редактировать")
+                                }
+
+                                OutlinedButton(
+                                    onClick = { component.onEvent(PromptDetailEvent.FavoriteClicked) },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(
+                                        if (promptToDisplay.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                                        contentDescription = null,
+                                        tint = if (promptToDisplay.isFavorite) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(if (promptToDisplay.isFavorite) "Убрать из избранного" else "В избранное")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Диалог подтверждения удаления
+        if (state.showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { component.onEvent(PromptDetailEvent.HideDeleteDialog) },
+                title = { Text("Подтверждение удаления") },
+                text = {
+                    Text("Вы действительно хотите удалить этот промпт? Это действие нельзя отменить.")
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { component.onEvent(PromptDetailEvent.ConfirmDelete) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Удалить", color = MaterialTheme.colorScheme.onError)
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(onClick = { component.onEvent(PromptDetailEvent.HideDeleteDialog) }) {
+                        Text("Отмена")
+                    }
+                },
+                properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
+            )
         }
     }
 }

@@ -28,6 +28,9 @@ sealed interface PromptDetailEvent {
     object CancelClicked : PromptDetailEvent
     object SaveClicked : PromptDetailEvent
     object DeleteClicked : PromptDetailEvent
+    object ShowDeleteDialog : PromptDetailEvent
+    object HideDeleteDialog : PromptDetailEvent
+    object ConfirmDelete : PromptDetailEvent
     data class TitleChanged(val newTitle: String) : PromptDetailEvent
     data class ContentChanged(val lang: PromptLanguage, val newContent: String) : PromptDetailEvent
     data class TagAdded(val tag: String) : PromptDetailEvent
@@ -193,7 +196,19 @@ class DefaultPromptDetailComponent(
             }
             PromptDetailEvent.DeleteClicked -> {
                 if (_state.value.prompt?.isLocal == true) {
+                    _state.update { it.copy(showDeleteDialog = true) }
+                }
+            }
+            PromptDetailEvent.ShowDeleteDialog -> {
+                _state.update { it.copy(showDeleteDialog = true) }
+            }
+            PromptDetailEvent.HideDeleteDialog -> {
+                _state.update { it.copy(showDeleteDialog = false) }
+            }
+            PromptDetailEvent.ConfirmDelete -> {
+                if (_state.value.prompt?.isLocal == true) {
                     scope.launch {
+                        _state.update { it.copy(showDeleteDialog = false) }
                         deletePromptUseCase(currentPromptId).onSuccess {
                             onNavigateBack()
                         }

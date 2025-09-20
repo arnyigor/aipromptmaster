@@ -37,6 +37,9 @@ interface PromptListComponent {
     fun onAddPromptClicked()
     fun onEditPromptClicked()
     fun onDeletePromptClicked()
+    fun onShowDeleteDialog()
+    fun onHideDeleteDialog()
+    fun onConfirmDelete()
 
     fun onMoreMenuToggle(isVisible: Boolean)
     fun onSettingsClicked()
@@ -146,8 +149,26 @@ class DefaultPromptListComponent(
         if (promptId != null) {
             val selectedPrompt = state.value.allPrompts.find { it.id == promptId }
             if (selectedPrompt?.isLocal == true) {
+                _state.update { it.copy(showDeleteDialog = true) }
+            }
+        }
+    }
+
+    override fun onShowDeleteDialog() {
+        _state.update { it.copy(showDeleteDialog = true) }
+    }
+
+    override fun onHideDeleteDialog() {
+        _state.update { it.copy(showDeleteDialog = false) }
+    }
+
+    override fun onConfirmDelete() {
+        val promptId = state.value.selectedPromptId
+        if (promptId != null) {
+            val selectedPrompt = state.value.allPrompts.find { it.id == promptId }
+            if (selectedPrompt?.isLocal == true) {
                 scope.launch {
-                    _state.update { it.copy(isDeletingPrompt = true, deleteError = null) }
+                    _state.update { it.copy(isDeletingPrompt = true, deleteError = null, showDeleteDialog = false) }
 
                     val result = deletePromptUseCase(promptId)
 

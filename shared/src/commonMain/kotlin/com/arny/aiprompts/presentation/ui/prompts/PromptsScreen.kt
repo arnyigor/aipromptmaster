@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import com.arny.aiprompts.domain.model.Prompt
 import com.arny.aiprompts.presentation.screens.PromptListComponent
 
@@ -29,7 +30,7 @@ fun PromptsScreen(component: PromptListComponent) {
     val state by component.state.collectAsState()
     BoxWithConstraints {
         val screenSize = when {
-            maxWidth >= 1024.dp -> ScreenSize.DESKTOP
+            maxWidth >= 800.dp -> ScreenSize.DESKTOP
             else -> ScreenSize.MOBILE
         }
 
@@ -155,6 +156,34 @@ private fun PromptsTopAppBar(
                             }
                         )
                     }
+                }
+        
+                // Диалог подтверждения удаления
+                if (state.showDeleteDialog) {
+                    AlertDialog(
+                        onDismissRequest = { component.onHideDeleteDialog() },
+                        title = { Text("Подтверждение удаления") },
+                        text = {
+                            val selectedPrompt = state.allPrompts.find { it.id == state.selectedPromptId }
+                            Text("Вы действительно хотите удалить промпт \"${selectedPrompt?.title ?: "неизвестный"}\"? Это действие нельзя отменить.")
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = { component.onConfirmDelete() },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Text("Удалить", color = MaterialTheme.colorScheme.onError)
+                            }
+                        },
+                        dismissButton = {
+                            OutlinedButton(onClick = { component.onHideDeleteDialog() }) {
+                                Text("Отмена")
+                            }
+                        },
+                        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
+                    )
                 }
             }
         }

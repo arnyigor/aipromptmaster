@@ -139,7 +139,24 @@ class PromptDetailComponentTest {
     }
 
     @Test
-    fun `delete clicked calls delete use case and navigates back for local prompt`() = runTest {
+    fun `delete clicked shows delete dialog for local prompt`() = runTest {
+        // Given
+        coEvery { mockGetPromptUseCase.getPromptFlow("test-id") } returns flowOf(Result.success(testPrompt))
+        coEvery { mockGetAvailableTagsUseCase() } returns Result.success(emptyList())
+
+        val component = createComponent("test-id")
+        advanceUntilIdle()
+
+        // When
+        component.onEvent(PromptDetailEvent.DeleteClicked)
+
+        // Then
+        val state = component.state.value
+        assertTrue(state.showDeleteDialog)
+    }
+
+    @Test
+    fun `confirm delete calls delete use case and navigates back for local prompt`() = runTest {
         // Given
         coEvery { mockGetPromptUseCase.getPromptFlow("test-id") } returns flowOf(Result.success(testPrompt))
         coEvery { mockGetAvailableTagsUseCase() } returns Result.success(emptyList())
@@ -150,12 +167,30 @@ class PromptDetailComponentTest {
         advanceUntilIdle()
 
         // When
-        component.onEvent(PromptDetailEvent.DeleteClicked)
+        component.onEvent(PromptDetailEvent.ConfirmDelete)
         advanceUntilIdle()
 
         // Then
         coVerify { mockDeletePromptUseCase("test-id") }
         assertTrue(navigatedBack)
+    }
+
+    @Test
+    fun `hide delete dialog hides the dialog`() = runTest {
+        // Given
+        coEvery { mockGetPromptUseCase.getPromptFlow("test-id") } returns flowOf(Result.success(testPrompt))
+        coEvery { mockGetAvailableTagsUseCase() } returns Result.success(emptyList())
+
+        val component = createComponent("test-id")
+        advanceUntilIdle()
+        component.onEvent(PromptDetailEvent.DeleteClicked)
+
+        // When
+        component.onEvent(PromptDetailEvent.HideDeleteDialog)
+
+        // Then
+        val state = component.state.value
+        assertFalse(state.showDeleteDialog)
     }
 
     @Test

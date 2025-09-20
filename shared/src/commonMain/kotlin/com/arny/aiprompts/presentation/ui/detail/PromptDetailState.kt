@@ -11,7 +11,8 @@ data class PromptDetailState(
     val draftPrompt: Prompt? = null,
     val isSaving: Boolean = false,
     val saveError: String? = null,
-    val availableTags: List<String> = emptyList()
+    val availableTags: List<String> = emptyList(),
+    val showDeleteDialog: Boolean = false
 )
 
 enum class PromptLanguage {
