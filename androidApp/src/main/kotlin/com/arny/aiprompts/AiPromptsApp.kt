@@ -8,6 +8,6 @@ class AiPromptsApp: Application() {
         super.onCreate()
         AndroidPlatform.init(this)
 //        // Инициализируем Koin здесь
-//        KoinInitializer.init()
+        KoinInitializer.init()
     }
 }
