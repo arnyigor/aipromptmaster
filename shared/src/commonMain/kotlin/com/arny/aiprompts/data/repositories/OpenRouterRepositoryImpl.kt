@@ -21,10 +21,8 @@ class OpenRouterRepositoryImpl(private val httpClient: HttpClient) : IOpenRouter
     override fun getModelsFlow(): Flow<List<LlmModel>> = _modelsFlow.asStateFlow()
 
     override suspend fun refreshModels(): Result<Unit> = try {
-        println("Refreshing models...")
         val response: ModelsResponseDTO = httpClient.get("https://openrouter.ai/api/v1/models").body()
         _modelsFlow.value = response.models.map { dto -> dto.toDomain() }
-        println("Models refreshed successfully.")
         Result.success(Unit)
     } catch (e: Exception) {
         println("Failed to refresh models. ${e.message}")

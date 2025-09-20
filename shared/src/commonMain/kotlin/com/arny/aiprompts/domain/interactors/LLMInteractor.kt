@@ -89,7 +89,7 @@ class LLMInteractor(
         val selectedIdFlow: Flow<String?> = settingsRepository.getSelectedModelId()
         val modelsListFlow: Flow<List<LlmModel>> = modelsRepository.getModelsFlow()
         return combine(selectedIdFlow, modelsListFlow, _refreshError) { selectedId, modelsList, refreshError ->
-            println("${this::class.java.simpleName} getModels: selectedId: $selectedId, modelsList: ${modelsList.size}, refreshError: $refreshError")
+//            println("${this::class.java.simpleName} getModels: selectedId: $selectedId, modelsList: ${modelsList.size}, refreshError: $refreshError")
             // Эта лямбда будет выполняться каждый раз, когда меняется ID, список моделей или ошибка.
             if (modelsList.isEmpty()) {
                 if (refreshError != null) {
