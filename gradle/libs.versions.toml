@@ -103,6 +103,7 @@ kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-t
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 russhwolf-settings = { module = "com.russhwolf:multiplatform-settings", version.ref = "multiplatform-settings" }
 russhwolf-settings-datastore = { module = "com.russhwolf:multiplatform-settings-datastore", version.ref = "multiplatform-settings" }
+russhwolf-settings-coroutines = { module = "com.russhwolf:multiplatform-settings-coroutines", version.ref = "multiplatform-settings" }
 # --- ДРУГИЕ ---
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 keytar-java = { module = "com.starxg:java-keytar", version.ref = "keytarJava" }

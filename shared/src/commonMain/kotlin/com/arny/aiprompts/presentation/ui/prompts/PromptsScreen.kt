@@ -20,7 +20,6 @@ import com.arny.aiprompts.presentation.screens.PromptListComponent
 
 enum class ScreenSize {
     MOBILE,
-    TABLET,
     DESKTOP
 }
 
@@ -31,7 +30,6 @@ fun PromptsScreen(component: PromptListComponent) {
     BoxWithConstraints {
         val screenSize = when {
             maxWidth >= 1024.dp -> ScreenSize.DESKTOP
-            maxWidth >= 768.dp -> ScreenSize.TABLET
             else -> ScreenSize.MOBILE
         }
 
@@ -64,7 +62,6 @@ fun PromptsScreen(component: PromptListComponent) {
             Box(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
                 when (screenSize) {
                     ScreenSize.DESKTOP -> DesktopLayout(state, component)
-                    ScreenSize.TABLET -> TabletLayout(state, component)
                     ScreenSize.MOBILE -> MobileLayout(state, component)
                 }
             }
@@ -133,7 +130,6 @@ private fun PromptsTopAppBar(
             // Разный заголовок для разных лейаутов
             val titleText = when (screenSize) {
                 ScreenSize.DESKTOP -> "Prompt Manager - Показано ${state.currentPrompts.size} из ${state.allPrompts.size}"
-                ScreenSize.TABLET -> "Prompts (${state.currentPrompts.size})"
                 ScreenSize.MOBILE -> "Prompts"
             }
             Text(titleText)

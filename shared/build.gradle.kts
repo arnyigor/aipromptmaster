@@ -67,6 +67,7 @@ kotlin {
                 implementation(libs.richeditor.compose)
                 implementation(libs.russhwolf.settings)
                 implementation(libs.russhwolf.settings.datastore)
+                implementation(libs.russhwolf.settings.coroutines)
             }
         }
 

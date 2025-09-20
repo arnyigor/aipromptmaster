@@ -9,16 +9,17 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.russhwolf.settings.ExperimentalSettingsApi
 import com.russhwolf.settings.ExperimentalSettingsImplementation
 import com.russhwolf.settings.Settings
+import com.russhwolf.settings.coroutines.toBlockingSettings
 import com.russhwolf.settings.datastore.DataStoreSettings
 
 private val Context.dataStore by preferencesDataStore(name = "settings")
 
 actual class SettingsFactory(actual val context: Any?) {
-
     constructor(context: Context) : this(context as Any?)
 
     @OptIn(ExperimentalSettingsApi::class, ExperimentalSettingsImplementation::class)
     actual fun create(name: String): Settings {
-        return DataStoreSettings((context as Context).dataStore) as Settings
+        val dataStoreSettings = DataStoreSettings((context as Context).dataStore)
+        return dataStoreSettings.toBlockingSettings()
     }
 }

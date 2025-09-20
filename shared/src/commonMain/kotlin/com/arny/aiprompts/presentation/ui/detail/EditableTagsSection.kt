@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import kotlin.math.absoluteValue
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -26,10 +27,11 @@ internal fun EditableTagsSection(
     fun getTagColor(tag: String): Color {
         if (!enableColorCoding) return MaterialTheme.colorScheme.primary
 
-        val hash = tag.hashCode()
+        val hash = tag.hashCode().absoluteValue
         val hue = (hash % 360).toFloat()
         return Color.hsl(hue, 0.6f, 0.5f)
     }
+
     Column {
         Text(title, style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(8.dp))
