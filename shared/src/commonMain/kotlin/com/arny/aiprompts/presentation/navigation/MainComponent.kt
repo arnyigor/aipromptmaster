@@ -1,31 +1,38 @@
 package com.arny.aiprompts.presentation.navigation
 
 import com.arkivanov.decompose.ComponentContext
+import com.arkivanov.decompose.DelicateDecomposeApi
 import com.arkivanov.decompose.router.stack.ChildStack
 import com.arkivanov.decompose.router.stack.StackNavigation
 import com.arkivanov.decompose.router.stack.childStack
+import com.arkivanov.decompose.router.stack.navigate
+import com.arkivanov.decompose.router.stack.pop
+import com.arkivanov.decompose.router.stack.push
 import com.arkivanov.decompose.value.Value
-import com.arny.aiprompts.data.scraper.WebScraper
 import com.arny.aiprompts.domain.files.FileMetadataReader
+import com.arny.aiprompts.domain.interactors.ILLMInteractor
 import com.arny.aiprompts.domain.interfaces.IHybridParser
 import com.arny.aiprompts.domain.system.SystemInteraction
-import com.arny.aiprompts.domain.usecase.*
+import com.arny.aiprompts.domain.usecase.DeletePromptUseCase
+import com.arny.aiprompts.domain.usecase.GetPromptsUseCase
+import com.arny.aiprompts.domain.usecase.ImportJsonUseCase
+import com.arny.aiprompts.domain.usecase.ParseRawPostsUseCase
+import com.arny.aiprompts.domain.usecase.SavePromptsAsFilesUseCase
+import com.arny.aiprompts.domain.usecase.ToggleFavoriteUseCase
+import com.arny.aiprompts.presentation.features.llm.DefaultLlmComponent
+import com.arny.aiprompts.presentation.features.llm.LlmComponent
 import com.arny.aiprompts.presentation.navigation.MainComponent.Child
-import com.arny.aiprompts.presentation.screens.DefaultPromptDetailComponent
+import com.arny.aiprompts.presentation.navigation.MainComponent.Companion.IS_IMPORT_ENABLED
 import com.arny.aiprompts.presentation.screens.DefaultPromptListComponent
-import com.arny.aiprompts.presentation.screens.PromptDetailComponent
 import com.arny.aiprompts.presentation.screens.PromptListComponent
+import com.arny.aiprompts.presentation.ui.Platform
+import com.arny.aiprompts.presentation.ui.getPlatform
 import com.arny.aiprompts.presentation.ui.importer.DefaultImporterComponent
 import com.arny.aiprompts.presentation.ui.importer.ImporterComponent
-import com.arny.aiprompts.presentation.ui.scraper.DefaultScraperComponent
-import com.arny.aiprompts.presentation.ui.scraper.ScraperComponent
-import com.arny.aiprompts.presentation.features.llm.DefaultLlmComponent
-import com.arny.aiprompts.domain.interactors.ILLMInteractor
-import io.ktor.client.*
+import io.ktor.client.HttpClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import com.arny.aiprompts.presentation.navigation.Platform
 
 interface MainComponent {
     val state: StateFlow<MainState>
@@ -41,15 +48,15 @@ interface MainComponent {
     companion object {
         // Import доступен только на Desktop в режиме разработки
         val IS_IMPORT_ENABLED: Boolean = getPlatform() == Platform.Desktop &&
-                                        (System.getProperty("java.vm.name")?.contains("OpenJDK") == true ||
-                                         System.getenv("DEBUG_MODE") == "true" ||
-                                         try {
-                                             // Попытка загрузки debug-only класса
-                                             Class.forName("kotlinx.coroutines.debug.DebugProbes")
-                                             true
-                                         } catch (e: ClassNotFoundException) {
-                                             false
-                                         })
+                (System.getProperty("java.vm.name")?.contains("OpenJDK") == true ||
+                        System.getenv("DEBUG_MODE") == "true" ||
+                        try {
+                            // Попытка загрузки debug-only класса
+                            Class.forName("kotlinx.coroutines.debug.DebugProbes")
+                            true
+                        } catch (e: ClassNotFoundException) {
+                            false
+                        })
     }
 
     fun navigateToPrompts()
@@ -63,11 +70,9 @@ interface MainComponent {
 class DefaultMainComponent(
     componentContext: ComponentContext,
     private val getPromptsUseCase: GetPromptsUseCase,
-    private val getPromptUseCase: GetPromptUseCase,
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
+    private val deletePromptUseCase: DeletePromptUseCase,
     private val importJsonUseCase: ImportJsonUseCase,
-    private val scrapeUseCase: ScrapeWebsiteUseCase,
-    private val webScraper: WebScraper,
     private val parseRawPostsUseCase: ParseRawPostsUseCase,
     private val savePromptsAsFilesUseCase: SavePromptsAsFilesUseCase,
     private val hybridParser: IHybridParser,
@@ -97,10 +102,11 @@ class DefaultMainComponent(
             childFactory = ::createChild
         )
 
+    @OptIn(DelicateDecomposeApi::class)
     private fun createChild(config: MainConfig, context: ComponentContext): Child {
         return when (config) {
             is MainConfig.Prompts -> Child.Prompts(
-                com.arny.aiprompts.presentation.screens.DefaultPromptListComponent(
+                DefaultPromptListComponent(
                     componentContext = context,
                     getPromptsUseCase = getPromptsUseCase,
                     toggleFavoriteUseCase = toggleFavoriteUseCase,
@@ -114,19 +120,20 @@ class DefaultMainComponent(
                     },
                     onNavigateToLLM = {
                         navigation.push(MainConfig.Chat)
-                    }
+                    },
+                    deletePromptUseCase = deletePromptUseCase
                 )
             )
 
             is MainConfig.Chat -> Child.Chat(
-                com.arny.aiprompts.presentation.features.llm.DefaultLlmComponent(
+                DefaultLlmComponent(
                     componentContext = context,
                     llmInteractor = llmInteractor
                 )
             )
 
             is MainConfig.Import -> Child.Import(
-                com.arny.aiprompts.presentation.ui.importer.DefaultImporterComponent(
+                DefaultImporterComponent(
                     componentContext = context,
                     filesToImport = emptyList(), // Will be set by external navigation
                     parseRawPostsUseCase = parseRawPostsUseCase,

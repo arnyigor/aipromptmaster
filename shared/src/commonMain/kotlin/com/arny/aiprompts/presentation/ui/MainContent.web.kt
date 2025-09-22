@@ -5,6 +5,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.unit.dp
+import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import com.arny.aiprompts.presentation.navigation.MainComponent
 import com.arny.aiprompts.presentation.navigation.Platform
 import com.arny.aiprompts.presentation.navigation.MainScreen
@@ -125,5 +128,3 @@ actual fun MainContentIOS(
 ) {
     androidx.compose.material3.Text("iOS UI not available on Web")
 }
-
-actual fun getPlatform(): Platform = Platform.Web

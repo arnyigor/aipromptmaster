@@ -2,6 +2,7 @@ package com.arny.aiprompts
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.arkivanov.decompose.ComponentContext
 import com.arny.aiprompts.presentation.navigation.DefaultMainComponent
 import com.arny.aiprompts.presentation.ui.MainContent
 import com.arny.aiprompts.data.scraper.WebScraper
@@ -11,24 +12,22 @@ import com.arny.aiprompts.domain.system.SystemInteraction
 import com.arny.aiprompts.domain.usecase.*
 import com.arny.aiprompts.domain.interactors.ILLMInteractor
 import io.ktor.client.*
+import org.koin.compose.koinInject
 import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 
 @Composable
 fun App() {
     // Get dependencies from Koin
-    val appComponent: AppComponent by remember { inject() }
+    val appComponent: AppComponent = koinInject()
 
     // Create MainComponent with all required dependencies
     val mainComponent = remember {
         DefaultMainComponent(
             componentContext = appComponent.componentContext,
             getPromptsUseCase = appComponent.getPromptsUseCase,
-            getPromptUseCase = appComponent.getPromptUseCase,
+            deletePromptUseCase = appComponent.deletePromptUseCase,
             toggleFavoriteUseCase = appComponent.toggleFavoriteUseCase,
             importJsonUseCase = appComponent.importJsonUseCase,
-            scrapeUseCase = appComponent.scrapeUseCase,
-            webScraper = appComponent.webScraper,
             parseRawPostsUseCase = appComponent.parseRawPostsUseCase,
             savePromptsAsFilesUseCase = appComponent.savePromptsAsFilesUseCase,
             hybridParser = appComponent.hybridParser,
@@ -48,13 +47,11 @@ fun App() {
 
 // AppComponent interface for dependency injection
 interface AppComponent : KoinComponent {
-    val componentContext: com.arkivanov.decompose.ComponentContext
+    val componentContext: ComponentContext
     val getPromptsUseCase: GetPromptsUseCase
-    val getPromptUseCase: GetPromptUseCase
+    val deletePromptUseCase: DeletePromptUseCase
     val toggleFavoriteUseCase: ToggleFavoriteUseCase
     val importJsonUseCase: ImportJsonUseCase
-    val scrapeUseCase: ScrapeWebsiteUseCase
-    val webScraper: WebScraper
     val parseRawPostsUseCase: ParseRawPostsUseCase
     val savePromptsAsFilesUseCase: SavePromptsAsFilesUseCase
     val hybridParser: IHybridParser
