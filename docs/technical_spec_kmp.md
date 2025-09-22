@@ -323,6 +323,311 @@ interface LLMProvider {
 - **Storage efficiency**: сжатие векторов без потери качества
 - **Interruption recovery**: возможность продолжения прерванной индексации
 
+#### 2.5 ЕДИНАЯ АРХИТЕКТУРА ПРИЛОЖЕНИЯ
+
+##### 2.5.1 Обзор единой рабочей среды
+
+**MainComponent** - центральный компонент приложения, обеспечивающий единую точку входа и унифицированную навигацию между всеми модулями:
+
+**Основные принципы:**
+- **Единая рабочая среда**: все модули (промпты, чат, импорт) работают в рамках единого интерфейса
+- **Адаптивный UI**: автоматическая адаптация под размер экрана и платформу
+- **Состояние приложения**: централизованное управление состоянием и навигацией
+- **Модульная архитектура**: независимые модули с четкими интерфейсами взаимодействия
+
+##### 2.5.2 MainComponent архитектура
+
+**Структура MainComponent:**
+
+```kotlin
+class MainComponent(
+    private val promptRepository: PromptRepository,
+    private val chatRepository: ChatRepository,
+    private val importRepository: ImportRepository
+) : ComponentContext {
+
+    // Состояние главного интерфейса
+    private val _state = MutableStateFlow(MainState())
+    val state = _state.asStateFlow()
+
+    // Навигация между модулями
+    val navigation = StackNavigation<MainConfig>()
+
+    // Дочерние компоненты
+    val promptsComponent get() = childPromptsComponent()
+    val chatComponent get() = childChatComponent()
+    val importComponent get() = childImportComponent()
+}
+```
+
+**Состояние MainComponent:**
+
+```kotlin
+data class MainState(
+    val currentScreen: MainScreen = MainScreen.PROMPTS,
+    val sidebarCollapsed: Boolean = false,
+    val showImportDialog: Boolean = false,
+    val activeWorkspace: Workspace? = null
+)
+
+enum class MainScreen {
+    PROMPTS,    // Управление промптами
+    CHAT,       // Чат с LLM
+    IMPORT,     // Импорт промптов
+    SETTINGS    // Настройки приложения
+}
+```
+
+##### 2.5.3 Гибридный пользовательский интерфейс с платформо-специфичными реализациями
+
+**Архитектурный подход:**
+- **commonMain**: общая логика навигации, состояние, бизнес-правила
+- **androidMain**: полная Material Design 3 реализация для Android
+- **desktopMain**: нативная desktop реализация с оконной системой
+- **jsMain**: веб-реализация с адаптивным дизайном
+
+**Android (Material Design 3):**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ [←] AI Prompt Manager                    [🔍] [⋮]           │
+├─────────────────────────────────────────────────────────────┤
+│ ┌─────────────────────────────────────────────────────┐    │
+│ │                    Navigation Drawer                    │    │
+│ │ ┌─────────────────────────────────────────────────┐ │    │
+│ │ │ [≡] Close Drawer                                │ │    │
+│ │ │                                                 │ │    │
+│ │ │ 📝 Prompts         [→]                          │ │    │
+│ │ │ 💬 Chat            [→]                          │ │    │
+│ │ │ 📥 Import          [→]                          │ │    │
+│ │ │ ⚙️ Settings        [→]                          │ │    │
+│ │ │                                                 │ │    │
+│ │ │ Workspaces:                                     │ │    │
+│ │ │ • Personal        [→]                           │ │    │
+│ │ │ • Work Projects   [→]                           │ │    │
+│ │ └─────────────────────────────────────────────────┘ │    │
+│ └─────────────────────────────────────────────────────┘    │
+├─────────────────────────────────────────────────────────────┤
+│                    Main Content Area                        │
+│ ┌─────────────────────────────────────────────────────┐    │
+│ │              Active Module Content                      │    │
+│ │                                                     │    │
+│ │ (Prompts List / Chat Interface / Import Wizard)     │    │
+│ └─────────────────────────────────────────────────────┘    │
+├─────────────────────────────────────────────────────────────┤
+│ [🏠] [📝] [💬] [📥] [⚙️]                                 │ <- Bottom Navigation
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Особенности Android реализации:**
+- **Navigation Drawer**: стандартный Android паттерн с жестовым управлением
+- **Bottom Navigation**: основные модули доступны в нижней навигации
+- **Material Design 3**: полная поддержка Material You, dynamic colors
+- **Gesture Navigation**: swipe между экранами, edge-to-edge display
+- **System Back Button**: аппаратная кнопка "Назад" с правильной обработкой
+- **Status Bar Integration**: прозрачная status bar с контентным overlay
+- **Keyboard Handling**: адаптивная клавиатура с IME animations
+- **Dark/Light Theme**: системная тема с плавными переходами
+
+**Desktop (Native Windowing):**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ [≡] AI Prompt Manager    [🔍] Search    [⚙️] Settings [👤]  │
+├─────────┬───────────────────────────────────────────────────┤
+│         │                     Main Content Area              │
+│ Sidebar │ ┌─────────────────────────────────────────────┐ │
+│ ┌─────┐ │ │                                             │ │
+│ │ 📝  │ │ │              Workspace Content              │ │
+│ │ Prompts │ │ │                                             │ │
+│ │ 💬  │ │ │                                             │ │
+│ │ Chat│ │ │                                             │ │
+│ │ 📥  │ │ │                                             │ │
+│ │ Import│ │ │                                             │ │
+│ │ 🖥️  │ │ │                                             │ │
+│ │ Workspaces│ │                                             │ │
+│ └─────┘ │ └─────────────────────────────────────────────┘ │
+│         │ ┌─────────────────────────────────────────────┐ │
+│         │ │              Properties Panel               │ │
+│         │ │                                             │ │
+│         │ │ • Current chat settings                     │ │
+│         │ │ • Prompt metadata                           │ │
+│         │ │ • Import progress                           │ │
+│         │ │ • Model status                              │ │
+│         │ └─────────────────────────────────────────────┘ │
+├─────────┴───────────────────────────────────────────────────┘
+│ Status: Connected to Ollama | Model: llama2 | Tokens: 1.2k   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Особенности Desktop реализации:**
+- **Resizable Windows**: поддержка изменения размера окон
+- **Multi-Window**: одновременная работа с несколькими workspace
+- **Keyboard Shortcuts**: Ctrl+S, Ctrl+N, Ctrl+W для основных операций
+- **Menu Bar Integration**: нативная интеграция с системным меню
+- **Drag & Drop**: перетаскивание файлов в интерфейс
+- **System Tray**: фоновые операции через tray icon
+- **Window Management**: minimize, maximize, close с сохранением состояния
+- **Native Dialogs**: системные диалоги выбора файлов и папок
+
+**Web (Progressive Web App):**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ [≡] AI Prompt Manager    [🔍] Search    [⚙️] Settings [👤]  │
+├─────────────────────────────────────────────────────────────┤
+│ ┌─────────────────────────────────────────────────────┐    │
+│ │                    Collapsible Sidebar                  │    │
+│ │ ┌──────────────────────────────────────────────┐ │    │
+│ │ │ 📝 Prompts     [collapse]                    │ │    │
+│ │ │ 💬 Chat        [collapse]                    │ │    │
+│ │ │ 📥 Import      [collapse]                    │ │    │
+│ │ │ ⚙️ Settings    [collapse]                    │ │    │
+│ │ └──────────────────────────────────────────────┘ │    │
+│ └─────────────────────────────────────────────────────┘    │
+├─────────────────────────────────────────────────────────────┤
+│                    Main Content Area                        │
+│ ┌─────────────────────────────────────────────────────┐    │
+│ │              Responsive Module Content                   │    │
+│ │                                                     │    │
+│ │ (Adaptive layout for mobile/desktop browsers)        │    │
+│ └─────────────────────────────────────────────────────┘    │
+├─────────────────────────────────────────────────────────────┤
+│ [📱] Mobile View    [🖥️] Desktop View    [↻] Refresh       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Особенности Web реализации:**
+- **Responsive Design**: адаптация под размер экрана браузера
+- **Touch-Friendly**: поддержка touch gestures на мобильных устройствах
+- **PWA Features**: установка как native app, offline support
+- **Browser Integration**: bookmarks, history, tabs
+- **Cross-Browser**: поддержка Chrome, Firefox, Safari, Edge
+- **Keyboard Navigation**: full keyboard accessibility
+- **Print Support**: экспорт в PDF с правильным форматированием
+- **Share API**: нативный sharing через Web Share API
+
+**Платформо-специфические реализации:**
+
+- **Android**: Material Design 3 с Navigation Drawer и Bottom Navigation
+- **Desktop**: Native windowing с трехпанельной системой и keyboard shortcuts
+- **iOS**: UIKit-based реализация с Tab Bar и Slide-out menu (перспективно)
+- **Web**: Progressive Web App с responsive design и PWA features
+
+**Desktop (1024px+):**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ [≡] AI Prompt Manager    [🔍] [⚙️] [👤]                   │
+├─────────┬───────────────────────────────────────────────────┤
+│         │                     Main Content Area              │
+│ Sidebar │ ┌─────────────────────────────────────────────┐ │
+│ ┌─────┐ │ │                                             │ │
+│ │ 📝  │ │ │              Workspace Content              │ │
+│ │ Prompts │ │ │                                             │ │
+│ │ 💬  │ │ │                                             │ │
+│ │ Chat│ │ │                                             │ │
+│ │ 📥  │ │ │                                             │ │
+│ │ Import│ │ │                                             │ │
+│ └─────┘ │ └─────────────────────────────────────────────┘ │
+│         │ ┌─────────────────────────────────────────────┐ │
+│         │ │              Properties Panel               │ │
+│         │ │                                             │ │
+│         │ │ • Current chat settings                     │ │
+│         │ │ • Prompt metadata                           │ │
+│         │ │ • Import progress                           │ │
+│         │ └─────────────────────────────────────────────┘ │
+└─────────┴───────────────────────────────────────────────────┘
+```
+
+**Mobile/Tablet (до 1024px):**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ [≡] AI Prompt Manager    [🔍] [⚙️] [👤]                   │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│                    Navigation Drawer                        │
+│ ┌─────────────────────────────────────────────────────┐    │
+│ │ 📝 Prompts                                          │    │
+│ │ 💬 Chat                                             │    │
+│ │ 📥 Import                                           │    │
+│ │ ⚙️ Settings                                         │    │
+│ └─────────────────────────────────────────────────────┘    │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│                    Main Content Area                        │
+│                                                             │
+│              (Full screen for each module)                  │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Платформо-специфические реализации:**
+
+- **Android**: Material Design 3 с Navigation Drawer и Bottom Navigation
+- **Desktop**: Native windowing с трехпанельной системой и keyboard shortcuts
+- **iOS**: UIKit-based реализация с Tab Bar и Slide-out menu (перспективно)
+- **Web**: Progressive Web App с responsive design и PWA features
+
+##### 2.5.4 Интеграция модулей
+
+**Стратегия интеграции:**
+
+1. **Модульная изоляция**: каждый модуль остается независимым с четким API
+2. **Единая навигация**: MainComponent управляет переходами между модулями
+3. **Общее состояние**: синхронизация данных между модулями через репозитории
+4. **Контекстное взаимодействие**: модули могут обмениваться данными (выбранный промпт → чат)
+
+**Примеры интеграции:**
+
+- **Prompts → Chat**: передача промпта в чат как системного сообщения
+- **Import → Prompts**: автоматическое создание категорий для импортированных промптов
+- **Chat → Prompts**: сохранение успешных промптов из чата в базу знаний
+
+##### 2.5.5 Управление состоянием
+
+**Глобальное состояние:**
+
+```kotlin
+data class AppState(
+    val currentUser: User? = null,
+    val activeWorkspace: Workspace? = null,
+    val globalSettings: AppSettings = AppSettings(),
+    val networkStatus: NetworkStatus = NetworkStatus.ONLINE,
+    val backgroundTasks: List<BackgroundTask> = emptyList()
+)
+```
+
+**Стратегия управления:**
+
+- **StateFlow**: реактивное обновление UI при изменении состояния
+- **Event-driven**: события для навигации и пользовательских действий
+- **Persistence**: сохранение состояния между сессиями
+- **Recovery**: восстановление состояния после сбоев
+
+##### 2.5.6 Рабочие пространства (Workspaces)
+
+**Концепция Workspace:**
+
+```kotlin
+data class Workspace(
+    val id: String,
+    val name: String,
+    val activePrompts: List<Prompt> = emptyList(),
+    val activeChat: ChatSession? = null,
+    val importSession: ImportSession? = null,
+    val settings: WorkspaceSettings = WorkspaceSettings()
+)
+```
+
+**Возможности:**
+
+- **Множественные workspace**: одновременная работа с разными проектами
+- **Быстрое переключение**: между сохраненными конфигурациями
+- **Автосохранение**: состояние каждого workspace сохраняется автоматически
+- **Экспорт/Импорт**: перенос workspace между устройствами
+
 ***
 
 ### 3. ТЕХНИЧЕСКИЕ ТРЕБОВАНИЯ
@@ -1122,45 +1427,60 @@ object PerformanceMonitor {
 - ✅ Basic navigation и скелет основных экранов
 - ✅ CI/CD pipeline setup
 
-**Phase 2: Prompt Management (Недели 4-5)**
+**Phase 2: Unified Application Architecture (Недели 4-6)**
+
+- 🏗️ **MainComponent**: создание центрального компонента навигации
+- 📱 **Adaptive UI**: реализация адаптивного интерфейса для всех платформ
+- 🗂️ **Desktop Layout**: трехпанельная система (sidebar + content + properties)
+- 📱 **Mobile Layout**: Navigation Drawer с полноэкранным контентом
+- 🔗 **Module Integration**: стратегия интеграции существующих модулей
+- 💾 **State Management**: централизованное управление состоянием приложения
+- 🖥️ **Workspace System**: реализация рабочих пространств для организации работы
+
+**Phase 3: Enhanced Prompt Management (Недели 7-8)**
 
 - 📝 CRUD операции для промптов и категорий
 - 🔍 Поиск и фильтрация промптов
 - 🏷️ Система тегов и метаданных
 - 📤 Импорт/экспорт функциональность
-- 📱 Responsive UI для всех платформ
+- 🎨 Responsive UI для всех платформ
+- 🔗 Интеграция с MainComponent и Workspace
 
-**Phase 3: LLM Integration (Недели 6-8)**
+**Phase 4: Advanced LLM Integration (Недели 9-11)**
 
 - 🤖 Базовая интеграция с Ollama и OpenRouter
 - 💬 Chat UI с message streaming
 - ⚙️ Settings screen для провайдеров
 - 📊 Model management и статистика
 - 🔄 Background chat processing
+- 🔗 Интеграция чата с Workspace и другими модулями
 
-**Phase 4: Advanced Chat Features (Недели 9-10)**
+**Phase 5: Advanced Chat Features (Недели 12-13)**
 
 - 🔀 Conversation branching
 - 📎 Multimodal attachments support
 - 💾 Chat history и persistence
 - 🔍 Search в chat history
 - 📋 Export chat conversations
+- 🔗 Интеграция с Workspace и другими модулями
 
-**Phase 5: RAG Implementation (Недели 11-13)**
+**Phase 6: RAG Implementation (Недели 14-16)**
 
 - 📚 Document indexing pipeline
 - 🔢 Embedding models integration
 - 🔍 Vector search implementation
 - 📁 File format support (PDF, DOCX, etc.)
 - ⚡ Performance optimization
+- 🔗 Интеграция RAG с Workspace и Chat
 
-**Phase 6: Polish \& Release (Недели 14-15)**
+**Phase 7: Polish \& Release (Недели 17-18)**
 
 - 🐛 Bug fixes и stability improvements
 - 🎨 UI/UX polish и accessibility
 - 📖 Documentation и tutorials
 - 🚀 Release preparation и distribution
 - 📊 Analytics и monitoring setup
+- 🔄 Cross-platform testing и optimization
 
 
 #### 9.2 Критерии готовности
@@ -1175,6 +1495,17 @@ object PerformanceMonitor {
 - ✅ Code review пройден
 - ✅ Documentation обновлена
 
+**Definition of Done для Phase 2 (Unified Architecture):**
+
+- ✅ MainComponent корректно управляет навигацией между модулями
+- ✅ Адаптивный UI работает на всех платформах (Desktop, Mobile, Web)
+- ✅ Navigation Drawer реализован для Android
+- ✅ Трехпанельная система работает на Desktop
+- ✅ Workspace система позволяет переключаться между контекстами
+- ✅ Все существующие модули интегрированы через MainComponent
+- ✅ Состояние корректно сохраняется и восстанавливается
+- ✅ Cross-platform тестирование пройдено успешно
+
 ***
 
 ### 10. РИСКИ И МИТИГАЦИЯ
@@ -1184,6 +1515,9 @@ object PerformanceMonitor {
 | Риск | Вероятность | Влияние | Митигация |
 | :-- | :-- | :-- | :-- |
 | Проблемы совместимости KMP | Средняя | Высокое | Раннее прототипирование, fallback планы |
+| Сложность интеграции модулей в единую архитектуру | Высокая | Высокое | Модульная архитектура, четкие интерфейсы, итеративная интеграция |
+| Производительность адаптивного UI | Средняя | Среднее | Профилирование, оптимизация Compose, платформо-специфические реализации |
+| Состояние и навигация в MainComponent | Средняя | Высокое | Тщательное тестирование, fallback навигация, graceful degradation |
 | Производительность RAG на мобильных | Высокая | Среднее | Lite модели, cloud fallback |
 | API изменения провайдеров | Низкая | Высокое | Versioned API contracts, адаптеры |
 | Сложности с векторными БД | Средняя | Среднее | Proof of concept, альтернативные решения |
@@ -1218,6 +1552,8 @@ object PerformanceMonitor {
 - 💾 Memory usage: < 500MB baseline на desktop
 - 📱 APK size: < 50MB для Android приложения
 - 🐛 Bug rate: < 1 критический баг на 1000 пользователей
+- 🏗️ Architecture compliance: полное соответствие единой архитектуре MainComponent
+- 📱 Cross-platform consistency: единообразный UX на всех платформах
 
 **Пользовательский опыт:**
 
@@ -1225,6 +1561,8 @@ object PerformanceMonitor {
 - 📈 User retention: > 60% после первой недели
 - 🔄 Feature adoption: > 40% пользователей используют RAG
 - ⏱️ Session duration: среднее время сессии > 10 минут
+- 🏗️ Architecture satisfaction: > 80% пользователей отмечают удобство единого интерфейса
+- 📱 Platform consistency: > 90% положительных отзывов о cross-platform опыте
 
 
 #### 11.2 Качественные критерии
@@ -1235,6 +1573,9 @@ object PerformanceMonitor {
 - ✅ Интуитивный интерфейс не требует обучения
 - ✅ Seamless работа между платформами
 - ✅ Надежная работа с различными LLM провайдерами
+- ✅ Единая рабочая среда объединяет все модули
+- ✅ Адаптивный UI корректно работает на всех размерах экрана
+- ✅ Workspace система обеспечивает эффективную организацию работы
 
 **Ecosystem fit:**
 
@@ -1247,11 +1588,22 @@ object PerformanceMonitor {
 
 ### ЗАКЛЮЧЕНИЕ
 
-Данное техническое задание определяет полный scope разработки кроссплатформенного AI Prompt Manager приложения с современной архитектурой, интуитивным пользовательским интерфейсом и продвинутыми возможностями работы с LLM.
+Данное техническое задание определяет полный scope разработки кроссплатформенного AI Prompt Manager приложения с единой архитектурой, интуитивным пользовательским интерфейсом и продвинутыми возможностями работы с LLM.
+
+**Ключевые архитектурные решения:**
+
+1. **Единая рабочая среда**: MainComponent обеспечивает унифицированный доступ ко всем модулям приложения
+2. **Адаптивный UI**: автоматическая адаптация интерфейса под платформу и размер экрана
+3. **Модульная интеграция**: независимые модули с четкими интерфейсами взаимодействия
+4. **Workspace система**: организация работы в рамках изолированных контекстов
+
+**Технологический стек:**
 
 Проект использует cutting-edge технологии Kotlin Multiplatform и Compose для обеспечения нативного experience на всех платформах, при этом максимизируя code sharing и maintainability.
 
-Поэтапный подход к разработке позволяет итеративно доставлять ценность пользователям, начиная с core функциональности и постепенно добавляя advanced features как RAG и MCP интеграция.
+**Стратегия развития:**
+
+Поэтапный подход к разработке позволяет итеративно доставлять ценность пользователям, начиная с единой архитектуры и постепенно добавляя advanced features как RAG и MCP интеграция. Особое внимание уделяется качеству пользовательского опыта и cross-platform консистентности.
 <span style="display:none">[^1][^10][^2][^3][^4][^5][^6][^7][^8][^9]</span>
 
 <div style="text-align: center">⁂</div>
