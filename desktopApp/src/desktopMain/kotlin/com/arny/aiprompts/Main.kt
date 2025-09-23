@@ -13,8 +13,8 @@ import com.arkivanov.decompose.extensions.compose.lifecycle.LifecycleController
 import com.arkivanov.essenty.lifecycle.LifecycleRegistry
 import com.arny.aiprompts.data.di.desktopModules
 import com.arny.aiprompts.di.commonModules
-import com.arny.aiprompts.presentation.navigation.DefaultRootComponent
-import com.arny.aiprompts.presentation.ui.RootContent
+import com.arny.aiprompts.presentation.navigation.DefaultMainComponent
+import com.arny.aiprompts.presentation.ui.MainContentDesktopImpl
 import org.koin.core.context.startKoin
 import org.koin.java.KoinJavaComponent.getKoin
 
@@ -31,14 +31,11 @@ fun main() {
         val lifecycle = remember { LifecycleRegistry() }
 
         val root = remember {
-            DefaultRootComponent(
+            DefaultMainComponent(
                 componentContext = DefaultComponentContext(lifecycle = lifecycle),
                 getPromptsUseCase = getKoin().get(),
-                getPromptUseCase = getKoin().get(),
                 toggleFavoriteUseCase = getKoin().get(),
                 importJsonUseCase = getKoin().get(),
-                scrapeUseCase = getKoin().get(),
-                webScraper = getKoin().get(),
                 parseRawPostsUseCase = getKoin().get(),
                 savePromptsAsFilesUseCase = getKoin().get(),
                 hybridParser = getKoin().get(),
@@ -46,9 +43,6 @@ fun main() {
                 systemInteraction = getKoin().get(),
                 fileMetadataReader = getKoin().get(),
                 llmInteractor = getKoin().get(),
-                createPromptUseCase = getKoin().get(),
-                getAvailableTagsUseCase = getKoin().get(),
-                updatePromptUseCase = getKoin().get(),
                 deletePromptUseCase = getKoin().get()
             )
         }
@@ -60,7 +54,7 @@ fun main() {
             state = windowState,
             title = "AI Prompt Master"
         ) {
-            RootContent(component = root)
+            MainContentDesktopImpl(component = root)
         }
     }
 }

@@ -15,3 +15,5 @@ actual class PlatformFile(val file: File) {
         file.readText()
     }
 }
+
+actual fun getPlatform(): Platform = Platform.Android

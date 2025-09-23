@@ -45,29 +45,10 @@ import com.arny.aiprompts.presentation.navigation.MainComponent
 import com.arny.aiprompts.presentation.navigation.MainScreen
 import kotlinx.coroutines.launch
 
-// Android-specific implementation
-@Composable
-actual fun MainContentAndroid(
-    component: MainComponent,
-    modifier: Modifier
-) {
-    MainContentAndroidImpl(component, modifier)
-}
-
-@Composable
-actual fun MainContentDesktop(
-    component: MainComponent,
-    modifier: Modifier
-) {
-    Text("Desktop UI not available on Android")
-}
-
-// Keep the existing implementation as MainContentAndroidImpl
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MainContentAndroidImpl(
-    component: MainComponent,
-    modifier: Modifier = Modifier
+  fun MainContentAndroid(
+    component: MainComponent
 ) {
     val state by component.state.collectAsState()
     val childStack by component.childStack.subscribeAsState()
@@ -323,10 +304,6 @@ private fun MainBottomBar(
             onClick = onNavigateToChat
         )
 
-        if (MainComponent.IS_IMPORT_ENABLED) {
-            // Import доступен только на Desktop в dev режиме
-        }
-
         NavigationBarItem(
             icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
             label = { Text("Settings") },
@@ -335,5 +312,3 @@ private fun MainBottomBar(
         )
     }
 }
-
-actual fun getPlatform(): Platform = Platform.Android

@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -19,8 +21,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -29,28 +29,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.rememberWindowState
+import com.arkivanov.decompose.extensions.compose.stack.Children
+import com.arkivanov.decompose.extensions.compose.stack.animation.slide
+import com.arkivanov.decompose.extensions.compose.stack.animation.stackAnimation
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import com.arny.aiprompts.presentation.features.llm.LlmComponent
 import com.arny.aiprompts.presentation.navigation.MainComponent
 import com.arny.aiprompts.presentation.navigation.MainScreen
-
-// Desktop-specific implementation
+import com.arny.aiprompts.presentation.navigation.Workspace
+import com.arny.aiprompts.presentation.ui.importer.ImporterScreen
+import com.arny.aiprompts.presentation.ui.llm.LlmScreen
+import com.arny.aiprompts.presentation.ui.prompts.PromptsScreen
 
 @Composable
-actual fun MainContentDesktop(component: MainComponent, modifier: Modifier) {
-    MainContentDesktopImpl(component, modifier)
-}
-
-// Keep the existing implementation as MainContentDesktopImpl
-@Composable
-private fun MainContentDesktopImpl(
-    component: MainComponent,
-    modifier: Modifier = Modifier
-) {
+fun MainContentDesktopImpl(component: MainComponent) {
     val state by component.state.collectAsState()
     val childStack by component.childStack.subscribeAsState()
+    val activeChild = childStack.active.instance
 
     // Keyboard shortcuts
     LaunchedEffect(Unit) {
@@ -59,7 +54,7 @@ private fun MainContentDesktopImpl(
     }
 
     Row(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .onKeyEvent { keyEvent ->
                 when {
@@ -116,80 +111,40 @@ private fun MainContentDesktopImpl(
         Column(modifier = Modifier.weight(1f)) {
             // Top Bar
             MainTopBarDesktop(
-                currentScreen = state.currentScreen,
+                activeChild = activeChild,
                 onToggleSidebar = component::toggleSidebar,
                 sidebarCollapsed = state.sidebarCollapsed
             )
 
-            // Content based on current screen
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-            ) {
-                when (state.currentScreen) {
-                    MainScreen.PROMPTS -> {
-                        val promptsChild = childStack.active.instance as? MainComponent.Child.Prompts
-                        val listComponent = promptsChild?.component
-                        if (listComponent != null) {
-                            Text(
-                                text = "Prompts Module - ${listComponent.state.value.allPrompts.size} prompts loaded",
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        } else {
-                            Text("Loading Prompts...", modifier = Modifier.fillMaxSize())
-                        }
-                    }
-
-                    MainScreen.CHAT -> {
-                        val chatChild = childStack.active.instance as? MainComponent.Child.Chat
-                        val llmComponent: LlmComponent? = chatChild?.component
-                        if (llmComponent != null) {
-                            Text(
-                                text = "Chat Module - Ready",
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        } else {
-                            Text("Loading Chat...", modifier = Modifier.fillMaxSize())
-                        }
-                    }
-
-                    MainScreen.IMPORT -> {
+            // Content based on child stack
+            Children(
+                stack = component.childStack,
+                animation = stackAnimation(slide())
+            ) { child ->
+                when (val instance = child.instance) {
+                    is MainComponent.Child.Prompts -> PromptsScreen(component = instance.component)
+                    is MainComponent.Child.Chat -> LlmScreen(component = instance.component)
+                    is MainComponent.Child.Import -> {
                         if (MainComponent.IS_IMPORT_ENABLED) {
-                            val importChild = childStack.active.instance as? MainComponent.Child.Import
-                            val importerComponent = importChild?.component
-                            if (importerComponent != null) {
-                                Text(
-                                    text = "Import Module - Ready",
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            } else {
-                                Text("Loading Import...", modifier = Modifier.fillMaxSize())
-                            }
+                            ImporterScreen(component = instance.component)
+                        } else {
+                            Text("Import not available", modifier = Modifier.fillMaxSize())
                         }
                     }
-
-                    MainScreen.SETTINGS -> {
-                        Text(
-                            text = "Settings Screen - Coming Soon",
-                            modifier = Modifier.fillMaxSize(),
-                            style = MaterialTheme.typography.headlineMedium
-                        )
-                    }
+                    is MainComponent.Child.Settings -> Text("Settings Screen - Coming Soon", modifier = Modifier.fillMaxSize(), style = MaterialTheme.typography.headlineMedium)
                 }
             }
 
             // Status Bar
             MainStatusBar(
-                activeWorkspace = state.activeWorkspace,
-                currentScreen = state.currentScreen
+                activeWorkspace = state.activeWorkspace
             )
         }
 
         // Right Properties Panel (collapsible)
         if (!state.sidebarCollapsed) {
             MainPropertiesPanel(
-                currentScreen = state.currentScreen,
+                activeChild = activeChild,
                 modifier = Modifier.width(300.dp)
             )
         }
@@ -389,18 +344,18 @@ private fun NavigationItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MainTopBarDesktop(
-    currentScreen: MainScreen,
+    activeChild: MainComponent.Child,
     onToggleSidebar: () -> Unit,
     sidebarCollapsed: Boolean
 ) {
     TopAppBar(
         title = {
             Text(
-                text = when (currentScreen) {
-                    MainScreen.PROMPTS -> "Prompts"
-                    MainScreen.CHAT -> "Chat"
-                    MainScreen.IMPORT -> "Import"
-                    MainScreen.SETTINGS -> "Settings"
+                text = when (activeChild) {
+                    is MainComponent.Child.Prompts -> "Prompts"
+                    is MainComponent.Child.Chat -> "Chat"
+                    is MainComponent.Child.Import -> "Import"
+                    is MainComponent.Child.Settings -> "Settings"
                 }
             )
         },
@@ -428,8 +383,7 @@ private fun MainTopBarDesktop(
 
 @Composable
 private fun MainStatusBar(
-    activeWorkspace: com.arny.aiprompts.presentation.navigation.Workspace?,
-    currentScreen: MainScreen
+    activeWorkspace: Workspace?
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -460,7 +414,7 @@ private fun MainStatusBar(
 
 @Composable
 private fun MainPropertiesPanel(
-    currentScreen: MainScreen,
+    activeChild: MainComponent.Child,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -475,32 +429,22 @@ private fun MainPropertiesPanel(
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        when (currentScreen) {
-            MainScreen.PROMPTS -> {
-                Text("Prompt properties will be shown here")
+        when (activeChild) {
+            is MainComponent.Child.Prompts -> {
+                Text("Prompts properties will be shown here")
             }
 
-            MainScreen.CHAT -> {
+            is MainComponent.Child.Chat -> {
                 Text("Chat settings will be shown here")
             }
 
-            MainScreen.IMPORT -> {
+            is MainComponent.Child.Import -> {
                 Text("Import progress will be shown here")
             }
 
-            MainScreen.SETTINGS -> {
+            is MainComponent.Child.Settings -> {
                 Text("Settings panel will be shown here")
             }
         }
     }
 }
-
-@Composable
-actual fun MainContentAndroid(
-    component: MainComponent,
-    modifier: Modifier
-) {
-    // Not Used
-}
-
-actual fun getPlatform(): Platform = Platform.Desktop

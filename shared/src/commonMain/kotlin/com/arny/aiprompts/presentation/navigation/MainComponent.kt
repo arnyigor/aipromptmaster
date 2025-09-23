@@ -9,6 +9,8 @@ import com.arkivanov.decompose.router.stack.navigate
 import com.arkivanov.decompose.router.stack.pop
 import com.arkivanov.decompose.router.stack.push
 import com.arkivanov.decompose.value.Value
+import com.arny.aiprompts.data.model.Platform
+import com.arny.aiprompts.data.model.getPlatform
 import com.arny.aiprompts.domain.files.FileMetadataReader
 import com.arny.aiprompts.domain.interactors.ILLMInteractor
 import com.arny.aiprompts.domain.interfaces.IHybridParser
@@ -25,8 +27,6 @@ import com.arny.aiprompts.presentation.navigation.MainComponent.Child
 import com.arny.aiprompts.presentation.navigation.MainComponent.Companion.IS_IMPORT_ENABLED
 import com.arny.aiprompts.presentation.screens.DefaultPromptListComponent
 import com.arny.aiprompts.presentation.screens.PromptListComponent
-import com.arny.aiprompts.presentation.ui.Platform
-import com.arny.aiprompts.presentation.ui.getPlatform
 import com.arny.aiprompts.presentation.ui.importer.DefaultImporterComponent
 import com.arny.aiprompts.presentation.ui.importer.ImporterComponent
 import io.ktor.client.HttpClient
@@ -54,7 +54,7 @@ interface MainComponent {
                             // Попытка загрузки debug-only класса
                             Class.forName("kotlinx.coroutines.debug.DebugProbes")
                             true
-                        } catch (e: ClassNotFoundException) {
+                        } catch (_: ClassNotFoundException) {
                             false
                         })
     }
@@ -157,14 +157,14 @@ class DefaultMainComponent(
 
     override fun navigateToPrompts() {
         navigation.navigate { stack ->
-            stack.filterIsInstance<MainConfig.Prompts>()
+            stack.dropLast(1) + MainConfig.Prompts
         }
         _state.value = _state.value.copy(currentScreen = MainScreen.PROMPTS)
     }
 
     override fun navigateToChat() {
         navigation.navigate { stack ->
-            stack.filterIsInstance<MainConfig.Chat>()
+            stack.dropLast(1) + MainConfig.Chat
         }
         _state.value = _state.value.copy(currentScreen = MainScreen.CHAT)
     }
@@ -172,18 +172,17 @@ class DefaultMainComponent(
     override fun navigateToImport() {
         if (IS_IMPORT_ENABLED) {
             navigation.navigate { stack ->
-                stack.filterIsInstance<MainConfig.Import>()
+                stack.dropLast(1) + MainConfig.Import
             }
             _state.value = _state.value.copy(currentScreen = MainScreen.IMPORT)
         } else {
-            // В релизе импорт недоступен - можно показать сообщение или перейти в другое место
             println("Import is only available in development mode")
         }
     }
 
     override fun navigateToSettings() {
         navigation.navigate { stack ->
-            stack.filterIsInstance<MainConfig.Settings>()
+            stack.dropLast(1) + MainConfig.Settings
         }
         _state.value = _state.value.copy(currentScreen = MainScreen.SETTINGS)
     }

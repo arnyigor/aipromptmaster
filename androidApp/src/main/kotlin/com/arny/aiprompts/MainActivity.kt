@@ -4,27 +4,20 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.arkivanov.decompose.defaultComponentContext
-import com.arny.aiprompts.presentation.navigation.DefaultRootComponent
-import com.arny.aiprompts.presentation.ui.RootContent
+import com.arny.aiprompts.presentation.navigation.DefaultMainComponent
+import com.arny.aiprompts.presentation.ui.MainContentAndroid
 import org.koin.android.ext.android.get
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Создание root компонента должно происходить вне Compose на главном потоке
-        val root = DefaultRootComponent(
+        val root = DefaultMainComponent(
             componentContext = defaultComponentContext(),
             getPromptsUseCase = get(),
-            getPromptUseCase = get(),
+            deletePromptUseCase = get(),
             toggleFavoriteUseCase = get(),
             importJsonUseCase = get(),
-            createPromptUseCase = get(),
-            updatePromptUseCase = get(),
-            deletePromptUseCase = get(),
-            getAvailableTagsUseCase = get(),
-            scrapeUseCase = get(),
-            webScraper = get(),
             parseRawPostsUseCase = get(),
             savePromptsAsFilesUseCase = get(),
             hybridParser = get(),
@@ -35,7 +28,7 @@ class MainActivity : ComponentActivity() {
         )
 
         setContent {
-            RootContent(component = root)
+            MainContentAndroid(component = root)
         }
     }
 }
