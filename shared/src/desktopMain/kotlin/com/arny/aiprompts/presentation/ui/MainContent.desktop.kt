@@ -19,6 +19,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -34,43 +36,12 @@ import com.arny.aiprompts.presentation.features.llm.LlmComponent
 import com.arny.aiprompts.presentation.navigation.MainComponent
 import com.arny.aiprompts.presentation.navigation.MainScreen
 
-// Desktop-specific implementation using the file we already created
+// Desktop-specific implementation
+
 @Composable
-actual fun MainContentDesktop(
-    component: MainComponent,
-    modifier: Modifier
-) {
+actual fun MainContentDesktop(component: MainComponent, modifier: Modifier) {
     MainContentDesktopImpl(component, modifier)
 }
-
-@Composable
-actual fun MainContentAndroid(
-    component: MainComponent,
-    modifier: Modifier
-) {
-    // For Desktop target, provide a fallback or placeholder
-    Text("Android UI not available on Desktop")
-}
-
-@Composable
-actual fun MainContentWeb(
-    component: MainComponent,
-    modifier: Modifier
-) {
-    // For Desktop target, provide a fallback or placeholder
-    Text("Web UI not available on Desktop")
-}
-
-@Composable
-actual fun MainContentIOS(
-    component: MainComponent,
-    modifier: Modifier
-) {
-    // For Desktop target, provide a fallback or placeholder
-    Text("iOS UI not available on Desktop")
-}
-
-actual fun getPlatform(): Platform = Platform.Desktop
 
 // Keep the existing implementation as MainContentDesktopImpl
 @Composable
@@ -524,20 +495,12 @@ private fun MainPropertiesPanel(
     }
 }
 
-// Window wrapper for desktop
 @Composable
-fun MainWindow(
+actual fun MainContentAndroid(
     component: MainComponent,
-    onCloseRequest: () -> Unit
+    modifier: Modifier
 ) {
-    Window(
-        onCloseRequest = onCloseRequest,
-        title = "AI Prompt Manager",
-        state = rememberWindowState(width = 1200.dp, height = 800.dp)
-    ) {
-        MainContentDesktop(
-            component = component,
-            modifier = Modifier.fillMaxSize()
-        )
-    }
+    // Not Used
 }
+
+actual fun getPlatform(): Platform = Platform.Desktop

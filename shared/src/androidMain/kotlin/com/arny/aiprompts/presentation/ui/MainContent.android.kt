@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Business
@@ -40,16 +39,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
-import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.Icons
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import com.arny.aiprompts.presentation.navigation.MainComponent
 import com.arny.aiprompts.presentation.navigation.MainScreen
 import kotlinx.coroutines.launch
 
-// Убери конфликтующие импорты
-// Удали: import com.arkivanov.essenty.backhandler.BackHandler
-
-// Android-specific implementation using the file we already created
+// Android-specific implementation
 @Composable
 actual fun MainContentAndroid(
     component: MainComponent,
@@ -63,29 +59,8 @@ actual fun MainContentDesktop(
     component: MainComponent,
     modifier: Modifier
 ) {
-    // For Android target, provide a fallback or placeholder
-    androidx.compose.material3.Text("Desktop UI not available on Android")
+    Text("Desktop UI not available on Android")
 }
-
-@Composable
-actual fun MainContentWeb(
-    component: MainComponent,
-    modifier: Modifier
-) {
-    // For Android target, provide a fallback or placeholder
-    androidx.compose.material3.Text("Web UI not available on Android")
-}
-
-@Composable
-actual fun MainContentIOS(
-    component: MainComponent,
-    modifier: Modifier
-) {
-    // For Android target, provide a fallback or placeholder
-    androidx.compose.material3.Text("iOS UI not available on Android")
-}
-
-actual fun getPlatform(): Platform = Platform.Android
 
 // Keep the existing implementation as MainContentAndroidImpl
 @OptIn(ExperimentalMaterial3Api::class)
@@ -335,14 +310,14 @@ private fun MainBottomBar(
 ) {
     NavigationBar {
         NavigationBarItem(
-            icon = { Icon(Icons.Default.List, contentDescription = "Prompts") },
+            icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Prompts") },
             label = { Text("Prompts") },
             selected = currentScreen == MainScreen.PROMPTS,
             onClick = onNavigateToPrompts
         )
 
         NavigationBarItem(
-            icon = { Icon(Icons.Default.Chat, contentDescription = "Chat") },
+            icon = { Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "Chat") },
             label = { Text("Chat") },
             selected = currentScreen == MainScreen.CHAT,
             onClick = onNavigateToChat
@@ -360,3 +335,5 @@ private fun MainBottomBar(
         )
     }
 }
+
+actual fun getPlatform(): Platform = Platform.Android

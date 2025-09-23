@@ -2,6 +2,7 @@ package com.arny.aiprompts
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import com.arkivanov.decompose.ComponentContext
 import com.arny.aiprompts.presentation.navigation.DefaultMainComponent
 import com.arny.aiprompts.presentation.ui.MainContent
@@ -41,7 +42,7 @@ fun App() {
     // Use the common MainContent that routes to platform-specific implementations
     MainContent(
         component = mainComponent,
-        modifier = androidx.compose.ui.Modifier
+        modifier = Modifier
     )
 }
 

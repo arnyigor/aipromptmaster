@@ -19,4 +19,5 @@ interface LlmComponent {
     fun onGenerateClicked()
     fun refreshModels()
     fun clearChat()
+    fun onNavigateBack()
 }

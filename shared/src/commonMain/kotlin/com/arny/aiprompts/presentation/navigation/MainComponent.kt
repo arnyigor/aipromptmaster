@@ -128,7 +128,8 @@ class DefaultMainComponent(
             is MainConfig.Chat -> Child.Chat(
                 DefaultLlmComponent(
                     componentContext = context,
-                    llmInteractor = llmInteractor
+                    llmInteractor = llmInteractor,
+                    onBack = { navigation.pop() }
                 )
             )
 

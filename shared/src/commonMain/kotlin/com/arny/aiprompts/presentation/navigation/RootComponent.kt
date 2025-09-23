@@ -3,13 +3,29 @@ package com.arny.aiprompts.presentation.navigation
 
 import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.decompose.DelicateDecomposeApi
-import com.arkivanov.decompose.router.stack.*
+import com.arkivanov.decompose.router.stack.ChildStack
+import com.arkivanov.decompose.router.stack.StackNavigation
+import com.arkivanov.decompose.router.stack.childStack
+import com.arkivanov.decompose.router.stack.pop
+import com.arkivanov.decompose.router.stack.push
 import com.arkivanov.decompose.value.Value
 import com.arny.aiprompts.data.scraper.WebScraper
 import com.arny.aiprompts.domain.files.FileMetadataReader
+import com.arny.aiprompts.domain.interactors.ILLMInteractor
 import com.arny.aiprompts.domain.interfaces.IHybridParser
 import com.arny.aiprompts.domain.system.SystemInteraction
-import com.arny.aiprompts.domain.usecase.*
+import com.arny.aiprompts.domain.usecase.CreatePromptUseCase
+import com.arny.aiprompts.domain.usecase.DeletePromptUseCase
+import com.arny.aiprompts.domain.usecase.GetAvailableTagsUseCase
+import com.arny.aiprompts.domain.usecase.GetPromptUseCase
+import com.arny.aiprompts.domain.usecase.GetPromptsUseCase
+import com.arny.aiprompts.domain.usecase.ImportJsonUseCase
+import com.arny.aiprompts.domain.usecase.ParseRawPostsUseCase
+import com.arny.aiprompts.domain.usecase.SavePromptsAsFilesUseCase
+import com.arny.aiprompts.domain.usecase.ScrapeWebsiteUseCase
+import com.arny.aiprompts.domain.usecase.ToggleFavoriteUseCase
+import com.arny.aiprompts.domain.usecase.UpdatePromptUseCase
+import com.arny.aiprompts.presentation.features.llm.DefaultLlmComponent
 import com.arny.aiprompts.presentation.navigation.RootComponent.Child
 import com.arny.aiprompts.presentation.screens.DefaultPromptDetailComponent
 import com.arny.aiprompts.presentation.screens.DefaultPromptListComponent
@@ -19,9 +35,7 @@ import com.arny.aiprompts.presentation.ui.importer.DefaultImporterComponent
 import com.arny.aiprompts.presentation.ui.importer.ImporterComponent
 import com.arny.aiprompts.presentation.ui.scraper.DefaultScraperComponent
 import com.arny.aiprompts.presentation.ui.scraper.ScraperComponent
-import com.arny.aiprompts.presentation.features.llm.DefaultLlmComponent
-import com.arny.aiprompts.domain.interactors.ILLMInteractor
-import io.ktor.client.*
+import io.ktor.client.HttpClient
 
 interface RootComponent {
     val stack: Value<ChildStack<*, Child>>
@@ -31,7 +45,8 @@ interface RootComponent {
         data class Scraper(val component: ScraperComponent) : Child
         data class Importer(val component: ImporterComponent) : Child
         data class Details(val component: PromptDetailComponent) : Child
-        data class LLM(val component: com.arny.aiprompts.presentation.features.llm.LlmComponent) : Child
+        data class LLM(val component: com.arny.aiprompts.presentation.features.llm.LlmComponent) :
+            Child
     }
 }
 
@@ -135,7 +150,8 @@ class DefaultRootComponent(
             is ScreenConfig.LLM -> Child.LLM(
                 DefaultLlmComponent(
                     componentContext = context,
-                    llmInteractor = llmInteractor
+                    llmInteractor = llmInteractor,
+                    onBack = { navigation.pop() }
                 )
             )
         }

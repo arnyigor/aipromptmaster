@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -28,7 +29,8 @@ fun LlmScreen(component: LlmComponent) {
         onPromptChanged = component::onPromptChanged,
         onModelSelected = component::onModelSelected,
         onGenerateClicked = component::onGenerateClicked,
-        onClearChat = component::clearChat
+        onClearChat = component::clearChat,
+        onNavigateBack = component::onNavigateBack,
     )
 }
 
@@ -40,12 +42,21 @@ fun LlmContent(
     onPromptChanged: (String) -> Unit,
     onModelSelected: (String) -> Unit,
     onGenerateClicked: () -> Unit,
-    onClearChat: () -> Unit
+    onClearChat: () -> Unit,
+    onNavigateBack: () -> Unit
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("LLM Chat") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Назад"
+                        )
+                    }
+                },
                 actions = {
                     IconButton(onClick = onClearChat) {
                         Icon(Icons.Default.Clear, contentDescription = "Очистить чат")

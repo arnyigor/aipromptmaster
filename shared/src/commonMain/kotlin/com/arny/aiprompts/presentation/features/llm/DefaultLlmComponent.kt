@@ -13,7 +13,8 @@ import kotlinx.coroutines.launch
 // Реализация компонента
 class DefaultLlmComponent(
     componentContext: ComponentContext,
-    private val llmInteractor: ILLMInteractor
+    private val llmInteractor: ILLMInteractor,
+    private val onBack: () -> Unit,
 ) : LlmComponent, ComponentContext by componentContext {
 
     // CoroutineScope, привязанный к жизненному циклу компонента (аналог viewModelScope)
@@ -71,6 +72,10 @@ class DefaultLlmComponent(
                     }
                 }
         }
+    }
+
+    override fun onNavigateBack() {
+        onBack()
     }
 
     override fun refreshModels() {
