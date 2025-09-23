@@ -13,6 +13,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.MenuOpen
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -197,14 +200,14 @@ private fun MainSidebar(
         // Navigation Items
         if (!sidebarCollapsed) {
             NavigationItem(
-                icon = Icons.Default.List,
+                icon = Icons.AutoMirrored.Filled.List,
                 label = "Prompts",
                 selected = currentScreen == MainScreen.PROMPTS,
                 onClick = onNavigateToPrompts
             )
 
             NavigationItem(
-                icon = Icons.Default.Chat,
+                icon = Icons.AutoMirrored.Filled.Chat,
                 label = "Chat",
                 selected = currentScreen == MainScreen.CHAT,
                 onClick = onNavigateToChat
@@ -263,7 +266,7 @@ private fun MainSidebar(
 
             IconButton(onClick = onNavigateToChat) {
                 Icon(
-                    Icons.Default.Chat,
+                    Icons.AutoMirrored.Filled.Chat,
                     contentDescription = "Chat",
                     tint = if (currentScreen == MainScreen.CHAT)
                         MaterialTheme.colorScheme.primary
@@ -367,7 +370,7 @@ private fun MainTopBarDesktop(
                     imageVector = if (sidebarCollapsed)
                         Icons.Default.Menu
                     else
-                        Icons.Default.MenuOpen,
+                        Icons.AutoMirrored.Filled.MenuOpen,
                     contentDescription = "Toggle Sidebar"
                 )
             }
