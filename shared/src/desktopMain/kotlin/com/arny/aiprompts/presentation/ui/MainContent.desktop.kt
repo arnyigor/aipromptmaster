@@ -30,7 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.unit.dp
 import com.arkivanov.decompose.extensions.compose.stack.Children
-import com.arkivanov.decompose.extensions.compose.stack.animation.slide
+import com.arkivanov.decompose.extensions.compose.stack.animation.fade
 import com.arkivanov.decompose.extensions.compose.stack.animation.stackAnimation
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import com.arny.aiprompts.presentation.features.llm.LlmComponent
@@ -101,7 +101,7 @@ fun MainContentDesktopImpl(component: MainComponent) {
             sidebarCollapsed = state.sidebarCollapsed,
             onNavigateToPrompts = component::navigateToPrompts,
             onNavigateToChat = component::navigateToChat,
-            onNavigateToImport = component::navigateToImport,
+            onNavigateToImport = { component.navigateToImport(emptyList()) },
             onNavigateToSettings = component::navigateToSettings,
             onToggleSidebar = component::toggleSidebar,
             modifier = Modifier.width(if (state.sidebarCollapsed) 60.dp else 240.dp)
@@ -119,7 +119,7 @@ fun MainContentDesktopImpl(component: MainComponent) {
             // Content based on child stack
             Children(
                 stack = component.childStack,
-                animation = stackAnimation(slide())
+                animation = stackAnimation(fade())
             ) { child ->
                 when (val instance = child.instance) {
                     is MainComponent.Child.Prompts -> PromptsScreen(component = instance.component)

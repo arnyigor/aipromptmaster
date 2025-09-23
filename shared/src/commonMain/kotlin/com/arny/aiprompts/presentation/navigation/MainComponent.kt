@@ -61,7 +61,7 @@ interface MainComponent {
 
     fun navigateToPrompts()
     fun navigateToChat()
-    fun navigateToImport()
+    fun navigateToImport(files: List<java.io.File> = emptyList())
     fun navigateToSettings()
     fun toggleSidebar()
     fun selectWorkspace(workspaceId: String)
@@ -83,6 +83,7 @@ class DefaultMainComponent(
 ) : MainComponent, ComponentContext by componentContext {
 
     private val navigation = StackNavigation<MainConfig>()
+    private var importFiles = emptyList<java.io.File>()
 
     private val _state = MutableStateFlow(
         MainState(
@@ -116,7 +117,7 @@ class DefaultMainComponent(
                         println("Navigate to prompt details: $promptId")
                     },
                     onNavigateToScraper = {
-                        navigation.push(MainConfig.Import)
+                        this@DefaultMainComponent.navigateToImport(emptyList())
                     },
                     onNavigateToLLM = {
                         navigation.push(MainConfig.Chat)
@@ -136,14 +137,17 @@ class DefaultMainComponent(
             is MainConfig.Import -> Child.Import(
                 DefaultImporterComponent(
                     componentContext = context,
-                    filesToImport = emptyList(), // Will be set by external navigation
+                    filesToImport = importFiles,
                     parseRawPostsUseCase = parseRawPostsUseCase,
                     savePromptsAsFilesUseCase = savePromptsAsFilesUseCase,
                     hybridParser = hybridParser,
                     httpClient = httpClient,
                     systemInteraction = systemInteraction,
                     fileMetadataReader = fileMetadataReader,
-                    onBack = { navigation.pop() }
+                    onBack = {
+                        navigation.pop()
+                        _state.value = _state.value.copy(currentScreen = MainScreen.PROMPTS)
+                    }
                 )
             )
 
@@ -169,8 +173,9 @@ class DefaultMainComponent(
         _state.value = _state.value.copy(currentScreen = MainScreen.CHAT)
     }
 
-    override fun navigateToImport() {
+    override fun navigateToImport(files: List<java.io.File>) {
         if (IS_IMPORT_ENABLED) {
+            importFiles = files
             navigation.navigate { stack ->
                 stack.dropLast(1) + MainConfig.Import
             }

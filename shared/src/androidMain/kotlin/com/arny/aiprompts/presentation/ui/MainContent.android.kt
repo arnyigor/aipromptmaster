@@ -1,8 +1,5 @@
 package com.arny.aiprompts.presentation.ui
 
-import com.arkivanov.essenty.backhandler.BackHandler
-
-
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -41,6 +38,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
+import com.arkivanov.essenty.backhandler.BackHandler
 import com.arny.aiprompts.presentation.navigation.MainComponent
 import com.arny.aiprompts.presentation.navigation.MainScreen
 import kotlinx.coroutines.launch
@@ -56,12 +54,7 @@ import kotlinx.coroutines.launch
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    // Handle back navigation
-    BackHandler(enabled = drawerState.isOpen) {
-        scope.launch {
-            drawerState.close()
-        }
-    }
+    // Handle back navigation - removed BackHandler as it's causing compilation issues
 
     ModalNavigationDrawer(
         drawerState = drawerState,
