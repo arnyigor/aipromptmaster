@@ -40,6 +40,9 @@ sealed interface MainConfig {
     data object Prompts : MainConfig
 
     @Serializable
+    data class PromptDetails(val promptId: String) : MainConfig
+
+    @Serializable
     data object Chat : MainConfig
 
     @Serializable

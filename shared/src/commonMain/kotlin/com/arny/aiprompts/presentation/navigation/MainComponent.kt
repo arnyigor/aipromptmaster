@@ -15,17 +15,23 @@ import com.arny.aiprompts.domain.files.FileMetadataReader
 import com.arny.aiprompts.domain.interactors.ILLMInteractor
 import com.arny.aiprompts.domain.interfaces.IHybridParser
 import com.arny.aiprompts.domain.system.SystemInteraction
+import com.arny.aiprompts.domain.usecase.CreatePromptUseCase
 import com.arny.aiprompts.domain.usecase.DeletePromptUseCase
+import com.arny.aiprompts.domain.usecase.GetAvailableTagsUseCase
+import com.arny.aiprompts.domain.usecase.GetPromptUseCase
 import com.arny.aiprompts.domain.usecase.GetPromptsUseCase
 import com.arny.aiprompts.domain.usecase.ImportJsonUseCase
 import com.arny.aiprompts.domain.usecase.ParseRawPostsUseCase
 import com.arny.aiprompts.domain.usecase.SavePromptsAsFilesUseCase
 import com.arny.aiprompts.domain.usecase.ToggleFavoriteUseCase
+import com.arny.aiprompts.domain.usecase.UpdatePromptUseCase
 import com.arny.aiprompts.presentation.features.llm.DefaultLlmComponent
 import com.arny.aiprompts.presentation.features.llm.LlmComponent
 import com.arny.aiprompts.presentation.navigation.MainComponent.Child
 import com.arny.aiprompts.presentation.navigation.MainComponent.Companion.IS_IMPORT_ENABLED
+import com.arny.aiprompts.presentation.screens.DefaultPromptDetailComponent
 import com.arny.aiprompts.presentation.screens.DefaultPromptListComponent
+import com.arny.aiprompts.presentation.screens.PromptDetailComponent
 import com.arny.aiprompts.presentation.screens.PromptListComponent
 import com.arny.aiprompts.presentation.ui.importer.DefaultImporterComponent
 import com.arny.aiprompts.presentation.ui.importer.ImporterComponent
@@ -40,6 +46,7 @@ interface MainComponent {
 
     sealed interface Child {
         data class Prompts(val component: PromptListComponent) : Child
+        data class PromptDetails(val component: PromptDetailComponent) : Child
         data class Chat(val component: LlmComponent) : Child
         data class Import(val component: ImporterComponent) : Child
         data class Settings(val component: SettingsComponent) : Child
@@ -60,6 +67,7 @@ interface MainComponent {
     }
 
     fun navigateToPrompts()
+    fun navigateToPromptDetails(promptId: String)
     fun navigateToChat()
     fun navigateToImport(files: List<java.io.File> = emptyList())
     fun navigateToSettings()
@@ -70,8 +78,12 @@ interface MainComponent {
 class DefaultMainComponent(
     componentContext: ComponentContext,
     private val getPromptsUseCase: GetPromptsUseCase,
+    private val getPromptUseCase: GetPromptUseCase,
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
     private val deletePromptUseCase: DeletePromptUseCase,
+    private val createPromptUseCase: CreatePromptUseCase,
+    private val updatePromptUseCase: UpdatePromptUseCase,
+    private val getAvailableTagsUseCase: GetAvailableTagsUseCase,
     private val importJsonUseCase: ImportJsonUseCase,
     private val parseRawPostsUseCase: ParseRawPostsUseCase,
     private val savePromptsAsFilesUseCase: SavePromptsAsFilesUseCase,
@@ -113,8 +125,7 @@ class DefaultMainComponent(
                     toggleFavoriteUseCase = toggleFavoriteUseCase,
                     importJsonUseCase = importJsonUseCase,
                     onNavigateToDetails = { promptId ->
-                        // Handle prompt details navigation - for now just log
-                        println("Navigate to prompt details: $promptId")
+                        navigation.push(MainConfig.PromptDetails(promptId))
                     },
                     onNavigateToScraper = {
                         this@DefaultMainComponent.navigateToImport(emptyList())
@@ -123,6 +134,20 @@ class DefaultMainComponent(
                         navigation.push(MainConfig.Chat)
                     },
                     deletePromptUseCase = deletePromptUseCase
+                )
+            )
+
+            is MainConfig.PromptDetails -> Child.PromptDetails(
+                DefaultPromptDetailComponent(
+                    componentContext = context,
+                    getPromptUseCase = getPromptUseCase,
+                    updatePromptUseCase = updatePromptUseCase,
+                    createPromptUseCase = createPromptUseCase,
+                    deletePromptUseCase = deletePromptUseCase,
+                    toggleFavoriteUseCase = toggleFavoriteUseCase,
+                    getAvailableTagsUseCase = getAvailableTagsUseCase,
+                    promptId = config.promptId,
+                    onNavigateBack = { navigation.pop() }
                 )
             )
 
@@ -164,6 +189,10 @@ class DefaultMainComponent(
             stack.dropLast(1) + MainConfig.Prompts
         }
         _state.value = _state.value.copy(currentScreen = MainScreen.PROMPTS)
+    }
+
+    override fun navigateToPromptDetails(promptId: String) {
+        navigation.push(MainConfig.PromptDetails(promptId))
     }
 
     override fun navigateToChat() {

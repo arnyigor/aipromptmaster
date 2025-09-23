@@ -34,7 +34,12 @@ fun main() {
             DefaultMainComponent(
                 componentContext = DefaultComponentContext(lifecycle = lifecycle),
                 getPromptsUseCase = getKoin().get(),
+                getPromptUseCase = getKoin().get(),
                 toggleFavoriteUseCase = getKoin().get(),
+                deletePromptUseCase = getKoin().get(),
+                createPromptUseCase = getKoin().get(),
+                updatePromptUseCase = getKoin().get(),
+                getAvailableTagsUseCase = getKoin().get(),
                 importJsonUseCase = getKoin().get(),
                 parseRawPostsUseCase = getKoin().get(),
                 savePromptsAsFilesUseCase = getKoin().get(),
@@ -42,8 +47,7 @@ fun main() {
                 httpClient = getKoin().get(),
                 systemInteraction = getKoin().get(),
                 fileMetadataReader = getKoin().get(),
-                llmInteractor = getKoin().get(),
-                deletePromptUseCase = getKoin().get()
+                llmInteractor = getKoin().get()
             )
         }
 

@@ -15,8 +15,12 @@ class MainActivity : ComponentActivity() {
         val root = DefaultMainComponent(
             componentContext = defaultComponentContext(),
             getPromptsUseCase = get(),
-            deletePromptUseCase = get(),
+            getPromptUseCase = get(),
             toggleFavoriteUseCase = get(),
+            deletePromptUseCase = get(),
+            createPromptUseCase = get(),
+            updatePromptUseCase = get(),
+            getAvailableTagsUseCase = get(),
             importJsonUseCase = get(),
             parseRawPostsUseCase = get(),
             savePromptsAsFilesUseCase = get(),

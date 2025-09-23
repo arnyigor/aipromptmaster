@@ -123,6 +123,7 @@ fun MainContentDesktopImpl(component: MainComponent) {
             ) { child ->
                 when (val instance = child.instance) {
                     is MainComponent.Child.Prompts -> PromptsScreen(component = instance.component)
+                    is MainComponent.Child.PromptDetails -> Text("Prompt Details Screen - Coming Soon", modifier = Modifier.fillMaxSize(), style = MaterialTheme.typography.headlineMedium)
                     is MainComponent.Child.Chat -> LlmScreen(component = instance.component)
                     is MainComponent.Child.Import -> {
                         if (MainComponent.IS_IMPORT_ENABLED) {
@@ -353,6 +354,7 @@ private fun MainTopBarDesktop(
             Text(
                 text = when (activeChild) {
                     is MainComponent.Child.Prompts -> "Prompts"
+                    is MainComponent.Child.PromptDetails -> "Prompt Details"
                     is MainComponent.Child.Chat -> "Chat"
                     is MainComponent.Child.Import -> "Import"
                     is MainComponent.Child.Settings -> "Settings"
@@ -432,6 +434,10 @@ private fun MainPropertiesPanel(
         when (activeChild) {
             is MainComponent.Child.Prompts -> {
                 Text("Prompts properties will be shown here")
+            }
+
+            is MainComponent.Child.PromptDetails -> {
+                Text("Prompt details properties will be shown here")
             }
 
             is MainComponent.Child.Chat -> {
