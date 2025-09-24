@@ -410,12 +410,6 @@ private fun MainTopBarDesktop(
                     contentDescription = if (propertiesPanelCollapsed) "Show Properties" else "Hide Properties"
                 )
             }
-            IconButton(onClick = { /* TODO: Search */ }) {
-                Icon(Icons.Default.Search, contentDescription = "Search")
-            }
-            IconButton(onClick = { /* TODO: Settings */ }) {
-                Icon(Icons.Default.Settings, contentDescription = "Settings")
-            }
         }
     )
 }
