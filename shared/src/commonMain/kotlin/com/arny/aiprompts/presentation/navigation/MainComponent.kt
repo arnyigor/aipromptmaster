@@ -191,6 +191,7 @@ class DefaultMainComponent(
         _state.value = _state.value.copy(currentScreen = MainScreen.PROMPTS)
     }
 
+    @OptIn(DelicateDecomposeApi::class)
     override fun navigateToPromptDetails(promptId: String) {
         navigation.push(MainConfig.PromptDetails(promptId))
     }

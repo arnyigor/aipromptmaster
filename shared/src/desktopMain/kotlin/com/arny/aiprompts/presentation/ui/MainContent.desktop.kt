@@ -255,7 +255,7 @@ private fun MainSidebar(
             // Collapsed sidebar - just icons
             IconButton(onClick = onNavigateToPrompts) {
                 Icon(
-                    Icons.Default.List,
+                    Icons.AutoMirrored.Filled.List,
                     contentDescription = "Prompts",
                     tint = if (currentScreen == MainScreen.PROMPTS)
                         MaterialTheme.colorScheme.primary

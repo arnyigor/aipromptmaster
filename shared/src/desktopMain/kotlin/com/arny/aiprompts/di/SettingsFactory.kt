@@ -9,6 +9,7 @@ import java.util.prefs.Preferences
 import javax.crypto.SecretKey
 import javax.crypto.spec.SecretKeySpec
 
+@Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 actual class SettingsFactory(actual val context: Any? = null) {
     // Используем нашу обертку над Keytar/Keychain/Credential Manager
     private val secureStorage = SecureKeyStorage()

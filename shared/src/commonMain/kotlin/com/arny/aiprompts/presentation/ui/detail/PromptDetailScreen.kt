@@ -1,6 +1,19 @@
 package com.arny.aiprompts.presentation.ui.detail
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -9,23 +22,46 @@ import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material3.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.Clipboard
 import androidx.compose.ui.platform.ClipboardManager
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.lifecycleScope
 import com.arny.aiprompts.presentation.screens.PromptDetailComponent
 import com.arny.aiprompts.presentation.screens.PromptDetailEvent
 import com.mohamedrejeb.richeditor.model.rememberRichTextState
 import com.mohamedrejeb.richeditor.ui.material3.RichText
+import kotlinx.coroutines.launch
 
 @Composable
 fun PromptDetailScreen(component: PromptDetailComponent) {
@@ -44,7 +80,11 @@ fun ErrorState(
         verticalArrangement = Arrangement.Center
     ) {
         // Icon(AppIcons.Error, ...)
-        Text(message, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.error)
+        Text(
+            message,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.error
+        )
         Spacer(Modifier.height(16.dp))
         Button(onClick = onRetry) {
             Text("Повторить")
@@ -159,7 +199,13 @@ private fun DesktopPromptDetailLayout(
                             item(key = "title") {
                                 OutlinedTextField(
                                     value = promptToDisplay.title,
-                                    onValueChange = { component.onEvent(PromptDetailEvent.TitleChanged(it)) },
+                                    onValueChange = {
+                                        component.onEvent(
+                                            PromptDetailEvent.TitleChanged(
+                                                it
+                                            )
+                                        )
+                                    },
                                     label = { Text("Заголовок") },
                                     modifier = Modifier.fillMaxWidth()
                                 )
@@ -213,7 +259,13 @@ private fun DesktopPromptDetailLayout(
                                 tags = promptToDisplay.tags,
                                 isEditing = state.isEditing,
                                 onAddTag = { tag -> component.onEvent(PromptDetailEvent.TagAdded(tag)) },
-                                onRemoveTag = { tag -> component.onEvent(PromptDetailEvent.TagRemoved(tag)) },
+                                onRemoveTag = { tag ->
+                                    component.onEvent(
+                                        PromptDetailEvent.TagRemoved(
+                                            tag
+                                        )
+                                    )
+                                },
                                 availableTags = state.availableTags,
                                 enableColorCoding = true
                             )
@@ -299,7 +351,7 @@ private fun DesktopPromptDetailLayout(
                             }
                         }
                     }
-            
+
                     // Диалог подтверждения удаления
                     if (state.showDeleteDialog) {
                         AlertDialog(
@@ -323,7 +375,10 @@ private fun DesktopPromptDetailLayout(
                                     Text("Отмена")
                                 }
                             },
-                            properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
+                            properties = DialogProperties(
+                                dismissOnBackPress = true,
+                                dismissOnClickOutside = true
+                            )
                         )
                     }
                 }
@@ -353,7 +408,10 @@ private fun DesktopPromptDetailLayout(
                         Text("Отмена")
                     }
                 },
-                properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
+                properties = DialogProperties(
+                    dismissOnBackPress = true,
+                    dismissOnClickOutside = true
+                )
             )
         }
     }
@@ -451,7 +509,10 @@ private fun MobilePromptDetailLayout(
                     }
                 ) {
                     val icon = if (state.isEditing) Icons.Default.Done else Icons.Default.Edit
-                    Icon(icon, contentDescription = if (state.isEditing) "Сохранить" else "Редактировать")
+                    Icon(
+                        icon,
+                        contentDescription = if (state.isEditing) "Сохранить" else "Редактировать"
+                    )
                 }
             }
         },
@@ -475,14 +536,27 @@ private fun MobilePromptDetailLayout(
                     ) { CircularProgressIndicator() }
                 }
 
-                state.error != null -> item { ErrorState(state.error) { component.onEvent(PromptDetailEvent.Refresh) } }
+                state.error != null -> item {
+                    ErrorState(state.error) {
+                        component.onEvent(
+                            PromptDetailEvent.Refresh
+                        )
+                    }
+                }
+
                 promptToDisplay != null -> {
                     // --- Редактируемый Заголовок ---
                     if (state.isEditing) {
                         item {
                             OutlinedTextField(
                                 value = promptToDisplay.title,
-                                onValueChange = { component.onEvent(PromptDetailEvent.TitleChanged(it)) },
+                                onValueChange = {
+                                    component.onEvent(
+                                        PromptDetailEvent.TitleChanged(
+                                            it
+                                        )
+                                    )
+                                },
                                 label = { Text("Заголовок") },
                                 modifier = Modifier.fillMaxWidth()
                             )
@@ -536,7 +610,13 @@ private fun MobilePromptDetailLayout(
                             tags = promptToDisplay.tags,
                             isEditing = state.isEditing,
                             onAddTag = { tag -> component.onEvent(PromptDetailEvent.TagAdded(tag)) },
-                            onRemoveTag = { tag -> component.onEvent(PromptDetailEvent.TagRemoved(tag)) },
+                            onRemoveTag = { tag ->
+                                component.onEvent(
+                                    PromptDetailEvent.TagRemoved(
+                                        tag
+                                    )
+                                )
+                            },
                             availableTags = state.availableTags,
                             enableColorCoding = true
                         )
