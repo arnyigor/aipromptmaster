@@ -12,16 +12,24 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Update
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -55,6 +63,8 @@ import com.arny.aiprompts.presentation.screens.PromptDetailComponent
 import com.arny.aiprompts.presentation.screens.PromptDetailEvent
 import com.mohamedrejeb.richeditor.model.rememberRichTextState
 import com.mohamedrejeb.richeditor.ui.material3.RichText
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 @Composable
 fun ErrorState(
@@ -84,7 +94,6 @@ fun ErrorState(
 @Composable
 fun AdaptivePromptDetailLayout(component: PromptDetailComponent) {
     val state by component.state.collectAsState()
-//    println("AdaptivePromptDetailLayout state:${state.prompt?.id}")
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val clipboardManager = LocalClipboardManager.current
         if (maxWidth > 800.dp) {
@@ -95,6 +104,7 @@ fun AdaptivePromptDetailLayout(component: PromptDetailComponent) {
     }
 }
 
+@Suppress("DefaultLocale")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DesktopPromptDetailLayout(
@@ -288,12 +298,159 @@ private fun DesktopPromptDetailLayout(
                                 style = MaterialTheme.typography.titleMedium
                             )
                             Spacer(modifier = Modifier.height(8.dp))
+
+                            // Заголовок
                             Text(
                                 text = promptToDisplay.title,
                                 style = MaterialTheme.typography.bodyLarge,
                                 maxLines = 3,
                                 overflow = TextOverflow.Ellipsis
                             )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Категория
+                            if (promptToDisplay.category.isNotEmpty()) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Category,
+                                        contentDescription = "Категория",
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Категория: ${promptToDisplay.category}",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                            }
+
+                            // Рейтинг
+                            if (promptToDisplay.rating > 0f) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Star,
+                                        contentDescription = "Рейтинг",
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Рейтинг: ${
+                                            String.format(
+                                                "%.1f",
+                                                promptToDisplay.rating
+                                            )
+                                        } (${promptToDisplay.ratingVotes} голосов)",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                            }
+
+                            // Статус
+                            if (promptToDisplay.status.isNotEmpty()) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Info,
+                                        contentDescription = "Статус",
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Статус: ${promptToDisplay.status}",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                            }
+
+                            // Автор
+                            promptToDisplay.metadata.author?.let { author ->
+                                if (!author.name.isNullOrBlank()) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = "Автор",
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "Автор: ${author.name}",
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                }
+                            }
+
+                            // Источник
+                            promptToDisplay.metadata.source?.let { source ->
+                                if (source.isNotEmpty()) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.Link,
+                                            contentDescription = "Источник",
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "Источник: $source",
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                }
+                            }
+
+                            // Версия
+                            if (promptToDisplay.version != "1.0.0") {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Update,
+                                        contentDescription = "Версия",
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Версия: ${promptToDisplay.version}",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                            }
+
+                            // Дата создания
+                            promptToDisplay.createdAt?.let { createdAt ->
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.DateRange,
+                                        contentDescription = "Дата создания",
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Создан: ${createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).date}",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                            }
+
+                            // Дата модификации
+                            promptToDisplay.modifiedAt?.let { modifiedAt ->
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = "Дата модификации",
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Изменен: ${modifiedAt.toLocalDateTime(TimeZone.currentSystemDefault()).date}",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
                         }
                     }
                 }

@@ -118,7 +118,9 @@ fun MainContentDesktopImpl(component: MainComponent) {
             MainTopBarDesktop(
                 activeChild = activeChild,
                 onToggleSidebar = component::toggleSidebar,
-                sidebarCollapsed = state.sidebarCollapsed
+                onTogglePropertiesPanel = component::togglePropertiesPanel,
+                sidebarCollapsed = state.sidebarCollapsed,
+                propertiesPanelCollapsed = state.propertiesPanelCollapsed
             )
 
             // Content based on child stack
@@ -127,10 +129,14 @@ fun MainContentDesktopImpl(component: MainComponent) {
                 animation = stackAnimation(fade())
             ) { child ->
                 when (val instance = child.instance) {
-                    is MainComponent.Child.Scraper -> ScraperScreen(component = instance.component)
                     is MainComponent.Child.Prompts -> PromptsScreen(component = instance.component)
                     is MainComponent.Child.PromptDetails -> AdaptivePromptDetailLayout(component = instance.component)
                     is MainComponent.Child.Chat -> LlmScreen(component = instance.component)
+                    is MainComponent.Child.Scraper -> {
+                        if (MainComponent.IS_IMPORT_ENABLED) {
+                            ScraperScreen(component = instance.component)
+                        }
+                    }
                     is MainComponent.Child.Import -> {
                         if (MainComponent.IS_IMPORT_ENABLED) {
                             ImporterScreen(component = instance.component)
@@ -149,7 +155,7 @@ fun MainContentDesktopImpl(component: MainComponent) {
         }
 
         // Right Properties Panel (collapsible)
-        if (!state.sidebarCollapsed) {
+        if (!state.propertiesPanelCollapsed) {
             MainPropertiesPanel(
                 activeChild = activeChild,
                 modifier = Modifier.width(300.dp)
@@ -203,12 +209,6 @@ private fun MainSidebar(
 
         // Navigation Items
         if (!sidebarCollapsed) {
-            NavigationItem(
-                icon = Icons.Default.Search,
-                label = "Scraper",
-                selected = currentScreen == MainScreen.SCRAPER,
-                onClick = onNavigateToScraper
-            )
 
             NavigationItem(
                 icon = Icons.AutoMirrored.Filled.List,
@@ -227,9 +227,9 @@ private fun MainSidebar(
             if (MainComponent.IS_IMPORT_ENABLED) {
                 NavigationItem(
                     icon = Icons.Default.Download,
-                    label = "Import",
-                    selected = currentScreen == MainScreen.IMPORT,
-                    onClick = onNavigateToImport
+                    label = "Scraper",
+                    selected = currentScreen == MainScreen.SCRAPER,
+                    onClick = onNavigateToScraper
                 )
             }
 
@@ -372,16 +372,18 @@ private fun NavigationItem(
 private fun MainTopBarDesktop(
     activeChild: MainComponent.Child,
     onToggleSidebar: () -> Unit,
-    sidebarCollapsed: Boolean
+    onTogglePropertiesPanel: () -> Unit,
+    sidebarCollapsed: Boolean,
+    propertiesPanelCollapsed: Boolean
 ) {
     TopAppBar(
         title = {
             Text(
                 text = when (activeChild) {
-                    is MainComponent.Child.Scraper -> "Скрапер"
                     is MainComponent.Child.Prompts -> "Промпты"
                     is MainComponent.Child.PromptDetails -> "Детали промпта"
                     is MainComponent.Child.Chat -> "Чат"
+                    is MainComponent.Child.Scraper -> "Скрапер"
                     is MainComponent.Child.Import -> "Импорт"
                     is MainComponent.Child.Settings -> "Настройки"
                 }
@@ -399,6 +401,15 @@ private fun MainTopBarDesktop(
             }
         },
         actions = {
+            IconButton(onClick = onTogglePropertiesPanel) {
+                Icon(
+                    imageVector = if (propertiesPanelCollapsed)
+                        Icons.Default.Info
+                    else
+                        Icons.Default.Close,
+                    contentDescription = if (propertiesPanelCollapsed) "Show Properties" else "Hide Properties"
+                )
+            }
             IconButton(onClick = { /* TODO: Search */ }) {
                 Icon(Icons.Default.Search, contentDescription = "Search")
             }

@@ -51,14 +51,9 @@ fun PromptsScreen(component: PromptListComponent) {
                     }
                 }
             },
-            bottomBar = {
-                if (screenSize == ScreenSize.MOBILE) {
-                    // Можно добавить bottom navigation для мобильных устройств
-                    // BottomAppBar { ... }
-                }
-            },
+            bottomBar = { },
             snackbarHost = { SnackbarHost(snackbarHostState) },
-            contentWindowInsets = androidx.compose.foundation.layout.WindowInsets.systemBars
+            contentWindowInsets = WindowInsets.systemBars
         ) { paddingValues ->
             // Основной контент
             Box(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
@@ -84,32 +79,26 @@ private fun DesktopLayout(state: PromptsListState, component: PromptListComponen
         ActionPanel(
             modifier = Modifier.width(220.dp),
             onAdd = component::onAddPromptClicked,
-            onSettings = component::onSettingsClicked,
-            onScraperNavigate = component::onNavigateToScraperClicked,
-            onLLMNavigate = component::onNavigateToLLMClicked
         )
     }
 }
 
+
 @Composable
-private fun TabletLayout(state: PromptsListState, component: PromptListComponent) {
-    Column {
-        // Верхняя панель с действиями
-        ActionPanel(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-            onAdd = component::onAddPromptClicked,
-            onSettings = component::onSettingsClicked,
-            onScraperNavigate = component::onNavigateToScraperClicked,
-            onLLMNavigate = component::onNavigateToLLMClicked
-        )
-        // Основной контент
-        MainContent(
-            modifier = Modifier.weight(1f),
-            state = state,
-            component = component
-        )
+fun ActionPanel(
+    modifier: Modifier = Modifier,
+    onAdd: () -> Unit,
+) {
+    Card(modifier = modifier) {
+        Column(
+            modifier = Modifier.fillMaxHeight().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) { Text("Добавить промпт") }
+        }
     }
 }
+
 
 @Composable
 private fun MobileLayout(state: PromptsListState, component: PromptListComponent) {

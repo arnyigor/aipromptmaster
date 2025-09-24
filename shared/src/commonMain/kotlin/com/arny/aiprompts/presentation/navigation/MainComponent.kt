@@ -43,6 +43,7 @@ import io.ktor.client.HttpClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.io.File
 
 interface MainComponent {
     val state: StateFlow<MainState>
@@ -58,12 +59,10 @@ interface MainComponent {
     }
 
     companion object {
-        // Import доступен только на Desktop в режиме разработки
         val IS_IMPORT_ENABLED: Boolean = getPlatform() == Platform.Desktop &&
                 (System.getProperty("java.vm.name")?.contains("OpenJDK") == true ||
                         System.getenv("DEBUG_MODE") == "true" ||
                         try {
-                            // Попытка загрузки debug-only класса
                             Class.forName("kotlinx.coroutines.debug.DebugProbes")
                             true
                         } catch (_: ClassNotFoundException) {
@@ -75,9 +74,10 @@ interface MainComponent {
     fun navigateToPrompts()
     fun navigateToPromptDetails(promptId: String)
     fun navigateToChat()
-    fun navigateToImport(files: List<java.io.File> = emptyList())
+    fun navigateToImport(files: List<File> = emptyList())
     fun navigateToSettings()
     fun toggleSidebar()
+    fun togglePropertiesPanel()
     fun selectWorkspace(workspaceId: String)
 }
 
@@ -103,7 +103,7 @@ class DefaultMainComponent(
 ) : MainComponent, ComponentContext by componentContext {
 
     private val navigation = StackNavigation<MainConfig>()
-    private var importFiles = emptyList<java.io.File>()
+    private var importFiles = emptyList<File>()
 
     private val _state = MutableStateFlow(
         MainState(
@@ -126,21 +126,6 @@ class DefaultMainComponent(
     @OptIn(DelicateDecomposeApi::class)
     private fun createChild(config: MainConfig, context: ComponentContext): Child {
         return when (config) {
-            is MainConfig.Scraper -> Child.Scraper(
-                DefaultScraperComponent(
-                    componentContext = context,
-                    scrapeUseCase = scrapeUseCase,
-                    webScraper = webScraper,
-                    parseRawPostsUseCase = parseRawPostsUseCase,
-                    savePromptsAsFilesUseCase = savePromptsAsFilesUseCase,
-                    onNavigateToImporter = { files ->
-                        if (files.isNotEmpty()) {
-                            navigation.push(MainConfig.Import)
-                        }
-                    },
-                    onBack = { navigation.pop() }
-                )
-            )
 
             is MainConfig.Prompts -> Child.Prompts(
                 DefaultPromptListComponent(
@@ -183,6 +168,22 @@ class DefaultMainComponent(
                 )
             )
 
+            is MainConfig.Scraper -> Child.Scraper(
+                DefaultScraperComponent(
+                    componentContext = context,
+                    scrapeUseCase = scrapeUseCase,
+                    webScraper = webScraper,
+                    parseRawPostsUseCase = parseRawPostsUseCase,
+                    savePromptsAsFilesUseCase = savePromptsAsFilesUseCase,
+                    onNavigateToImporter = { files ->
+                        if (files.isNotEmpty()) {
+                            navigation.push(MainConfig.Import)
+                        }
+                    },
+                    onBack = { navigation.pop() }
+                )
+            )
+
             is MainConfig.Import -> Child.Import(
                 DefaultImporterComponent(
                     componentContext = context,
@@ -195,7 +196,7 @@ class DefaultMainComponent(
                     fileMetadataReader = fileMetadataReader,
                     onBack = {
                         navigation.pop()
-                        _state.value = _state.value.copy(currentScreen = MainScreen.PROMPTS)
+                        _state.value = _state.value.copy(currentScreen = MainScreen.SCRAPER)
                     }
                 )
             )
@@ -209,16 +210,12 @@ class DefaultMainComponent(
     }
 
     override fun navigateToScraper() {
-        navigation.navigate { stack ->
-            stack.dropLast(1) + MainConfig.Scraper
-        }
+        navigation.navigate { listOf(MainConfig.Scraper) }
         _state.value = _state.value.copy(currentScreen = MainScreen.SCRAPER)
     }
 
     override fun navigateToPrompts() {
-        navigation.navigate { stack ->
-            stack.dropLast(1) + MainConfig.Prompts
-        }
+        navigation.navigate { listOf(MainConfig.Prompts) }
         _state.value = _state.value.copy(currentScreen = MainScreen.PROMPTS)
     }
 
@@ -227,33 +224,37 @@ class DefaultMainComponent(
         navigation.push(MainConfig.PromptDetails(promptId))
     }
 
+    @OptIn(DelicateDecomposeApi::class)
     override fun navigateToChat() {
         navigation.push(MainConfig.Chat)
         _state.value = _state.value.copy(currentScreen = MainScreen.CHAT)
     }
 
-    override fun navigateToImport(files: List<java.io.File>) {
+    override fun navigateToImport(files: List<File>) {
         if (IS_IMPORT_ENABLED) {
             importFiles = files
-            navigation.navigate { stack ->
-                stack.dropLast(1) + MainConfig.Import
-            }
+            navigation.navigate { listOf(MainConfig.Import) }
             _state.value = _state.value.copy(currentScreen = MainScreen.IMPORT)
         } else {
             println("Import is only available in development mode")
         }
     }
 
+
     override fun navigateToSettings() {
-        navigation.navigate { stack ->
-            stack.dropLast(1) + MainConfig.Settings
-        }
+        navigation.navigate { listOf(MainConfig.Settings) }
         _state.value = _state.value.copy(currentScreen = MainScreen.SETTINGS)
     }
 
     override fun toggleSidebar() {
         _state.value = _state.value.copy(
             sidebarCollapsed = !_state.value.sidebarCollapsed
+        )
+    }
+
+    override fun togglePropertiesPanel() {
+        _state.value = _state.value.copy(
+            propertiesPanelCollapsed = !_state.value.propertiesPanelCollapsed
         )
     }
 
@@ -273,6 +274,7 @@ class DefaultMainComponent(
 data class MainState(
     val currentScreen: MainScreen = MainScreen.PROMPTS,
     val sidebarCollapsed: Boolean = false,
+    val propertiesPanelCollapsed: Boolean = true,
     val showImportDialog: Boolean = false,
     val activeWorkspace: Workspace? = null
 )

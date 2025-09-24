@@ -39,12 +39,7 @@ sealed interface PromptDetailEvent {
 
 interface PromptDetailComponent {
     val state: StateFlow<PromptDetailState>
-    // Заменим отдельные функции на единую точку входа для событий
     fun onEvent(event: PromptDetailEvent)
-
-    // Можно добавить навигационные выходы
-    // sealed class Output { data class NavigateToChat(val promptId: String): Output }
-    // val navigation: Flow<Output>
 }
 
 class DefaultPromptDetailComponent(

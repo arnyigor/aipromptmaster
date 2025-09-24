@@ -24,10 +24,11 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Archive
-import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.Attachment
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
@@ -38,8 +39,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.InsertDriveFile
-import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Search
@@ -54,12 +53,12 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -818,9 +817,9 @@ private fun FileTypeIcon(fileType: FileType) {
     val icon = when (fileType) {
         FileType.TEXT -> Icons.Default.Description
         FileType.IMAGE -> Icons.Default.Image
-        FileType.DOCUMENT -> Icons.Default.Article
+        FileType.DOCUMENT -> Icons.AutoMirrored.Filled.Article
         FileType.ARCHIVE -> Icons.Default.Archive
-        FileType.OTHER -> Icons.Default.InsertDriveFile
+        FileType.OTHER -> Icons.AutoMirrored.Filled.InsertDriveFile
     }
 
     val color = when (fileType) {
@@ -906,7 +905,7 @@ private fun DownloadStatusIndicator(
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Icon(
-                        Icons.Default.OpenInNew,
+                        Icons.AutoMirrored.Filled.OpenInNew,
                         "Открыть в системе",
                         modifier = Modifier.size(14.dp)
                     )
@@ -981,7 +980,7 @@ private fun BasicEditorTab(state: ImporterState, editedData: EditedPostData, com
                 }.${localDateTime.year} ${localDateTime.hour.toString().padStart(2, '0')}:${
                     localDateTime.minute.toString().padStart(2, '0')
                 }"
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 instant.toString().substringBefore('T')
             }
         }
@@ -1127,7 +1126,7 @@ private fun PreviewTab(editedData: EditedPostData, state: ImporterState, compone
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 Icon(
-                    Icons.Default.OpenInNew,
+                    Icons.AutoMirrored.Filled.OpenInNew,
                     "Открыть пост в браузере",
                     modifier = Modifier.size(16.dp)
                 )
@@ -1472,7 +1471,7 @@ private fun ActionsCard(state: ImporterState, component: ImporterComponent) {
                 }
             }
 
-            Divider()
+            HorizontalDivider(Modifier)
 
             // Финальные действия
             Button(

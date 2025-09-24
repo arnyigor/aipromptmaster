@@ -5,8 +5,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -35,15 +33,7 @@ fun ScraperScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Скрапер") },
-                navigationIcon = {
-                    IconButton(onClick = component::onBackClicked) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Назад"
-                        )
-                    }
-                }
+                title = { Text("Скрапер") }
             )
         },
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets.systemBars
