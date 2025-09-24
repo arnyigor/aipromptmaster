@@ -47,7 +47,9 @@ fun main() {
                 httpClient = getKoin().get(),
                 systemInteraction = getKoin().get(),
                 fileMetadataReader = getKoin().get(),
-                llmInteractor = getKoin().get()
+                llmInteractor = getKoin().get(),
+                scrapeUseCase = getKoin().get(),
+                webScraper = getKoin().get(),
             )
         }
 

@@ -29,6 +29,8 @@ class MainActivity : ComponentActivity() {
             systemInteraction = get(),
             fileMetadataReader = get(),
             llmInteractor = get(),
+            scrapeUseCase = get(),
+            webScraper = get()
         )
 
         setContent {

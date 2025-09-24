@@ -43,6 +43,7 @@ import com.arny.aiprompts.presentation.ui.detail.AdaptivePromptDetailLayout
 import com.arny.aiprompts.presentation.ui.importer.ImporterScreen
 import com.arny.aiprompts.presentation.ui.llm.LlmScreen
 import com.arny.aiprompts.presentation.ui.prompts.PromptsScreen
+import com.arny.aiprompts.presentation.ui.scraper.ScraperScreen
 
 @Composable
 fun MainContentDesktopImpl(component: MainComponent) {
@@ -102,6 +103,7 @@ fun MainContentDesktopImpl(component: MainComponent) {
         MainSidebar(
             currentScreen = state.currentScreen,
             sidebarCollapsed = state.sidebarCollapsed,
+            onNavigateToScraper = component::navigateToScraper,
             onNavigateToPrompts = component::navigateToPrompts,
             onNavigateToChat = component::navigateToChat,
             onNavigateToImport = { component.navigateToImport(emptyList()) },
@@ -125,6 +127,7 @@ fun MainContentDesktopImpl(component: MainComponent) {
                 animation = stackAnimation(fade())
             ) { child ->
                 when (val instance = child.instance) {
+                    is MainComponent.Child.Scraper -> ScraperScreen(component = instance.component)
                     is MainComponent.Child.Prompts -> PromptsScreen(component = instance.component)
                     is MainComponent.Child.PromptDetails -> AdaptivePromptDetailLayout(component = instance.component)
                     is MainComponent.Child.Chat -> LlmScreen(component = instance.component)
@@ -159,6 +162,7 @@ fun MainContentDesktopImpl(component: MainComponent) {
 private fun MainSidebar(
     currentScreen: MainScreen,
     sidebarCollapsed: Boolean,
+    onNavigateToScraper: () -> Unit,
     onNavigateToPrompts: () -> Unit,
     onNavigateToChat: () -> Unit,
     onNavigateToImport: () -> Unit,
@@ -199,6 +203,13 @@ private fun MainSidebar(
 
         // Navigation Items
         if (!sidebarCollapsed) {
+            NavigationItem(
+                icon = Icons.Default.Search,
+                label = "Scraper",
+                selected = currentScreen == MainScreen.SCRAPER,
+                onClick = onNavigateToScraper
+            )
+
             NavigationItem(
                 icon = Icons.AutoMirrored.Filled.List,
                 label = "Prompts",
@@ -253,6 +264,17 @@ private fun MainSidebar(
             )
         } else {
             // Collapsed sidebar - just icons
+            IconButton(onClick = onNavigateToScraper) {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = "Scraper",
+                    tint = if (currentScreen == MainScreen.SCRAPER)
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.onSurface
+                )
+            }
+
             IconButton(onClick = onNavigateToPrompts) {
                 Icon(
                     Icons.AutoMirrored.Filled.List,
@@ -356,11 +378,12 @@ private fun MainTopBarDesktop(
         title = {
             Text(
                 text = when (activeChild) {
-                    is MainComponent.Child.Prompts -> "Prompts"
-                    is MainComponent.Child.PromptDetails -> "Prompt Details"
-                    is MainComponent.Child.Chat -> "Chat"
-                    is MainComponent.Child.Import -> "Import"
-                    is MainComponent.Child.Settings -> "Settings"
+                    is MainComponent.Child.Scraper -> "Скрапер"
+                    is MainComponent.Child.Prompts -> "Промпты"
+                    is MainComponent.Child.PromptDetails -> "Детали промпта"
+                    is MainComponent.Child.Chat -> "Чат"
+                    is MainComponent.Child.Import -> "Импорт"
+                    is MainComponent.Child.Settings -> "Настройки"
                 }
             )
         },
@@ -435,24 +458,28 @@ private fun MainPropertiesPanel(
         )
 
         when (activeChild) {
+            is MainComponent.Child.Scraper -> {
+                Text("Настройки скрапера будут показаны здесь")
+            }
+
             is MainComponent.Child.Prompts -> {
-                Text("Prompts properties will be shown here")
+                Text("Свойства промптов будут показаны здесь")
             }
 
             is MainComponent.Child.PromptDetails -> {
-                Text("Prompt details properties will be shown here")
+                Text("Свойства деталей промпта будут показаны здесь")
             }
 
             is MainComponent.Child.Chat -> {
-                Text("Chat settings will be shown here")
+                Text("Настройки чата будут показаны здесь")
             }
 
             is MainComponent.Child.Import -> {
-                Text("Import progress will be shown here")
+                Text("Прогресс импорта будет показан здесь")
             }
 
             is MainComponent.Child.Settings -> {
-                Text("Settings panel will be shown here")
+                Text("Панель настроек будет показана здесь")
             }
         }
     }

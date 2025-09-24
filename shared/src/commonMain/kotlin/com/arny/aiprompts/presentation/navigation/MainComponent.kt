@@ -11,6 +11,7 @@ import com.arkivanov.decompose.router.stack.push
 import com.arkivanov.decompose.value.Value
 import com.arny.aiprompts.data.model.Platform
 import com.arny.aiprompts.data.model.getPlatform
+import com.arny.aiprompts.data.scraper.WebScraper
 import com.arny.aiprompts.domain.files.FileMetadataReader
 import com.arny.aiprompts.domain.interactors.ILLMInteractor
 import com.arny.aiprompts.domain.interfaces.IHybridParser
@@ -23,6 +24,7 @@ import com.arny.aiprompts.domain.usecase.GetPromptsUseCase
 import com.arny.aiprompts.domain.usecase.ImportJsonUseCase
 import com.arny.aiprompts.domain.usecase.ParseRawPostsUseCase
 import com.arny.aiprompts.domain.usecase.SavePromptsAsFilesUseCase
+import com.arny.aiprompts.domain.usecase.ScrapeWebsiteUseCase
 import com.arny.aiprompts.domain.usecase.ToggleFavoriteUseCase
 import com.arny.aiprompts.domain.usecase.UpdatePromptUseCase
 import com.arny.aiprompts.presentation.features.llm.DefaultLlmComponent
@@ -35,6 +37,8 @@ import com.arny.aiprompts.presentation.screens.PromptDetailComponent
 import com.arny.aiprompts.presentation.screens.PromptListComponent
 import com.arny.aiprompts.presentation.ui.importer.DefaultImporterComponent
 import com.arny.aiprompts.presentation.ui.importer.ImporterComponent
+import com.arny.aiprompts.presentation.ui.scraper.DefaultScraperComponent
+import com.arny.aiprompts.presentation.ui.scraper.ScraperComponent
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -45,6 +49,7 @@ interface MainComponent {
     val childStack: Value<ChildStack<*, Child>>
 
     sealed interface Child {
+        data class Scraper(val component: ScraperComponent) : Child
         data class Prompts(val component: PromptListComponent) : Child
         data class PromptDetails(val component: PromptDetailComponent) : Child
         data class Chat(val component: LlmComponent) : Child
@@ -66,6 +71,7 @@ interface MainComponent {
                         })
     }
 
+    fun navigateToScraper()
     fun navigateToPrompts()
     fun navigateToPromptDetails(promptId: String)
     fun navigateToChat()
@@ -83,6 +89,8 @@ class DefaultMainComponent(
     private val deletePromptUseCase: DeletePromptUseCase,
     private val createPromptUseCase: CreatePromptUseCase,
     private val updatePromptUseCase: UpdatePromptUseCase,
+    private val scrapeUseCase: ScrapeWebsiteUseCase,
+    private val webScraper: WebScraper,
     private val getAvailableTagsUseCase: GetAvailableTagsUseCase,
     private val importJsonUseCase: ImportJsonUseCase,
     private val parseRawPostsUseCase: ParseRawPostsUseCase,
@@ -118,6 +126,22 @@ class DefaultMainComponent(
     @OptIn(DelicateDecomposeApi::class)
     private fun createChild(config: MainConfig, context: ComponentContext): Child {
         return when (config) {
+            is MainConfig.Scraper -> Child.Scraper(
+                DefaultScraperComponent(
+                    componentContext = context,
+                    scrapeUseCase = scrapeUseCase,
+                    webScraper = webScraper,
+                    parseRawPostsUseCase = parseRawPostsUseCase,
+                    savePromptsAsFilesUseCase = savePromptsAsFilesUseCase,
+                    onNavigateToImporter = { files ->
+                        if (files.isNotEmpty()) {
+                            navigation.push(MainConfig.Import)
+                        }
+                    },
+                    onBack = { navigation.pop() }
+                )
+            )
+
             is MainConfig.Prompts -> Child.Prompts(
                 DefaultPromptListComponent(
                     componentContext = context,
@@ -128,7 +152,7 @@ class DefaultMainComponent(
                         navigation.push(MainConfig.PromptDetails(promptId))
                     },
                     onNavigateToScraper = {
-                        this@DefaultMainComponent.navigateToImport(emptyList())
+                        this@DefaultMainComponent.navigateToScraper()
                     },
                     onNavigateToLLM = {
                         navigation.push(MainConfig.Chat)
@@ -184,6 +208,13 @@ class DefaultMainComponent(
         }
     }
 
+    override fun navigateToScraper() {
+        navigation.navigate { stack ->
+            stack.dropLast(1) + MainConfig.Scraper
+        }
+        _state.value = _state.value.copy(currentScreen = MainScreen.SCRAPER)
+    }
+
     override fun navigateToPrompts() {
         navigation.navigate { stack ->
             stack.dropLast(1) + MainConfig.Prompts
@@ -197,9 +228,7 @@ class DefaultMainComponent(
     }
 
     override fun navigateToChat() {
-        navigation.navigate { stack ->
-            stack.dropLast(1) + MainConfig.Chat
-        }
+        navigation.push(MainConfig.Chat)
         _state.value = _state.value.copy(currentScreen = MainScreen.CHAT)
     }
 
@@ -249,6 +278,7 @@ data class MainState(
 )
 
 enum class MainScreen {
+    SCRAPER,
     PROMPTS,
     CHAT,
     IMPORT,

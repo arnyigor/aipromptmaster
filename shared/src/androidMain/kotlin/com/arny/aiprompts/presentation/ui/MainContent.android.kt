@@ -116,6 +116,7 @@ import kotlinx.coroutines.launch
                                                 MainScreen.CHAT -> component.navigateToChat()
                                                 MainScreen.IMPORT -> component.navigateToImport()
                                                 MainScreen.SETTINGS -> component.navigateToSettings()
+                                                MainScreen.SCRAPER -> component.navigateToScraper()
                                             }
                                         }
                                     }
@@ -152,6 +153,7 @@ import kotlinx.coroutines.launch
                             }
 
                             MainScreen.IMPORT -> {}
+                            MainScreen.SCRAPER -> {}
                         }
                     }
                 }
@@ -256,6 +258,7 @@ private fun MainTopBar(
                     MainScreen.CHAT -> "Chat"
                     MainScreen.IMPORT -> "Import"
                     MainScreen.SETTINGS -> "Settings"
+                    MainScreen.SCRAPER -> "Scraper"
                 }
             )
         },
