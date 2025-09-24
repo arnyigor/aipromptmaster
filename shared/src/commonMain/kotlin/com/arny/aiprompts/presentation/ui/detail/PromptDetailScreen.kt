@@ -64,11 +64,6 @@ import com.mohamedrejeb.richeditor.ui.material3.RichText
 import kotlinx.coroutines.launch
 
 @Composable
-fun PromptDetailScreen(component: PromptDetailComponent) {
-    AdaptivePromptDetailLayout(component = component)
-}
-
-@Composable
 fun ErrorState(
     message: String,
     modifier: Modifier = Modifier,

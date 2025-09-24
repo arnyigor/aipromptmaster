@@ -36,10 +36,10 @@ import com.arkivanov.decompose.extensions.compose.stack.Children
 import com.arkivanov.decompose.extensions.compose.stack.animation.fade
 import com.arkivanov.decompose.extensions.compose.stack.animation.stackAnimation
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
-import com.arny.aiprompts.presentation.features.llm.LlmComponent
 import com.arny.aiprompts.presentation.navigation.MainComponent
 import com.arny.aiprompts.presentation.navigation.MainScreen
 import com.arny.aiprompts.presentation.navigation.Workspace
+import com.arny.aiprompts.presentation.ui.detail.AdaptivePromptDetailLayout
 import com.arny.aiprompts.presentation.ui.importer.ImporterScreen
 import com.arny.aiprompts.presentation.ui.llm.LlmScreen
 import com.arny.aiprompts.presentation.ui.prompts.PromptsScreen
@@ -126,7 +126,7 @@ fun MainContentDesktopImpl(component: MainComponent) {
             ) { child ->
                 when (val instance = child.instance) {
                     is MainComponent.Child.Prompts -> PromptsScreen(component = instance.component)
-                    is MainComponent.Child.PromptDetails -> Text("Prompt Details Screen - Coming Soon", modifier = Modifier.fillMaxSize(), style = MaterialTheme.typography.headlineMedium)
+                    is MainComponent.Child.PromptDetails -> AdaptivePromptDetailLayout(component = instance.component)
                     is MainComponent.Child.Chat -> LlmScreen(component = instance.component)
                     is MainComponent.Child.Import -> {
                         if (MainComponent.IS_IMPORT_ENABLED) {
