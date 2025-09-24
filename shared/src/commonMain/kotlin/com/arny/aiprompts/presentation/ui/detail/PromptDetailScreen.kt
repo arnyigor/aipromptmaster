@@ -43,25 +43,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.ClipEntry
-import androidx.compose.ui.platform.Clipboard
 import androidx.compose.ui.platform.ClipboardManager
-import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
-import androidx.lifecycle.lifecycleScope
 import com.arny.aiprompts.presentation.screens.PromptDetailComponent
 import com.arny.aiprompts.presentation.screens.PromptDetailEvent
 import com.mohamedrejeb.richeditor.model.rememberRichTextState
 import com.mohamedrejeb.richeditor.ui.material3.RichText
-import kotlinx.coroutines.launch
 
 @Composable
 fun ErrorState(
@@ -222,7 +215,13 @@ private fun DesktopPromptDetailLayout(
                                             )
                                         )
                                     },
-                                    onCopyClick = { clipboardManager.setText(AnnotatedString(ruContent)) }
+                                    onCopyClick = {
+                                        clipboardManager.setText(
+                                            AnnotatedString(
+                                                ruContent
+                                            )
+                                        )
+                                    }
                                 )
                             }
                         }
@@ -242,7 +241,13 @@ private fun DesktopPromptDetailLayout(
                                             )
                                         )
                                     },
-                                    onCopyClick = { clipboardManager.setText(AnnotatedString(enContent)) }
+                                    onCopyClick = {
+                                        clipboardManager.setText(
+                                            AnnotatedString(
+                                                enContent
+                                            )
+                                        )
+                                    }
                                 )
                             }
                         }
