@@ -1,6 +1,7 @@
 package com.arny.aiprompts.presentation.ui.prompts
 
 import com.arny.aiprompts.domain.model.Prompt
+import com.arny.aiprompts.domain.strings.StringHolder
 
 // Добавляем enum для удобной и типобезопасной работы с сортировкой
 enum class SortOrder(val title: String) {
@@ -18,7 +19,7 @@ enum class SortOrder(val title: String) {
 data class PromptsListState(
     // Основные состояния
     val isLoading: Boolean = false,
-    val error: String? = null,
+    val error: StringHolder? = null,
 
     // Данные
     val allPrompts: List<Prompt> = emptyList(),

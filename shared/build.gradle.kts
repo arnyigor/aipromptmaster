@@ -68,6 +68,7 @@ kotlin {
                 implementation(libs.russhwolf.settings)
                 implementation(libs.russhwolf.settings.datastore)
                 implementation(libs.russhwolf.settings.coroutines)
+                implementation(project.dependencies.platform("androidx.compose:compose-bom:2023.10.01"))
             }
         }
 

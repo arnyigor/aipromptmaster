@@ -139,4 +139,8 @@ class PromptsRepositoryImpl(
     override suspend fun getAllUniqueTags(): List<String> = withContext(dispatcher) {
         promptDao.getAllUniqueTags()
     }
+
+    override suspend fun invalidateSortDataCache() = withContext(dispatcher) {
+        // TODO: Implement cache invalidation if needed
+    }
 }

@@ -17,6 +17,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.arny.aiprompts.domain.model.Prompt
+import com.arny.aiprompts.domain.strings.StringHolder
+import com.arny.aiprompts.domain.strings.asString
 import com.arny.aiprompts.presentation.screens.PromptListComponent
 
 enum class ScreenSize {
@@ -80,6 +82,7 @@ private fun DesktopLayout(state: PromptsListState, component: PromptListComponen
             modifier = Modifier.width(220.dp),
             onAdd = component::onAddPromptClicked,
             onDeleteAll = component::onDeleteAllPromptsClicked,
+            onSync = component::onSyncClicked,
         )
     }
 
@@ -145,6 +148,7 @@ fun ActionPanel(
     modifier: Modifier = Modifier,
     onAdd: () -> Unit,
     onDeleteAll: () -> Unit,
+    onSync: () -> Unit,
 ) {
     Card(modifier = modifier) {
         Column(
@@ -152,6 +156,7 @@ fun ActionPanel(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) { Text("Добавить промпт") }
+            Button(onClick = onSync, modifier = Modifier.fillMaxWidth()) { Text("Синхронизировать") }
             Button(
                 onClick = onDeleteAll,
                 modifier = Modifier.fillMaxWidth(),
@@ -376,14 +381,14 @@ fun EmptyState(message: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun ErrorState(message: String, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+fun ErrorState(message: StringHolder, onRetry: () -> Unit, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier.padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         // Icon(AppIcons.Error, ...)
-        Text(message, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.error)
+        Text(message.asString(), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.error)
         Spacer(Modifier.height(16.dp))
         Button(onClick = onRetry) {
             Text("Повторить")

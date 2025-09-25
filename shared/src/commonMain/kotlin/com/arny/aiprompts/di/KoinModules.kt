@@ -1,19 +1,21 @@
 package com.arny.aiprompts.di
 
+import com.arny.aiprompts.data.api.GitHubService
+import com.arny.aiprompts.data.api.GitHubServiceImpl
 import com.arny.aiprompts.data.db.AppDatabase
 import com.arny.aiprompts.data.llm.NoOpLLMService
+import com.arny.aiprompts.data.repositories.ISettingsRepository
+import com.arny.aiprompts.data.repositories.PromptSynchronizerImpl
+import com.arny.aiprompts.data.repositories.SettingsRepositoryImpl
 import com.arny.aiprompts.data.repository.PromptsRepositoryImpl
 import com.arny.aiprompts.data.scraper.SeleniumWebScraper
 import com.arny.aiprompts.data.scraper.WebScraper
 import com.arny.aiprompts.domain.files.FileMetadataReader
 import com.arny.aiprompts.domain.interactors.ILLMInteractor
 import com.arny.aiprompts.domain.interactors.LLMInteractor
-import com.arny.aiprompts.data.repositories.IOpenRouterRepository
-import com.arny.aiprompts.data.repositories.ISettingsRepository
-import com.arny.aiprompts.data.repositories.IChatHistoryRepository
-import com.arny.aiprompts.domain.interfaces.FileDataSource
 import com.arny.aiprompts.domain.interfaces.IPromptsRepository
 import com.arny.aiprompts.domain.interfaces.LLMService
+import com.arny.aiprompts.domain.repositories.IPromptSynchronizer
 import com.arny.aiprompts.domain.system.ActualSystemInteraction
 import com.arny.aiprompts.domain.system.SystemInteraction
 import com.arny.aiprompts.domain.usecase.*
@@ -34,8 +36,13 @@ val dataModule = module {
     single { get<AppDatabase>().promptDao() }
     // Создаем синглтон PromptsRepositoryImpl и связываем его с интерфейсом IPromptsRepository
     singleOf(::PromptsRepositoryImpl) { bind<IPromptsRepository>() }
+    // Создаем синглтон SettingsRepositoryImpl и связываем его с интерфейсом ISettingsRepository
+    singleOf(::SettingsRepositoryImpl) { bind<ISettingsRepository>() }
     // Предоставляем диспатчер для фоновых задач
     single { Dispatchers.IO }
+    // Синхронизатор
+    singleOf(::GitHubServiceImpl) { bind<GitHubService>() }
+    singleOf(::PromptSynchronizerImpl) { bind<IPromptSynchronizer>() }
 }
 
 // Добавляем новый модуль для скрапера
@@ -61,6 +68,7 @@ val commonDomainModule = module {
     singleOf(::ImportJsonUseCase)
     singleOf(::ImportFromFileUseCase)
     singleOf(::ExportPromptsUseCase)
+    singleOf(::SyncPromptsUseCase)
     singleOf(::FileMetadataReader)
     singleOf(::LLMInteractor) { bind<ILLMInteractor>() }
     single<SystemInteraction> { ActualSystemInteraction() }

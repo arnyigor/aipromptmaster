@@ -14,12 +14,22 @@ import com.arny.aiprompts.data.di.desktopModules
 import com.arny.aiprompts.di.commonModules
 import com.arny.aiprompts.presentation.navigation.DefaultMainComponent
 import com.arny.aiprompts.presentation.ui.MainContentDesktopImpl
+import com.arny.aiprompts.domain.repositories.IPromptSynchronizer
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.koin.core.context.startKoin
 import org.koin.java.KoinJavaComponent.getKoin
 
 fun main() {
     startKoin {
         modules(commonModules + desktopModules)
+    }
+
+    // Запуск синхронизации промптов в фоне
+    CoroutineScope(Dispatchers.IO).launch {
+        val synchronizer = getKoin().get<IPromptSynchronizer>()
+        synchronizer.synchronize()
     }
 
     application {
@@ -43,6 +53,7 @@ fun main() {
                 importJsonUseCase = getKoin().get(),
                 parseRawPostsUseCase = getKoin().get(),
                 savePromptsAsFilesUseCase = getKoin().get(),
+                syncPromptsUseCase = getKoin().get(),
                 hybridParser = getKoin().get(),
                 httpClient = getKoin().get(),
                 systemInteraction = getKoin().get(),

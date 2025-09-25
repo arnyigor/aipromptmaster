@@ -30,4 +30,12 @@ class SettingsRepositoryImpl(private val settingsFactory: SettingsFactory) : ISe
     }
 
     override fun getSelectedModelId(): Flow<String?> = _selectedId
+
+    override fun setLastSyncTime(timestamp: Long) {
+        settings.putLong("last_sync_timestamp", timestamp)
+    }
+
+    override fun getLastSyncTime(): Long {
+        return settings.getLongOrNull("last_sync_timestamp") ?: 0L
+    }
 }

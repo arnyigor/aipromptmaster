@@ -7,4 +7,6 @@ interface ISettingsRepository {
     fun getApiKey(): String?
     fun setSelectedModelId(id: String?)
     fun getSelectedModelId(): Flow<String?>
+    fun setLastSyncTime(timestamp: Long)
+    fun getLastSyncTime(): Long
 }

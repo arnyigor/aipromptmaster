@@ -26,6 +26,7 @@ import com.arny.aiprompts.domain.usecase.ImportJsonUseCase
 import com.arny.aiprompts.domain.usecase.ParseRawPostsUseCase
 import com.arny.aiprompts.domain.usecase.SavePromptsAsFilesUseCase
 import com.arny.aiprompts.domain.usecase.ScrapeWebsiteUseCase
+import com.arny.aiprompts.domain.usecase.SyncPromptsUseCase
 import com.arny.aiprompts.domain.usecase.ToggleFavoriteUseCase
 import com.arny.aiprompts.domain.usecase.UpdatePromptUseCase
 import com.arny.aiprompts.presentation.features.llm.DefaultLlmComponent
@@ -97,6 +98,7 @@ class DefaultMainComponent(
     private val importJsonUseCase: ImportJsonUseCase,
     private val parseRawPostsUseCase: ParseRawPostsUseCase,
     private val savePromptsAsFilesUseCase: SavePromptsAsFilesUseCase,
+    private val syncPromptsUseCase: SyncPromptsUseCase,
     private val hybridParser: IHybridParser,
     private val httpClient: HttpClient,
     private val systemInteraction: SystemInteraction,
@@ -135,6 +137,9 @@ class DefaultMainComponent(
                     getPromptsUseCase = getPromptsUseCase,
                     toggleFavoriteUseCase = toggleFavoriteUseCase,
                     importJsonUseCase = importJsonUseCase,
+                    deletePromptUseCase = deletePromptUseCase,
+                    deleteAllPromptsUseCase = deleteAllPromptsUseCase,
+                    syncPromptsUseCase = syncPromptsUseCase,
                     onNavigateToDetails = { promptId ->
                         navigation.push(MainConfig.PromptDetails(promptId))
                     },
@@ -143,9 +148,7 @@ class DefaultMainComponent(
                     },
                     onNavigateToLLM = {
                         navigation.push(MainConfig.Chat)
-                    },
-                    deletePromptUseCase = deletePromptUseCase,
-                    deleteAllPromptsUseCase = deleteAllPromptsUseCase
+                    }
                 )
             )
 

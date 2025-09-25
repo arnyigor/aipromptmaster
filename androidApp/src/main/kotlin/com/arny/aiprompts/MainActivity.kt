@@ -25,6 +25,7 @@ class MainActivity : ComponentActivity() {
             importJsonUseCase = get(),
             parseRawPostsUseCase = get(),
             savePromptsAsFilesUseCase = get(),
+            syncPromptsUseCase = get(),
             hybridParser = get(),
             httpClient = get(),
             systemInteraction = get(),

@@ -1,7 +1,11 @@
 package com.arny.aiprompts.domain.strings
 
+
+import androidx.compose.runtime.Composable
 import androidx.annotation.PluralsRes
 import androidx.annotation.StringRes
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 
 sealed interface StringHolder {
 
@@ -21,4 +25,19 @@ sealed interface StringHolder {
         val quantity: Int,
         val formatArgs: List<Any> = emptyList()
     ) : StringHolder
+}
+
+
+@Composable
+fun StringHolder.asString(): String {
+    return when (this) {
+        is StringHolder.Resource -> stringResource(id = id)
+        is StringHolder.Text -> value ?: ""
+        is StringHolder.Formatted -> stringResource(id = id, formatArgs = formatArgs.toTypedArray())
+        is StringHolder.Plural -> pluralStringResource(
+            id = id,
+            count = quantity,
+            formatArgs = formatArgs.toTypedArray()
+        )
+    }
 }

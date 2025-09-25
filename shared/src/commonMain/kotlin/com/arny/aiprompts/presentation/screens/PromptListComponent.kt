@@ -4,20 +4,22 @@ import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.essenty.lifecycle.coroutines.coroutineScope
 import com.arny.aiprompts.domain.errors.DomainError
 import com.arny.aiprompts.domain.model.Prompt
+import com.arny.aiprompts.domain.repositories.SyncResult
+import com.arny.aiprompts.domain.strings.StringHolder
+import com.arny.aiprompts.domain.usecase.DeleteAllPromptsUseCase
+import com.arny.aiprompts.domain.usecase.DeletePromptUseCase
 import com.arny.aiprompts.domain.usecase.GetPromptsUseCase
 import com.arny.aiprompts.domain.usecase.ImportJsonUseCase
+import com.arny.aiprompts.domain.usecase.SyncPromptsUseCase
 import com.arny.aiprompts.domain.usecase.ToggleFavoriteUseCase
-import com.arny.aiprompts.domain.usecase.DeletePromptUseCase
-import com.arny.aiprompts.domain.usecase.DeleteAllPromptsUseCase
-import com.benasher44.uuid.uuid4
 import com.arny.aiprompts.presentation.ui.prompts.PromptsListState
 import com.arny.aiprompts.presentation.ui.prompts.SortOrder
+import com.benasher44.uuid.uuid4
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeout
 
 interface PromptListComponent {
     val state: StateFlow<PromptsListState>
@@ -50,6 +52,7 @@ interface PromptListComponent {
     fun onShowDeleteAllDialog()
     fun onHideDeleteAllDialog()
     fun onConfirmDeleteAll()
+    fun onSyncClicked()
 }
 
 class DefaultPromptListComponent(
@@ -59,6 +62,7 @@ class DefaultPromptListComponent(
     private val importJsonUseCase: ImportJsonUseCase,
     private val deletePromptUseCase: DeletePromptUseCase,
     private val deleteAllPromptsUseCase: DeleteAllPromptsUseCase,
+    private val syncPromptsUseCase: SyncPromptsUseCase,
     private val onNavigateToDetails: (promptId: String) -> Unit,
     private val onNavigateToScraper: () -> Unit,
     private val onNavigateToLLM: () -> Unit,
@@ -89,7 +93,7 @@ class DefaultPromptListComponent(
                         _state.update { it.copy(allPrompts = prompts, isLoading = false) }
                         applyFiltersAndSorting() // Применяем фильтры к новым данным
                     }.onFailure { error ->
-                        _state.update { it.copy(error = error.message, isLoading = false) }
+                        _state.update { it.copy(error = StringHolder.Text(error.message), isLoading = false) }
                     }
                 }
         }
@@ -174,7 +178,13 @@ class DefaultPromptListComponent(
             val selectedPrompt = state.value.allPrompts.find { it.id == promptId }
             if (selectedPrompt?.isLocal == true) {
                 scope.launch {
-                    _state.update { it.copy(isDeletingPrompt = true, deleteError = null, showDeleteDialog = false) }
+                    _state.update {
+                        it.copy(
+                            isDeletingPrompt = true,
+                            deleteError = null,
+                            showDeleteDialog = false
+                        )
+                    }
 
                     val result = deletePromptUseCase(promptId)
 
@@ -228,7 +238,13 @@ class DefaultPromptListComponent(
 
     override fun onConfirmDeleteAll() {
         scope.launch {
-            _state.update { it.copy(isDeletingPrompt = true, deleteError = null, showDeleteAllDialog = false) }
+            _state.update {
+                it.copy(
+                    isDeletingPrompt = true,
+                    deleteError = null,
+                    showDeleteAllDialog = false
+                )
+            }
 
             val result = deleteAllPromptsUseCase()
 
@@ -250,6 +266,31 @@ class DefaultPromptListComponent(
         }
     }
 
+    override fun onSyncClicked() {
+        scope.launch {
+            _state.update { it.copy(isLoading = true, error = null) }
+            val result = syncPromptsUseCase(ignoreCooldown = true)
+            when (result) {
+                is SyncResult.Success -> {
+                    _state.update { it.copy(isLoading = false) }
+                }
+
+                is SyncResult.Error -> {
+                    _state.update { it.copy(isLoading = false, error = result.message) }
+                }
+
+                is SyncResult.TooSoon -> {
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            error = StringHolder.Text("Синхронизация слишком рано")
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     // А этот метод для полного обновления с нуля (pull-to-refresh)
     override fun onRefresh() {
         scope.launch {
@@ -259,10 +300,16 @@ class DefaultPromptListComponent(
                 println("Успешно импортировано $count промптов.")
                 // Данные в state обновятся автоматически благодаря Flow в observePrompts()
             }.onFailure { error ->
-                _state.update { it.copy(isLoading = false, error = "Ошибка импорта: ${error.message}") }
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        error = StringHolder.Text("Ошибка импорта: ${error.message}")
+                    )
+                }
             }
         }
     }
+
     // Этот метод теперь будет вызываться для загрузки СЛЕДУЮЩЕЙ страницы
     fun loadNextPage() {
         val currentState = _state.value
@@ -315,11 +362,12 @@ class DefaultPromptListComponent(
 
             }.onFailure { throwable ->
                 _state.update {
+                    val holder = (throwable as? DomainError)?.stringHolder
                     it.copy(
                         isLoading = false,
                         isPageLoading = false,
                         // Используем наш DomainError для отображения красивого сообщения
-                        error = (throwable as? DomainError)?.stringHolder?.toString() ?: "Неизвестная ошибка"
+                        error = holder ?: StringHolder.Text("Неизвестная ошибка")
                     )
                 }
             }
@@ -343,7 +391,12 @@ class DefaultPromptListComponent(
                 true
             } else {
                 currentState.selectedTags.all { selectedTag ->
-                    prompt.tags.any { promptTag -> promptTag.equals(selectedTag, ignoreCase = true) }
+                    prompt.tags.any { promptTag ->
+                        promptTag.equals(
+                            selectedTag,
+                            ignoreCase = true
+                        )
+                    }
                 }
             }
             val queryMatch = if (currentState.searchQuery.isBlank()) {
@@ -351,10 +404,10 @@ class DefaultPromptListComponent(
             } else {
                 val query = currentState.searchQuery.trim().lowercase()
                 prompt.title.lowercase().contains(query) ||
-                prompt.description?.lowercase()?.contains(query) == true ||
-                prompt.content?.ru?.lowercase()?.contains(query) == true ||
-                prompt.content?.en?.lowercase()?.contains(query) == true ||
-                prompt.tags.any { it.lowercase().contains(query) }
+                        prompt.description?.lowercase()?.contains(query) == true ||
+                        prompt.content?.ru?.lowercase()?.contains(query) == true ||
+                        prompt.content?.en?.lowercase()?.contains(query) == true ||
+                        prompt.tags.any { it.lowercase().contains(query) }
             }
             favoriteMatch && categoryMatch && tagsMatch && queryMatch
         }
@@ -363,11 +416,20 @@ class DefaultPromptListComponent(
             SortOrder.BY_FAVORITE_DESC -> filteredList.sortedWith(compareByDescending<Prompt> { it.isFavorite }.thenByDescending { it.modifiedAt })
             SortOrder.BY_NAME_ASC -> filteredList.sortedBy { it.title }
             SortOrder.BY_NAME_DESC -> filteredList.sortedByDescending { it.title }
-            SortOrder.BY_DATE_DESC -> filteredList.sortedByDescending { it.modifiedAt ?: it.createdAt }
+            SortOrder.BY_DATE_DESC -> filteredList.sortedByDescending {
+                it.modifiedAt ?: it.createdAt
+            }
+
             SortOrder.BY_DATE_ASC -> filteredList.sortedBy { it.modifiedAt ?: it.createdAt }
             SortOrder.BY_POPULARITY_DESC -> filteredList.sortedByDescending { it.rating }
-            SortOrder.BY_SIZE_DESC -> filteredList.sortedByDescending { (it.content?.ru?.length ?: 0) + (it.content?.en?.length ?: 0) }
-            SortOrder.BY_SIZE_ASC -> filteredList.sortedBy { (it.content?.ru?.length ?: 0) + (it.content?.en?.length ?: 0) }
+            SortOrder.BY_SIZE_DESC -> filteredList.sortedByDescending {
+                (it.content?.ru?.length ?: 0) + (it.content?.en?.length ?: 0)
+            }
+
+            SortOrder.BY_SIZE_ASC -> filteredList.sortedBy {
+                (it.content?.ru?.length ?: 0) + (it.content?.en?.length ?: 0)
+            }
+
             SortOrder.BY_CATEGORY -> filteredList.sortedBy { it.category }
         }
         _state.update {
