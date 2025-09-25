@@ -79,6 +79,7 @@ private fun DesktopLayout(state: PromptsListState, component: PromptListComponen
         ActionPanel(
             modifier = Modifier.width(220.dp),
             onAdd = component::onAddPromptClicked,
+            onDeleteAll = component::onDeleteAllPromptsClicked,
         )
     }
 }
@@ -88,6 +89,7 @@ private fun DesktopLayout(state: PromptsListState, component: PromptListComponen
 fun ActionPanel(
     modifier: Modifier = Modifier,
     onAdd: () -> Unit,
+    onDeleteAll: () -> Unit,
 ) {
     Card(modifier = modifier) {
         Column(
@@ -95,6 +97,13 @@ fun ActionPanel(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) { Text("Добавить промпт") }
+            Button(
+                onClick = onDeleteAll,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                )
+            ) { Text("Удалить все промпты", color = MaterialTheme.colorScheme.onError) }
         }
     }
 }
@@ -168,6 +177,33 @@ private fun PromptsTopAppBar(
                         },
                         dismissButton = {
                             OutlinedButton(onClick = { component.onHideDeleteDialog() }) {
+                                Text("Отмена")
+                            }
+                        },
+                        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
+                    )
+                }
+
+                // Диалог подтверждения удаления всех промптов
+                if (state.showDeleteAllDialog) {
+                    AlertDialog(
+                        onDismissRequest = { component.onHideDeleteAllDialog() },
+                        title = { Text("Подтверждение удаления всех промптов") },
+                        text = {
+                            Text("Вы действительно хотите удалить все промпты из базы данных? Это действие нельзя отменить.")
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = { component.onConfirmDeleteAll() },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Text("Удалить все", color = MaterialTheme.colorScheme.onError)
+                            }
+                        },
+                        dismissButton = {
+                            OutlinedButton(onClick = { component.onHideDeleteAllDialog() }) {
                                 Text("Отмена")
                             }
                         },

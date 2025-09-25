@@ -48,5 +48,6 @@ data class PromptsListState(
     val createError: String? = null,
     val isDeletingPrompt: Boolean = false,
     val deleteError: String? = null,
-    val showDeleteDialog: Boolean = false
+    val showDeleteDialog: Boolean = false,
+    val showDeleteAllDialog: Boolean = false
 )

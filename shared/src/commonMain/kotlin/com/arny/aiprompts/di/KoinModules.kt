@@ -53,6 +53,7 @@ val commonDomainModule = module {
     singleOf(::CreatePromptUseCase)
     singleOf(::UpdatePromptUseCase)
     singleOf(::DeletePromptUseCase)
+    singleOf(::DeleteAllPromptsUseCase)
     singleOf(::GetAvailableTagsUseCase)
     singleOf(::ParseHtmlUseCase)
     singleOf(::ParseRawPostsUseCase)

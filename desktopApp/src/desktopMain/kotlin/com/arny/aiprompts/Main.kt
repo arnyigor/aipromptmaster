@@ -36,6 +36,7 @@ fun main() {
                 getPromptUseCase = getKoin().get(),
                 toggleFavoriteUseCase = getKoin().get(),
                 deletePromptUseCase = getKoin().get(),
+                deleteAllPromptsUseCase = getKoin().get(),
                 createPromptUseCase = getKoin().get(),
                 updatePromptUseCase = getKoin().get(),
                 getAvailableTagsUseCase = getKoin().get(),

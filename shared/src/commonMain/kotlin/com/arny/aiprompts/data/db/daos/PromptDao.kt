@@ -120,12 +120,15 @@ interface PromptDao {
     @Query("UPDATE prompts SET is_favorite = NOT is_favorite WHERE _id = :promptId")
     suspend fun toggleFavoriteStatus(promptId: String)
 
+    @Query("DELETE FROM prompts")
+    suspend fun deleteAllPrompts()
+
     @Query("""
         SELECT DISTINCT TRIM(tag) as tag
         FROM (
             SELECT TRIM(value) as tag
             FROM prompts,
-                 json_each('["' || REPLACE(tags, ',', '","') || '"]')
+                  json_each('["' || REPLACE(tags, ',', '","') || '"]')
             WHERE tags IS NOT NULL AND tags != ''
         )
         WHERE tag != ''

@@ -18,6 +18,7 @@ class MainActivity : ComponentActivity() {
             getPromptUseCase = get(),
             toggleFavoriteUseCase = get(),
             deletePromptUseCase = get(),
+            deleteAllPromptsUseCase = get(),
             createPromptUseCase = get(),
             updatePromptUseCase = get(),
             getAvailableTagsUseCase = get(),

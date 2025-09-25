@@ -17,6 +17,7 @@ import com.arny.aiprompts.domain.interactors.ILLMInteractor
 import com.arny.aiprompts.domain.interfaces.IHybridParser
 import com.arny.aiprompts.domain.system.SystemInteraction
 import com.arny.aiprompts.domain.usecase.CreatePromptUseCase
+import com.arny.aiprompts.domain.usecase.DeleteAllPromptsUseCase
 import com.arny.aiprompts.domain.usecase.DeletePromptUseCase
 import com.arny.aiprompts.domain.usecase.GetAvailableTagsUseCase
 import com.arny.aiprompts.domain.usecase.GetPromptUseCase
@@ -87,6 +88,7 @@ class DefaultMainComponent(
     private val getPromptUseCase: GetPromptUseCase,
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
     private val deletePromptUseCase: DeletePromptUseCase,
+    private val deleteAllPromptsUseCase: DeleteAllPromptsUseCase,
     private val createPromptUseCase: CreatePromptUseCase,
     private val updatePromptUseCase: UpdatePromptUseCase,
     private val scrapeUseCase: ScrapeWebsiteUseCase,
@@ -142,7 +144,8 @@ class DefaultMainComponent(
                     onNavigateToLLM = {
                         navigation.push(MainConfig.Chat)
                     },
-                    deletePromptUseCase = deletePromptUseCase
+                    deletePromptUseCase = deletePromptUseCase,
+                    deleteAllPromptsUseCase = deleteAllPromptsUseCase
                 )
             )
 

@@ -45,6 +45,10 @@ class PromptsRepositoryImpl(
         promptDao.deletePromptsByIds(promptIds)
     }
 
+    override suspend fun deleteAllPrompts() = withContext(dispatcher) {
+        promptDao.deleteAllPrompts()
+    }
+
     override suspend fun toggleFavoriteStatus(promptId: String) = withContext(dispatcher) {
         promptDao.toggleFavoriteStatus(promptId)
     }

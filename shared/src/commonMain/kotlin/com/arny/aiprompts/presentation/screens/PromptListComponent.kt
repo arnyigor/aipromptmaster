@@ -8,6 +8,7 @@ import com.arny.aiprompts.domain.usecase.GetPromptsUseCase
 import com.arny.aiprompts.domain.usecase.ImportJsonUseCase
 import com.arny.aiprompts.domain.usecase.ToggleFavoriteUseCase
 import com.arny.aiprompts.domain.usecase.DeletePromptUseCase
+import com.arny.aiprompts.domain.usecase.DeleteAllPromptsUseCase
 import com.benasher44.uuid.uuid4
 import com.arny.aiprompts.presentation.ui.prompts.PromptsListState
 import com.arny.aiprompts.presentation.ui.prompts.SortOrder
@@ -45,6 +46,10 @@ interface PromptListComponent {
     fun onSettingsClicked()
     fun onNavigateToScraperClicked()
     fun onNavigateToLLMClicked()
+    fun onDeleteAllPromptsClicked()
+    fun onShowDeleteAllDialog()
+    fun onHideDeleteAllDialog()
+    fun onConfirmDeleteAll()
 }
 
 class DefaultPromptListComponent(
@@ -53,6 +58,7 @@ class DefaultPromptListComponent(
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
     private val importJsonUseCase: ImportJsonUseCase,
     private val deletePromptUseCase: DeletePromptUseCase,
+    private val deleteAllPromptsUseCase: DeleteAllPromptsUseCase,
     private val onNavigateToDetails: (promptId: String) -> Unit,
     private val onNavigateToScraper: () -> Unit,
     private val onNavigateToLLM: () -> Unit,
@@ -206,6 +212,42 @@ class DefaultPromptListComponent(
 
     override fun onNavigateToLLMClicked() {
         onNavigateToLLM()
+    }
+
+    override fun onDeleteAllPromptsClicked() {
+        _state.update { it.copy(showDeleteAllDialog = true) }
+    }
+
+    override fun onShowDeleteAllDialog() {
+        _state.update { it.copy(showDeleteAllDialog = true) }
+    }
+
+    override fun onHideDeleteAllDialog() {
+        _state.update { it.copy(showDeleteAllDialog = false) }
+    }
+
+    override fun onConfirmDeleteAll() {
+        scope.launch {
+            _state.update { it.copy(isDeletingPrompt = true, deleteError = null, showDeleteAllDialog = false) }
+
+            val result = deleteAllPromptsUseCase()
+
+            result.onSuccess {
+                _state.update {
+                    it.copy(
+                        isDeletingPrompt = false,
+                        selectedPromptId = null // Сбрасываем выбор
+                    )
+                }
+            }.onFailure { error ->
+                _state.update {
+                    it.copy(
+                        isDeletingPrompt = false,
+                        deleteError = error.message ?: "Failed to delete all prompts"
+                    )
+                }
+            }
+        }
     }
 
     // А этот метод для полного обновления с нуля (pull-to-refresh)
