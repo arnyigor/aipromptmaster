@@ -24,6 +24,9 @@ class OpenRouterRepositoryImpl(private val httpClient: HttpClient) : IOpenRouter
         val response: ModelsResponseDTO = httpClient.get("https://openrouter.ai/api/v1/models").body()
         _modelsFlow.value = response.models.map { dto -> dto.toDomain() }
         Result.success(Unit)
+    } catch (e: kotlinx.coroutines.CancellationException) {
+        // Normal cancellation when component is destroyed, don't treat as error
+        Result.success(Unit)
     } catch (e: Exception) {
         println("Failed to refresh models. ${e.message}")
         e.printStackTrace()

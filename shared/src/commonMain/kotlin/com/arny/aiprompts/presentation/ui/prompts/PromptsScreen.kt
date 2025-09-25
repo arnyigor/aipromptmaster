@@ -82,6 +82,61 @@ private fun DesktopLayout(state: PromptsListState, component: PromptListComponen
             onDeleteAll = component::onDeleteAllPromptsClicked,
         )
     }
+
+    // Диалог подтверждения удаления для desktop
+    if (state.showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { component.onHideDeleteDialog() },
+            title = { Text("Подтверждение удаления") },
+            text = {
+                val selectedPrompt = state.allPrompts.find { it.id == state.selectedPromptId }
+                Text("Вы действительно хотите удалить промпт \"${selectedPrompt?.title ?: "неизвестный"}\"? Это действие нельзя отменить.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = { component.onConfirmDelete() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Удалить", color = MaterialTheme.colorScheme.onError)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { component.onHideDeleteDialog() }) {
+                    Text("Отмена")
+                }
+            },
+            properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
+        )
+    }
+
+    // Диалог подтверждения удаления всех промптов для desktop
+    if (state.showDeleteAllDialog) {
+        AlertDialog(
+            onDismissRequest = { component.onHideDeleteAllDialog() },
+            title = { Text("Подтверждение удаления всех промптов") },
+            text = {
+                Text("Вы действительно хотите удалить все промпты из базы данных? Это действие нельзя отменить.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = { component.onConfirmDeleteAll() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Удалить все", color = MaterialTheme.colorScheme.onError)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { component.onHideDeleteAllDialog() }) {
+                    Text("Отмена")
+                }
+            },
+            properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
+        )
+    }
 }
 
 
@@ -184,32 +239,6 @@ private fun PromptsTopAppBar(
                     )
                 }
 
-                // Диалог подтверждения удаления всех промптов
-                if (state.showDeleteAllDialog) {
-                    AlertDialog(
-                        onDismissRequest = { component.onHideDeleteAllDialog() },
-                        title = { Text("Подтверждение удаления всех промптов") },
-                        text = {
-                            Text("Вы действительно хотите удалить все промпты из базы данных? Это действие нельзя отменить.")
-                        },
-                        confirmButton = {
-                            Button(
-                                onClick = { component.onConfirmDeleteAll() },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.error
-                                )
-                            ) {
-                                Text("Удалить все", color = MaterialTheme.colorScheme.onError)
-                            }
-                        },
-                        dismissButton = {
-                            OutlinedButton(onClick = { component.onHideDeleteAllDialog() }) {
-                                Text("Отмена")
-                            }
-                        },
-                        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
-                    )
-                }
             }
         }
     )
