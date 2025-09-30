@@ -22,7 +22,6 @@ class ImportJsonUseCase(
                 try {
                     val content = file.readText()
                     val promptJson = jsonParser.decodeFromString<PromptJson>(content)
-                    // Используем маппер, который мы сейчас исправим
                     promptJson.toDomain()
                 } catch (e: Exception) {
                     // Логируем ошибку для конкретного файла и продолжаем

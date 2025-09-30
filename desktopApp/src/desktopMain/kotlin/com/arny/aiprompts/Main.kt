@@ -29,6 +29,7 @@ fun main() {
     // Запуск синхронизации промптов в фоне
     CoroutineScope(Dispatchers.IO).launch {
         val synchronizer = getKoin().get<IPromptSynchronizer>()
+        println("✅ [main]  synchronizer.synchronize()")
         synchronizer.synchronize()
     }
 

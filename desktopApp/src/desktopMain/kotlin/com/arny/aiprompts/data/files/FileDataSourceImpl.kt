@@ -1,5 +1,6 @@
 package com.arny.aiprompts.data.files
 
+import com.arny.aiprompts.BuildsConfig
 import com.arny.aiprompts.data.model.PlatformFile
 import com.arny.aiprompts.data.model.PromptJson
 import com.arny.aiprompts.domain.interfaces.FileDataSource
@@ -19,33 +20,34 @@ class FileDataSourceImpl : FileDataSource {
     }
 
     override suspend fun savePromptJson(promptJson: PromptJson): File {
-        // Сохраняем в папку prompts в выбранной категории
-        val rootDir = findProjectRootDir()
-        if (rootDir == null) {
-            log("Критическая ошибка: Не удалось найти корневую директорию проекта")
-            throw Exception("Не удалось найти корневую директорию проекта")
+        // ✅ В PROD запрещаем сохранение
+        if (!BuildsConfig.DEBUG) {
+            log("⚠️ [PROD] Сохранение локальных файлов отключено")
+            throw UnsupportedOperationException("Local file operations are disabled in PROD")
         }
+
+        val rootDir = findProjectRootDir()
+            ?: throw Exception("Не удалось найти корневую директорию проекта")
 
         val promptsDir = File(rootDir, "prompts")
         if (!promptsDir.exists()) {
             promptsDir.mkdirs()
-            log("Создана директория prompts: ${promptsDir.absolutePath}")
+            log("✅ Создана директория: ${promptsDir.absolutePath}")
         }
 
-        // Используем категорию из promptJson, если она пустая - используем "imported"
         val category = promptJson.category?.takeIf { it.isNotBlank() } ?: "general"
         val categoryDir = File(promptsDir, category)
 
         if (!categoryDir.exists()) {
             categoryDir.mkdirs()
-            log("Создана директория категории: ${categoryDir.absolutePath}")
+            log("✅ Создана категория: ${categoryDir.absolutePath}")
         }
 
         val targetFile = File(categoryDir, "${promptJson.id}.json")
         val jsonString = json.encodeToString(promptJson)
         targetFile.writeText(jsonString, StandardCharsets.UTF_8)
 
-        log("Файл сохранен: ${targetFile.absolutePath}")
+        log("✅ [DEV] Файл сохранен: ${targetFile.absolutePath}")
         return targetFile
     }
 
@@ -70,25 +72,32 @@ class FileDataSourceImpl : FileDataSource {
     }
 
     override suspend fun getPromptFiles(): List<PlatformFile> {
+        if (!BuildsConfig.DEBUG) {
+            return emptyList()
+        }
+
         val rootDir = findProjectRootDir()
         if (rootDir == null) {
-            log("Критическая ошибка: Не удалось найти корневую директорию проекта (где лежит .git).")
+            log("❌ Не удалось найти корневую директорию проекта (.git)")
             return emptyList()
         }
 
         val promptsDir = File(rootDir, "prompts")
 
         if (!promptsDir.exists() || !promptsDir.isDirectory) {
-            log("Папка 'prompts' не найдена по пути: ${promptsDir.absolutePath}")
+            log("⚠️ Папка 'prompts' не найдена: ${promptsDir.absolutePath}")
             return emptyList()
         }
 
-        log("Найдена папка 'prompts': ${promptsDir.absolutePath}")
+        log("✅ [DEV] Найдена папка 'prompts': ${promptsDir.absolutePath}")
 
-        val javaFiles = promptsDir.walk().filter { it.isFile && it.extension == "json" }.toList()
-        log("Найдено ${javaFiles.size} json файлов.")
+        val jsonFiles = promptsDir.walkTopDown()
+            .filter { it.isFile && it.extension == "json" }
+            .toList()
 
-        return javaFiles.map { PlatformFile(it) }
+        log("📊 [DEV] Найдено ${jsonFiles.size} JSON файлов")
+
+        return jsonFiles.map { PlatformFile(it) }
     }
 
     // --- ИСПРАВЛЕНИЕ КОДИРОВКИ В ЛОГАХ ---

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -167,10 +168,8 @@ private fun DesktopPromptDetailLayout(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            val rightPanelWidth = maxWidth * 0.3f
+            val rightPanelWidth = 320.dp // ✅ Фиксированная ширина вместо процента
 
-            // ИСПРАВЛЕНИЕ: Убран horizontalArrangement = Arrangement.Start
-            // Теперь Modifier.weight(1f) корректно "выталкивает" правую панель к краю.
             Row(modifier = Modifier.fillMaxSize()) {
                 // Левая панель: Основной контент
                 LazyColumn(
@@ -249,63 +248,195 @@ private fun DesktopPromptDetailLayout(
                     }
                 }
 
-                // Правая панель (30%): Метаданные и действия
-                Column(
-                    modifier = Modifier.width(rightPanelWidth).padding(16.dp),
+                // ✅ ИСПРАВЛЕНИЕ: Правая панель с LazyColumn для прокрутки
+                LazyColumn(
+                    modifier = Modifier
+                        .width(rightPanelWidth)
+                        .fillMaxHeight()
+                        .padding(end = 16.dp, top = 16.dp, bottom = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     if (!state.isEditing && promptToDisplay != null) {
-                        Card {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Информация о промпте", style = MaterialTheme.typography.titleMedium)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(text = promptToDisplay.title, style = MaterialTheme.typography.bodyLarge, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                                Spacer(modifier = Modifier.height(8.dp))
+                        item(key = "info_card") {
+                            Card {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text("Информация о промпте", style = MaterialTheme.typography.titleMedium)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = promptToDisplay.title,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        maxLines = 3,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
 
-                                // ... остальной код для отображения метаданных (без изменений) ...
-                                if (promptToDisplay.category.isNotEmpty()) {
+                                    // Категория
+                                    if (promptToDisplay.category.isNotEmpty()) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = Icons.Default.Category,
+                                                contentDescription = "Категория",
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "Категория: ${promptToDisplay.category}",
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                    }
+
+                                    // Автор
+                                    promptToDisplay.metadata.author?.let { author ->
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = Icons.Default.Person,
+                                                contentDescription = "Автор",
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "Автор: $author",
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                    }
+
+                                    // Версия
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(imageVector = Icons.Default.Category, contentDescription = "Категория", modifier = Modifier.size(16.dp))
+                                        Icon(
+                                            imageVector = Icons.Default.Info,
+                                            contentDescription = "Версия",
+                                            modifier = Modifier.size(16.dp)
+                                        )
                                         Spacer(modifier = Modifier.width(4.dp))
-                                        Text(text = "Категория: ${promptToDisplay.category}", style = MaterialTheme.typography.bodyMedium)
+                                        Text(
+                                            text = "Версия: ${promptToDisplay.version}",
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
                                     }
                                     Spacer(modifier = Modifier.height(4.dp))
+
+                                    // Рейтинг
+                                    if (promptToDisplay.rating > 0f) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = Icons.Default.Star,
+                                                contentDescription = "Рейтинг",
+                                                modifier = Modifier.size(16.dp),
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "Рейтинг: ${"%.1f".format(promptToDisplay.rating)} (${promptToDisplay.ratingVotes} голосов)",
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                    }
+
+                                    // Дата создания
+                                    promptToDisplay.createdAt?.let { created ->
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = Icons.Default.DateRange,
+                                                contentDescription = "Создано",
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "Создано: ${created.toLocalDateTime(TimeZone.currentSystemDefault()).date}",
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                    }
+
+                                    // Дата изменения
+                                    promptToDisplay.modifiedAt?.let { modified ->
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = Icons.Default.Update,
+                                                contentDescription = "Изменено",
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "Изменено: ${modified.toLocalDateTime(TimeZone.currentSystemDefault()).date}",
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                    }
+
+                                    // Ссылка
+                                    promptToDisplay.metadata.source?.let { url ->
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = Icons.Default.Link,
+                                                contentDescription = "Ссылка",
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "Источник: $url",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
                                 }
-                                // ... и так далее для всех полей ...
                             }
                         }
                     }
 
                     if (promptToDisplay != null && !state.isLoading && promptToDisplay.isLocal) {
-                        Card {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Text("Действия", style = MaterialTheme.typography.titleMedium)
-                                if (state.isEditing) {
-                                    Button(onClick = { component.onEvent(PromptDetailEvent.SaveClicked) }) {
-                                        Icon(Icons.Default.Done, contentDescription = null)
-                                        Spacer(Modifier.width(8.dp))
-                                        Text("Сохранить")
-                                    }
-                                    OutlinedButton(onClick = { component.onEvent(PromptDetailEvent.CancelClicked) }) {
-                                        Text("Отмена")
-                                    }
-                                } else {
-                                    Button(onClick = { component.onEvent(PromptDetailEvent.EditClicked) }) {
-                                        Icon(Icons.Default.Edit, contentDescription = null)
-                                        Spacer(Modifier.width(8.dp))
-                                        Text("Редактировать")
-                                    }
-                                    OutlinedButton(onClick = { component.onEvent(PromptDetailEvent.FavoriteClicked) }) {
-                                        Icon(
-                                            if (promptToDisplay.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                                            contentDescription = null,
-                                            tint = if (promptToDisplay.isFavorite) MaterialTheme.colorScheme.primary else LocalContentColor.current
-                                        )
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(if (promptToDisplay.isFavorite) "Убрать из избранного" else "В избранное")
+                        item(key = "actions_card") {
+                            Card {
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text("Действия", style = MaterialTheme.typography.titleMedium)
+                                    if (state.isEditing) {
+                                        Button(
+                                            onClick = { component.onEvent(PromptDetailEvent.SaveClicked) },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Icon(Icons.Default.Done, contentDescription = null)
+                                            Spacer(Modifier.width(8.dp))
+                                            Text("Сохранить")
+                                        }
+                                        OutlinedButton(
+                                            onClick = { component.onEvent(PromptDetailEvent.CancelClicked) },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Отмена")
+                                        }
+                                    } else {
+                                        Button(
+                                            onClick = { component.onEvent(PromptDetailEvent.EditClicked) },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Icon(Icons.Default.Edit, contentDescription = null)
+                                            Spacer(Modifier.width(8.dp))
+                                            Text("Редактировать")
+                                        }
+                                        OutlinedButton(
+                                            onClick = { component.onEvent(PromptDetailEvent.FavoriteClicked) },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Icon(
+                                                if (promptToDisplay.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                                                contentDescription = null,
+                                                tint = if (promptToDisplay.isFavorite) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                                            )
+                                            Spacer(Modifier.width(8.dp))
+                                            Text(if (promptToDisplay.isFavorite) "Убрать из избранного" else "В избранное")
+                                        }
                                     }
                                 }
                             }
@@ -316,7 +447,6 @@ private fun DesktopPromptDetailLayout(
         }
     }
 
-    // РЕФАКТОРИНГ: Диалог вынесен сюда и вызывается только один раз.
     ConfirmDeleteDialog(
         show = state.showDeleteDialog,
         onDismiss = { component.onEvent(PromptDetailEvent.HideDeleteDialog) },
@@ -324,7 +454,7 @@ private fun DesktopPromptDetailLayout(
     )
 }
 
-// РЕФАКТОРИНГ: Создана отдельная функция для диалога, чтобы избежать дублирования кода.
+
 @Composable
 private fun ConfirmDeleteDialog(
     show: Boolean,

@@ -12,7 +12,6 @@ class SettingsRepositoryImpl(private val settingsFactory: SettingsFactory) : ISe
     private val _selectedId = MutableStateFlow<String?>(null)
 
     init {
-        // Инициализируем из persistent storage
         _selectedId.value = settings.getStringOrNull("selected_model_id")
     }
 
@@ -43,7 +42,6 @@ class SettingsRepositoryImpl(private val settingsFactory: SettingsFactory) : ISe
         settings.putLong("last_sync_timestamp", timestamp)
     }
 
-    override fun getLastSyncTime(): Long {
-        return settings.getLongOrNull("last_sync_timestamp") ?: 0L
-    }
+    override fun getLastSyncTime(): Long =
+        settings.getLongOrNull("last_sync_timestamp") ?: 0L
 }

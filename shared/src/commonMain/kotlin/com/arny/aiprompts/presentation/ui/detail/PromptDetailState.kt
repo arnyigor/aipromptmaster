@@ -2,7 +2,6 @@ package com.arny.aiprompts.presentation.ui.detail
 
 import com.arny.aiprompts.domain.model.Prompt
 
-
 data class PromptDetailState(
     val prompt: Prompt? = null,
     val isLoading: Boolean = false,
