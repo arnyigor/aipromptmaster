@@ -1,5 +1,6 @@
 package com.arny.aipromptmaster.domain.repositories
 
+import com.arny.aipromptmaster.domain.models.ApiRequestWithFiles
 import com.arny.aipromptmaster.domain.models.ChatCompletionResponse
 import com.arny.aipromptmaster.domain.models.LlmModel
 import com.arny.aipromptmaster.domain.models.ChatMessage
@@ -33,4 +34,18 @@ interface IOpenRouterRepository {
         messages: List<ChatMessage>,
         apiKey: String
     ): Flow<DataResult<String>>
+
+    /**
+     * Streaming с файлами
+     * Отправляет файлы в отдельном поле запроса
+     */
+    fun getChatCompletionStreamWithFiles(
+        request: ApiRequestWithFiles,
+        apiKey: String
+    ): Flow<DataResult<String>>
+
+    /**
+     * Отменяет текущий активный запрос к API
+     */
+    fun cancelCurrentRequest()
 }

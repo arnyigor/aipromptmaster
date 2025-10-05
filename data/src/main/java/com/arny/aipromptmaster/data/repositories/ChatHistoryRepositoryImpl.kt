@@ -85,7 +85,7 @@ class ChatHistoryRepositoryImpl @Inject constructor(
     // Вспомогательные функции-мапперы (можно вынести в отдельный файл ChatMapper.kt)
     private fun MessageEntity.toDomainModel(): ChatMessage = ChatMessage(
         id = this.id,
-        role = ChatRole.fromString(this.role),
+        role = ChatRole.fromApiRole(this.role),
         content = this.content
     )
 
@@ -105,7 +105,7 @@ class ChatHistoryRepositoryImpl @Inject constructor(
     // У вас уже должен быть похожий маппер, убедитесь, что он есть
     private fun MessageEntity.toDomain(): ChatMessage = ChatMessage(
         id = this.id,
-        role = ChatRole.fromString(this.role),
+        role = ChatRole.fromApiRole(this.role),
         content = this.content
     )
 }

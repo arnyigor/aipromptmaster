@@ -12,15 +12,18 @@ import com.arny.aipromptmaster.data.openrouter.OpenRouterRepositoryImpl
 import com.arny.aipromptmaster.data.prefs.Prefs
 import com.arny.aipromptmaster.data.repositories.ChatHistoryRepositoryImpl
 import com.arny.aipromptmaster.data.repositories.FeedbackRepositoryImpl
+import com.arny.aipromptmaster.data.repositories.FileRepositoryImpl
 import com.arny.aipromptmaster.data.repositories.PromptsRepositoryImpl
 import com.arny.aipromptmaster.data.repositories.SettingsRepositoryImpl
 import com.arny.aipromptmaster.data.sync.PromptSynchronizerImpl
 import com.arny.aipromptmaster.domain.repositories.IChatHistoryRepository
 import com.arny.aipromptmaster.domain.repositories.IFeedbackRepository
+import com.arny.aipromptmaster.domain.repositories.IFileRepository
 import com.arny.aipromptmaster.domain.repositories.IOpenRouterRepository
 import com.arny.aipromptmaster.domain.repositories.IPromptSynchronizer
 import com.arny.aipromptmaster.domain.repositories.IPromptsRepository
 import com.arny.aipromptmaster.domain.repositories.ISettingsRepository
+import com.arny.aipromptmaster.domain.services.FileProcessingService
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -73,11 +76,26 @@ interface DataModule {
         @Provides
         @Singleton
         fun provideChatDao(db: AppDatabase): ChatDao = db.chatDao()
+
+        @Provides
+        @Singleton
+        fun provideFileProcessingService(context: Context): FileProcessingService = FileProcessingService(context)
+
+        @Provides
+        @Singleton
+        fun provideFileRepository(
+            context: Context,
+            fileProcessingService: FileProcessingService
+        ): FileRepositoryImpl = FileRepositoryImpl(context, fileProcessingService)
     }
 
     @Binds
     @Singleton
     fun bindPromptsRepository(impl: PromptsRepositoryImpl): IPromptsRepository
+
+    @Binds
+    @Singleton
+    fun bindFilesRepository(impl: FileRepositoryImpl): IFileRepository
 
     @Binds
     @Singleton

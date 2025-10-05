@@ -44,8 +44,11 @@
             android:id="@+id/action_nav_chat_to_nav_models"
             app:destination="@id/nav_models" />
         <action
-            android:id="@+id/action_nav_chat_to_editPromptDialogFragment"
-            app:destination="@id/editPromptDialogFragment" />
+            android:id="@+id/action_nav_chat_to_editSystemPromptFragment"
+            app:destination="@id/editSystemPromptFragment" />
+        <action
+            android:id="@+id/action_chatFragment_to_fileViewerFragment"
+            app:destination="@id/fileViewerFragment" />
     </fragment>
     <fragment
         android:id="@+id/promptViewFragment"
@@ -81,13 +84,38 @@
         android:id="@+id/nav_settings"
         android:name="com.arny.aipromptmaster.presentation.ui.settings.SettingsFragment"
         android:label="@string/ai_settings" />
-    <dialog
-        android:id="@+id/editPromptDialogFragment"
-        android:name="com.arny.aipromptmaster.presentation.ui.editprompt.EditSystemPromptDialogFragment"
-        android:label="EditPromptDialogFragment" >
+    <fragment
+        android:id="@+id/fileViewerFragment"
+        android:name="com.arny.aipromptmaster.presentation.ui.chat.FileViewerFragment"
+        android:label="@string/file_viewer"
+        tools:layout="@layout/fragment_file_viewer">
+        <argument
+            android:name="fileId"
+            app:argType="string" />
+    </fragment>
+    <fragment
+        android:id="@+id/editSystemPromptFragment"
+        android:name="com.arny.aipromptmaster.presentation.ui.editprompt.EditSystemPromptFragment"
+        android:label="@string/system_prompt_edit_title"
+        tools:layout="@layout/fragment_edit_system_prompt"
+        app:enterAnim="@android:anim/fade_in"
+        app:exitAnim="@android:anim/fade_out"
+        app:popEnterAnim="@android:anim/fade_in"
+        app:popExitAnim="@android:anim/fade_out">
         <argument
             android:name="initialPrompt"
             app:argType="string"
             app:nullable="true" />
-    </dialog>
+        <argument
+            android:name="conversationId"
+            app:argType="string"
+            app:nullable="true" />
+        <action
+            android:id="@+id/action_editSystemPromptFragment_to_nav_chat"
+            app:destination="@id/nav_chat"
+            app:enterAnim="@android:anim/slide_in_left"
+            app:exitAnim="@android:anim/slide_out_right"
+            app:popEnterAnim="@android:anim/slide_in_left"
+            app:popExitAnim="@android:anim/slide_out_right" />
+    </fragment>
 </navigation>

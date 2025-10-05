@@ -2,6 +2,7 @@ package com.arny.aipromptmaster.domain.interactors
 
 import com.arny.aipromptmaster.domain.models.Chat
 import com.arny.aipromptmaster.domain.models.ChatMessage
+import com.arny.aipromptmaster.domain.models.FileAttachment
 import com.arny.aipromptmaster.domain.models.LlmModel
 import com.arny.aipromptmaster.domain.results.DataResult
 import kotlinx.coroutines.flow.Flow
@@ -118,6 +119,16 @@ interface ILLMInteractor {
     suspend fun setSystemPrompt(conversationId: String, prompt: String)
 
     /**
+     * Устанавливает системный промпт для диалога, создавая новый диалог при необходимости.
+     *
+     * @param conversationId ID диалога (может быть null для создания нового).
+     * @param prompt Текст системного промпта.
+     * @param chatTitle Название чата (используется при создании нового диалога).
+     * @return ID диалога, для которого был установлен промпт.
+     */
+    suspend fun setSystemPromptWithChatCreation(conversationId: String?, prompt: String, chatTitle: String = "Чат с системным промптом"): String
+
+    /**
      * Получает системный промпт для указанного диалога.
      *
      * @param conversationId ID диалога.
@@ -138,4 +149,19 @@ interface ILLMInteractor {
     suspend fun toggleModelFavorite(modelId: String)
 
     fun getFavoriteModels(): Flow<List<LlmModel>>
+
+    /**
+     * Отменяет текущий активный запрос к LLM
+     */
+    fun cancelCurrentRequest()
+
+    /**
+     * Добавляет сообщение пользователя с файлом в историю
+     * Сохраняет в истории только метаданные и превью файла
+     */
+    suspend fun addUserMessageWithFile(
+        conversationId: String,
+        userMessage: String,
+        fileAttachment: FileAttachment
+    )
 }

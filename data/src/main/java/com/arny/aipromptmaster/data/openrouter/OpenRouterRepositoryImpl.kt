@@ -10,6 +10,7 @@ import com.arny.aipromptmaster.data.models.ChatCompletionRequestDTO
 import com.arny.aipromptmaster.data.models.ChatCompletionResponseDTO
 import com.arny.aipromptmaster.data.models.MessageDTO
 import com.arny.aipromptmaster.domain.R
+import com.arny.aipromptmaster.domain.models.ApiRequestWithFiles
 import com.arny.aipromptmaster.domain.models.ChatCompletionResponse
 import com.arny.aipromptmaster.domain.models.ChatMessage
 import com.arny.aipromptmaster.domain.models.LlmModel
@@ -36,6 +37,9 @@ class OpenRouterRepositoryImpl @Inject constructor(
 
     private val _modelsCache = MutableStateFlow<List<LlmModel>>(emptyList())
     private val refreshMutex = Mutex()
+
+    @Volatile
+    private var isRequestCancelled = false
 
     override fun getModelsFlow(): Flow<List<LlmModel>> = _modelsCache.asStateFlow()
 
@@ -92,60 +96,6 @@ class OpenRouterRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun getChatCompletionStream(
-        model: String,
-        messages: List<ChatMessage>,
-        apiKey: String
-    ): Flow<DataResult<String>> = flow {
-        val request = ChatCompletionRequestDTO(
-            model = model,
-            messages = messages
-                .map { MessageDTO(it.role.toString(), it.content) }
-                .filter { !it.content.isNullOrBlank() },
-            maxTokens = 4096, // Нужно будет вынести в настройки
-            stream = true
-        )
-
-        try {
-            val response = service.getChatCompletionStream("Bearer $apiKey", request = request)
-
-            if (response.isSuccessful && response.body() != null) {
-                response.body()!!.source().use { source ->
-                    while (!source.exhausted()) {
-                        val line = source.readUtf8Line()
-                        if (line?.startsWith("data:") == true) {
-                            val json = line.substring(5).trim()
-                            if (json == "[DONE]") break
-                            try {
-                                val chunk =
-                                    jsonParser.decodeFromString<ChatCompletionResponseDTO>(json)
-                                val contentDelta = chunk.choices.firstOrNull()?.delta?.content
-                                if (contentDelta != null) {
-                                    emit(DataResult.Success(contentDelta))
-                                }
-                            } catch (e: Exception) {
-                                Log.w("ChatStream", "Failed to parse stream chunk: $json", e)
-                            }
-                        }
-                    }
-                }
-            } else {
-                emit(
-                    DataResult.Error(
-                        parseErrorBody(
-                            response.code(),
-                            response.errorBody()?.string(),
-                            response.message()
-                        )
-                    )
-                )
-            }
-        } catch (exception: Exception) {
-            val domainError = mapNetworkException(exception)
-            emit(DataResult.Error(domainError))
-        }
-    }
-
     // Хелпер для парсинга тела ошибки
     private fun parseErrorBody(code: Int, body: String?, message: String): DomainError {
         if (body.isNullOrBlank()) {
@@ -176,4 +126,118 @@ class OpenRouterRepositoryImpl @Inject constructor(
             else -> DomainError.Generic(e.localizedMessage ?: "Неизвестная ошибка")
         }
     }
+
+    override fun cancelCurrentRequest() {
+        isRequestCancelled = true
+        Log.d("OpenRouterRepository", "Запрос отменен")
+    }
+
+    override fun getChatCompletionStream(
+        model: String,
+        messages: List<ChatMessage>,
+        apiKey: String
+    ): Flow<DataResult<String>> = flow {
+        val request = ChatCompletionRequestDTO(
+            model = model,
+            messages = messages
+                .map { MessageDTO(it.role.toApiRole(), it.content) }  // ✅ Используем toApiRole()
+                .filter { !it.content.isNullOrBlank() },
+            maxTokens = 4096,
+            stream = true
+        )
+
+        try {
+            val response = service.getChatCompletionStream("Bearer $apiKey", request = request)
+
+            if (response.isSuccessful && response.body() != null) {
+                response.body()!!.source().use { source ->
+                    while (!source.exhausted()) {
+                        val line = source.readUtf8Line()
+                        if (line?.startsWith("data:") == true) {
+                            val json = line.substring(5).trim()
+                            if (json == "[DONE]") break
+                            try {
+                                val chunk = jsonParser.decodeFromString<ChatCompletionResponseDTO>(json)
+                                val contentDelta = chunk.choices.firstOrNull()?.delta?.content
+                                if (contentDelta != null) {
+                                    emit(DataResult.Success(contentDelta))
+                                }
+                            } catch (e: Exception) {
+                                Log.w("ChatStream", "Failed to parse stream chunk: $json", e)
+                            }
+                        }
+                    }
+                }
+            } else {
+                emit(
+                    DataResult.Error(
+                        parseErrorBody(
+                            response.code(),
+                            response.errorBody()?.string(),
+                            response.message()
+                        )
+                    )
+                )
+            }
+        } catch (exception: Exception) {
+            val domainError = mapNetworkException(exception)
+            emit(DataResult.Error(domainError))
+        }
+    }
+
+    /**
+     * ✅ ИСПРАВЛЕНО: buildMessagesWithFileContent теперь не нужен
+     * Файлы обрабатываются в LLMInteractor.buildMessagesForApi()
+     */
+    override fun getChatCompletionStreamWithFiles(
+        request: ApiRequestWithFiles,
+        apiKey: String
+    ): Flow<DataResult<String>> = flow {
+        emit(DataResult.Loading)
+
+        try {
+            // ✅ Просто передаем сообщения как есть
+            val apiRequest = ChatCompletionRequestDTO(
+                model = request.model,
+                messages = request.messages.map { apiMsg ->
+                    MessageDTO(
+                        role = apiMsg.role,
+                        content = apiMsg.content
+                    )
+                },
+                stream = true
+            )
+
+            val response = service.getChatCompletionStream("Bearer $apiKey", request = apiRequest)
+
+            if (!response.isSuccessful) {
+                val errorBody = response.errorBody()?.string()
+                emit(DataResult.Error(parseErrorBody(response.code(), errorBody, response.message())))
+                return@flow
+            }
+
+            response.body()?.source()?.use { source ->
+                while (!source.exhausted()) {
+                    val line = source.readUtf8Line()
+                    if (line?.startsWith("data: ") == true) {
+                        val json = line.substring(6).trim()
+                        if (json != "[DONE]") {
+                            try {
+                                val streamResponse = jsonParser.decodeFromString<ChatCompletionResponseDTO>(json)
+                                val content = streamResponse.choices.firstOrNull()?.delta?.content
+                                if (content != null) {
+                                    emit(DataResult.Success(content))
+                                }
+                            } catch (e: Exception) {
+                                Log.e("OpenRouterRepo", "Error parsing chunk: $json", e)
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            emit(DataResult.Error(mapNetworkException(e)))
+        }
+    }
+
 }

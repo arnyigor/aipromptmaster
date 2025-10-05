@@ -1,13 +1,19 @@
 package com.arny.aipromptmaster.domain.interactors
 
-import android.util.Log
 import com.arny.aipromptmaster.domain.R
+import com.arny.aipromptmaster.domain.models.ApiMessage
+import com.arny.aipromptmaster.domain.models.ApiRequestPayload
+import com.arny.aipromptmaster.domain.models.ApiRequestWithFiles
 import com.arny.aipromptmaster.domain.models.Chat
 import com.arny.aipromptmaster.domain.models.ChatMessage
 import com.arny.aipromptmaster.domain.models.ChatRole
+import com.arny.aipromptmaster.domain.models.FileAttachment
+import com.arny.aipromptmaster.domain.models.FileAttachmentMetadata
+import com.arny.aipromptmaster.domain.models.FileReference
 import com.arny.aipromptmaster.domain.models.LlmModel
 import com.arny.aipromptmaster.domain.models.errors.DomainError
 import com.arny.aipromptmaster.domain.repositories.IChatHistoryRepository
+import com.arny.aipromptmaster.domain.repositories.IFileRepository
 import com.arny.aipromptmaster.domain.repositories.IOpenRouterRepository
 import com.arny.aipromptmaster.domain.repositories.ISettingsRepository
 import com.arny.aipromptmaster.domain.results.DataResult
@@ -27,7 +33,8 @@ import javax.inject.Inject
 class LLMInteractor @Inject constructor(
     private val modelsRepository: IOpenRouterRepository,
     private val settingsRepository: ISettingsRepository,
-    private val historyRepository: IChatHistoryRepository
+    private val historyRepository: IChatHistoryRepository,
+    private val fileRepository: IFileRepository
 ) : ILLMInteractor {
 
     // Определяем максимальное количество сообщений в истории.
@@ -35,6 +42,7 @@ class LLMInteractor @Inject constructor(
     // Можно вынести в настройки, если хотите дать пользователю выбор.
     private companion object {
         const val MAX_HISTORY_SIZE = 20
+        const val FILE_PREVIEW_LENGTH = 500  // Максимальная длина превью файла
     }
 
     override suspend fun createNewConversation(title: String): String {
@@ -46,7 +54,19 @@ class LLMInteractor @Inject constructor(
     }
 
     override suspend fun getSystemPrompt(conversationId: String): String? {
-        return historyRepository.getSystemPrompt(conversationId)
+        val prompt = historyRepository.getSystemPrompt(conversationId)
+        android.util.Log.d("LLMInteractor", "getSystemPrompt for $conversationId: $prompt")
+        return prompt
+    }
+
+    override suspend fun setSystemPromptWithChatCreation(
+        conversationId: String?,
+        prompt: String,
+        chatTitle: String
+    ): String {
+        val targetConversationId = conversationId ?: createNewConversation(chatTitle)
+        setSystemPrompt(targetConversationId, prompt)
+        return targetConversationId
     }
 
     override suspend fun deleteConversation(conversationId: String) {
@@ -59,6 +79,10 @@ class LLMInteractor @Inject constructor(
         } else {
             settingsRepository.addToFavorites(modelId)
         }
+    }
+
+    override fun cancelCurrentRequest() {
+        modelsRepository.cancelCurrentRequest()
     }
 
     override fun getFavoriteModels(): Flow<List<LlmModel>> = getModels()
@@ -79,29 +103,85 @@ class LLMInteractor @Inject constructor(
         val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
 
         // --- Заголовок ---
-        stringBuilder.append("Диалог: ${conversation.title}\n")
-        stringBuilder.append("Дата экспорта: ${dateFormat.format(Date())}\n")
+        stringBuilder.append("# Диалог: ${conversation.title}\n\n")
+        stringBuilder.append("**Дата экспорта:** ${dateFormat.format(Date())}\n\n")
 
+        // --- Системный промпт (ВАЖНО: в начале) ---
         if (!conversation.systemPrompt.isNullOrBlank()) {
-            stringBuilder.append("\n--- СИСТЕМНЫЙ ПРОМПТ ---\n")
+            stringBuilder.append("## Системный промпт\n\n")
             stringBuilder.append(conversation.systemPrompt)
-            stringBuilder.append("\n")
+            stringBuilder.append("\n\n")
         }
 
-        // --- История ---
-        stringBuilder.append("\n--- ИСТОРИЯ ДИАЛОГА ---\n\n")
+        // --- Прикрепленные файлы ---
+        val attachedFiles = mutableListOf<FileAttachment>()
+        val fileIds = mutableSetOf<String>()
+
+        // Собираем уникальные fileId из истории сообщений
+        history.forEach { message ->
+            message.fileAttachment?.let { metadata ->
+                if (!fileIds.contains(metadata.fileId)) {
+                    fileRepository.getTemporaryFile(metadata.fileId)?.let { fullFile ->
+                        attachedFiles.add(fullFile)
+                        fileIds.add(metadata.fileId)
+                    }
+                }
+            }
+        }
+
+        if (attachedFiles.isNotEmpty()) {
+            stringBuilder.append("## Прикрепленные файлы\n\n")
+            attachedFiles.forEachIndexed { index, file ->
+                stringBuilder.append("### Файл ${index + 1}: ${file.fileName}\n\n")
+                stringBuilder.append("- **Тип:** ${file.mimeType}\n")
+                stringBuilder.append("- **Размер:** ${formatFileSize(file.fileSize)}\n")
+                stringBuilder.append("- **Расширение:** ${file.fileExtension}\n\n")
+
+                stringBuilder.append("**Содержимое файла:**\n\n")
+                stringBuilder.append("```${getFileExtensionForMarkdown(file.fileExtension)}\n")
+                stringBuilder.append(file.originalContent)
+                stringBuilder.append("\n```\n\n")
+            }
+        }
+
+        // --- История диалога ---
+        stringBuilder.append("## История диалога\n\n")
 
         if (history.isEmpty()) {
-            stringBuilder.append("Сообщений нет.")
+            stringBuilder.append("*Сообщений нет.*\n\n")
         } else {
             history.forEach { message ->
                 val role = when (message.role) {
-                    ChatRole.USER -> "ПОЛЬЗОВАТЕЛЬ"
-                    ChatRole.ASSISTANT -> "АССИСТЕНТ"
-                    ChatRole.SYSTEM -> "СИСТЕМА" // На всякий случай
+                    ChatRole.USER -> "👤 Пользователь"
+                    ChatRole.ASSISTANT -> "🤖 Ассистент"
+                    ChatRole.SYSTEM -> "⚙️ Система"
                 }
-                stringBuilder.append("[$role]:\n")
-                stringBuilder.append("${message.content}\n\n")
+
+                stringBuilder.append("### $role\n\n")
+
+                // Обрабатываем содержимое сообщения
+                val content = if (message.fileAttachment != null) {
+                    // Убираем техническую информацию о файле из сообщения, оставляем только пользовательский текст
+                    val lines = message.content.lines()
+                    val filteredLines = lines.filter { line ->
+                        !line.contains("📎 **Файл**:") &&
+                        !line.contains("**Размер**:") &&
+                        !line.contains("**Превью**:") &&
+                        !line.contains("Полный файл будет передан при отправке запроса")
+                    }
+                    filteredLines.joinToString("\n").trim()
+                } else {
+                    message.content
+                }
+
+                if (content.isNotBlank()) {
+                    stringBuilder.append("$content\n\n")
+                }
+
+                // Добавляем информацию о файле, если он есть
+                message.fileAttachment?.let { metadata ->
+                    stringBuilder.append("*📎 Файл прикреплен: ${metadata.fileName}*\n\n")
+                }
             }
         }
 
@@ -109,6 +189,14 @@ class LLMInteractor @Inject constructor(
     }
 
     override suspend fun addUserMessageToHistory(conversationId: String, userMessage: String) {
+        // Проверяем, существует ли диалог, и создаем его при необходимости
+        val conversation = historyRepository.getConversation(conversationId)
+        if (conversation == null) {
+            // Создаем новый диалог с текстом сообщения как заголовком
+            val title = userMessage.take(50).ifEmpty { "Новый чат" }
+            historyRepository.createNewConversation(title)
+        }
+
         historyRepository.addMessages(
             conversationId,
             listOf(ChatMessage(role = ChatRole.USER, content = userMessage))
@@ -148,7 +236,21 @@ class LLMInteractor @Inject constructor(
                     onSuccess = { response ->
                         val content = response.choices.firstOrNull()?.message?.content
                         if (content != null) {
-                            emit(DataResult.Success(content))
+                            // Сохраняем usage информацию в ответе
+                            val contentWithUsage = buildString {
+                                append(content)
+                                response.usage?.let { usage ->
+                                    append("\n\n---\n")
+                                    append("📊 **Использование токенов:**\n")
+                                    append("• Входящие: ${usage.promptTokens}\n")
+                                    append("• Исходящие: ${usage.completionTokens}\n")
+                                    append("• Всего: ${usage.totalTokens}")
+                                }
+                            }
+
+                            // Возвращаем результат с usage информацией для корректировки коэффициента
+                            val resultWithUsage = DataResult.Success(contentWithUsage) to response.usage
+                            emit(resultWithUsage.first)
                         } else {
                             emit(DataResult.Error(DomainError.generic(R.string.empty_api_response)))
                         }
@@ -161,8 +263,8 @@ class LLMInteractor @Inject constructor(
         }
 
     override suspend fun sendMessageWithFallback(model: String, conversationId: String?) {
-        val currentConversationId =
-            conversationId ?: return // Или бросить ошибку, если ID null недопустим
+        val currentConversationId = conversationId
+            ?: throw DomainError.Local("Conversation ID is required")
 
         val assistantMessage = ChatMessage(role = ChatRole.ASSISTANT, content = "")
         val assistantMessageId =
@@ -175,59 +277,54 @@ class LLMInteractor @Inject constructor(
             // 1. Получаем системный промпт
             val systemPrompt = historyRepository.getSystemPrompt(currentConversationId)
 
-            // 2. Создаем системное сообщение, если промпт есть
-            val systemMessage = systemPrompt?.let {
-                ChatMessage(role = ChatRole.SYSTEM, content = it)
+            // 2. Строим payload с файлами
+            val payload = buildMessagesForApi(currentConversationId, systemPrompt)
+
+            // 3. Выбираем стратегию отправки в зависимости от наличия файлов
+            if (payload.attachedFiles.isNotEmpty()) {
+                // СТРАТЕГИЯ А: Отправка с файлами
+                runStreamingWithFiles(model, payload, apiKey, assistantMessageId)
+            } else {
+                // СТРАТЕГИЯ Б: Обычная отправка без файлов
+                runStreamingAttempt(model, payload.messages, apiKey, assistantMessageId)
             }
 
-            // 3. Получаем историю
-            val history = historyRepository.getHistoryFlow(currentConversationId).first()
-                .takeLast(MAX_HISTORY_SIZE)
-
-            // 4. Собираем итоговый список для API
-            val messagesForApi = buildList {
-                systemMessage?.let { add(it) } // Добавляем системное сообщение, если оно есть
-                addAll(history)
-            }
-
-            runStreamingAttempt(model, messagesForApi, apiKey, assistantMessageId)
-        } catch (e: Exception) { // Ловим стриминг и другие ошибки
-            try {
-                // ... тут должна быть логика fallback, которая тоже использует messagesForApi
-                // Сейчас я ее пропущу для краткости, но она должна быть адаптирована
-                Log.e(
-                    "LLMInteractor",
-                    "Streaming/preparation failed: ${e.message}. Attempting fallback."
-                )
-                // ...
-                // В случае полного провала
-                historyRepository.deleteMessage(assistantMessageId)
-                throw e // Пробрасываем оригинальную ошибку
-            } catch (fallbackException: Exception) {
-                historyRepository.deleteMessage(assistantMessageId)
-                throw fallbackException
-            }
+        } catch (e: Exception) {
+            historyRepository.deleteMessage(assistantMessageId)
+            throw e
         }
     }
 
-    private suspend fun runStreamingAttempt(
+    /**
+     * Streaming с файлами
+     * Использует специальный формат API для файловых вложений
+     */
+    private suspend fun runStreamingWithFiles(
         model: String,
-        messages: List<ChatMessage>,
+        payload: ApiRequestPayload,
         apiKey: String,
         messageId: String
     ) {
         var receivedAnyData = false
         var streamError: DomainError? = null
 
-        // Используем onCompletion для обработки завершения потока
-        modelsRepository.getChatCompletionStream(model, messages, apiKey)
+        // Формируем специальный запрос с файлами
+        val requestWithFiles = ApiRequestWithFiles(
+            model = model,
+            messages = payload.messages,
+            files = payload.attachedFiles.map { file ->
+                FileReference(
+                    id = file.id,
+                    name = file.fileName,
+                    content = file.originalContent,
+                    mimeType = file.mimeType
+                )
+            }
+        )
+
+        modelsRepository.getChatCompletionStreamWithFiles(requestWithFiles, apiKey)
             .onCompletion { cause ->
-                // Этот блок вызывается ПОСЛЕ того, как поток завершился
-                // (либо успешно, либо с ошибкой `cause`).
-                // Если `cause` не null, значит, сам flow бросил исключение (наш первый рефакторинг).
                 if (cause != null) {
-                    // Это перехватит ошибки, если вы вдруг вернетесь к подходу с `throw` в репозитории.
-                    // При текущей реализации репозитория с DataResult, этот блок не должен выполниться.
                     streamError = when (cause) {
                         is DomainError -> cause
                         else -> DomainError.Generic(cause.localizedMessage ?: "Unknown flow error")
@@ -235,27 +332,23 @@ class LLMInteractor @Inject constructor(
                     return@onCompletion
                 }
 
-                // Если поток завершился штатно, но мы не получили ни одного чанка,
-                // и при этом не было ошибки внутри потока (streamError == null),
-                // то устанавливаем ошибку "пустого потока".
                 if (!receivedAnyData && streamError == null) {
                     streamError = DomainError.Generic("Stream completed without emitting any data.")
                 }
             }
             .collect { result ->
-                // Внутри collect мы ТОЛЬКО обрабатываем данные, но не бросаем исключения.
                 when (result) {
                     is DataResult.Success -> {
                         historyRepository.appendContentToMessage(messageId, result.data)
-                        receivedAnyData = true // Помечаем, что данные были
+                        receivedAnyData = true
                     }
 
                     is DataResult.Error -> {
                         val exception = result.exception
                         streamError = when (exception) {
-                            is DomainError -> exception // Если это уже наш тип, просто используем его
+                            is DomainError -> exception
                             null -> DomainError.Generic("Stream returned an error with no exception details")
-                            else -> DomainError.Generic( // Оборачиваем любое другое исключение
+                            else -> DomainError.Generic(
                                 exception.localizedMessage ?: "Unknown stream error"
                             )
                         }
@@ -266,8 +359,6 @@ class LLMInteractor @Inject constructor(
                 }
             }
 
-        // После того как collect завершился, проверяем, была ли ошибка.
-        // Если да, бросаем ее. Теперь это безопасно и предсказуемо.
         streamError?.let { throw it }
     }
 
@@ -358,4 +449,257 @@ class LLMInteractor @Inject constructor(
             settingsRepository.setSelectedModelId(clickedModelId)
         }
     }
+
+
+    /**
+     * ✅ ИСПРАВЛЕНО: Добавляет сообщение с файлом БЕЗ автоматической отправки
+     */
+    override suspend fun addUserMessageWithFile(
+        conversationId: String,
+        userMessage: String,
+        fileAttachment: FileAttachment
+    ) {
+        // 1. Проверяем, существует ли диалог, и создаем его при необходимости
+        val conversation = historyRepository.getConversation(conversationId)
+        if (conversation == null) {
+            // Создаем новый диалог с именем файла как заголовком
+            val title = "Анализ файла: ${fileAttachment.fileName.take(50)}"
+            historyRepository.createNewConversation(title)
+        }
+
+        // 2. Сохраняем полный файл в репозиторий
+        fileRepository.saveTemporaryFile(fileAttachment)
+
+        // 3. Создаем легковесные метаданные
+        val metadata = FileAttachmentMetadata(
+            fileId = fileAttachment.id,
+            fileName = fileAttachment.fileName,
+            fileExtension = fileAttachment.fileExtension,
+            fileSize = fileAttachment.fileSize,
+            mimeType = fileAttachment.mimeType,
+            preview = truncateAtWordBoundary(fileAttachment.originalContent, FILE_PREVIEW_LENGTH)
+        )
+
+        // 4. Формируем краткое сообщение для истории
+        val displayMessage = buildString {
+            if (userMessage.isNotBlank()) {
+                append(userMessage)
+                append("\n\n")
+            }
+            append("📎 **Файл**: ${metadata.fileName}")
+            append("\n**Размер**: ${formatFileSize(metadata.fileSize)}")
+            append("\n\n**Превью**:\n```")
+            if (fileAttachment.originalContent.length > FILE_PREVIEW_LENGTH) {
+                append("...\n```\n*Полный файл будет передан при отправке запроса*")
+            } else {
+                append("\n```")
+            }
+        }
+
+        // 5. Сохраняем в историю с метаданными
+        val message = ChatMessage(
+            role = ChatRole.USER,
+            content = displayMessage,
+            fileAttachment = metadata
+        )
+
+        historyRepository.addMessages(conversationId, listOf(message))
+    }
+
+    /**
+     * ✅ НОВЫЙ МЕТОД: Обрывает текст на границе слова
+     */
+    private fun truncateAtWordBoundary(text: String, maxLength: Int): String {
+        if (text.length <= maxLength) return text
+
+        val truncated = text.take(maxLength)
+        val lastSpace = truncated.lastIndexOf(' ')
+
+        return if (lastSpace > maxLength * 0.8) {
+            truncated.substring(0, lastSpace)
+        } else {
+            truncated
+        }
+    }
+
+    /**
+     * ✅ ИСПРАВЛЕНО: Правильное построение сообщений для API
+     */
+    private suspend fun buildMessagesForApi(
+        conversationId: String,
+        systemPrompt: String?
+    ): ApiRequestPayload {
+        val history = historyRepository.getHistoryFlow(conversationId)
+            .first()
+            .takeLast(MAX_HISTORY_SIZE)
+
+        val messagesForApi = mutableListOf<ApiMessage>()
+        val attachedFiles = mutableListOf<FileAttachment>()
+
+        // 1. Системный промпт (если есть) ВСЕГДА первым
+        systemPrompt?.let {
+            messagesForApi.add(ApiMessage(role = "system", content = it))
+        }
+
+        // 2. Собираем файлы из истории
+        for (message in history) {
+            if (message.fileAttachment != null) {
+                val fullFile = fileRepository.getTemporaryFile(message.fileAttachment.fileId)
+                if (fullFile != null && attachedFiles.none { it.id == fullFile.id }) {
+                    attachedFiles.add(fullFile)
+                }
+            }
+        }
+
+        // 3. Если есть файлы, добавляем СПЕЦИАЛЬНОЕ системное сообщение с инструкцией
+        if (attachedFiles.isNotEmpty()) {
+            val filesInstruction = buildString {
+                append("📋 **Attached Files Context**\n\n")
+                append("The user has attached ${attachedFiles.size} file(s) for analysis. ")
+                append("Read and analyze the content below:\n\n")
+
+                attachedFiles.forEachIndexed { index, file ->
+                    append("--- FILE ${index + 1}: ${file.fileName} ---\n")
+                    append("Type: ${file.mimeType}\n")
+                    append("Size: ${formatFileSize(file.fileSize)}\n")
+                    append("Content:\n${file.originalContent}\n")
+                    append("--- END OF FILE ${index + 1} ---\n\n")
+                }
+
+                append("🔍 **Instructions**: Carefully read all attached files and provide a comprehensive analysis based on the user's request.")
+            }
+
+            messagesForApi.add(ApiMessage(role = "system", content = filesInstruction))
+        }
+
+        // 4. Добавляем историю сообщений (БЕЗ полного контента файлов)
+        for (message in history) {
+            val messageContent = if (message.fileAttachment != null) {
+                // Убираем превью из истории, т.к. файл уже в system message
+                message.content.substringBefore("**Превью**:").trim()
+            } else {
+                message.content
+            }
+
+            messagesForApi.add(
+                ApiMessage(
+                    role = message.role.toApiRole(),  // ✅ Используем toApiRole()
+                    content = messageContent
+                )
+            )
+        }
+
+        return ApiRequestPayload(
+            messages = messagesForApi,
+            attachedFiles = attachedFiles
+        )
+    }
+
+    /**
+     * ✅ ИСПРАВЛЕНО: Правильный маппинг ролей
+     */
+    private suspend fun runStreamingAttempt(
+        model: String,
+        messages: List<ApiMessage>,
+        apiKey: String,
+        messageId: String
+    ) {
+        var receivedAnyData = false
+        var streamError: DomainError? = null
+
+        // ✅ ИСПРАВЛЕНО: Правильная конвертация ApiMessage -> ChatMessage
+        val chatMessages = messages.map { apiMsg ->
+            ChatMessage(
+                role = ChatRole.fromApiRole(apiMsg.role),  // ✅ Используем fromApiRole()
+                content = apiMsg.content
+            )
+        }
+
+        modelsRepository.getChatCompletionStream(model, chatMessages, apiKey)
+            .onCompletion { cause ->
+                if (cause != null) {
+                    streamError = when (cause) {
+                        is DomainError -> cause
+                        else -> DomainError.Generic(cause.localizedMessage ?: "Unknown flow error")
+                    }
+                    return@onCompletion
+                }
+
+                if (!receivedAnyData && streamError == null) {
+                    streamError = DomainError.Generic("Stream completed without emitting any data.")
+                }
+            }
+            .collect { result ->
+                when (result) {
+                    is DataResult.Success -> {
+                        historyRepository.appendContentToMessage(messageId, result.data)
+                        receivedAnyData = true
+                    }
+
+                    is DataResult.Error -> {
+                        val exception = result.exception
+                        streamError = when (exception) {
+                            is DomainError -> exception
+                            null -> DomainError.Generic("Stream returned an error with no exception details")
+                            else -> DomainError.Generic(
+                                exception.localizedMessage ?: "Unknown stream error"
+                            )
+                        }
+                    }
+
+                    DataResult.Loading -> { /* Игнорируем */
+                    }
+                }
+            }
+
+        streamError?.let { throw it }
+    }
+
+    private fun formatFileSize(bytes: Long): String {
+        return when {
+            bytes < 1024 -> "$bytes B"
+            bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+            else -> String.format("%.1f MB", bytes / (1024.0 * 1024.0))
+        }
+    }
+
+    /**
+     * Определяет расширение файла для markdown подсветки синтаксиса
+     */
+    private fun getFileExtensionForMarkdown(extension: String): String {
+        return when (extension.lowercase()) {
+            "kt", "kotlin" -> "kotlin"
+            "java" -> "java"
+            "js", "javascript" -> "javascript"
+            "ts", "typescript" -> "typescript"
+            "py", "python" -> "python"
+            "xml" -> "xml"
+            "json" -> "json"
+            "yaml", "yml" -> "yaml"
+            "md", "markdown" -> "markdown"
+            "html" -> "html"
+            "css" -> "css"
+            "scss", "sass" -> "scss"
+            "less" -> "less"
+            "php" -> "php"
+            "rb", "ruby" -> "ruby"
+            "go" -> "go"
+            "rs", "rust" -> "rust"
+            "cpp", "c++", "cxx", "cc" -> "cpp"
+            "c" -> "c"
+            "cs", "csharp" -> "csharp"
+            "swift" -> "swift"
+            "sh", "bash", "shell" -> "bash"
+            "sql" -> "sql"
+            "dockerfile" -> "dockerfile"
+            "makefile", "mk" -> "makefile"
+            "ini", "conf", "config" -> "ini"
+            "properties", "prop" -> "properties"
+            "toml" -> "toml"
+            "gradle" -> "gradle"
+            "kts" -> "kotlin"
+            else -> "" // Без подсветки для неизвестных типов
+        }
+    }
+
 }

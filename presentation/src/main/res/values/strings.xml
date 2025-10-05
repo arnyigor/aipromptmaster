@@ -101,12 +101,11 @@
     <string name="sorting_by_pricing">По цене</string>
     <string name="sorting_by_date">По дате</string>
     <string name="sorting_by_context_size">По размеру контекста</string>
-
-
-
     <string name="filters">Фильтры</string>
     <string name="clear_history">Очистить историю</string>
-    <string name="ai_reasoning">Думает…</string>
+    <string name="ai_icon">AI Icon</string>
+    <string name="ai_reasoning">Обдумываю ответ…</string>
+    <string name="share">Поделиться</string>
     <string name="feedback_hint">Опишите ошибку или предложение</string>
     <string name="action_send">Отправить</string>
     <string name="feedback_sent_successfully">Сообщение отправлено успешно</string>
@@ -141,6 +140,32 @@
     <string name="filter_free_models">Бесплатные модели</string>
     <string name="system_prompt_description">Системный промпт задает поведение и стиль ответов AI модели</string>
     <string name="system_prompt_helper_text">Опишите роль и поведение AI</string>
+    <string name="system_prompt_edit_title">Редактирование системного промпта</string>
+    <string name="system_prompt_description_title">Что такое системный промпт?</string>
+    <string name="system_prompt_input_label">Текст системного промпта</string>
+    <string name="system_prompt_saved_successfully">Системный промпт сохранен</string>
+    <string name="character_count">%1$d / %2$d</string>
+
+    <!-- Examples -->
+    <string name="example_prompt_android_developer">You are an expert Android developer with deep knowledge of Kotlin, Jetpack Compose, and modern Android architecture patterns. Provide clean, idiomatic code following best practices.</string>
+    <string name="example_prompt_code_reviewer">You are a code reviewer. Analyze code for bugs, performance issues, security vulnerabilities, and adherence to best practices. Provide constructive feedback.</string>
+    <string name="example_prompt_programming_tutor">You are a patient programming tutor. Explain concepts clearly with examples, encourage questions, and help students learn at their own pace.</string>
+
+    <!-- Actions -->
+    <string name="action_discard">Не сохранять</string>
+    <string name="action_replace">Заменить</string>
+    <string name="action_ok">OK</string>
+
+    <!-- Dialogs -->
+    <string name="clear_prompt_title">Очистить промпт?</string>
+    <string name="clear_prompt_message">Весь текст будет удален. Это действие нельзя отменить.</string>
+    <string name="unsaved_changes_title">Несохраненные изменения</string>
+    <string name="unsaved_changes_message">Вы хотите выйти без сохранения изменений?</string>
+    <string name="insert_example_prompt_title">Вставить пример?</string>
+    <string name="insert_example_prompt_message">Текущий промпт будет заменен примером.</string>
+
+    <!-- Errors -->
+    <string name="error_prompt_too_long">Промпт слишком длинный (максимум %1$d символов)</string>
 
     <!-- Направления сортировки -->
     <string name="attach_txt_file">прикрепить текстовый файл</string>
@@ -184,4 +209,6 @@
     <string name="prompt_variants">Варианты промпта</string>
     <string name="ru_lang">🇷🇺 Русский</string>
     <string name="en_lang">🇬🇧 English</string>
+    <string name="file_viewer">Просмотр файла</string>
+    <string name="ai_assystent">AI Assystent</string>
 </resources>

@@ -12,19 +12,35 @@ import io.noties.markwon.Markwon
 class AiMessageItem(
     private val markwon: Markwon,
     private val message: ChatMessage,
+    private val modelName: String? = null,
     private val onCopyClicked: (String) -> Unit,
 ) : BindableItem<ItemAiMessageBinding>() {
 
-    override fun bind(viewBinding: ItemAiMessageBinding, position: Int) {
+    override fun bind(viewBinding: ItemAiMessageBinding, position: Int) = with(viewBinding){
         val emptyContent = message.content.isEmpty()
-        viewBinding.tvPlaceholder.isVisible = emptyContent
-        viewBinding.btnCopy.isVisible = !emptyContent
-        viewBinding.tvMessage.isVisible = !emptyContent
-        if (!emptyContent) {
-            viewBinding.tvMessage.text = markwon.toMarkdown(message.content)
-            viewBinding.tvMessage.movementMethod = LinkMovementMethod.getInstance()
+
+        // Показываем блок с названием модели, если оно предоставлено
+        val hasModelName = !modelName.isNullOrBlank()
+        tvModelName.isVisible = hasModelName
+        if (hasModelName) {
+            tvModelName.text = modelName
+        }else{
+            tvModelName.text = root.context.getString(R.string.ai_assystent)
         }
-        viewBinding.btnCopy.setOnClickListener {
+
+        tvPlaceholder.isVisible = emptyContent
+        btnCopy.isVisible = !emptyContent
+        tvMessage.isVisible = !emptyContent
+
+        if (!emptyContent) {
+            // Используем построчечное обновление для более плавного стриминга
+            tvMessage.post {
+                tvMessage.text = markwon.toMarkdown(message.content)
+                tvMessage.movementMethod = LinkMovementMethod.getInstance()
+            }
+        }
+
+        btnCopy.setOnClickListener {
             onCopyClicked(message.content)
         }
     }

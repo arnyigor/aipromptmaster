@@ -1,6 +1,5 @@
 package com.arny.aipromptmaster.data.models
 
-import kotlinx.serialization.Contextual
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
