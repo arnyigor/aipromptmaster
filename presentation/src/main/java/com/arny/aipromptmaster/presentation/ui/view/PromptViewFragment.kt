@@ -10,6 +10,7 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.core.os.bundleOf
 import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
@@ -49,7 +50,9 @@ class PromptViewFragment : Fragment() {
 
     @Inject
     internal lateinit var viewModelFactory: ViewModelFactory
-    private val viewModel: PromptViewViewModel by viewModelFactory { viewModelFactory.create(args.promptId) }
+    private val viewModel: PromptViewViewModel by viewModelFactory {
+        viewModelFactory.create(args.promptId)
+    }
 
     private var deleteMenuItem: MenuItem? = null
     private var editMenuItem: MenuItem? = null
@@ -134,7 +137,6 @@ class PromptViewFragment : Fragment() {
 
     private fun setupViews() {
         with(binding) {
-            // Копирование ID промпта
             btnCopyId.setOnClickListener {
                 val currentState = viewModel.uiState.value
                 if (currentState is PromptViewUiState.Content) {
@@ -142,30 +144,25 @@ class PromptViewFragment : Fragment() {
                 }
             }
 
-            // Копирование русского текста
             btnCopyRu.setOnClickListener {
                 val content = tvPromptRu.text.toString()
                 viewModel.copyContent(content, "Русский промпт скопирован")
             }
 
-            // Копирование английского текста
             btnCopyEn.setOnClickListener {
                 val content = tvPromptEn.text.toString()
                 viewModel.copyContent(content, "Английский промпт скопирован")
             }
 
-            // Копирование всего контента
             fabCopy.setOnClickListener {
                 viewModel.copyContent(getFullContent(), "Полный промпт скопирован")
             }
 
-            // Обработка выбора варианта
             chipGroupVariants.setOnCheckedStateChangeListener { group, checkedIds ->
                 val selectedChip = checkedIds.firstOrNull()
                 val variantIndex = when (selectedChip) {
                     R.id.chipMain -> -1
                     else -> {
-                        // Найти индекс выбранного варианта по ID чипа
                         val chip = group.findViewById<Chip>(
                             selectedChip ?: return@setOnCheckedStateChangeListener
                         )
@@ -180,7 +177,7 @@ class PromptViewFragment : Fragment() {
     private fun getFullContent(): String {
         val ruText = binding.tvPromptRu.text.toString().trim()
         val enText = binding.tvPromptEn.text.toString().trim()
-        val fullContent = buildString {
+        return buildString {
             when {
                 enText.isNotEmpty() && ruText.isNotEmpty() -> {
                     append("🇷🇺 Русский:\n")
@@ -189,22 +186,11 @@ class PromptViewFragment : Fragment() {
                     append("🇬🇧 English:\n")
                     append(enText)
                 }
-
-                enText.isNotEmpty() -> {
-                    append(enText)
-                }
-
-                ruText.isNotEmpty() -> {
-                    append(ruText)
-                }
-
-                else -> {
-                    // Оба пусты — можно оставить пустую строку или по умолчанию
-                    append("")
-                }
+                enText.isNotEmpty() -> append(enText)
+                ruText.isNotEmpty() -> append(ruText)
+                else -> append("")
             }
         }
-        return fullContent
     }
 
     private fun observeViewModel() {
@@ -256,18 +242,22 @@ class PromptViewFragment : Fragment() {
         with(binding.chipGroupVariants) {
             removeAllViews()
 
-            // Добавляем чип для основного контента
+            // Основной контент
             val mainChip = Chip(requireContext()).apply {
                 id = R.id.chipMain
                 text = getString(R.string.main_variant)
                 isCheckable = true
                 isChecked = state.selectedVariantIndex == -1
+
+                // Используем Material Design 3 цвета
                 setChipBackgroundColorResource(R.color.chip_background_selector)
-                setTextColor(resources.getColorStateList(R.color.chip_text_selector, null))
+                setTextColor(
+                    ContextCompat.getColorStateList(requireContext(), R.color.chip_text_selector)
+                )
             }
             addView(mainChip)
 
-            // Добавляем чипы для каждого варианта
+            // Варианты
             state.availableVariants.forEachIndexed { index, variant ->
                 val variantChip = Chip(requireContext()).apply {
                     id = View.generateViewId()
@@ -275,13 +265,15 @@ class PromptViewFragment : Fragment() {
                     isCheckable = true
                     isChecked = state.selectedVariantIndex == index
                     tag = index
+
                     setChipBackgroundColorResource(R.color.chip_background_selector)
-                    setTextColor(resources.getColorStateList(R.color.chip_text_selector, null))
+                    setTextColor(
+                        ContextCompat.getColorStateList(requireContext(), R.color.chip_text_selector)
+                    )
                 }
                 addView(variantChip)
             }
 
-            // Показываем группу вариантов только если есть варианты
             binding.cardVariants.visibility =
                 if (state.availableVariants.isNotEmpty()) View.VISIBLE else View.GONE
         }
@@ -289,15 +281,22 @@ class PromptViewFragment : Fragment() {
 
     private fun updateTagsAndModels(prompt: com.arny.aipromptmaster.domain.models.Prompt) {
         with(binding) {
-            // Обновляем теги
+            // Теги
             chipGroupTags.removeAllViews()
             if (prompt.tags.isNotEmpty()) {
                 prompt.tags.forEach { tag ->
                     val chip = Chip(requireContext()).apply {
                         text = tag
                         isClickable = false
-                        setChipBackgroundColorResource(R.color.chip_background_secondary)
-                        setTextColor(resources.getColorStateList(R.color.chip_text_secondary, null))
+
+                        // Используем secondaryContainer цвет для вторичных элементов
+                        setChipBackgroundColorResource(R.color.md_theme_light_secondaryContainer)
+                        setTextColor(
+                            ContextCompat.getColor(
+                                requireContext(),
+                                R.color.md_theme_light_onSecondaryContainer
+                            )
+                        )
                         chipStrokeWidth = 0f
                     }
                     chipGroupTags.addView(chip)
@@ -307,14 +306,20 @@ class PromptViewFragment : Fragment() {
                 chipGroupTags.visibility = View.GONE
             }
 
-            // Обновляем модели
+            // Модели
             chipGroupModels.removeAllViews()
             prompt.compatibleModels.forEach { model ->
                 val chip = Chip(requireContext()).apply {
                     text = model
                     isClickable = false
-                    setChipBackgroundColorResource(R.color.chip_background_secondary)
-                    setTextColor(resources.getColorStateList(R.color.chip_text_secondary, null))
+
+                    setChipBackgroundColorResource(R.color.md_theme_light_secondaryContainer)
+                    setTextColor(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            R.color.md_theme_light_onSecondaryContainer
+                        )
+                    )
                 }
                 chipGroupModels.addView(chip)
             }
@@ -340,7 +345,6 @@ class PromptViewFragment : Fragment() {
             }
 
             is PromptViewUiEvent.VariantSelected -> {
-                // Можно добавить анимацию или другие эффекты при выборе варианта
                 showMessage("Вариант изменен")
             }
 
@@ -360,7 +364,9 @@ class PromptViewFragment : Fragment() {
         }
     }
 
-    private fun getVariantDisplayName(variantId: com.arny.aipromptmaster.domain.models.DomainVariantId): String {
+    private fun getVariantDisplayName(
+        variantId: com.arny.aipromptmaster.domain.models.DomainVariantId
+    ): String {
         return when (variantId.type) {
             "style" -> "Стиль ${variantId.id}"
             "length" -> "Длина ${variantId.id}"
@@ -377,11 +383,8 @@ class PromptViewFragment : Fragment() {
     }
 
     private fun showMessage(message: String) {
-        Snackbar.make(
-            binding.root,
-            message,
-            Snackbar.LENGTH_SHORT
-        ).setAnchorView(binding.fabCopy)
+        Snackbar.make(binding.root, message, Snackbar.LENGTH_SHORT)
+            .setAnchorView(binding.fabCopy)
             .show()
     }
 

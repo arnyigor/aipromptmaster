@@ -1,93 +1,103 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?attr/colorSurface">
 
-    <!-- RecyclerView для сообщений -->
+    <!-- Список сообщений -->
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rv_chat"
+        android:id="@+id/messagesRecyclerView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginTop="12dp"
-        android:layout_marginBottom="100dp"
         android:clipToPadding="false"
-        android:paddingHorizontal="12dp"
-        android:paddingBottom="100dp"
-        android:scrollbarStyle="outsideOverlay"
-        android:scrollbars="vertical"
-        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        android:overScrollMode="never"
+        android:paddingTop="16dp"
+        android:paddingBottom="120dp"
+        tools:itemCount="5"
         tools:listitem="@layout/item_user_message" />
 
-     <!-- Поле для отображения информации о токенах -->
-     <LinearLayout
-         android:id="@+id/token_info_container"
-         android:layout_width="match_parent"
-         android:layout_height="wrap_content"
-         android:layout_marginStart="12dp"
-         android:layout_marginEnd="12dp"
-         android:layout_marginBottom="4dp"
-         android:layout_gravity="bottom"
-         android:background="?attr/colorSurfaceVariant"
-         android:padding="6dp"
-         android:visibility="gone"
-         app:layout_anchor="@id/input_card"
-         app:layout_anchorGravity="top|center_horizontal"
-         tools:visibility="visible">
+    <!-- Поле для отображения информации о токенах -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/token_info_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="8dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="?attr/colorSecondaryContainer"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="6dp"
+        app:contentPadding="8dp"
+        app:layout_anchor="@id/input_card"
+        app:layout_anchorGravity="top|center_horizontal"
+        tools:visibility="visible">
 
-         <TextView
-             android:id="@+id/tv_token_info"
-             android:layout_width="wrap_content"
-             android:layout_height="wrap_content"
-             android:textSize="11sp"
-             android:textColor="?attr/colorOnSurfaceVariant"
-             android:textStyle="bold"
-             tools:text="📊 ~150" />
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
-         <TextView
-             android:id="@+id/tv_token_accuracy"
-             android:layout_width="wrap_content"
-             android:layout_height="wrap_content"
-             android:layout_marginStart="8dp"
-             android:textSize="10sp"
-             android:textColor="?attr/colorPrimary"
-             android:textStyle="italic"
-             tools:text="≈" />
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginEnd="4dp"
+                android:src="@drawable/ic_token_stats"
+                android:contentDescription="@null"
+                app:tint="?attr/colorOnSecondaryContainer" />
 
-     </LinearLayout>
+            <TextView
+                android:id="@+id/tv_token_info"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="?attr/colorOnSecondaryContainer"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                tools:text="~150" />
 
-     <!-- НОВОЕ: Поле для отображения ошибок -->
-     <com.google.android.material.card.MaterialCardView
-         android:id="@+id/error_card"
-         android:layout_width="match_parent"
-         android:layout_height="wrap_content"
-         android:layout_marginStart="12dp"
-         android:layout_marginEnd="12dp"
-         android:layout_marginBottom="12dp"
-         android:layout_gravity="bottom"
-         android:visibility="gone"
-         app:cardBackgroundColor="?attr/colorErrorContainer"
-         app:cardCornerRadius="12dp"
-         app:cardElevation="4dp"
-         app:layout_anchor="@id/input_card"
-         app:layout_anchorGravity="top|center_horizontal"
-         app:strokeColor="?attr/colorError"
-         app:strokeWidth="1dp"
-         tools:visibility="visible">
+            <TextView
+                android:id="@+id/tv_token_accuracy"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:textColor="?attr/colorOnSecondaryContainer"
+                android:textSize="11sp"
+                tools:text="tokens" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Карточка ошибки (независимая от input_card) -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/error_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="120dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="?attr/colorErrorContainer"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="8dp"
+        app:strokeColor="?attr/colorError"
+        app:strokeWidth="1dp"
+        tools:visibility="visible">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:padding="12dp">
+            android:padding="12dp"
+            android:gravity="center_vertical">
 
             <ImageView
                 android:layout_width="24dp"
                 android:layout_height="24dp"
-                android:layout_gravity="center_vertical"
                 android:layout_marginEnd="12dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_error"
@@ -97,147 +107,91 @@
                 android:id="@+id/tv_error_message"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical"
                 android:layout_weight="1"
                 android:textColor="?attr/colorOnErrorContainer"
                 android:textSize="14sp"
-                tools:text="Произошла ошибка при отправке сообщения. Проверьте подключение к интернету." />
+                tools:text="Произошла ошибка при отправке сообщения" />
 
             <ImageButton
                 android:id="@+id/btn_dismiss_error"
                 android:layout_width="32dp"
                 android:layout_height="32dp"
-                android:layout_gravity="center_vertical"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@null"
+                android:contentDescription="@string/dismiss_error"
                 android:src="@drawable/outline_close_24"
                 app:tint="?attr/colorError" />
-
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-     <!-- ✅ НОВАЯ КАРТОЧКА ПРОГРЕССА ЗАГРУЗКИ ФАЙЛА -->
-     <com.google.android.material.card.MaterialCardView
-         android:id="@+id/file_upload_progress_card"
-         android:layout_width="match_parent"
-         android:layout_height="wrap_content"
-         android:layout_marginStart="12dp"
-         android:layout_marginEnd="12dp"
-         android:layout_marginBottom="12dp"
-         android:layout_gravity="bottom"
-         android:visibility="gone"
-         app:cardElevation="4dp"
-         app:cardCornerRadius="12dp"
-         app:layout_anchor="@id/input_card"
-         app:layout_anchorGravity="top|center_horizontal"
-         tools:visibility="visible">
+    <!-- Кнопка отмены генерации (независимая от input_card) -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cancel_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="12dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+        app:cardCornerRadius="28dp"
+        app:cardElevation="8dp"
+        app:strokeWidth="0dp"
+        tools:visibility="visible">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
+            android:orientation="horizontal"
+            android:padding="12dp"
+            android:gravity="center_vertical">
 
-            <!-- Заголовок с иконкой и кнопкой отмены -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
+            <!-- Прогресс-бар генерации -->
+            <ProgressBar
+                android:id="@+id/progress_generating"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="12dp" />
 
-                <ImageView
-                    android:id="@+id/iv_file_icon"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:src="@drawable/outline_attach_file_24"
-                    android:contentDescription="@string/attach_txt_file"
-                    app:tint="?attr/colorPrimary" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="12dp"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/tv_upload_file_name"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:textColor="?attr/colorOnSurface"
-                        tools:text="document.txt" />
-
-                    <TextView
-                        android:id="@+id/tv_upload_file_size"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textSize="12sp"
-                        android:textColor="?attr/colorOnSurfaceVariant"
-                        tools:text="2.5 MB" />
-                </LinearLayout>
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_cancel_upload"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@android:string/cancel"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    app:icon="@drawable/outline_close_24" />
-            </LinearLayout>
-
-            <!-- Прогресс-бар -->
-            <com.google.android.material.progressindicator.LinearProgressIndicator
-                android:id="@+id/progress_upload"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                app:indicatorColor="?attr/colorPrimary"
-                app:trackColor="?attr/colorSurfaceVariant"
-                app:trackCornerRadius="4dp"
-                app:trackThickness="8dp" />
-
-            <!-- Текст прогресса -->
+            <!-- Текст статуса -->
             <TextView
-                android:id="@+id/tv_upload_progress"
+                android:id="@+id/tv_generating_status"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/generating_response"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="15sp" />
+
+            <!-- Кнопка отмены -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_cancel"
+                style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:text="@android:string/cancel"
                 android:textSize="14sp"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                tools:text="Загружено 45% (1.1 MB / 2.5 MB)" />
+                app:icon="@drawable/outline_close_24"
+                app:iconGravity="textStart" />
 
-            <!-- Превью контента (опционально) -->
-            <TextView
-                android:id="@+id/tv_upload_preview"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:maxLines="3"
-                android:ellipsize="end"
-                android:textSize="12sp"
-                android:fontFamily="monospace"
-                android:background="?attr/colorSurfaceVariant"
-                android:padding="8dp"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:visibility="gone"
-                tools:visibility="visible"
-                tools:text="Preview of file content..." />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-     <!-- Блок ввода сообщения -->
-     <com.google.android.material.card.MaterialCardView
-         android:id="@+id/input_card"
-         android:layout_width="match_parent"
-         android:layout_height="wrap_content"
-         android:layout_marginStart="12dp"
-         android:layout_marginEnd="12dp"
-         android:layout_marginBottom="12dp"
-         android:layout_gravity="bottom"
-         app:cardElevation="8dp"
-         app:strokeWidth="1dp">
+    <!-- Блок ввода сообщения -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/input_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="12dp"
+        app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+        app:cardCornerRadius="28dp"
+        app:cardElevation="8dp"
+        app:strokeWidth="0dp">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
@@ -247,7 +201,62 @@
             android:paddingEnd="8dp"
             android:paddingBottom="4dp">
 
-            <!-- Иконка прикрепления файла -->
+            <!-- Компактный горизонтальный список прикрепленных файлов (Chips) -->
+            <HorizontalScrollView
+                android:id="@+id/attachmentsScrollView"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:overScrollMode="never"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="4dp"
+                android:scrollbars="none"
+                android:visibility="gone"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                tools:visibility="visible">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/attachmentsChipGroup"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:chipSpacing="8dp"
+                        app:singleLine="true"
+                        tools:ignore="HardcodedText">
+
+                        <!-- Пример чипа -->
+                        <com.google.android.material.chip.Chip
+                            style="@style/Widget.Material3.Chip.Input"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="notes.txt • 15 KB"
+                            app:chipIcon="@drawable/ic_file_text"
+                            app:closeIcon="@drawable/outline_close_24"
+                            app:closeIconEnabled="true"
+                            tools:ignore="HardcodedText" />
+
+                    </com.google.android.material.chip.ChipGroup>
+
+                    <ProgressBar
+                        android:id="@+id/file_load_indicator"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginStart="8dp"
+                        android:visibility="gone"
+                        tools:visibility="visible" />
+
+                </LinearLayout>
+
+            </HorizontalScrollView>
+
+            <!-- Кнопка прикрепления файла -->
             <ImageButton
                 android:id="@+id/btn_attach_file"
                 android:layout_width="40dp"
@@ -258,10 +267,10 @@
                 android:src="@drawable/outline_attach_file_24"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                app:tint="@color/fab_background_tint" />
+                app:layout_constraintTop_toBottomOf="@id/attachmentsScrollView"
+                app:tint="?attr/colorPrimary" />
 
-            <!-- Поле ввода -->
+            <!-- Поле ввода с динамической высотой от 1 до 5 строк -->
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/et_user_input"
                 android:layout_width="0dp"
@@ -269,30 +278,23 @@
                 android:layout_marginStart="8dp"
                 android:layout_marginEnd="8dp"
                 android:background="@android:color/transparent"
+                android:gravity="top|start"
                 android:hint="@string/enter_message"
                 android:inputType="textMultiLine|textCapSentences"
-                android:maxLines="4"
-                android:minHeight="48dp"
+                android:minLines="1"
+                android:maxLines="5"
+                android:scrollbars="vertical"
                 android:paddingTop="12dp"
                 android:paddingBottom="12dp"
+                android:textColor="?attr/colorOnSurface"
+                android:textColorHint="?attr/colorOnSurfaceVariant"
+                android:textSize="15sp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@id/btn_send"
                 app:layout_constraintStart_toEndOf="@id/btn_attach_file"
-                app:layout_constraintTop_toTopOf="parent" />
+                app:layout_constraintTop_toBottomOf="@id/attachmentsScrollView" />
 
-            <!-- Кнопка отправки -->
-            <com.google.android.material.floatingactionbutton.FloatingActionButton
-                android:id="@+id/btn_send"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:contentDescription="@null"
-                android:src="@android:drawable/ic_menu_send"
-                app:fabCustomSize="40dp"
-                app:backgroundTint="@color/fab_background_tint"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
-
+            <!-- Прогресс-бар отправки (поверх кнопки) -->
             <ProgressBar
                 android:id="@+id/progress_bar_send"
                 style="?android:attr/progressBarStyleSmall"
@@ -306,24 +308,19 @@
                 app:layout_constraintTop_toTopOf="@id/btn_send"
                 tools:visibility="visible" />
 
-            <!-- Кнопка отмены -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_cancel"
-                android:layout_width="0dp"
+            <!-- Кнопка отправки -->
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/btn_send"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"
-                android:layout_marginBottom="8dp"
-                android:text="@android:string/cancel"
-                android:textSize="16sp"
-                android:visibility="gone"
-                app:icon="@drawable/outline_close_24"
-                app:iconGravity="textStart"
-                style="@style/Widget.Material3.Button"
+                android:contentDescription="@string/action_send"
+                android:src="@android:drawable/ic_menu_send"
+                app:backgroundTint="?attr/colorPrimary"
+                app:fabCustomSize="40dp"
                 app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toStartOf="@id/btn_send"
-                app:layout_constraintStart_toEndOf="@id/btn_attach_file"
-                tools:visibility="visible" />
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/attachmentsScrollView"
+                app:tint="?attr/colorOnPrimary" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </com.google.android.material.card.MaterialCardView>

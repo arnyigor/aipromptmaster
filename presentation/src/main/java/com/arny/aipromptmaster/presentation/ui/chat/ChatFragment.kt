@@ -13,12 +13,19 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.addCallback
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.ContextCompat
 import androidx.core.view.MenuProvider
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.children
 import androidx.core.view.isVisible
+import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResultListener
 import androidx.lifecycle.Lifecycle
@@ -28,22 +35,23 @@ import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.SimpleItemAnimator
 import com.arny.aipromptmaster.core.di.scopes.viewModelFactory
 import com.arny.aipromptmaster.domain.models.ChatMessage
 import com.arny.aipromptmaster.domain.models.ChatRole
-import com.arny.aipromptmaster.domain.models.FileAttachment
 import com.arny.aipromptmaster.domain.models.FileAttachmentMetadata
 import com.arny.aipromptmaster.domain.models.errors.DomainError
 import com.arny.aipromptmaster.domain.results.DataResult
-import com.arny.aipromptmaster.domain.services.FileProcessingResult
 import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.databinding.FragmentChatBinding
 import com.arny.aipromptmaster.presentation.ui.editprompt.EditSystemPromptFragment
-import com.arny.aipromptmaster.presentation.utils.AnimationUtils
 import com.arny.aipromptmaster.presentation.utils.asString
 import com.arny.aipromptmaster.presentation.utils.autoClean
+import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.xwray.groupie.GroupieAdapter
+import com.xwray.groupie.GroupAdapter
+import com.xwray.groupie.GroupieViewHolder
+import com.xwray.groupie.Item
 import dagger.android.support.AndroidSupportInjection
 import dagger.assisted.AssistedFactory
 import es.dmoral.toasty.Toasty
@@ -55,14 +63,20 @@ import kotlinx.coroutines.supervisorScope
 import java.util.Locale
 import javax.inject.Inject
 
-class ChatFragment : Fragment() {
+class ChatFragment : Fragment(R.layout.fragment_chat) {
     private var _binding: FragmentChatBinding? = null
     private val binding get() = _binding!!
 
     private lateinit var filePickerLauncher: ActivityResultLauncher<String>
-    private var uploadJob: kotlinx.coroutines.Job? = null // Для отмены загрузки
     private var modelName = ""
     private val args: ChatFragmentArgs by navArgs()
+
+    // Флаги состояния
+    private var isKeyboardVisible = false
+    private var isStreaming = false
+
+    // ✅ Храним ссылку на callback
+    private var backPressedCallback: OnBackPressedCallback? = null
 
     @AssistedFactory
     internal interface ViewModelFactory {
@@ -72,7 +86,7 @@ class ChatFragment : Fragment() {
     @Inject
     lateinit var markwon: Markwon
 
-    private val groupAdapter by autoClean { GroupieAdapter() }
+    private val groupAdapter by autoClean { GroupAdapter<GroupieViewHolder>() }
 
     @Inject
     internal lateinit var viewModelFactory: ViewModelFactory
@@ -88,10 +102,7 @@ class ChatFragment : Fragment() {
 
         filePickerLauncher =
             registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-                uri?.let {
-                    // ✅ fileProcessingService вызывается через репозиторий для проверки типа файла
-                    processFile(it)
-                }
+                uri?.let { handleFileSelection(it) }
             }
     }
 
@@ -108,8 +119,65 @@ class ChatFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         initMenu()
         setupViews()
+        setupKeyboardHandling()
+        setupBackPressHandling()
         observeViewModel()
         setupFragmentResultListener()
+    }
+
+
+    private fun setupKeyboardHandling() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
+            val wasVisible = isKeyboardVisible
+            isKeyboardVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
+
+            if (wasVisible != isKeyboardVisible) {
+                onKeyboardVisibilityChanged(isKeyboardVisible)
+            }
+
+            insets
+        }
+    }
+
+    private fun setupBackPressHandling() {
+        // Создаем и сохраняем callback
+        backPressedCallback = object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                when {
+                    isKeyboardVisible -> {
+                        hideKeyboard()
+                    }
+
+                    isStreaming -> {
+                        viewModel.cancelCurrentRequest()
+                        // После отмены выйти
+                        isEnabled = false
+                        requireActivity().onBackPressedDispatcher.onBackPressed()
+                    }
+
+                    else -> {
+                        isEnabled = false
+                        requireActivity().onBackPressedDispatcher.onBackPressed()
+                    }
+                }
+            }
+        }
+
+        // Регистрируем callback
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            backPressedCallback!!
+        )
+    }
+
+    // Обновляем isEnabled напрямую через сохраненную ссылку
+    private fun onKeyboardVisibilityChanged(visible: Boolean) {
+        backPressedCallback?.isEnabled = visible || isStreaming
+    }
+
+    private fun hideKeyboard() {
+        val view = requireActivity().currentFocus ?: binding.root
+        ViewCompat.getWindowInsetsController(view)?.hide(WindowInsetsCompat.Type.ime())
     }
 
     private fun initMenu() {
@@ -166,266 +234,172 @@ class ChatFragment : Fragment() {
     }
 
     private fun setupViews() {
-        binding.rvChat.apply {
+        // Основной список сообщений
+        binding.messagesRecyclerView.apply {
             layoutManager = LinearLayoutManager(context).apply {
                 stackFromEnd = true
+                reverseLayout = false
             }
             adapter = groupAdapter
-            adapter?.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
+
+            (itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations = false
+            setItemViewCacheSize(20)
+            setHasFixedSize(false)
+
+            groupAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
                 override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
                     smoothScrollToPosition(groupAdapter.itemCount - 1)
                 }
             })
         }
 
-        binding.btnSend.setOnClickListener {
-            val message = binding.etUserInput.text.toString().trim()
-            if (message.isNotBlank()) {
-                viewModel.sendMessage(message)
-                binding.etUserInput.text?.clear()
-                viewModel.updateInputText("")
-                binding.errorCard.isVisible = false
-                binding.tvErrorMessage.text = ""
-            }
-        }
-
-        // Добавляем слушатель для обновления токенов при изменении текста
-        binding.etUserInput.addTextChangedListener(object : android.text.TextWatcher {
-            override fun afterTextChanged(s: android.text.Editable?) {
-                viewModel.updateInputText(s.toString())
-            }
-
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-        })
-
-        binding.btnDismissError.setOnClickListener {
-            binding.tvErrorMessage.text = ""
-            binding.errorCard.isVisible = false
-        }
-
+        // Кнопка прикрепления файла
         binding.btnAttachFile.setOnClickListener {
+            if (viewModel.attachments.value.size >= 5) {
+                showErrorCard("Максимум 5 файлов")
+                return@setOnClickListener
+            }
             filePickerLauncher.launch("*/*")
         }
 
-        binding.btnCancelUpload.setOnClickListener {
-            cancelFileUpload()
+        // Кнопка отправки
+        binding.btnSend.setOnClickListener {
+            sendMessage()
         }
 
+        // Отслеживание текста для активации кнопки
+        binding.etUserInput.doAfterTextChanged { text ->
+            updateSendButtonState()
+            updateTokenInfo(text?.toString() ?: "")
+        }
+
+        // Обработка ошибок
+        binding.btnDismissError.setOnClickListener {
+            hideErrorCard()
+        }
+
+        // Кнопка отмены генерации
         binding.btnCancel.setOnClickListener {
-            cancelMessageRequest()
+            viewModel.cancelCurrentRequest()
         }
     }
 
     /**
-     * ✅ Обработка файла через fileProcessingService репозитория со встроенным UI прогресса
+     * Обрабатывает выбор файла пользователем
      */
-    private fun processFile(uri: Uri) {
-
-        uploadJob = viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                viewModel.processFileFromUri(uri)
-                    .collect { result ->
-                        when (result) {
-                            is FileProcessingResult.Started -> {
-                                // Показываем карточку прогресса при начале обработки
-                                showUploadProgress(result.fileName, result.fileSize)
-                            }
-
-                            is FileProcessingResult.Progress -> {
-                                // Обновляем прогресс обработки
-                                updateUploadProgress(
-                                    progress = result.progress,
-                                    bytesRead = result.bytesRead,
-                                    totalBytes = result.totalBytes,
-                                    previewText = result.previewText
-                                )
-                            }
-
-                            is FileProcessingResult.Complete -> {
-                                // Скрываем прогресс и обрабатываем завершение
-                                hideUploadProgress()
-                                onFileUploadComplete(result)
-                            }
-
-                            is FileProcessingResult.Error -> {
-                                // Скрываем прогресс и показываем ошибку
-                                hideUploadProgress()
-                                showErrorCard(result.message)
-                            }
-                        }
-                    }
-            } catch (e: Exception) {
-                hideUploadProgress()
-                showErrorCard(e.message ?: "Неизвестная ошибка")
-            }
-        }
-    }
-
-    /**
-     * Показать карточку прогресса (вызывается один раз)
-     */
-    private fun showUploadProgress(fileName: String, fileSize: Long) {
-        binding.fileUploadProgressCard.isVisible = true
-        binding.tvUploadFileName.text = fileName
-        binding.tvUploadFileSize.text = formatFileSize(fileSize)
-        binding.progressUpload.progress = 0
-        binding.tvUploadProgress.text = "Подготовка..."
-        binding.tvUploadPreview.isVisible = false
-
-        // Анимация появления
-        binding.fileUploadProgressCard.alpha = 0f
-        binding.fileUploadProgressCard.animate()
-            .alpha(1f)
-            .setDuration(200)
-            .start()
-    }
-
-    /**
-     * Обновить прогресс загрузки (вызывается многократно)
-     */
-    private fun updateUploadProgress(
-        progress: Int,
-        bytesRead: Long,
-        totalBytes: Long,
-        previewText: String? = null
-    ) {
-        binding.progressUpload.setProgressCompat(progress, true) // Анимированный прогресс
-
-        val progressText = when {
-            totalBytes > 0 -> {
-                val mbRead = bytesRead / (1024.0 * 1024.0)
-                val mbTotal = totalBytes / (1024.0 * 1024.0)
-                "Обработано $progress% (${
-                    String.format(
-                        "%.1f",
-                        mbRead
-                    )
-                } MB / ${String.format("%.1f", mbTotal)} MB)"
-            }
-
-            else -> "Обработано $progress%"
-        }
-        binding.tvUploadProgress.text = progressText
-
-        // Показываем превью, если есть
-        previewText?.let {
-            binding.tvUploadPreview.isVisible = true
-            binding.tvUploadPreview.text = it.take(200) + if (it.length > 200) "..." else ""
-        }
-    }
-
-    /**
-     * Скрыть карточку прогресса
-     */
-    private fun hideUploadProgress() {
-        binding.fileUploadProgressCard.animate()
-            .alpha(0f)
-            .setDuration(200)
-            .withEndAction {
-                binding.fileUploadProgressCard.isVisible = false
-            }
-            .start()
-    }
-
-    /**
-     * Отменить загрузку файла
-     */
-    private fun cancelFileUpload() {
-        uploadJob?.cancel()
-        hideUploadProgress()
-        Toasty.info(requireContext(), "Загрузка отменена", Toast.LENGTH_SHORT).show()
-    }
-
-    /**
-     * Отменить текущий запрос к LLM
-     */
-    private fun cancelMessageRequest() {
-        viewModel.cancelCurrentRequest()
-        Toasty.info(requireContext(), "Запрос отменен", Toast.LENGTH_SHORT).show()
-    }
-
-    /**
-     * Обработать завершение загрузки
-     */
-    private fun onFileUploadComplete(result: FileProcessingResult.Complete) {
-        // Добавляем файл для расчета токенов
-        viewModel.addAttachedFile(result.fileAttachment)
-
-        sendMessageWithFile(result.fileAttachment)
-
-        Toasty.success(
-            requireContext(),
-            "Файл ${result.fileAttachment.fileName} загружен",
-            Toast.LENGTH_SHORT
-        ).show()
-    }
-
-    /**
-     * Единая и единственная точка добавления сообщения
-     * Только при добавлении файла к чату
-     */
-    private fun sendMessageWithFile(fileAttachment: FileAttachment) {
+    private fun handleFileSelection(uri: Uri) {
         lifecycleScope.launch {
             try {
-                // ✅ ИСПОЛЬЗУЕМ ПУБЛИЧНЫЙ МЕТОД ViewModel
-                viewModel.addMessageWithFile(
-                    conversationId = args.chatid ?: "",
-                    userMessage = "", // Пустое сообщение - файл говорит сам за себя
-                    fileAttachment = fileAttachment
-                )
-
-                // Автоматическая отправка сообщения на анализ отключена пользователем
-
-                Toasty.success(
-                    requireContext(),
-                    "Файл ${fileAttachment.fileName} добавлен",
-                    Toast.LENGTH_SHORT
-                ).show()
+                // Вызываем метод ViewModel для добавления файла
+                viewModel.addAttachmentFromUri(uri)
             } catch (e: Exception) {
-                Toasty.error(
-                    requireContext(),
-                    "Ошибка при добавлении файла: ${e.message}",
-                    Toast.LENGTH_LONG
-                ).show()
+                showErrorCard("Ошибка при добавлении файла: ${e.message}")
             }
         }
     }
 
+    /**
+     * Отправляет сообщение
+     */
+    private fun sendMessage() {
+        val message = binding.etUserInput.text?.toString()?.trim() ?: ""
 
-    private fun formatFileSize(bytes: Long): String {
-        return when {
-            bytes < 1024 -> "$bytes B"
-            bytes < 1024 * 1024 -> "${bytes / 1024} KB"
-            else -> String.format(Locale.getDefault(), "%.1f MB", bytes / (1024.0 * 1024.0))
+        // Проверяем наличие текста или файлов
+        if (message.isEmpty() && viewModel.attachments.value.isEmpty()) {
+            showErrorCard("Введите сообщение или прикрепите файл")
+            return
+        }
+
+        // Проверяем, есть ли загружающиеся файлы
+        if (viewModel.hasUploadingFiles()) {
+            showErrorCard("Дождитесь завершения загрузки файлов")
+            return
+        }
+
+        // Отправляем сообщение через ViewModel
+        viewModel.sendMessage(message)
+
+        // Очищаем поле ввода
+        binding.etUserInput.text?.clear()
+    }
+
+    /**
+     * Обновляет состояние кнопки отправки
+     */
+    private fun updateSendButtonState() {
+        val hasText = binding.etUserInput.text?.isNotBlank() == true
+        val hasAttachments = viewModel.attachments.value.isNotEmpty()
+        val hasUploadingFiles = viewModel.hasUploadingFiles()
+
+        binding.btnSend.isEnabled = (hasText || hasAttachments) && !hasUploadingFiles
+    }
+
+    /**
+     * Обновляет информацию о токенах
+     */
+    private fun updateTokenInfo(text: String) {
+        if (text.isBlank() && viewModel.attachments.value.isEmpty()) {
+            binding.tokenInfoContainer.isVisible = false
+            return
+        }
+
+        // Примерный подсчет токенов
+        val estimatedTokens = estimateTokenCount(text)
+
+        if (estimatedTokens > 0) {
+            binding.tvTokenInfo.text = "~$estimatedTokens"
+            binding.tvTokenAccuracy.text = "tokens"
+
+            if (!binding.tokenInfoContainer.isVisible) {
+                binding.tokenInfoContainer.animateVisibility(true)
+            }
         }
     }
 
-    private fun openFileViewer(fileAttachment: FileAttachmentMetadata) {
-        try {
-            val action =
-                ChatFragmentDirections.actionChatFragmentToFileViewerFragment(fileAttachment.fileId)
-            findNavController().navigate(action)
-        } catch (e: Exception) {
-            Toasty.error(
-                requireContext(),
-                "Ошибка при открытии файла: ${e.message}",
-                Toast.LENGTH_LONG
-            ).show()
-        }
+    /**
+     * Примерная оценка количества токенов
+     */
+    private fun estimateTokenCount(text: String): Int {
+        val words = text.split("\\s+".toRegex()).filter { it.isNotEmpty() }
+        val punctuation = text.count { it in ".,!?;:\"'()[]{}—-" }
+        val fileTokens = viewModel.attachments.value.size * 100
+
+        return words.size + punctuation + fileTokens
     }
 
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 supervisorScope {
+                    // UI State
                     launch {
-                        viewModel.uiState.collect { state ->
-                            updateChatList(state.messages, state.isStreamingResponse)
-                            updateLoadingState(state.isLoading)
+                        viewModel.chatState.collect { state ->
+                            handleChatUiState(state)
                         }
                     }
 
+                    // Chat items для RecyclerView
+                    launch {
+                        viewModel.chatData.collect { data ->
+                            // Обновляем заголовок
+                            modelName = data.selectedModel?.name.orEmpty()
+                            updateToolbarTitle(data.selectedModel?.name)
+                            val items = data.messages.map { message ->
+                                createMessageItem(message, modelName)
+                            }
+                            groupAdapter.updateAsync(items)
+                        }
+                    }
+
+                    // Attachments для chips
+                    launch {
+                        viewModel.attachments.collect { attachments ->
+                            updateAttachmentChips(attachments)
+                            updateSendButtonState()
+                        }
+                    }
+
+                    // Модель для заголовка
                     launch {
                         viewModel.selectedModelResult
                             .map { result ->
@@ -441,17 +415,7 @@ class ChatFragment : Fragment() {
                             }
                     }
 
-                    launch {
-                        viewModel.selectedModelResult
-                            .map { result ->
-                                result !is DataResult.Success && result !is DataResult.Loading
-                            }
-                            .distinctUntilChanged()
-                            .collect { isError ->
-                                updateModelErrorState(isError)
-                            }
-                    }
-
+                    // События UI
                     launch {
                         viewModel.uiEvents.collect { event ->
                             when (event) {
@@ -461,21 +425,10 @@ class ChatFragment : Fragment() {
                         }
                     }
 
+                    // События навигации
                     launch {
                         viewModel.newConversationIdEvent.collect { newId ->
                             navigateToEditSystemPrompt(newId)
-                        }
-                    }
-
-                    launch {
-                        viewModel.estimatedTokens.collect { tokenCount ->
-                            updateTokenInfo(tokenCount)
-                        }
-                    }
-
-                    launch {
-                        viewModel.isAccurate.collect { isAccurate ->
-                            updateTokenAccuracy(isAccurate)
                         }
                     }
                 }
@@ -483,9 +436,392 @@ class ChatFragment : Fragment() {
         }
     }
 
+
+    private fun createMessageItem(message: ChatMessage, modelName: String): Item<*> {
+        return when (message.role) {
+            ChatRole.USER -> {
+                message.fileAttachment?.let { fileAttachment ->
+                    FileMessageItem(
+                        message = message,
+                        onViewFile = { file ->
+                            openFileViewer(file)
+                        }
+                    )
+                } ?: UserMessageItem(
+                    markwon = markwon,
+                    message = message,
+                    onCopyClicked = { textToCopy ->
+                        copyToClipboard(textToCopy)
+                    },
+                    onRegenerateClicked = { textToCopy ->
+                        binding.etUserInput.setText(textToCopy)
+                    }
+                )
+            }
+
+            ChatRole.ASSISTANT -> {
+                AiMessageItem(
+                    markwon = markwon,
+                    message = message,
+                    modelName = modelName,
+                    onCopyClicked = { textToCopy ->
+                        copyToClipboard(textToCopy)
+                    }
+                )
+            }
+
+            else -> throw IllegalArgumentException("Unknown role: ${message.role}")
+        }
+    }
+
+
+    private fun handleChatState(state: ChatUiState) {
+        when (state) {
+            is ChatUiState.Idle -> {
+                isStreaming = false
+                showInputMode()
+            }
+
+            is ChatUiState.Streaming -> {
+                isStreaming = true
+                showGeneratingMode("Генерация ответа...")
+            }
+
+            is ChatUiState.BackgroundStreaming -> {
+                isStreaming = true
+                showGeneratingMode("Генерация в фоне...")
+            }
+
+            is ChatUiState.Completed -> {
+                isStreaming = false
+                showInputMode()
+            }
+
+            is ChatUiState.Cancelled -> {
+                isStreaming = false
+                showInputMode()
+                Toasty.info(requireContext(), "Генерация отменена", Toast.LENGTH_SHORT).show()
+            }
+
+            is ChatUiState.RestoredFromBackground -> {
+                isStreaming = true
+                showGeneratingMode("Восстановление...")
+            }
+
+            is ChatUiState.Error -> {
+                isStreaming = false
+                showInputMode()
+                showErrorCard(state.message)
+            }
+        }
+    }
+
+    private fun updateTokenInfo(tokens: Int) {
+        if (tokens > 0) {
+            binding.tvTokenInfo.text = "~$tokens"
+            binding.tvTokenAccuracy.text = "tokens"
+            binding.tokenInfoContainer.isVisible = true
+        } else {
+            binding.tokenInfoContainer.isVisible = false
+        }
+    }
+
+    private fun openFileViewer(fileAttachment: FileAttachmentMetadata) {
+        try {
+            val action = ChatFragmentDirections.actionChatFragmentToFileViewerFragment(
+                fileAttachment.fileId
+            )
+            findNavController().navigate(action)
+        } catch (e: Exception) {
+            Toasty.error(
+                requireContext(),
+                "Ошибка при открытии файла: ${e.message}",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    private fun copyToClipboard(text: String) {
+        val clipboard = context?.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+        val clip = ClipData.newPlainText("AI Response", text)
+        clipboard?.setPrimaryClip(clip)
+        Toasty.success(
+            requireContext(),
+            getString(R.string.copied_to_clipboard),
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
+
+    /**
+     * Обновляет chips на основе списка вложений
+     */
+    private fun updateAttachmentChips(attachments: List<UiAttachment>) {
+        val hasAttachments = attachments.isNotEmpty()
+        val hasUploading = attachments.any { it.uploadStatus == UploadStatus.UPLOADING }
+
+        // Показываем/скрываем контейнер
+        binding.attachmentsScrollView.isVisible = hasAttachments
+
+        // Показываем loader только если есть загружающиеся файлы
+        binding.fileLoadIndicator.isVisible = hasUploading
+
+        if (!hasAttachments) {
+            binding.attachmentsChipGroup.removeAllViews()
+            return
+        }
+
+        val chipGroup = binding.attachmentsChipGroup
+
+        // Удаляем chips, которых нет в новом списке
+        val existingChipIds = chipGroup.children
+            .filterIsInstance<Chip>()
+            .mapNotNull { it.tag as? String }
+            .toSet()
+
+        val newAttachmentIds = attachments.map { it.id }.toSet()
+
+        chipGroup.children
+            .filterIsInstance<Chip>()
+            .filter { (it.tag as? String) !in newAttachmentIds }
+            .forEach { chipGroup.removeView(it) }
+
+        // Добавляем новые chips или обновляем существующие
+        attachments.forEach { attachment ->
+            val existingChip = chipGroup.children
+                .filterIsInstance<Chip>()
+                .find { it.tag == attachment.id }
+
+            if (existingChip != null) {
+                updateChip(existingChip, attachment)
+            } else {
+                val newChip = createAttachmentChip(attachment)
+                chipGroup.addView(newChip)
+            }
+        }
+    }
+
+    /**
+     * Создает новый Chip для вложения
+     */
+    private fun createAttachmentChip(attachment: UiAttachment): Chip {
+        return Chip(requireContext()).apply {
+            id = View.generateViewId()
+            tag = attachment.id
+
+            // Применяем стиль Material 3 Input Chip
+            setChipBackgroundColorResource(R.color.md_theme_light_secondaryContainer)
+            setTextColor(
+                ContextCompat.getColor(
+                    context,
+                    R.color.md_theme_light_onSecondaryContainer
+                )
+            )
+            chipStrokeWidth = 0f
+
+            // Устанавливаем контент
+            updateChip(this, attachment)
+
+            // Обработка удаления
+            setOnCloseIconClickListener {
+                viewModel.removeAttachment(attachment.id)
+            }
+
+            // Обработка клика - показать детали
+            setOnClickListener {
+                showAttachmentDetails(attachment)
+            }
+        }
+    }
+
+    /**
+     * Обновляет содержимое Chip
+     */
+    private fun updateChip(chip: Chip, attachment: UiAttachment) {
+        // Текст с названием и размером
+        chip.text = buildString { "${attachment.displayName} • ${formatFileSize(attachment.size)}" }
+
+        // Иконка файла
+        chip.chipIcon = AppCompatResources.getDrawable(
+            requireContext(),
+            R.drawable.ic_file_text
+        )
+
+        // Цвет иконки в зависимости от статуса
+        chip.setChipIconTintResource(
+            when (attachment.uploadStatus) {
+                UploadStatus.UPLOADING -> R.color.md_theme_light_primary
+                UploadStatus.UPLOADED -> R.color.success
+                UploadStatus.FAILED -> R.color.md_theme_light_error
+                else -> R.color.md_theme_light_onSecondaryContainer
+            }
+        )
+
+        // Кнопка закрытия видна только если файл не загружается
+        chip.isCloseIconVisible = attachment.uploadStatus != UploadStatus.UPLOADING
+        chip.closeIcon = AppCompatResources.getDrawable(
+            requireContext(),
+            R.drawable.outline_close_24
+        )
+        chip.setCloseIconTintResource(R.color.md_theme_light_onSecondaryContainer)
+
+        // Прозрачность для failed статуса
+        chip.alpha = if (attachment.uploadStatus == UploadStatus.FAILED) 0.6f else 1f
+
+        // Отключаем chip при загрузке
+        chip.isEnabled = attachment.uploadStatus != UploadStatus.UPLOADING
+    }
+
+    /**
+     * Показывает детали вложения в диалоге
+     */
+    private fun showAttachmentDetails(attachment: UiAttachment) {
+        val statusText = when (attachment.uploadStatus) {
+            UploadStatus.PENDING -> "Ожидает загрузки"
+            UploadStatus.UPLOADING -> "Загружается..."
+            UploadStatus.UPLOADED -> "Загружено"
+            UploadStatus.FAILED -> "Ошибка загрузки"
+        }
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(attachment.displayName)
+            .setMessage(
+                "Размер: ${formatFileSize(attachment.size)}\n" +
+                        "Тип: ${attachment.mimeType ?: "неизвестно"}\n" +
+                        "Статус: $statusText"
+            )
+            .setPositiveButton("OK", null)
+            .apply {
+                if (attachment.uploadStatus != UploadStatus.UPLOADING) {
+                    setNeutralButton("Удалить") { _, _ ->
+                        viewModel.removeAttachment(attachment.id)
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun formatFileSize(bytes: Long): String {
+        return when {
+            bytes < 1024 -> "$bytes B"
+            bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+            else -> String.format(Locale.getDefault(), "%.1f MB", bytes / (1024.0 * 1024.0))
+        }
+    }
+
+    /**
+     * Обрабатывает состояния чата
+     */
+    private fun handleChatUiState(state: ChatUiState) {
+        when (state) {
+            is ChatUiState.Idle -> {
+                isStreaming = false
+                showInputMode()
+            }
+
+            is ChatUiState.Streaming -> {
+                isStreaming = true
+                showGeneratingMode("Генерация ответа...")
+            }
+
+            is ChatUiState.BackgroundStreaming -> {
+                isStreaming = true
+                showGeneratingMode("Генерация в фоне...")
+            }
+
+            is ChatUiState.Completed -> {
+                isStreaming = false
+                showInputMode()
+            }
+
+            is ChatUiState.Cancelled -> {
+                isStreaming = false
+                showInputMode()
+                Toasty.info(requireContext(), "Генерация отменена", Toast.LENGTH_SHORT).show()
+            }
+
+            is ChatUiState.RestoredFromBackground -> {
+                isStreaming = true
+                showGeneratingMode("Восстановление...")
+            }
+
+            is ChatUiState.Error -> {
+                isStreaming = false
+                showInputMode()
+                showErrorCard(state.message)
+            }
+        }
+    }
+
+    /**
+     * Показывает режим ввода
+     */
+    private fun showInputMode() {
+        binding.cancelCard.animateVisibility(false)
+        binding.inputCard.animateVisibility(true)
+
+        binding.btnSend.isEnabled = true
+        binding.btnAttachFile.isEnabled = true
+        binding.etUserInput.isEnabled = true
+    }
+
+    /**
+     * Показывает режим генерации
+     */
+    private fun showGeneratingMode(statusText: String) {
+        binding.inputCard.animateVisibility(false)
+        binding.tokenInfoContainer.animateVisibility(false)
+
+        binding.cancelCard.animateVisibility(true)
+        binding.tvGeneratingStatus.text = statusText
+    }
+
+    /**
+     * Анимация появления/исчезновения View
+     */
+    private fun View.animateVisibility(visible: Boolean, duration: Long = 200) {
+        if (visible && isVisible) return
+        if (!visible && !isVisible) return
+
+        if (visible) {
+            isVisible = true
+            alpha = 0f
+            scaleX = 0.95f
+            scaleY = 0.95f
+
+            animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(duration)
+                .start()
+        } else {
+            animate()
+                .alpha(0f)
+                .scaleX(0.95f)
+                .scaleY(0.95f)
+                .setDuration(duration)
+                .withEndAction { isVisible = false }
+                .start()
+        }
+    }
+
+    private fun showErrorCard(message: String) {
+        binding.tvErrorMessage.text = message
+        binding.errorCard.animateVisibility(true)
+
+        // Автоматически скрываем через 5 секунд
+        binding.errorCard.postDelayed({
+            hideErrorCard()
+        }, 5000)
+    }
+
+    private fun hideErrorCard() {
+        binding.errorCard.animateVisibility(false)
+    }
+
     private fun shareChatContent(content: String) {
         try {
-            // Создаем временный MD файл
             val fileName = "chat_export_${System.currentTimeMillis()}.md"
             val cacheDir = requireContext().cacheDir
             val file = java.io.File(cacheDir, fileName)
@@ -494,14 +830,12 @@ class ChatFragment : Fragment() {
                 writer.write(content)
             }
 
-            // Создаем URI для файла
             val fileUri = androidx.core.content.FileProvider.getUriForFile(
                 requireContext(),
                 "${requireContext().packageName}.fileprovider",
                 file
             )
 
-            // Создаем Intent для отправки файла
             val sendIntent: Intent = Intent().apply {
                 action = Intent.ACTION_SEND
                 putExtra(Intent.EXTRA_STREAM, fileUri)
@@ -514,20 +848,11 @@ class ChatFragment : Fragment() {
             startActivity(shareIntent)
 
         } catch (e: Exception) {
-            // Fallback: если не удается создать файл, отправляем как текст
             Toasty.error(
                 requireContext(),
-                "Ошибка при создании файла: ${e.message}",
+                "Ошибка при экспорте: ${e.message}",
                 Toast.LENGTH_SHORT
             ).show()
-
-            val sendIntent: Intent = Intent().apply {
-                action = Intent.ACTION_SEND
-                putExtra(Intent.EXTRA_TEXT, content)
-                type = "text/plain"
-            }
-            val shareIntent = Intent.createChooser(sendIntent, "Поделиться чатом")
-            startActivity(shareIntent)
         }
     }
 
@@ -537,24 +862,13 @@ class ChatFragment : Fragment() {
         actionBar?.title = title
     }
 
-    private fun updateLoadingState(isLoading: Boolean) {
-        binding.progressBarSend.isVisible = isLoading
-        binding.etUserInput.isEnabled = !isLoading
-        binding.btnSend.isEnabled = !isLoading
-        binding.btnSend.visibility = if (isLoading) View.INVISIBLE else View.VISIBLE
-        binding.btnCancel.isVisible = isLoading
-    }
-
     private fun handleError(error: Throwable) {
         error.printStackTrace()
         when (error) {
             is DomainError.Api -> {
                 when (error.code) {
                     401, 403 -> showApiErrorDialog(error)
-                    429 -> showErrorCard(
-                        "Превышен лимит запросов. ${error.detailedMessage}"
-                    )
-
+                    429 -> showErrorCard("Превышен лимит запросов. ${error.detailedMessage}")
                     else -> showApiErrorDialog(error)
                 }
             }
@@ -572,40 +886,8 @@ class ChatFragment : Fragment() {
             }
 
             else -> {
-                val message = error.message ?: "Неизвестная ошибка"
-                showErrorCard(message)
+                showErrorCard(error.message ?: "Неизвестная ошибка")
             }
-        }
-    }
-
-    private fun showErrorCard(message: String) {
-        binding.tvErrorMessage.text = message
-
-        if (!binding.errorCard.isVisible) {
-            AnimationUtils.showWithSlideDown(binding.errorCard)
-        } else {
-            updateErrorMessage(message)
-        }
-    }
-
-    private fun updateErrorMessage(newMessage: String) {
-        android.animation.ObjectAnimator.ofFloat(binding.tvErrorMessage, "alpha", 1f, 0f).apply {
-            duration = 150
-            addListener(object : android.animation.AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: android.animation.Animator) {
-                    binding.tvErrorMessage.text = newMessage
-                    android.animation.ObjectAnimator.ofFloat(
-                        binding.tvErrorMessage,
-                        "alpha",
-                        0f,
-                        1f
-                    ).apply {
-                        duration = 150
-                        start()
-                    }
-                }
-            })
-            start()
         }
     }
 
@@ -625,92 +907,14 @@ class ChatFragment : Fragment() {
             .apply {
                 if (error.code in listOf(401, 403)) {
                     setNegativeButton("Настройки") { dialog, _ ->
-                        findNavController().navigate(ChatFragmentDirections.actionNavChatToNavSettings())
+                        findNavController().navigate(
+                            ChatFragmentDirections.actionNavChatToNavSettings()
+                        )
                         dialog.dismiss()
                     }
                 }
             }
             .show()
-    }
-
-    private fun updateModelErrorState(isError: Boolean) {
-        binding.btnSend.isEnabled = !isError
-    }
-
-    private fun updateTokenInfo(tokenCount: Int) {
-        if (tokenCount > 0) {
-            binding.tvTokenInfo.text = buildString { "📊 ~$tokenCount" }
-            binding.tokenInfoContainer.visibility = View.VISIBLE
-        } else {
-            binding.tokenInfoContainer.visibility = View.GONE
-        }
-    }
-
-    private fun updateTokenAccuracy(isAccurate: Boolean) {
-        if (isAccurate) {
-            binding.tvTokenAccuracy.text = "✓"
-            binding.tvTokenAccuracy.setTextColor(
-                ContextCompat.getColor(
-                    requireContext(),
-                    android.R.color.holo_green_dark
-                )
-            )
-        } else {
-            binding.tvTokenAccuracy.text = "≈"
-            binding.tvTokenAccuracy.setTextColor(
-                ContextCompat.getColor(
-                    requireContext(),
-                    android.R.color.darker_gray
-                )
-            )
-        }
-    }
-
-    private fun updateChatList(messages: List<ChatMessage>, isStreamingResponse: Boolean = false) {
-        val items = messages.map { message ->
-            when (message.role) {
-                ChatRole.USER -> {
-                    message.fileAttachment?.let { fileAttachment ->
-                        FileMessageItem(
-                            message = message,
-                            onViewFile = { file ->
-                                openFileViewer(file)
-                            }
-                        )
-                    } ?: UserMessageItem(
-                        markwon = markwon,
-                        message = message,
-                        onCopyClicked = { textToCopy ->
-                            copyToClipboard(textToCopy)
-                        },
-                        onRegenerateClicked = { textToCopy ->
-                            binding.etUserInput.setText(textToCopy)
-                        }
-                    )
-                }
-
-                ChatRole.ASSISTANT -> {
-                    AiMessageItem(
-                        markwon = markwon,
-                        message = message,
-                        modelName = modelName,
-                        onCopyClicked = { textToCopy ->
-                            copyToClipboard(textToCopy)
-                        },
-                    )
-                }
-
-                else -> throw IllegalArgumentException("Unknown message role: ${message.role})")
-            }
-        }
-        groupAdapter.update(items)
-
-        if (!isStreamingResponse) {
-            val layoutManager = binding.rvChat.layoutManager as LinearLayoutManager
-            if (layoutManager.findLastVisibleItemPosition() == groupAdapter.itemCount - 2) {
-                binding.rvChat.smoothScrollToPosition(groupAdapter.itemCount - 1)
-            }
-        }
     }
 
     private fun showClearDialog() {
@@ -726,19 +930,8 @@ class ChatFragment : Fragment() {
             }.show()
     }
 
-    private fun copyToClipboard(text: String) {
-        val clipboard = context?.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-        val clip = ClipData.newPlainText("AI Response", text)
-        clipboard?.setPrimaryClip(clip)
-        Toasty.success(
-            requireContext(),
-            getString(R.string.copied_to_clipboard),
-            Toast.LENGTH_SHORT
-        ).show()
-    }
-
     private fun navigateToEditSystemPrompt(conversationId: String) {
-        val currentPrompt = viewModel.uiState.value.systemPrompt
+        val currentPrompt = viewModel.chatData.value.systemPrompt
         val action = ChatFragmentDirections.actionNavChatToEditSystemPromptFragment(
             currentPrompt,
             conversationId
@@ -747,8 +940,6 @@ class ChatFragment : Fragment() {
     }
 
     override fun onDestroyView() {
-        uploadJob?.cancel() // Отменяем загрузку при уничтожении view -
-        // тут нужно продумать,чтобы можно было завершить разговор,даже если ушел или хотя бы текущий ответ дождаться
         super.onDestroyView()
         _binding = null
     }

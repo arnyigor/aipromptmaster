@@ -1,36 +1,62 @@
-<!-- res/values-night/themes.xml -->
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Базовая тема для темного режима -->
     <style name="Base.Theme.App" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Цветовая схема Material 3 для ТЕМНОЙ темы -->
-        <item name="colorPrimary">@color/purple_light_accent</item>
-        <item name="colorOnPrimary">@color/purple_dark</item>
-        <item name="colorPrimaryContainer">@color/purple_primary</item>
-        <item name="colorOnPrimaryContainer">@color/neutral_white</item>
+        <!-- Primary Colors -->
+        <item name="colorPrimary">@color/md_theme_dark_primary</item>
+        <item name="colorOnPrimary">@color/md_theme_dark_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/md_theme_dark_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/md_theme_dark_onPrimaryContainer</item>
+        <item name="colorPrimaryInverse">@color/md_theme_dark_inversePrimary</item>
 
-        <item name="colorSecondary">@color/blue_secondary_dark</item>
-        <item name="colorOnSecondary">@color/blue_on_secondary_container_text_light</item>
-        <item name="colorSecondaryContainer">@color/blue_secondary_container_dark</item>
-        <item name="colorOnSecondaryContainer">@color/blue_on_secondary_container_text_dark</item>
+        <!-- Secondary Colors -->
+        <item name="colorSecondary">@color/md_theme_dark_secondary</item>
+        <item name="colorOnSecondary">@color/md_theme_dark_onSecondary</item>
+        <item name="colorSecondaryContainer">@color/md_theme_dark_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/md_theme_dark_onSecondaryContainer</item>
 
-        <item name="colorError">@color/red_error</item>
-        <item name="colorOnError">@color/neutral_white</item>
+        <!-- Tertiary Colors -->
+        <item name="colorTertiary">@color/md_theme_dark_tertiary</item>
+        <item name="colorOnTertiary">@color/md_theme_dark_onTertiary</item>
+        <item name="colorTertiaryContainer">@color/md_theme_dark_tertiaryContainer</item>
+        <item name="colorOnTertiaryContainer">@color/md_theme_dark_onTertiaryContainer</item>
 
-        <!-- Цвет фона приложения -->
-        <item name="android:colorBackground">@color/neutral_dark_gray_2</item>
-        <item name="colorOnBackground">@color/neutral_light_gray</item>
+        <!-- Error Colors -->
+        <item name="colorError">@color/md_theme_dark_error</item>
+        <item name="colorOnError">@color/md_theme_dark_onError</item>
+        <item name="colorErrorContainer">@color/md_theme_dark_errorContainer</item>
+        <item name="colorOnErrorContainer">@color/md_theme_dark_onErrorContainer</item>
 
-        <!-- Цвет поверхностей (карточки, диалоги, меню) -->
-        <item name="colorSurface">@color/neutral_dark_gray_1</item>
-        <item name="colorOnSurface">@color/neutral_light_gray</item>
+        <!-- Background & Surface -->
+        <item name="android:colorBackground">@color/md_theme_dark_background</item>
+        <item name="colorOnBackground">@color/md_theme_dark_onBackground</item>
+        <item name="colorSurface">@color/md_theme_dark_surface</item>
+        <item name="colorOnSurface">@color/md_theme_dark_onSurface</item>
 
-        <!-- Варианты цвета поверхностей -->
-        <item name="colorSurfaceVariant">@color/neutral_dark_gray_3</item>
-        <item name="colorOnSurfaceVariant">#CAC4D0</item>
-        <item name="colorOutline">#938F99</item>
+        <!-- Surface Variants -->
+        <item name="colorSurfaceVariant">@color/md_theme_dark_surfaceVariant</item>
+        <item name="colorOnSurfaceVariant">@color/md_theme_dark_onSurfaceVariant</item>
+        <item name="colorSurfaceContainer">@color/md_theme_dark_surfaceContainer</item>
+        <item name="colorSurfaceContainerHigh">@color/md_theme_dark_surfaceContainerHigh</item>
+        <item name="colorSurfaceContainerHighest">@color/md_theme_dark_surfaceContainerHighest</item>
+        <item name="colorSurfaceContainerLow">@color/md_theme_dark_surfaceContainerLow</item>
+        <item name="colorSurfaceContainerLowest">@color/md_theme_dark_surfaceContainerLowest</item>
 
-        <!-- Статус-бар и навигационный бар -->
-        <item name="android:statusBarColor">?attr/colorSurface</item>
-        <item name="android:windowLightStatusBar">false</item> <!-- Иконки статус-бара будут светлыми -->
-        <item name="android:navigationBarColor">?attr/colorSurface</item>
+        <!-- Outline Colors -->
+        <item name="colorOutline">@color/md_theme_dark_outline</item>
+        <item name="colorOutlineVariant">@color/md_theme_dark_outlineVariant</item>
+
+        <!-- Inverse Colors -->
+        <item name="colorSurfaceInverse">@color/md_theme_dark_inverseSurface</item>
+        <item name="colorOnSurfaceInverse">@color/md_theme_dark_inverseOnSurface</item>
+
+        <!-- Status Bar & Navigation Bar для темной темы -->
+        <item name="android:statusBarColor">@color/md_theme_dark_surface</item>
+        <item name="android:navigationBarColor">@color/md_theme_dark_surface</item>
+        <item name="android:windowLightStatusBar">false</item>
+
+        <!-- Edge-to-Edge -->
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
     </style>
+
 </resources>

@@ -1,52 +1,69 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Базовая тема с Material 3 -->
     <style name="Base.Theme.App" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Цветовая схема Material 3 для СВЕТЛОЙ темы -->
-        <item name="colorPrimary">@color/purple_primary</item>
-        <item name="colorOnPrimary">@color/neutral_white</item>
-        <item name="colorPrimaryContainer">@color/purple_light_accent</item>
-        <item name="colorOnPrimaryContainer">@color/purple_dark</item>
+        <!-- Primary Colors -->
+        <item name="colorPrimary">@color/md_theme_light_primary</item>
+        <item name="colorOnPrimary">@color/md_theme_light_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/md_theme_light_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/md_theme_light_onPrimaryContainer</item>
+        <item name="colorPrimaryInverse">@color/md_theme_light_inversePrimary</item>
 
-        <item name="colorSecondary">@color/blue_secondary</item>
-        <item name="colorOnSecondary">@color/neutral_white</item>
-        <item name="colorSecondaryContainer">@color/blue_secondary_container_light</item>
-        <item name="colorOnSecondaryContainer">@color/blue_on_secondary_container_text_light</item>
+        <!-- Secondary Colors -->
+        <item name="colorSecondary">@color/md_theme_light_secondary</item>
+        <item name="colorOnSecondary">@color/md_theme_light_onSecondary</item>
+        <item name="colorSecondaryContainer">@color/md_theme_light_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/md_theme_light_onSecondaryContainer</item>
 
-        <item name="colorError">@color/red_error</item>
-        <item name="colorOnError">@color/neutral_white</item>
+        <!-- Tertiary Colors -->
+        <item name="colorTertiary">@color/md_theme_light_tertiary</item>
+        <item name="colorOnTertiary">@color/md_theme_light_onTertiary</item>
+        <item name="colorTertiaryContainer">@color/md_theme_light_tertiaryContainer</item>
+        <item name="colorOnTertiaryContainer">@color/md_theme_light_onTertiaryContainer</item>
 
-        <item name="android:colorBackground">#FEFBFF</item>
-        <item name="colorOnBackground">#1C1B1F</item>
-        <item name="colorSurface">#FEFBFF</item>
-        <item name="colorOnSurface">#1C1B1F</item>
-        <item name="colorSurfaceVariant">#E7E0EC</item>
-        <item name="colorOnSurfaceVariant">#49454F</item>
-        <item name="colorOutline">#79747E</item>
+        <!-- Error Colors -->
+        <item name="colorError">@color/md_theme_light_error</item>
+        <item name="colorOnError">@color/md_theme_light_onError</item>
+        <item name="colorErrorContainer">@color/md_theme_light_errorContainer</item>
+        <item name="colorOnErrorContainer">@color/md_theme_light_onErrorContainer</item>
 
-        <!-- Статус-бар и навигационный бар -->
-        <item name="android:statusBarColor">?attr/colorSurface</item>
-        <item name="android:windowLightStatusBar">true</item> <!-- Иконки статус-бара будут темными -->
-        <item name="android:navigationBarColor">?attr/colorSurface</item>
+        <!-- Background & Surface -->
+        <item name="android:colorBackground">@color/md_theme_light_background</item>
+        <item name="colorOnBackground">@color/md_theme_light_onBackground</item>
+        <item name="colorSurface">@color/md_theme_light_surface</item>
+        <item name="colorOnSurface">@color/md_theme_light_onSurface</item>
 
+        <!-- Surface Variants -->
+        <item name="colorSurfaceVariant">@color/md_theme_light_surfaceVariant</item>
+        <item name="colorOnSurfaceVariant">@color/md_theme_light_onSurfaceVariant</item>
+        <item name="colorSurfaceContainer">@color/md_theme_light_surfaceContainer</item>
+        <item name="colorSurfaceContainerHigh">@color/md_theme_light_surfaceContainerHigh</item>
+        <item name="colorSurfaceContainerHighest">@color/md_theme_light_surfaceContainerHighest</item>
+        <item name="colorSurfaceContainerLow">@color/md_theme_light_surfaceContainerLow</item>
+        <item name="colorSurfaceContainerLowest">@color/md_theme_light_surfaceContainerLowest</item>
+
+        <!-- Outline Colors -->
+        <item name="colorOutline">@color/md_theme_light_outline</item>
+        <item name="colorOutlineVariant">@color/md_theme_light_outlineVariant</item>
+
+        <!-- Inverse Colors -->
+        <item name="colorSurfaceInverse">@color/md_theme_light_inverseSurface</item>
+        <item name="colorOnSurfaceInverse">@color/md_theme_light_inverseOnSurface</item>
+
+        <!-- Status Bar & Navigation Bar -->
+        <item name="android:statusBarColor">@color/md_theme_light_surface</item>
+        <item name="android:navigationBarColor">@color/md_theme_light_surface</item>
+        <item name="android:windowLightStatusBar">true</item>
+
+        <!-- Edge-to-Edge -->
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
     </style>
 
-    <style name="Theme.App.FullScreenDialog" parent="Theme.MaterialComponents.DayNight.Dialog">
-        <item name="android:windowIsFloating">false</item>
-        <item name="android:windowBackground">@android:color/transparent</item>
-        <item name="android:statusBarColor">?attr/colorSurface</item>
-    </style>
+    <!-- AppBar overlay -->
+    <style name="AppTheme.AppBarOverlay" parent="ThemeOverlay.Material3.Dark.ActionBar"/>
 
-    <style name="Widget.App.ActionButton" parent="Widget.AppCompat.ImageButton">
-        <item name="android:layout_width">24dp</item>
-        <item name="android:layout_height">24dp</item>
-        <item name="android:background">?attr/selectableItemBackgroundBorderless</item>
-        <item name="android:scaleType">centerInside</item>
-        <item name="tint">?attr/colorOnSurfaceVariant</item>
-    </style>
-
-    <style name="popupMenuStyle" parent="Widget.MaterialComponents.PopupMenu">
-        <item name="android:popupBackground">@android:color/white</item>
-    </style>
+    <!-- Popup overlay -->
+    <style name="AppTheme.PopupOverlay" parent="ThemeOverlay.Material3.Light"/>
 
     <!-- Финальная тема приложения -->
     <style name="Theme.App" parent="Base.Theme.App">
@@ -54,55 +71,94 @@
         <item name="chipStyle">@style/Widget.App.Chip.Filter</item>
         <item name="textInputStyle">@style/Widget.App.TextInputLayout</item>
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.App.Dialog</item>
+        <item name="bottomSheetDialogTheme">@style/ThemeOverlay.App.BottomSheetDialog</item>
     </style>
 
-    <style name="AppTheme.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
+    <!-- Тема для полноэкранных диалогов -->
+    <style name="Theme.App.FullScreenDialog" parent="Theme.Material3.DayNight.Dialog">
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:statusBarColor">?attr/colorSurface</item>
+    </style>
 
-    <style name="AppTheme.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
+    <!-- ============================================ -->
+    <!-- Стили виджетов                              -->
+    <!-- ============================================ -->
 
     <!-- Стиль для MaterialCardView -->
     <style name="Widget.App.CardView" parent="Widget.Material3.CardView.Elevated">
-        <!--
-        Здесь не нужно указывать цвета вроде `cardBackgroundColor`.
-        Виджет сам возьмет ?attr/colorSurface из темы.
-        Здесь можно переопределить форму, elevation и т.д., если нужно.
-        -->
         <item name="cardElevation">2dp</item>
         <item name="cardCornerRadius">12dp</item>
     </style>
 
     <!-- Стиль для Filter Chip -->
     <style name="Widget.App.Chip.Filter" parent="Widget.Material3.Chip.Filter">
-        <!--
-        Цвета фона, текста, иконки, рамки в разных состояниях (выбран/не выбран)
-        будут автоматически браться из атрибутов темы:
-        - colorSecondaryContainer / colorOnSecondaryContainer (для выбранного)
-        - colorSurface / colorOnSurfaceVariant (для невыбранного)
-        - colorOutline (для рамки)
-        Вам не нужно их хардкодить.
-        -->
-    </style>
-
-
-    <style name="ShapeAppearance.App.Dialog" parent="ShapeAppearance.Material3.MediumComponent">
-        <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">16dp</item>
+        <item name="chipCornerRadius">8dp</item>
+        <item name="chipMinHeight">32dp</item>
     </style>
 
     <!-- Стиль для TextInputLayout -->
     <style name="Widget.App.TextInputLayout" parent="Widget.Material3.TextInputLayout.OutlinedBox">
-        <!-- Цвет рамки и текста будет браться из ?attr/colorOutline и ?attr/colorOnSurface -->
-        <!-- Ничего не нужно переопределять, если стандартное поведение устраивает -->
+        <item name="boxCornerRadiusTopStart">12dp</item>
+        <item name="boxCornerRadiusTopEnd">12dp</item>
+        <item name="boxCornerRadiusBottomStart">12dp</item>
+        <item name="boxCornerRadiusBottomEnd">12dp</item>
     </style>
 
-    <!-- Стиль для диалогов -->
-    <style name="ThemeOverlay.App.Dialog" parent="ThemeOverlay.Material3.Dialog">
-        <item name="android:windowBackground">@android:color/transparent</item>
+    <!-- Стиль для кнопок действий -->
+    <style name="Widget.App.ActionButton" parent="Widget.AppCompat.ImageButton">
+        <item name="android:layout_width">40dp</item>
+        <item name="android:layout_height">40dp</item>
+        <item name="android:background">?attr/selectableItemBackgroundBorderless</item>
+        <item name="android:scaleType">centerInside</item>
+        <item name="tint">?attr/colorOnSurfaceVariant</item>
+    </style>
+
+    <!-- Стиль для PopupMenu -->
+    <style name="Widget.App.PopupMenu" parent="Widget.Material3.PopupMenu">
+        <item name="android:popupBackground">?attr/colorSurfaceContainerHigh</item>
+        <item name="android:popupElevation">3dp</item>
+    </style>
+
+    <!-- ============================================ -->
+    <!-- Оверлеи для диалогов                        -->
+    <!-- ============================================ -->
+
+    <!-- Форма диалога -->
+    <style name="ShapeAppearance.App.Dialog" parent="ShapeAppearance.Material3.Corner.ExtraLarge">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">28dp</item>
+    </style>
+
+    <!-- Тема диалога -->
+    <style name="ThemeOverlay.App.Dialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
         <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.App.Dialog</item>
-        <!-- Цвета кнопок и текста будут браться из основной темы -->
+        <item name="dialogCornerRadius">28dp</item>
     </style>
 
-    <!-- Стиль для текста -->
+    <!-- Тема BottomSheet -->
+    <style name="ThemeOverlay.App.BottomSheetDialog" parent="ThemeOverlay.Material3.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/Widget.App.BottomSheet</item>
+    </style>
+
+    <style name="Widget.App.BottomSheet" parent="Widget.Material3.BottomSheet">
+        <item name="shapeAppearance">@style/ShapeAppearance.App.BottomSheet</item>
+    </style>
+
+    <style name="ShapeAppearance.App.BottomSheet" parent="ShapeAppearance.Material3.Corner.ExtraLarge">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopLeft">28dp</item>
+        <item name="cornerSizeTopRight">28dp</item>
+    </style>
+
+    <!-- ============================================ -->
+    <!-- Текстовые стили                             -->
+    <!-- ============================================ -->
+
+    <style name="TextAppearance.App.HeadlineLarge" parent="TextAppearance.Material3.HeadlineLarge">
+        <item name="android:textColor">?attr/colorOnSurface</item>
+    </style>
+
     <style name="TextAppearance.App.BodyLarge" parent="TextAppearance.Material3.BodyLarge">
         <item name="android:textColor">?attr/colorOnSurface</item>
     </style>
@@ -110,4 +166,9 @@
     <style name="TextAppearance.App.BodyMedium" parent="TextAppearance.Material3.BodyMedium">
         <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
     </style>
+
+    <style name="TextAppearance.App.LabelLarge" parent="TextAppearance.Material3.LabelLarge">
+        <item name="android:textColor">?attr/colorOnSurface</item>
+    </style>
+
 </resources>

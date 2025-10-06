@@ -13,6 +13,25 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    sourceSets {
+        getByName("test") {
+            java.srcDirs("src/test/java", "src/test/kotlin")
+        }
+        getByName("androidTest") {
+            java.srcDirs("src/androidTest/java", "src/androidTest/kotlin")
+        }
+    }
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+            isReturnDefaultValues = true
+            all {
+                it.useJUnit()
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -32,10 +51,6 @@ android {
     }
 }
 
-tasks.withType<Test> {
-    useJUnitPlatform()
-}
-
 dependencies {
 
     implementation(libs.kotlin.stdlib)
@@ -46,13 +61,10 @@ dependencies {
     kapt(libs.dagger.compiler)
     implementation(libs.kotlinx.serialization.json)
 
+    // ТОЛЬКО JUnit 4
     testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-
-    testImplementation(libs.junit.jupiter.api)
-    testRuntimeOnly(libs.junit.jupiter.engine)
     testImplementation(libs.mockk.core)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
+
 }

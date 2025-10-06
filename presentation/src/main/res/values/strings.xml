@@ -211,4 +211,16 @@
     <string name="en_lang">🇬🇧 English</string>
     <string name="file_viewer">Просмотр файла</string>
     <string name="ai_assystent">AI Assystent</string>
+    <string name="dismiss_error">Скрыть ошибку</string>
+
+    <!-- Chat Fragment -->
+    <string name="generating_response">Генерация ответа…</string>
+
+    <!-- File attachment -->
+    <string name="file_preview">Предпросмотр файла</string>
+    <string name="remove_file">Удалить файл</string>
+
+    <!-- Errors -->
+    <string name="error_files_still_uploading">Дождитесь завершения загрузки файлов</string>
+    <string name="error_max_files_exceeded">Максимум 5 файлов</string>
 </resources>

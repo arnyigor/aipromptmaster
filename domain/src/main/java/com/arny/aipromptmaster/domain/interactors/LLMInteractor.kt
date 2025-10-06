@@ -18,6 +18,7 @@ import com.arny.aipromptmaster.domain.repositories.IOpenRouterRepository
 import com.arny.aipromptmaster.domain.repositories.ISettingsRepository
 import com.arny.aipromptmaster.domain.results.DataResult
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
@@ -189,17 +190,15 @@ class LLMInteractor @Inject constructor(
     }
 
     override suspend fun addUserMessageToHistory(conversationId: String, userMessage: String) {
-        // Проверяем, существует ли диалог, и создаем его при необходимости
         val conversation = historyRepository.getConversation(conversationId)
         if (conversation == null) {
-            // Создаем новый диалог с текстом сообщения как заголовком
             val title = userMessage.take(50).ifEmpty { "Новый чат" }
             historyRepository.createNewConversation(title)
         }
 
-        historyRepository.addMessages(
+        historyRepository.addMessage(
             conversationId,
-            listOf(ChatMessage(role = ChatRole.USER, content = userMessage))
+            ChatMessage(role = ChatRole.USER, content = userMessage)
         )
     }
 
@@ -207,9 +206,9 @@ class LLMInteractor @Inject constructor(
         conversationId: String,
         assistantMessage: String
     ) {
-        historyRepository.addMessages(
+        historyRepository.addMessage(
             conversationId,
-            listOf(ChatMessage(role = ChatRole.ASSISTANT, content = assistantMessage))
+            ChatMessage(role = ChatRole.ASSISTANT, content = assistantMessage)
         )
     }
 
@@ -402,22 +401,33 @@ class LLMInteractor @Inject constructor(
     /**
      * Возвращает реактивный поток с деталями только одной выбранной модели.
      */
-    override fun getSelectedModel(): Flow<DataResult<LlmModel>> {
-        return getModels().map { dataResult ->
-            when (dataResult) {
-                is DataResult.Success -> {
-                    val selected = dataResult.data.find { it.isSelected }
-                    if (selected != null) {
-                        DataResult.Success(selected)
-                    } else {
-                        DataResult.Error(null, R.string.selected_model_not_found)
-                    }
-                }
+   override fun getSelectedModel(): Flow<DataResult<LlmModel>> {
+        return combine(
+            modelsRepository.getModelsFlow(),
+            settingsRepository.getSelectedModelId(),
+            settingsRepository.getFavoriteModelIds()
+        ) { models, selectedId, favoriteIds ->
+            val processedModels = models.map { model ->
+                model.copy(
+                    isSelected = model.id == selectedId,
+                    isFavorite = model.id in favoriteIds
+                )
+            }
 
-                is DataResult.Error -> DataResult.Error(dataResult.exception)
-                is DataResult.Loading -> dataResult
+            val selectedModel = processedModels.find { it.isSelected }
+
+            if (selectedModel != null) {
+                DataResult.Success(selectedModel)
+            } else {
+                DataResult.Error(DomainError.local(R.string.selected_model_not_found))
             }
         }
+            .catch { exception ->
+                emit(DataResult.Error(exception as? DomainError ?: DomainError.Generic(exception.message)))
+            }
+            .onStart {
+                emit(DataResult.Loading)
+            }
     }
 
     /**
@@ -503,7 +513,7 @@ class LLMInteractor @Inject constructor(
             fileAttachment = metadata
         )
 
-        historyRepository.addMessages(conversationId, listOf(message))
+        historyRepository.addMessage(conversationId, message)
     }
 
     /**

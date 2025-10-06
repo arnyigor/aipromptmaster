@@ -137,7 +137,7 @@ class EditSystemPromptFragment : Fragment() {
     private fun updateCounterColor(length: Int) {
         val textInputLayout = binding.textInputLayout
         val color = when {
-            length > MAX_CHARACTERS -> ContextCompat.getColor(requireContext(), R.color.red_error)
+            length > MAX_CHARACTERS -> ContextCompat.getColor(requireContext(),  R.color.md_theme_light_error)
             length > MAX_CHARACTERS * 0.9 -> ContextCompat.getColor(requireContext(), R.color.warning)
             else -> ContextCompat.getColor(requireContext(), com.google.android.material.R.color.material_on_surface_emphasis_medium)
         }
@@ -252,7 +252,7 @@ class EditSystemPromptFragment : Fragment() {
 
     private fun showError(message: String) {
         Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG)
-            .setBackgroundTint(ContextCompat.getColor(requireContext(), R.color.red_error))
+            .setBackgroundTint(ContextCompat.getColor(requireContext(), R.color.md_theme_light_error))
             .show()
     }
 

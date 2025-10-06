@@ -12,11 +12,26 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import java.io.IOException
 
+/**
+ * Сервис для пошаговой (streaming) обработки файлов из URI с поддержкой прогресса и превью.
+ *
+ * Позволяет читать большие файлы по частям, не загружая их целиком в память,
+ * и эмитировать промежуточные результаты для обновления UI.
+ *
+ * @property context контекст Android для доступа к ContentResolver и другим системным сервисам
+ */
 class FileProcessingService(private val context: Context) {
 
     /**
-     * Безопасное streaming чтение файла по частям
-     * @param chunkSize размер chunk в байтах (8-64KB рекомендуется)
+     * Обрабатывает файл из URI с пошаговым чтением (streaming) и возвращает поток результатов.
+     *
+     * Поддерживает отображение прогресса загрузки и динамического превью содержимого.
+     * Чтение выполняется в фоновом потоке ввода-вывода ([Dispatchers.IO]).
+     *
+     * @param uri URI файла, полученный, например, через Intent или Storage Access Framework
+     * @param chunkSize размер буфера чтения в байтах (рекомендуется 8–64 КБ; по умолчанию 16 КБ)
+     * @return [Flow] последовательности [FileProcessingResult], отражающих этапы обработки:
+     *         [Started] → один или несколько [Progress] → [Complete] или [Error]
      */
     fun processFileFromUriStreaming(
         uri: Uri,
@@ -79,6 +94,14 @@ class FileProcessingService(private val context: Context) {
         }
     }.flowOn(Dispatchers.IO)
 
+    /**
+     * Асинхронно получает размер файла по его URI через ContentResolver.
+     *
+     * Использует системный столбец [OpenableColumns.SIZE].
+     *
+     * @param uri URI файла
+     * @return размер файла в байтах, или `-1`, если размер недоступен
+     */
     private suspend fun getFileSize(uri: Uri): Long = withContext(Dispatchers.IO) {
         context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
             if (cursor.moveToFirst()) {
@@ -90,11 +113,28 @@ class FileProcessingService(private val context: Context) {
 }
 
 /**
- * Результаты streaming обработки файлов
+ * Результат пошаговой обработки файла (например, чтение из URI).
+ *
+ * Используется для отображения прогресса и превью в UI.
  */
 sealed class FileProcessingResult {
+
+    /**
+     * Начало обработки файла.
+     *
+     * @property fileName имя файла
+     * @property fileSize размер в байтах
+     */
     data class Started(val fileName: String, val fileSize: Long) : FileProcessingResult()
 
+    /**
+     * Промежуточный прогресс чтения файла.
+     *
+     * @property progress процент завершения (0–100)
+     * @property bytesRead количество прочитанных байт
+     * @property totalBytes общий размер файла
+     * @property previewText опциональное текстовое превью (например, последние 300 символов текущего текста)
+     */
     data class Progress(
         val progress: Int,
         val bytesRead: Long,
@@ -102,10 +142,21 @@ sealed class FileProcessingResult {
         val previewText: String? = null
     ) : FileProcessingResult()
 
+    /**
+     * Файл успешно обработан.
+     *
+     * @property text полное текстовое содержимое файла
+     * @property fileAttachment полная модель файла для сохранения
+     */
     data class Complete(
         val text: String,
         val fileAttachment: FileAttachment
     ) : FileProcessingResult()
 
+    /**
+     * Произошла ошибка при обработке файла.
+     *
+     * @property message описание ошибки
+     */
     data class Error(val message: String) : FileProcessingResult()
 }
