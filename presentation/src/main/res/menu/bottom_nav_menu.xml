@@ -5,7 +5,11 @@
         android:icon="@drawable/ic_palette"
         android:title="@string/menu_home" />
     <item
-        android:id="@+id/nav_history"
-        android:icon="@drawable/ic_history"
-        android:title="@string/menu_history" />
+        android:id="@+id/nav_chathistory"
+        android:icon="@drawable/ic_dashboard_black_24dp"
+        android:title="@string/chat_history" />
+    <item
+        android:id="@+id/nav_settings"
+        android:icon="@drawable/ic_settings"
+        android:title="@string/ai_settings" />
 </menu>

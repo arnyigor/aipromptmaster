@@ -4,42 +4,56 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingVertical="4dp"
-    android:paddingHorizontal="8dp">
+    android:paddingVertical="8dp"
+    android:paddingHorizontal="16dp">
 
     <TextView
         android:id="@+id/tvMessage"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@drawable/shape_user_bubble"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="12dp"
+        android:paddingHorizontal="@dimen/chat_message_padding_horizontal"
+        android:paddingVertical="@dimen/chat_message_padding_vertical"
         android:textColor="?attr/colorOnPrimary"
         android:textSize="16sp"
+        android:lineSpacingExtra="4dp"
+        android:fontFamily="sans-serif"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:text="Это мое сообщение. Оно может быть довольно длинным." />
+        tools:text="Это мое сообщение. Оно может быть довольно длинным и содержать много текста для проверки как выглядит длинное сообщение пользователя в чате." />
 
-    <ImageView
-        android:id="@+id/btnCopy"
-        style="@style/Widget.App.ActionButton"
-        android:layout_marginTop="8dp"
-        android:contentDescription="@string/copy"
-        android:src="@drawable/ic_content_copy"
+    <!-- Кнопки действий -->
+    <LinearLayout
+        android:id="@+id/actionsContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal"
+        android:gravity="end"
         app:layout_constraintEnd_toEndOf="@id/tvMessage"
-        app:layout_constraintTop_toBottomOf="@id/tvMessage"
-        app:tint="?attr/colorPrimary" />
+        app:layout_constraintTop_toBottomOf="@id/tvMessage">
 
-    <ImageView
-        android:id="@+id/btnRegenerate"
-        style="@style/Widget.App.ActionButton"
-        android:layout_marginTop="8dp"
-        android:layout_marginEnd="@dimen/margin_8"
-        android:contentDescription="@string/copy"
-        android:src="@drawable/ic_restore"
-        app:layout_constraintEnd_toEndOf="@id/tvMessage"
-        app:layout_constraintEnd_toStartOf="@+id/btnCopy"
-        app:layout_constraintTop_toBottomOf="@id/tvMessage"
-        app:tint="?attr/colorPrimary" />
+        <ImageView
+            android:id="@+id/btnRegenerate"
+            android:layout_width="@dimen/chat_action_button_size"
+            android:layout_height="@dimen/chat_action_button_size"
+            android:layout_marginEnd="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/copy"
+            android:src="@drawable/ic_restore"
+            android:scaleType="centerInside"
+            app:tint="?attr/colorPrimary" />
+
+        <ImageView
+            android:id="@+id/btnCopy"
+            android:layout_width="@dimen/chat_action_button_size"
+            android:layout_height="@dimen/chat_action_button_size"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/copy"
+            android:src="@drawable/ic_content_copy"
+            android:scaleType="centerInside"
+            app:tint="?attr/colorPrimary" />
+
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

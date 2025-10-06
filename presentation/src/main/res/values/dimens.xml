@@ -25,4 +25,15 @@
     <dimen name="filter_section_spacing">20dp</dimen>
     <dimen name="filter_item_spacing">8dp</dimen>
     <dimen name="filter_card_padding">12dp</dimen>
+
+    <!-- Размеры для чата -->
+    <dimen name="chat_message_corner_radius">20dp</dimen>
+    <dimen name="chat_message_padding_horizontal">20dp</dimen>
+    <dimen name="chat_message_padding_vertical">16dp</dimen>
+    <dimen name="chat_input_padding">12dp</dimen>
+    <dimen name="chat_button_size">48dp</dimen>
+    <dimen name="chat_file_icon_size">56dp</dimen>
+    <dimen name="chat_action_button_size">36dp</dimen>
+    <dimen name="chat_card_elevation">6dp</dimen>
+    <dimen name="chat_card_radius">24dp</dimen>
 </resources>

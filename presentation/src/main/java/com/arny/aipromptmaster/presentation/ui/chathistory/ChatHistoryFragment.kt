@@ -3,9 +3,12 @@ package com.arny.aipromptmaster.presentation.ui.chathistory
 import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
-import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.MenuProvider
 import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
@@ -61,31 +64,51 @@ class ChatHistoryFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        requireActivity().title = getString(R.string.title_history)
+        initMenu()
         initUI()
         observeData()
     }
 
+    private fun initMenu() {
+        requireActivity().addMenuProvider(object : MenuProvider {
+            override fun onPrepareMenu(menu: Menu) {
+                // Обновляем заголовок toolbar
+                requireActivity().title = getString(R.string.title_history)
+            }
+
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+                // Для истории чата меню не требуется
+            }
+
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                return false
+            }
+        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
+    }
+
     private fun initUI() {
-        binding.chatRecyclerView.itemAnimator = DefaultItemAnimator().apply {
-            addDuration = 250
-            removeDuration = 250
-        }
-        val fabMargin = resources.getDimensionPixelSize(R.dimen.fab_margin_bottom)
-        binding.newChatFab.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-            bottomMargin = fabMargin
-        }
-        binding.chatRecyclerView.adapter = adapter
-        binding.chatRecyclerView.setPadding(
-            /* left = */ 0,
-            /* top = */ 0,
-            /* right = */ 0,
-            /* bottom = */ resources.getDimensionPixelSize(R.dimen.bottom_nav_height)
-        )
-        binding.newChatFab.setOnClickListener {
-            findNavController().navigate(
-                ChatHistoryFragmentDirections.actionNavHistoryToNavChat(null)
+        // ✅ Добавляем проверки на null
+        _binding?.let { binding ->
+            binding.chatRecyclerView.itemAnimator = DefaultItemAnimator().apply {
+                addDuration = 250
+                removeDuration = 250
+            }
+            val fabMargin = resources.getDimensionPixelSize(R.dimen.fab_margin_bottom)
+            binding.newChatFab.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                bottomMargin = fabMargin
+            }
+            binding.chatRecyclerView.adapter = adapter
+            binding.chatRecyclerView.setPadding(
+                /* left = */ 0,
+                /* top = */ 0,
+                /* right = */ 0,
+                /* bottom = */ resources.getDimensionPixelSize(R.dimen.bottom_nav_height)
             )
+            binding.newChatFab.setOnClickListener {
+                findNavController().navigate(
+                    ChatHistoryFragmentDirections.actionChatHistoryFragmentToNavChat(null)
+                )
+            }
         }
     }
 
@@ -98,18 +121,22 @@ class ChatHistoryFragment : Fragment() {
                         }
 
                         is ChatHistoryUIState.Success -> {
-                            binding.emptyView.visibility =
-                                if (state.chats.isEmpty()) View.VISIBLE else View.GONE
-                            binding.chatRecyclerView.visibility =
-                                if (state.chats.isNotEmpty()) View.VISIBLE else View.GONE
-                            adapter.updateAsync(createItems(state.chats))
+                            // ✅ Добавляем проверки на null
+                            _binding?.let { binding ->
+                                binding.emptyView.visibility =
+                                    if (state.chats.isEmpty()) View.VISIBLE else View.GONE
+                                binding.chatRecyclerView.visibility =
+                                    if (state.chats.isNotEmpty()) View.VISIBLE else View.GONE
+                                adapter.updateAsync(createItems(state.chats))
+                            }
                         }
 
                         is ChatHistoryUIState.Error -> {
                             toastMessage(
                                 state.stringHolder?.asString(requireContext()) ?: "Ошибка загрузки чатов"
                             )
-                            binding.emptyView.visibility = View.VISIBLE
+                            // ✅ Добавляем проверки на null
+                            _binding?.emptyView?.visibility = View.VISIBLE
                         }
                     }
                 }
@@ -123,7 +150,7 @@ class ChatHistoryFragment : Fragment() {
                 chat = chat,
                 onClick = { clickedChat ->
                     findNavController().navigate(
-                        ChatHistoryFragmentDirections.actionNavHistoryToNavChat(clickedChat.id)
+                        ChatHistoryFragmentDirections.actionChatHistoryFragmentToNavChat(clickedChat.id)
                     )
                 },
                 // ПЕРЕДАЕМ РЕАЛИЗАЦИЮ ДЛЯ ДОЛГОГО НАЖАТИЯ

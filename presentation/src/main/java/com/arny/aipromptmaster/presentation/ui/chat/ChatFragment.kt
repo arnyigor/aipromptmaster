@@ -25,6 +25,8 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.children
 import androidx.core.view.isVisible
+import androidx.core.view.updateLayoutParams
+import androidx.core.view.updatePadding
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResultListener
@@ -117,12 +119,39 @@ class ChatFragment : Fragment(R.layout.fragment_chat) {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        setupWindowInsets()
         initMenu()
         setupViews()
         setupKeyboardHandling()
         setupBackPressHandling()
         observeViewModel()
         setupFragmentResultListener()
+    }
+
+    private fun setupWindowInsets() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+
+            // Применяем padding к input_card
+            val bottomPadding = maxOf(systemBars.bottom, ime.bottom)
+            binding.inputCard.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                bottomMargin = bottomPadding + 12 // 12dp базовый margin
+            }
+
+            // Применяем padding к RecyclerView
+            binding.messagesRecyclerView.updatePadding(bottom = bottomPadding + 16)
+
+            // Обновляем флаг видимости клавиатуры
+            val wasVisible = isKeyboardVisible
+            isKeyboardVisible = ime.bottom > systemBars.bottom
+
+            if (wasVisible != isKeyboardVisible) {
+                onKeyboardVisibilityChanged(isKeyboardVisible)
+            }
+
+            insets
+        }
     }
 
 
@@ -199,7 +228,7 @@ class ChatFragment : Fragment(R.layout.fragment_chat) {
 
                     R.id.action_model_select -> {
                         findNavController().navigate(
-                            ChatFragmentDirections.actionNavChatToNavModels()
+                            ChatFragmentDirections.actionNavChatToModelsFragment()
                         )
                         true
                     }
@@ -302,56 +331,65 @@ class ChatFragment : Fragment(R.layout.fragment_chat) {
      * Отправляет сообщение
      */
     private fun sendMessage() {
-        val message = binding.etUserInput.text?.toString()?.trim() ?: ""
+        // ✅ Добавляем проверки на null
+        _binding?.let { binding ->
+            val message = binding.etUserInput.text?.toString()?.trim() ?: ""
 
-        // Проверяем наличие текста или файлов
-        if (message.isEmpty() && viewModel.attachments.value.isEmpty()) {
-            showErrorCard("Введите сообщение или прикрепите файл")
-            return
+            // Проверяем наличие текста или файлов
+            if (message.isEmpty() && viewModel.attachments.value.isEmpty()) {
+                showErrorCard("Введите сообщение или прикрепите файл")
+                return
+            }
+
+            // Проверяем, есть ли загружающиеся файлы
+            if (viewModel.hasUploadingFiles()) {
+                showErrorCard("Дождитесь завершения загрузки файлов")
+                return
+            }
+
+            // Отправляем сообщение через ViewModel
+            viewModel.sendMessage(message)
+
+            // Очищаем поле ввода
+            binding.etUserInput.text?.clear()
         }
-
-        // Проверяем, есть ли загружающиеся файлы
-        if (viewModel.hasUploadingFiles()) {
-            showErrorCard("Дождитесь завершения загрузки файлов")
-            return
-        }
-
-        // Отправляем сообщение через ViewModel
-        viewModel.sendMessage(message)
-
-        // Очищаем поле ввода
-        binding.etUserInput.text?.clear()
     }
 
     /**
      * Обновляет состояние кнопки отправки
      */
     private fun updateSendButtonState() {
-        val hasText = binding.etUserInput.text?.isNotBlank() == true
-        val hasAttachments = viewModel.attachments.value.isNotEmpty()
-        val hasUploadingFiles = viewModel.hasUploadingFiles()
+        // ✅ Добавляем проверки на null
+        _binding?.let { binding ->
+            val hasText = binding.etUserInput.text?.isNotBlank() == true
+            val hasAttachments = viewModel.attachments.value.isNotEmpty()
+            val hasUploadingFiles = viewModel.hasUploadingFiles()
 
-        binding.btnSend.isEnabled = (hasText || hasAttachments) && !hasUploadingFiles
+            binding.btnSend.isEnabled = (hasText || hasAttachments) && !hasUploadingFiles
+        }
     }
 
     /**
-     * Обновляет информацию о токенах
-     */
+      * Обновляет информацию о токенах
+      */
     private fun updateTokenInfo(text: String) {
-        if (text.isBlank() && viewModel.attachments.value.isEmpty()) {
-            binding.tokenInfoContainer.isVisible = false
-            return
-        }
+        // ✅ Добавляем проверки на null
+        _binding?.let { binding ->
+            if (text.isBlank() && viewModel.attachments.value.isEmpty()) {
+                binding.tokenInfoContainer.isVisible = false
+                return
+            }
 
-        // Примерный подсчет токенов
-        val estimatedTokens = estimateTokenCount(text)
+            // Примерный подсчет токенов
+            val estimatedTokens = estimateTokenCount(text)
 
-        if (estimatedTokens > 0) {
-            binding.tvTokenInfo.text = "~$estimatedTokens"
-            binding.tvTokenAccuracy.text = "tokens"
+            if (estimatedTokens > 0) {
+                binding.tvTokenInfo.text = "~$estimatedTokens"
+                binding.tvTokenAccuracy.text = "tokens"
 
-            if (!binding.tokenInfoContainer.isVisible) {
-                binding.tokenInfoContainer.animateVisibility(true)
+                if (!binding.tokenInfoContainer.isVisible) {
+                    binding.tokenInfoContainer.animateVisibility(true)
+                }
             }
         }
     }
@@ -757,23 +795,29 @@ class ChatFragment : Fragment(R.layout.fragment_chat) {
      * Показывает режим ввода
      */
     private fun showInputMode() {
-        binding.cancelCard.animateVisibility(false)
-        binding.inputCard.animateVisibility(true)
+        // ✅ Добавляем проверки на null
+        _binding?.let { binding ->
+            binding.cancelCard.animateVisibility(false)
+            binding.inputCard.animateVisibility(true)
 
-        binding.btnSend.isEnabled = true
-        binding.btnAttachFile.isEnabled = true
-        binding.etUserInput.isEnabled = true
+            binding.btnSend.isEnabled = true
+            binding.btnAttachFile.isEnabled = true
+            binding.etUserInput.isEnabled = true
+        }
     }
 
     /**
-     * Показывает режим генерации
-     */
+      * Показывает режим генерации
+      */
     private fun showGeneratingMode(statusText: String) {
-        binding.inputCard.animateVisibility(false)
-        binding.tokenInfoContainer.animateVisibility(false)
+        // ✅ Добавляем проверки на null
+        _binding?.let { binding ->
+            binding.inputCard.animateVisibility(false)
+            binding.tokenInfoContainer.animateVisibility(false)
 
-        binding.cancelCard.animateVisibility(true)
-        binding.tvGeneratingStatus.text = statusText
+            binding.cancelCard.animateVisibility(true)
+            binding.tvGeneratingStatus.text = statusText
+        }
     }
 
     /**
@@ -817,7 +861,8 @@ class ChatFragment : Fragment(R.layout.fragment_chat) {
     }
 
     private fun hideErrorCard() {
-        binding.errorCard.animateVisibility(false)
+        // ✅ Добавляем проверку на null для предотвращения NPE
+        _binding?.errorCard?.animateVisibility(false)
     }
 
     private fun shareChatContent(content: String) {

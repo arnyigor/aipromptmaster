@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Размеры для больших экранов (sw600dp+) -->
+
+    <!-- Увеличенные отступы для чата на планшетах -->
+    <dimen name="chat_message_padding_horizontal">32dp</dimen>
+    <dimen name="chat_message_padding_vertical">20dp</dimen>
+    <dimen name="chat_input_padding">16dp</dimen>
+    <dimen name="chat_button_size">56dp</dimen>
+    <dimen name="chat_file_icon_size">64dp</dimen>
+    <dimen name="chat_action_button_size">44dp</dimen>
+    <dimen name="chat_card_radius">28dp</dimen>
+</resources>
