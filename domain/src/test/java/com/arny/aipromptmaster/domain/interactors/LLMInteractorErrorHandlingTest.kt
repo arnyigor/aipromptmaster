@@ -184,7 +184,11 @@ class LLMInteractorErrorHandlingTest {
     fun `should handle file not found error in export`() = runTest {
         // Given
         val conversationId = "test-id"
-        val conversation = Conversation(conversationId, "Test Chat", "System prompt")
+        val conversation = Conversation(
+            id = conversationId,
+            title = "Test Chat",
+            systemPrompt = "System prompt"
+        )
 
         val messages = listOf(
             ChatMessage(
@@ -209,10 +213,14 @@ class LLMInteractorErrorHandlingTest {
         val result = interactor.getFullChatForExport(conversationId)
 
         // Then
-        assertTrue(result.contains("Test Chat"))
-        assertTrue(result.contains("System prompt"))
+        assertTrue("Should contain chat title", result.contains("Test Chat"))
+        assertTrue("Should contain system prompt", result.contains("System prompt"))
         // File should not be included since it's missing
-        assert(!result.contains("missing.txt"))
+        assertTrue("File should not be included when missing", !result.contains("missing.txt"))
+        // But the message about the file should still be there
+        assertTrue("Message about file should be present", result.contains("Check this file"))
+        // Проверяем, что экспорт не пустой
+        assertTrue("Export should not be empty", result.isNotBlank())
     }
 
     @Test

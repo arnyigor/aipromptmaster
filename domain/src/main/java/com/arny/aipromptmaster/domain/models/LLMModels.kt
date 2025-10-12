@@ -64,7 +64,24 @@ data class FileAttachment(
     val mimeType: String,
     val originalContent: String,
     val isEditable: Boolean = true
-)
+) {
+    fun toMetadata(): FileAttachmentMetadata {
+        val preview = if (originalContent.length > 500) {
+            originalContent.take(500) + "..."
+        } else {
+            originalContent
+        }
+        return FileAttachmentMetadata(
+            fileId = id,
+            fileName = fileName,
+            fileExtension = fileExtension,
+            fileSize = fileSize,
+            mimeType = mimeType,
+            preview = preview,
+            uploadTimestamp = System.currentTimeMillis()
+        )
+    }
+}
 
 /**
  * Роль участника чата.
