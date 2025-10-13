@@ -35,10 +35,10 @@ abstract class AppDatabase : RoomDatabase() {
                 // SQL для создания таблицы диалогов
                 db.execSQL("""
                     CREATE TABLE IF NOT EXISTS `conversations` (
-                        `id` TEXT NOT NULL, 
+                        `conversationId` TEXT NOT NULL, 
                         `title` TEXT NOT NULL, 
                         `lastUpdated` INTEGER NOT NULL, 
-                        PRIMARY KEY(`id`)
+                        PRIMARY KEY(`conversationId`)
                     )
                 """.trimIndent())
 
@@ -47,13 +47,13 @@ abstract class AppDatabase : RoomDatabase() {
                 // Адаптируй ее под свою реальную сущность.
                 db.execSQL("""
                     CREATE TABLE IF NOT EXISTS `messages` (
-                        `id` TEXT NOT NULL, 
+                        `conversationId` TEXT NOT NULL, 
                         `conversationId` TEXT NOT NULL, 
                         `role` TEXT NOT NULL, 
                         `content` TEXT NOT NULL, 
                         `timestamp` INTEGER NOT NULL, 
-                        PRIMARY KEY(`id`), 
-                        FOREIGN KEY(`conversationId`) REFERENCES `conversations`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                        PRIMARY KEY(`conversationId`), 
+                        FOREIGN KEY(`conversationId`) REFERENCES `conversations`(`conversationId`) ON UPDATE NO ACTION ON DELETE CASCADE
                     )
                 """.trimIndent())
 

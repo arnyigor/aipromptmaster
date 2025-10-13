@@ -7,7 +7,7 @@ object AdapterUtils {
 
     /**
      * Функия помогает расчитать разницу в полях данных
-     * @param itemsTheSame Разные ли элементы, как правило это id
+     * @param itemsTheSame Разные ли элементы, как правило это conversationId
      * @param contentsTheSame Разные ли данные элементов, как правило сравнение всех данных
      * @param payloadsSame Одинаковые ли полезные данные,при изменении которых не нужно перезагружать view
      * @param payloadData Бандл для передачи полезных данных

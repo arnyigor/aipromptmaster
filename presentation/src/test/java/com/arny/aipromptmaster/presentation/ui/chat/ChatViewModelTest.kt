@@ -39,7 +39,7 @@ class ChatViewModelTest {
     private lateinit var viewModel: ChatViewModel
 
     private val testDispatcher = StandardTestDispatcher()
-    private val testConversationId = "test-conversation-id"
+    private val testConversationId = "test-conversation-conversationId"
 
     @Before
     fun setup() {
@@ -73,7 +73,7 @@ class ChatViewModelTest {
         // Arrange
         val viewModelWithoutId = ChatViewModel(llmInteractor, fileRepository, null)
         val messageText = "Test message"
-        val newConversationId = "new-conversation-id"
+        val newConversationId = "new-conversation-conversationId"
         val newTitle = messageText.take(40)
 
         coEvery { llmInteractor.createNewConversation(newTitle) } returns newConversationId
@@ -122,7 +122,7 @@ class ChatViewModelTest {
         val fileAttachment = createTestFileAttachment()
 
         // Setup file attachment
-        val attachmentId = "attachment-id"
+        val attachmentId = "attachment-conversationId"
         // We need to mock the file attachment state
 
         coEvery { llmInteractor.addUserMessageWithFile(testConversationId, emptyMessage, fileAttachment) } returns Unit
@@ -173,7 +173,7 @@ class ChatViewModelTest {
         val processingResult = FileProcessingResult.Complete(fileAttachment)
 
         every { fileRepository.processFileFromUri(uri) } returns flowOf(processingResult)
-        coEvery { fileRepository.saveTemporaryFile(fileAttachment) } returns "saved-id"
+        coEvery { fileRepository.saveTemporaryFile(fileAttachment) } returns "saved-conversationId"
 
         // Act
         viewModel.addAttachmentFromUri(uri)
@@ -225,7 +225,7 @@ class ChatViewModelTest {
     @Test
     fun `removeAttachment should remove attachment from state`() = runTest {
         // Arrange
-        val attachmentId = "attachment-id"
+        val attachmentId = "attachment-conversationId"
 
         // Act
         viewModel.removeAttachment(attachmentId)
@@ -326,7 +326,7 @@ class ChatViewModelTest {
     fun `onSystemPromptMenuClicked should create new conversation when none exists`() = runTest {
         // Arrange
         val viewModelWithoutId = ChatViewModel(llmInteractor, fileRepository, null)
-        val newConversationId = "new-conversation-id"
+        val newConversationId = "new-conversation-conversationId"
 
         coEvery { llmInteractor.createNewConversation("Новый чат") } returns newConversationId
 
@@ -388,7 +388,7 @@ class ChatViewModelTest {
 
     private fun createTestModel(): LlmModel {
         return LlmModel(
-            id = "test-model-id",
+            id = "test-model-conversationId",
             name = "Test Model",
             provider = "test-provider",
             architecture = "test-architecture",
@@ -400,7 +400,7 @@ class ChatViewModelTest {
 
     private fun createTestFileAttachment(): FileAttachment {
         return FileAttachment(
-            id = "test-file-id",
+            id = "test-file-conversationId",
             fileName = "test.txt",
             fileSize = 1024L,
             mimeType = "text/plain",

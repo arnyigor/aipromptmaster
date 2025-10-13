@@ -69,7 +69,7 @@ class LLMInteractorTest {
 
     @Test
     fun `createNewConversation should return conversation id from repository`() = runTest {
-        val expectedId = "test-conversation-id"
+        val expectedId = "test-conversation-conversationId"
         val title = "Test Chat"
         coEvery { historyRepository.createNewConversation(title) } returns expectedId
 
@@ -81,7 +81,7 @@ class LLMInteractorTest {
 
     @Test
     fun `setSystemPrompt should update system prompt in repository`() = runTest {
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
         val prompt = "You are a helpful assistant"
         coEvery { historyRepository.updateSystemPrompt(conversationId, prompt) } returns Unit
 
@@ -92,7 +92,7 @@ class LLMInteractorTest {
 
     @Test
     fun `getSystemPrompt should return prompt from repository`() = runTest {
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
         val expectedPrompt = "You are a helpful assistant"
         coEvery { historyRepository.getSystemPrompt(conversationId) } returns expectedPrompt
 
@@ -106,7 +106,7 @@ class LLMInteractorTest {
     fun `setSystemPromptWithChatCreation should create new conversation if id is null`() = runTest {
         val prompt = "System prompt"
         val chatTitle = "New Chat"
-        val expectedId = "new-conversation-id"
+        val expectedId = "new-conversation-conversationId"
 
         coEvery { historyRepository.createNewConversation(chatTitle) } returns expectedId
         coEvery { historyRepository.updateSystemPrompt(expectedId, prompt) } returns Unit
@@ -120,7 +120,7 @@ class LLMInteractorTest {
 
     @Test
     fun `setSystemPromptWithChatCreation should use existing conversation if id provided`() = runTest {
-        val existingId = "existing-id"
+        val existingId = "existing-conversationId"
         val prompt = "System prompt"
         val chatTitle = "Existing Chat"
 
@@ -135,7 +135,7 @@ class LLMInteractorTest {
 
     @Test
     fun `deleteConversation should delete conversation from repository`() = runTest {
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
         coEvery { historyRepository.deleteConversation(conversationId) } returns Unit
 
         interactor.deleteConversation(conversationId)
@@ -209,7 +209,7 @@ class LLMInteractorTest {
 
     @Test
     fun `getFullChatForExport should return formatted chat content`() = runTest {
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
         val conversation = Conversation(
             id = conversationId,
             title = "Test Chat",
@@ -237,7 +237,7 @@ class LLMInteractorTest {
 
     @Test
     fun `getFullChatForExport should throw error if conversation not found`() = runTest {
-        val conversationId = "non-existent-id"
+        val conversationId = "non-existent-conversationId"
         coEvery { historyRepository.getConversation(conversationId) } returns null
 
         try {
@@ -250,12 +250,12 @@ class LLMInteractorTest {
 
     @Test
     fun `addUserMessageToHistory should create conversation if not exists`() = runTest {
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
         val userMessage = "Hello, AI!"
 
         coEvery { historyRepository.getConversation(conversationId) } returns null
         coEvery { historyRepository.createNewConversation("Hello, AI!") } returns conversationId
-        coEvery { historyRepository.addMessage(conversationId, any()) } returns "message-id"
+        coEvery { historyRepository.addMessage(conversationId, any()) } returns "message-conversationId"
 
         interactor.addUserMessageToHistory(conversationId, userMessage)
 
@@ -269,12 +269,12 @@ class LLMInteractorTest {
 
     @Test
     fun `addUserMessageToHistory should not create conversation if exists`() = runTest {
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
         val userMessage = "Hello, AI!"
         val existingConversation = Conversation(conversationId, "Existing Chat", null)
 
         coEvery { historyRepository.getConversation(conversationId) } returns existingConversation
-        coEvery { historyRepository.addMessage(conversationId, any()) } returns "message-id"
+        coEvery { historyRepository.addMessage(conversationId, any()) } returns "message-conversationId"
 
         interactor.addUserMessageToHistory(conversationId, userMessage)
 
@@ -288,10 +288,10 @@ class LLMInteractorTest {
 
     @Test
     fun `addAssistantMessageToHistory should add assistant message`() = runTest {
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
         val assistantMessage = "Hi there! How can I help you?"
 
-        coEvery { historyRepository.addMessage(conversationId, any()) } returns "message-id"
+        coEvery { historyRepository.addMessage(conversationId, any()) } returns "message-conversationId"
 
         interactor.addAssistantMessageToHistory(conversationId, assistantMessage)
 
@@ -305,7 +305,7 @@ class LLMInteractorTest {
     @Test
     fun `sendMessage should return error if API key not found`() = runTest {
         val model = "gpt-3.5-turbo"
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
 
         coEvery { settingsRepository.getApiKey() } returns null
         coEvery { historyRepository.getHistoryFlow(conversationId) } returns flowOf(emptyList())
@@ -321,7 +321,7 @@ class LLMInteractorTest {
     @Test
     fun `sendMessage should return successful response with usage info`() = runTest {
         val model = "gpt-3.5-turbo"
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
         val apiKey = "test-api-key"
         val messages = listOf(ChatMessage(role = ChatRole.USER, content = "Hello"))
 
@@ -355,7 +355,7 @@ class LLMInteractorTest {
     @Test
     fun `sendMessage should return error on API failure`() = runTest {
         val model = "gpt-3.5-turbo"
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
         val apiKey = "test-api-key"
         val messages = listOf(ChatMessage(role = ChatRole.USER, content = "Hello"))
         val error = DomainError.Api(500, "Internal Server Error", "Server error")
@@ -391,7 +391,7 @@ class LLMInteractorTest {
     @Test
     fun `sendMessageWithFallback should use file strategy when files attached`() = runTest {
         val model = "gpt-3.5-turbo"
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
         val apiKey = "test-api-key"
         val systemPrompt = "You are a helpful assistant"
 
@@ -425,7 +425,7 @@ class LLMInteractorTest {
         coEvery { historyRepository.getSystemPrompt(conversationId) } returns systemPrompt
         coEvery { historyRepository.getHistoryFlow(conversationId) } returns flowOf(messages)
         coEvery { fileRepository.getTemporaryFile("file-1") } returns fileAttachment
-        coEvery { historyRepository.addMessage(conversationId, any()) } returns "message-id"
+        coEvery { historyRepository.addMessage(conversationId, any()) } returns "message-conversationId"
         coEvery { historyRepository.appendContentToMessage(any(), any()) } returns Unit
         coEvery { modelsRepository.getChatCompletionStreamWithFiles(any(), apiKey) } returns flowOf(
             DataResult.Success("Response chunk")
@@ -439,7 +439,7 @@ class LLMInteractorTest {
     @Test
     fun `sendMessageWithFallback should use regular strategy when no files attached`() = runTest {
         val model = "gpt-3.5-turbo"
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
         val apiKey = "test-api-key"
         val systemPrompt = "You are a helpful assistant"
 
@@ -450,7 +450,7 @@ class LLMInteractorTest {
         coEvery { historyRepository.getConversation(conversationId) } returns conversation
         coEvery { historyRepository.getSystemPrompt(conversationId) } returns systemPrompt
         coEvery { historyRepository.getHistoryFlow(conversationId) } returns flowOf(messages)
-        coEvery { historyRepository.addMessage(conversationId, any()) } returns "message-id"
+        coEvery { historyRepository.addMessage(conversationId, any()) } returns "message-conversationId"
         coEvery { historyRepository.appendContentToMessage(any(), any()) } returns Unit
         coEvery { modelsRepository.getChatCompletionStream(any(), any(), apiKey) } returns flowOf(
             DataResult.Success("Response chunk")
@@ -464,8 +464,8 @@ class LLMInteractorTest {
     @Test
     fun `getChatList should return chat list from repository`() = runTest {
         val expectedChats = listOf(
-            Chat(id = "chat-1", name = "Chat 1", timestamp = 123L, lastMessage = "Hello"),
-            Chat(id = "chat-2", name = "Chat 2", timestamp = 456L, lastMessage = "Hi")
+            Chat(conversationId = "chat-1", name = "Chat 1", timestamp = 123L, lastMessage = "Hello"),
+            Chat(conversationId = "chat-2", name = "Chat 2", timestamp = 456L, lastMessage = "Hi")
         )
 
         coEvery { historyRepository.getChatList() } returns flowOf(expectedChats)
@@ -479,7 +479,7 @@ class LLMInteractorTest {
 
     @Test
     fun `getChatHistoryFlow should return history flow from repository`() = runTest {
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
         val expectedMessages = listOf(
             ChatMessage(role = ChatRole.USER, content = "Hello"),
             ChatMessage(role = ChatRole.ASSISTANT, content = "Hi there!")
@@ -496,7 +496,7 @@ class LLMInteractorTest {
 
     @Test
     fun `clearChat should clear history in repository`() = runTest {
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
         coEvery { historyRepository.clearHistory(conversationId) } returns Unit
 
         interactor.clearChat(conversationId)
@@ -639,7 +639,7 @@ class LLMInteractorTest {
 
     @Test
     fun `addUserMessageWithFile should create conversation if not exists`() = runTest {
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
         val userMessage = "Analyze this file"
         val fileAttachment = FileAttachment(
             id = "file-1",
@@ -652,8 +652,8 @@ class LLMInteractorTest {
 
         coEvery { historyRepository.getConversation(conversationId) } returns null
         coEvery { historyRepository.createNewConversation("Анализ файла: test.txt") } returns conversationId
-        coEvery { fileRepository.saveTemporaryFile(fileAttachment) } returns "message-id"
-        coEvery { historyRepository.addMessage(conversationId, any()) } returns "message-id"
+        coEvery { fileRepository.saveTemporaryFile(fileAttachment) } returns "message-conversationId"
+        coEvery { historyRepository.addMessage(conversationId, any()) } returns "message-conversationId"
 
         interactor.addUserMessageWithFile(conversationId, userMessage, fileAttachment)
 
@@ -668,7 +668,7 @@ class LLMInteractorTest {
 
     @Test
     fun `addUserMessageWithFile should not create conversation if exists`() = runTest {
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
         val userMessage = "Analyze this file"
         val fileAttachment = FileAttachment(
             id = "file-1",
@@ -681,8 +681,8 @@ class LLMInteractorTest {
         val existingConversation = Conversation(conversationId, "Existing Chat", null)
 
         coEvery { historyRepository.getConversation(conversationId) } returns existingConversation
-        coEvery { fileRepository.saveTemporaryFile(fileAttachment) } returns "message-id"
-        coEvery { historyRepository.addMessage(conversationId, any()) } returns "message-id"
+        coEvery { fileRepository.saveTemporaryFile(fileAttachment) } returns "message-conversationId"
+        coEvery { historyRepository.addMessage(conversationId, any()) } returns "message-conversationId"
 
         interactor.addUserMessageWithFile(conversationId, userMessage, fileAttachment)
 

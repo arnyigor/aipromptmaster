@@ -314,7 +314,7 @@ class PromptsViewModelTest {
     @Test
     fun `deletePrompt should call interactor and handle exception`() = runTest {
         // Arrange
-        val promptId = "test-prompt-id"
+        val promptId = "test-prompt-conversationId"
         coEvery { promptsInteractor.deletePrompt(promptId) } returns Unit
 
         // Act
@@ -327,7 +327,7 @@ class PromptsViewModelTest {
     @Test
     fun `toggleFavorite should call interactor and emit event on success`() = runTest {
         // Arrange
-        val promptId = "test-prompt-id"
+        val promptId = "test-prompt-conversationId"
         coEvery { promptsInteractor.toggleFavorite(promptId) } returns Unit
 
         // Act
@@ -382,7 +382,7 @@ class PromptsViewModelTest {
 
     private fun createTestPrompt(): Prompt {
         return Prompt(
-            id = "test-id",
+            id = "test-conversationId",
             title = "Test Prompt",
             description = "Test description",
             content = PromptContent("RU content", "EN content"),

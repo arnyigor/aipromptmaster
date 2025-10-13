@@ -4,7 +4,7 @@ package com.arny.aipromptmaster.data.db.entities
 @Entity(tableName = "users")
 data class UserEntity(
     @PrimaryKey
-    val id: String = UUID.randomUUID().toString(),
+    val conversationId: String = UUID.randomUUID().toString(),
 
     val username: String,
 

@@ -150,7 +150,7 @@ class ChatHistoryFragment : Fragment() {
                 chat = chat,
                 onClick = { clickedChat ->
                     findNavController().navigate(
-                        ChatHistoryFragmentDirections.actionChatHistoryFragmentToNavChat(clickedChat.id)
+                        ChatHistoryFragmentDirections.actionChatHistoryFragmentToNavChat(clickedChat.conversationId)
                     )
                 },
                 // ПЕРЕДАЕМ РЕАЛИЗАЦИЮ ДЛЯ ДОЛГОГО НАЖАТИЯ
@@ -167,7 +167,7 @@ class ChatHistoryFragment : Fragment() {
             .setMessage(getString(R.string.delete_chat_dialog_message, chat.name))
             .setNegativeButton(R.string.action_cancel, null)
             .setPositiveButton(R.string.action_delete) { _, _ ->
-                viewModel.deleteConversation(chat.id)
+                viewModel.deleteConversation(chat.conversationId)
             }
             .show()
     }

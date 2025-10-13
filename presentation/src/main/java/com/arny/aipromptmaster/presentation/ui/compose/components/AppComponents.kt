@@ -1,25 +1,40 @@
 package com.arny.aipromptmaster.presentation.ui.compose.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeFloatingActionButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.arny.aipromptmaster.domain.models.PromptContent
+import com.arny.aipromptmaster.presentation.R
 import com.arny.aipromptmaster.presentation.ui.compose.theme.AppDimensions
 import com.arny.aipromptmaster.presentation.ui.compose.theme.LocalExtendedColors
-import com.arny.aipromptmaster.presentation.R
 
 // Кнопка действия в чате (копировать, регенерировать и т.д.)
 @Composable
@@ -89,13 +104,21 @@ fun FilterChip(
 @Composable
 fun PromptCard(
     title: String,
-    content: String,
+    content: PromptContent, // ИЗМЕНЕНО: принимаем PromptContent вместо String
     category: String?,
     isFavorite: Boolean,
     onClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Определяем текущий язык (можно использовать Locale или настройки приложения)
+    val currentLanguage = java.util.Locale.getDefault().language
+    val displayContent = when (currentLanguage) {
+        "ru" -> content.ru
+        "en" -> content.en
+        else -> content.en.ifEmpty { content.ru } // Fallback на английский, потом на русский
+    }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -124,9 +147,9 @@ fun PromptCard(
                 ChatActionButton(
                     onClick = onFavoriteClick,
                     iconResId = if (isFavorite) {
-                        R.drawable.ic_favorite_filled // Замените на ваш ресурс
+                        R.drawable.ic_favorite_filled
                     } else {
-                        R.drawable.ic_favorite_border // Замените на ваш ресурс
+                        R.drawable.ic_favorite_border
                     },
                     contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites"
                 )
@@ -144,7 +167,7 @@ fun PromptCard(
 
             // Содержимое промпта (первые несколько строк)
             Text(
-                text = content.take(100) + if (content.length > 100) "..." else "",
+                text = displayContent.take(100) + if (displayContent.length > 100) "..." else "",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = 20.sp
@@ -152,6 +175,7 @@ fun PromptCard(
         }
     }
 }
+
 
 // Пустое состояние
 @Composable

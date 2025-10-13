@@ -48,7 +48,7 @@ interface ChatDao {
      * @param messageId Идентификатор сообщения для обновления.
      * @param newContent Новое содержимое сообщения.
      */
-    @Query("UPDATE messages SET content = :newContent WHERE id = :messageId")
+    @Query("UPDATE messages SET content = :newContent WHERE conversationId = :messageId")
     suspend fun updateMessageContent(messageId: String, newContent: String)
 
     /**
@@ -57,7 +57,7 @@ interface ChatDao {
      * @param messageId Идентификатор сообщения.
      * @param contentChunk Часть содержимого для добавления.
      */
-    @Query("UPDATE messages SET content = content || :contentChunk WHERE id = :messageId")
+    @Query("UPDATE messages SET content = content || :contentChunk WHERE conversationId = :messageId")
     suspend fun appendContentToMessage(messageId: String, contentChunk: String)
 
     /**
@@ -86,9 +86,9 @@ interface ChatDao {
      */
     @Query("""
         SELECT 
-            c.id, 
+            c.conversationId, 
             c.title AS name, 
-            (SELECT content FROM messages WHERE conversationId = c.id ORDER BY timestamp DESC LIMIT 1) AS lastMessage, 
+            (SELECT content FROM messages WHERE conversationId = c.conversationId ORDER BY timestamp DESC LIMIT 1) AS lastMessage, 
             c.lastUpdated AS timestamp
         FROM conversations c
         ORDER BY c.lastUpdated DESC
@@ -101,7 +101,7 @@ interface ChatDao {
      * @param conversationId Идентификатор диалога.
      * @param timestamp Новая временная метка обновления.
      */
-    @Query("UPDATE conversations SET lastUpdated = :timestamp WHERE id = :conversationId")
+    @Query("UPDATE conversations SET lastUpdated = :timestamp WHERE conversationId = :conversationId")
     suspend fun updateConversationTimestamp(conversationId: String, timestamp: Long)
 
     /**
@@ -109,7 +109,7 @@ interface ChatDao {
      *
      * @param messageId ID сообщения для удаления.
      */
-    @Query("DELETE FROM messages WHERE id = :messageId")
+    @Query("DELETE FROM messages WHERE conversationId = :messageId")
     suspend fun deleteMessageById(messageId: String)
 
     /**
@@ -118,7 +118,7 @@ interface ChatDao {
      * @param conversationId Идентификатор диалога.
      * @param prompt Новый текст системного промпта.
      */
-    @Query("UPDATE conversations SET systemPrompt = :prompt WHERE id = :conversationId")
+    @Query("UPDATE conversations SET systemPrompt = :prompt WHERE conversationId = :conversationId")
     suspend fun updateSystemPrompt(conversationId: String, prompt: String)
 
     /**
@@ -127,7 +127,7 @@ interface ChatDao {
      * @param conversationId Идентификатор диалога.
      * @return Текст системного промпта или null, если он не задан.
      */
-    @Query("SELECT systemPrompt FROM conversations WHERE id = :conversationId")
+    @Query("SELECT systemPrompt FROM conversations WHERE conversationId = :conversationId")
     suspend fun getSystemPrompt(conversationId: String): String?
 
     /**
@@ -136,13 +136,13 @@ interface ChatDao {
      *
      * @param conversationId Идентификатор диалога для удаления.
      */
-    @Query("DELETE FROM conversations WHERE id = :conversationId")
+    @Query("DELETE FROM conversations WHERE conversationId = :conversationId")
     suspend fun deleteConversationById(conversationId: String)
 
     /**
      * Получает один диалог по его ID.
      */
-    @Query("SELECT * FROM conversations WHERE id = :conversationId")
+    @Query("SELECT * FROM conversations WHERE conversationId = :conversationId")
     suspend fun getConversation(conversationId: String): ConversationEntity? // Nullable на случай неверного ID
 
     /**

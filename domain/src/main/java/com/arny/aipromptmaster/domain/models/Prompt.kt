@@ -1,10 +1,13 @@
 package com.arny.aipromptmaster.domain.models
 
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.Serializable
 import java.util.Date
 import java.util.UUID
 
+@OptIn(InternalSerializationApi::class)
+@Serializable
 data class Prompt(
     val id: String = UUID.randomUUID().toString(),
     val title: String,
@@ -22,15 +25,19 @@ data class Prompt(
     val status: String,
     val metadata: PromptMetadata = PromptMetadata(),
     val version: String = "1.0.0",
-    val createdAt: Date = Date(),
-    val modifiedAt: Date = Date()
+    @Contextual val createdAt: Date = Date(),
+    @Contextual val modifiedAt: Date = Date()
 )
 
+@OptIn(InternalSerializationApi::class)
+@Serializable
 data class Author(
     val id: String = "",
     val name: String = ""
 )
 
+@OptIn(InternalSerializationApi::class)
+@Serializable
 data class PromptMetadata(
     val author: Author = Author(),
     val source: String = "",

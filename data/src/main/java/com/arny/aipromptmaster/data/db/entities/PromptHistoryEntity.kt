@@ -26,7 +26,7 @@ import java.util.UUID
 )
 data class PromptHistoryEntity(
     @PrimaryKey(autoGenerate = true)
-    val id: Int = 0,
+    val conversationId: Int = 0,
 
     @ColumnInfo(name = "prompt_id")
     val promptId: String,

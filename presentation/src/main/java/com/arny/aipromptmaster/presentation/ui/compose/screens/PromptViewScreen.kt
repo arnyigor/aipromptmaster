@@ -1,5 +1,6 @@
 package com.arny.aipromptmaster.presentation.ui.compose.screens
 
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -7,17 +8,25 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import com.arny.aipromptmaster.domain.models.Prompt
+import com.arny.aipromptmaster.domain.models.PromptContent
+import com.arny.aipromptmaster.domain.models.strings.StringHolder
+import com.arny.aipromptmaster.presentation.R
+import com.arny.aipromptmaster.presentation.ui.compose.components.ErrorState
+import com.arny.aipromptmaster.presentation.ui.compose.components.LoadingIndicator
 import com.arny.aipromptmaster.presentation.ui.compose.theme.AIPromptMasterTheme
 import com.arny.aipromptmaster.presentation.ui.compose.theme.AppDimensions
+import com.arny.aipromptmaster.presentation.ui.view.PromptViewUiState
 import com.arny.aipromptmaster.presentation.ui.view.PromptViewViewModel
-import com.arny.aipromptmaster.presentation.R
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,14 +35,35 @@ fun PromptViewScreen(
     promptId: String,
     viewModel: PromptViewViewModel = viewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(promptId) {
+        viewModel.loadPrompt()
+    }
+
+    PromptViewScreenContent(
+        navController = navController,
+        uiState = uiState,
+        onRetry = { viewModel.loadPrompt() },
+        onShare = { /* TODO: Поделиться промптом */ },
+        onEdit = { /* TODO: Редактировать промпт */ },
+        onUseInChat = { /* TODO: Использовать в чате */ },
+        onCopyContent = { /* TODO: Копировать содержимое */ }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PromptViewScreenContent(
+    navController: NavController,
+    uiState: PromptViewUiState,
+    onRetry: () -> Unit,
+    onShare: () -> Unit,
+    onEdit: () -> Unit,
+    onUseInChat: () -> Unit,
+    onCopyContent: () -> Unit
+) {
     AIPromptMasterTheme {
-        val context = LocalContext.current
-        val uiState by viewModel.uiState.collectAsState()
-
-        LaunchedEffect(promptId) {
-            viewModel.loadPrompt(promptId)
-        }
-
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -47,13 +77,13 @@ fun PromptViewScreen(
                         }
                     },
                     actions = {
-                        IconButton(onClick = { /* TODO: Поделиться промптом */ }) {
+                        IconButton(onClick = onShare) {
                             Icon(
                                 painter = painterResource(id = R.drawable.ic_content_copy),
                                 contentDescription = "Поделиться"
                             )
                         }
-                        IconButton(onClick = { /* TODO: Редактировать промпт */ }) {
+                        IconButton(onClick = onEdit) {
                             Icon(
                                 painter = painterResource(id = R.drawable.outline_edit_24),
                                 contentDescription = "Редактировать"
@@ -64,23 +94,27 @@ fun PromptViewScreen(
             }
         ) { paddingValues ->
             when (uiState) {
-                is com.arny.aipromptmaster.presentation.ui.view.PromptViewUiState.Loading -> {
+                is PromptViewUiState.Loading -> {
                     LoadingIndicator(modifier = Modifier.padding(paddingValues))
                 }
-                is com.arny.aipromptmaster.presentation.ui.view.PromptViewUiState.Error -> {
+                is PromptViewUiState.Error -> {
                     ErrorState(
                         message = "Ошибка загрузки промпта",
-                        onRetry = { viewModel.loadPrompt(promptId) },
+                        onRetry = onRetry,
                         modifier = Modifier.padding(paddingValues)
                     )
                 }
-                is com.arny.aipromptmaster.presentation.ui.view.PromptViewUiState.Content -> {
-                    val content = uiState as com.arny.aipromptmaster.presentation.ui.view.PromptViewUiState.Content
+                is PromptViewUiState.Content -> {
                     PromptViewContent(
-                        prompt = content.prompt,
+                        prompt = uiState.prompt,
                         modifier = Modifier.padding(paddingValues),
-                        navController = navController
+                        onUseInChat = onUseInChat,
+                        onCopyContent = onCopyContent,
+                        onEdit = onEdit
                     )
+                }
+                PromptViewUiState.Initial -> {
+                    // Начальное состояние - ничего не показываем или показываем заглушку
                 }
             }
         }
@@ -89,13 +123,16 @@ fun PromptViewScreen(
 
 @Composable
 private fun PromptViewContent(
-    prompt: com.arny.aipromptmaster.domain.models.Prompt,
+    prompt: Prompt,
     modifier: Modifier = Modifier,
-    navController: NavController
+    onUseInChat: () -> Unit,
+    onCopyContent: () -> Unit,
+    onEdit: () -> Unit
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(AppDimensions.margin_16)
     ) {
         // Заголовок промпта
@@ -106,24 +143,40 @@ private fun PromptViewContent(
             modifier = Modifier.padding(bottom = AppDimensions.margin_8)
         )
 
+        // Описание промпта (если есть)
+        prompt.description?.let { description ->
+            if (description.isNotEmpty()) {
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = AppDimensions.margin_16)
+                )
+            }
+        }
+
         // Метаданные промпта
         PromptMetadata(
             category = prompt.category,
             isFavorite = prompt.isFavorite,
-            createdDate = prompt.createdAt.toString(), // TODO: Форматировать дату
+            createdDate = formatDate(prompt.createdAt),
             modifier = Modifier.padding(bottom = AppDimensions.margin_16)
         )
 
         // Кнопки действий
         PromptActions(
-            onUseInChat = { /* TODO: Использовать в чате */ },
-            onCopyContent = { /* TODO: Копировать содержимое */ },
-            onEdit = { /* TODO: Редактировать промпт */ },
+            onUseInChat = onUseInChat,
+            onCopyContent = onCopyContent,
+            onEdit = onEdit,
             modifier = Modifier.padding(bottom = AppDimensions.margin_16)
         )
 
         // Разделитель
-        Divider(modifier = Modifier.padding(vertical = AppDimensions.margin_16))
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = AppDimensions.margin_16),
+            thickness = DividerDefaults.Thickness,
+            color = DividerDefaults.color
+        )
 
         // Содержимое промпта
         Text(
@@ -134,19 +187,63 @@ private fun PromptViewContent(
         )
 
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
+            modifier = Modifier.fillMaxWidth(),
             elevation = CardDefaults.cardElevation(defaultElevation = AppDimensions.cardElevation)
         ) {
+            // ИСПРАВЛЕНО: Используем поле ru или en из PromptContent
+            val contentText = prompt.content.ru.ifEmpty { prompt.content.en }
+
             Text(
-                text = prompt.content,
+                text = contentText,
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(AppDimensions.margin_16)
-                    .verticalScroll(rememberScrollState())
             )
+        }
+
+        // Совместимые модели
+        if (prompt.compatibleModels.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(AppDimensions.margin_16))
+
+            Text(
+                text = "Совместимые модели:",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = AppDimensions.margin_8)
+            )
+
+            prompt.compatibleModels.forEach { model ->
+                Text(
+                    text = "• $model",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(vertical = AppDimensions.margin_4)
+                )
+            }
+        }
+
+        // Теги
+        if (prompt.tags.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(AppDimensions.margin_16))
+
+            Text(
+                text = "Теги:",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = AppDimensions.margin_8)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(AppDimensions.margin_8)
+            ) {
+                prompt.tags.forEach { tag ->
+                    AssistChip(
+                        onClick = { },
+                        label = { Text(tag) }
+                    )
+                }
+            }
         }
     }
 }
@@ -274,4 +371,153 @@ private fun PromptActions(
             }
         }
     }
+}
+
+// Утилита для форматирования даты
+private fun formatDate(date: Date): String {
+    val formatter = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
+    return formatter.format(date)
+}
+
+// Mock данные для Preview
+private fun getMockPrompt() = Prompt(
+    id = "1",
+    title = "Помощник программиста",
+    description = "Опытный программист, который поможет написать чистый и эффективный код",
+    content = PromptContent(
+        ru = """
+            Ты опытный программист с глубокими знаниями различных языков программирования и лучших практик разработки.
+            
+            Твои задачи:
+            1. Помогать писать чистый, читаемый и эффективный код
+            2. Предлагать оптимальные архитектурные решения
+            3. Объяснять сложные концепции простым языком
+            4. Указывать на потенциальные ошибки и способы их исправления
+            5. Следовать принципам SOLID и другим best practices
+            
+            При ответе всегда:
+            - Предоставляй примеры кода с комментариями
+            - Объясняй, почему выбрано то или иное решение
+            - Предлагай альтернативные подходы, если они есть
+        """.trimIndent(),
+        en = """
+            You are an experienced programmer with deep knowledge of various programming languages and development best practices.
+            
+            Your tasks:
+            1. Help write clean, readable, and efficient code
+            2. Suggest optimal architectural solutions
+            3. Explain complex concepts in simple language
+            4. Point out potential errors and ways to fix them
+            5. Follow SOLID principles and other best practices
+            
+            When responding, always:
+            - Provide code examples with comments
+            - Explain why a particular solution was chosen
+            - Suggest alternative approaches if available
+        """.trimIndent()
+    ),
+    compatibleModels = listOf("GPT-4", "Claude 3", "GPT-3.5"),
+    category = "Программирование",
+    tags = listOf("coding", "development", "best-practices", "clean-code"),
+    isFavorite = true,
+    status = "active",
+    createdAt = Date(),
+    modifiedAt = Date()
+)
+
+// PREVIEW: Светлая тема
+@Preview(
+    name = "Просмотр промпта - Светлая тема",
+    showBackground = true,
+    showSystemUi = true
+)
+@Composable
+private fun PromptViewScreenPreviewLight() {
+    PromptViewScreenContent(
+        navController = rememberNavController(),
+        uiState = PromptViewUiState.Content(getMockPrompt()),
+        onRetry = {},
+        onShare = {},
+        onEdit = {},
+        onUseInChat = {},
+        onCopyContent = {}
+    )
+}
+
+// PREVIEW: Темная тема
+@Preview(
+    name = "Просмотр промпта - Темная тема",
+    showBackground = true,
+    showSystemUi = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES
+)
+@Composable
+private fun PromptViewScreenPreviewDark() {
+    PromptViewScreenContent(
+        navController = rememberNavController(),
+        uiState = PromptViewUiState.Content(getMockPrompt()),
+        onRetry = {},
+        onShare = {},
+        onEdit = {},
+        onUseInChat = {},
+        onCopyContent = {}
+    )
+}
+
+// PREVIEW: Состояние загрузки
+@Preview(
+    name = "Загрузка",
+    showBackground = true,
+    showSystemUi = true
+)
+@Composable
+private fun PromptViewScreenPreviewLoading() {
+    PromptViewScreenContent(
+        navController = rememberNavController(),
+        uiState = PromptViewUiState.Loading,
+        onRetry = {},
+        onShare = {},
+        onEdit = {},
+        onUseInChat = {},
+        onCopyContent = {}
+    )
+}
+
+// PREVIEW: Состояние ошибки
+@Preview(
+    name = "Ошибка",
+    showBackground = true,
+    showSystemUi = true
+)
+@Composable
+private fun PromptViewScreenPreviewError() {
+    PromptViewScreenContent(
+        navController = rememberNavController(),
+        uiState = PromptViewUiState.Error(StringHolder.Text("Не удалось загрузить промпт")),
+        onRetry = {},
+        onShare = {},
+        onEdit = {},
+        onUseInChat = {},
+        onCopyContent = {}
+    )
+}
+
+// PREVIEW: Промпт без избранного
+@Preview(
+    name = "Не в избранном",
+    showBackground = true
+)
+@Composable
+private fun PromptViewScreenPreviewNotFavorite() {
+    PromptViewScreenContent(
+        navController = rememberNavController(),
+        uiState = PromptViewUiState.Content(
+            getMockPrompt().copy(isFavorite = false)
+        ),
+        onRetry = {},
+        onShare = {},
+        onEdit = {},
+        onUseInChat = {},
+        onCopyContent = {}
+    )
 }

@@ -94,7 +94,7 @@ class PromptsInteractorImplTest {
     @Test
     fun `getPromptById should delegate to repository`() = runTest {
         // Arrange
-        val promptId = "test-id"
+        val promptId = "test-conversationId"
         val expectedPrompt = createTestPrompt()
         coEvery { repository.getPromptById(promptId) } returns expectedPrompt
 
@@ -109,7 +109,7 @@ class PromptsInteractorImplTest {
     @Test
     fun `getPromptById should return null when prompt not found`() = runTest {
         // Arrange
-        val promptId = "non-existent-id"
+        val promptId = "non-existent-conversationId"
         coEvery { repository.getPromptById(promptId) } returns null
 
         // Act
@@ -151,7 +151,7 @@ class PromptsInteractorImplTest {
     @Test
     fun `deletePrompt should delegate to repository`() = runTest {
         // Arrange
-        val promptId = "test-id"
+        val promptId = "test-conversationId"
         coEvery { repository.deletePrompt(promptId) } returns Unit
 
         // Act
@@ -207,7 +207,7 @@ class PromptsInteractorImplTest {
     @Test
     fun `toggleFavorite should update prompt favorite status when prompt exists`() = runTest {
         // Arrange
-        val promptId = "test-id"
+        val promptId = "test-conversationId"
         val existingPrompt = createTestPrompt(id = promptId, isFavorite = false)
         val updatedPrompt = existingPrompt.copy(isFavorite = true)
 
@@ -227,7 +227,7 @@ class PromptsInteractorImplTest {
     @Test
     fun `toggleFavorite should not update when prompt does not exist`() = runTest {
         // Arrange
-        val promptId = "non-existent-id"
+        val promptId = "non-existent-conversationId"
         coEvery { repository.getPromptById(promptId) } returns null
 
         // Act
@@ -308,7 +308,7 @@ class PromptsInteractorImplTest {
     }
 
     private fun createTestPrompt(
-        id: String = "test-id",
+        id: String = "test-conversationId",
         title: String = "Test Prompt",
         isFavorite: Boolean = false
     ): Prompt {

@@ -18,7 +18,27 @@ import dagger.android.support.AndroidSupportInjection
  */
 class ComposeFragment : Fragment() {
 
-    private val args: ComposeFragmentArgs by navArgs()
+    // Временное решение для отсутствующих сгенерированных классов
+    data class ComposeFragmentArgs(
+        val screenType: String = "prompts",
+        val chatId: String? = null,
+        val promptId: String? = null
+    ) {
+        companion object {
+            fun fromBundle(bundle: Bundle): ComposeFragmentArgs {
+                return ComposeFragmentArgs(
+                    screenType = bundle.getString("screenType", "prompts"),
+                    chatId = bundle.getString("chatId"),
+                    promptId = bundle.getString("promptId")
+                )
+            }
+        }
+    }
+
+    private val args: ComposeFragmentArgs by lazy {
+        arguments?.let { ComposeFragmentArgs.fromBundle(it) }
+            ?: ComposeFragmentArgs()
+    }
 
     override fun onAttach(context: android.content.Context) {
         AndroidSupportInjection.inject(this)
@@ -49,7 +69,7 @@ class ComposeFragment : Fragment() {
                         "promptView" -> {
                             PromptViewScreen(
                                 navController = findNavController(),
-                                promptId = args.promptId ?: ""
+                                promptId = args.promptId.orEmpty()
                             )
                         }
                         "editPrompt" -> {

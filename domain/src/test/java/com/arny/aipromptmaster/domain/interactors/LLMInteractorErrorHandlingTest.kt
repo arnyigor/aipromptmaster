@@ -63,7 +63,7 @@ class LLMInteractorErrorHandlingTest {
     fun `should handle API key not found error correctly`() = runTest {
         // Given
         val model = "gpt-3.5-turbo"
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
 
         coEvery { settingsRepository.getApiKey() } returns null
         coEvery { historyRepository.getHistoryFlow(conversationId) } returns flowOf(emptyList())
@@ -83,7 +83,7 @@ class LLMInteractorErrorHandlingTest {
     fun `should handle empty API key error correctly`() = runTest {
         // Given
         val model = "gpt-3.5-turbo"
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
 
         coEvery { settingsRepository.getApiKey() } returns "   " // Only whitespace
         coEvery { historyRepository.getHistoryFlow(conversationId) } returns flowOf(emptyList())
@@ -103,7 +103,7 @@ class LLMInteractorErrorHandlingTest {
     fun `should handle API errors correctly`() = runTest {
         // Given
         val model = "gpt-3.5-turbo"
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
         val apiKey = "test-api-key"
         val messages = listOf(ChatMessage(role = ChatRole.USER, content = "Hello"))
 
@@ -136,7 +136,7 @@ class LLMInteractorErrorHandlingTest {
     fun `should handle network errors correctly`() = runTest {
         // Given
         val model = "gpt-3.5-turbo"
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
         val apiKey = "test-api-key"
         val messages = listOf(ChatMessage(role = ChatRole.USER, content = "Hello"))
 
@@ -168,7 +168,7 @@ class LLMInteractorErrorHandlingTest {
     @Test
     fun `should handle conversation not found error in export`() = runTest {
         // Given
-        val conversationId = "non-existent-id"
+        val conversationId = "non-existent-conversationId"
         coEvery { historyRepository.getConversation(conversationId) } returns null
 
         // When & Then
@@ -181,9 +181,9 @@ class LLMInteractorErrorHandlingTest {
     }
 
     @Test
-    fun `should handle file not found error in export`() = runTest {
+    fun `should handle file not found error in export gracefully`() = runTest {
         // Given
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
         val conversation = Conversation(
             id = conversationId,
             title = "Test Chat",
@@ -227,7 +227,7 @@ class LLMInteractorErrorHandlingTest {
     fun `should handle streaming errors correctly in sendMessageWithFallback`() = runTest {
         // Given
         val model = "gpt-3.5-turbo"
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
         val apiKey = "test-api-key"
 
         val conversation = Conversation(conversationId, "Test Chat", "System prompt")
@@ -237,8 +237,8 @@ class LLMInteractorErrorHandlingTest {
         coEvery { historyRepository.getConversation(conversationId) } returns conversation
         coEvery { historyRepository.getSystemPrompt(conversationId) } returns "System prompt"
         coEvery { historyRepository.getHistoryFlow(conversationId) } returns flowOf(messages)
-        coEvery { historyRepository.addMessage(conversationId, any()) } returns "message-id"
-        coEvery { historyRepository.deleteMessage("message-id") } returns Unit
+        coEvery { historyRepository.addMessage(conversationId, any()) } returns "message-conversationId"
+        coEvery { historyRepository.deleteMessage("message-conversationId") } returns Unit
         coEvery { modelsRepository.getChatCompletionStream(any(), any(), apiKey) } returns flowOf(
             DataResult.Error(DomainError.network(R.string.error_connection))
         )
@@ -252,7 +252,7 @@ class LLMInteractorErrorHandlingTest {
         }
 
         // Verify message was deleted on error
-        coVerify { historyRepository.deleteMessage("message-id") }
+        coVerify { historyRepository.deleteMessage("message-conversationId") }
     }
 
     @Test
@@ -274,7 +274,7 @@ class LLMInteractorErrorHandlingTest {
     fun `should handle empty messages list correctly through sendMessageWithFallback`() = runTest {
         // Given
         val model = "gpt-3.5-turbo"
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
         val apiKey = "test-api-key"
         val systemPrompt = "You are a helpful assistant"
 
@@ -284,7 +284,7 @@ class LLMInteractorErrorHandlingTest {
         coEvery { historyRepository.getConversation(conversationId) } returns conversation
         coEvery { historyRepository.getSystemPrompt(conversationId) } returns systemPrompt
         coEvery { historyRepository.getHistoryFlow(conversationId) } returns flowOf(emptyList())
-        coEvery { historyRepository.addMessage(conversationId, any()) } returns "message-id"
+        coEvery { historyRepository.addMessage(conversationId, any()) } returns "message-conversationId"
         coEvery { historyRepository.appendContentToMessage(any(), any()) } returns Unit
         coEvery { modelsRepository.getChatCompletionStream(any(), any(), apiKey) } returns flowOf(
             DataResult.Success("Test response")
@@ -294,14 +294,14 @@ class LLMInteractorErrorHandlingTest {
         interactor.sendMessageWithFallback(model, conversationId)
 
         // Then - Should not throw exception even with empty history
-        coVerify { historyRepository.appendContentToMessage("message-id", "Test response") }
+        coVerify { historyRepository.appendContentToMessage("message-conversationId", "Test response") }
     }
 
     @Test
     fun `should handle null system prompt correctly through sendMessageWithFallback`() = runTest {
         // Given
         val model = "gpt-3.5-turbo"
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
         val apiKey = "test-api-key"
         val messages = listOf(ChatMessage(role = ChatRole.USER, content = "Hello"))
 
@@ -311,7 +311,7 @@ class LLMInteractorErrorHandlingTest {
         coEvery { historyRepository.getConversation(conversationId) } returns conversation
         coEvery { historyRepository.getSystemPrompt(conversationId) } returns null
         coEvery { historyRepository.getHistoryFlow(conversationId) } returns flowOf(messages)
-        coEvery { historyRepository.addMessage(conversationId, any()) } returns "message-id"
+        coEvery { historyRepository.addMessage(conversationId, any()) } returns "message-conversationId"
         coEvery { historyRepository.appendContentToMessage(any(), any()) } returns Unit
         coEvery { modelsRepository.getChatCompletionStream(any(), any(), apiKey) } returns flowOf(
             DataResult.Success("Test response")
@@ -321,13 +321,13 @@ class LLMInteractorErrorHandlingTest {
         interactor.sendMessageWithFallback(model, conversationId)
 
         // Then - Should work without system prompt
-        coVerify { historyRepository.appendContentToMessage("message-id", "Test response") }
+        coVerify { historyRepository.appendContentToMessage("message-conversationId", "Test response") }
     }
 
     @Test
     fun `should handle repository exceptions correctly in all operations`() = runTest {
         // Given
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
 
         // Test createNewConversation with repository error
         coEvery { historyRepository.createNewConversation("Test") } throws RuntimeException("Database error")
@@ -353,7 +353,7 @@ class LLMInteractorErrorHandlingTest {
     @Test
     fun `should handle concurrent error scenarios correctly`() = runTest {
         // Given
-        val conversationId = "test-id"
+        val conversationId = "test-conversationId"
         val apiKey = "test-api-key"
 
         // Setup multiple error scenarios

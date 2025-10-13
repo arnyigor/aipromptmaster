@@ -1,6 +1,7 @@
 package com.arny.aipromptmaster.presentation.ui.compose.theme
 
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 // Размеры приложения для Compose
 object AppDimensions {
