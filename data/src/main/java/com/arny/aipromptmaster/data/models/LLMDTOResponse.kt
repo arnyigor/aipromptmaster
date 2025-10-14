@@ -36,7 +36,7 @@ data class ApiErrorResponse(
 data class ApiError(
     @SerialName("message") val message: String,
     @SerialName("code") val code: Int,
-    @SerialName("metadata") val metadata: ErrorMetadata? // Делаем nullable на случай, если metadata может отсутствовать
+    @SerialName("metadata") val metadata: ErrorMetadata? = null // Делаем nullable на случай, если metadata может отсутствовать
 )
 
 @Serializable

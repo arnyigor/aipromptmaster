@@ -7,7 +7,6 @@ import com.arny.aipromptmaster.domain.models.errors.DomainError
 import com.arny.aipromptmaster.domain.models.strings.StringHolder
 import java.math.BigDecimal
 
-
 fun ModelDTO.toDomain(): LlmModel = LlmModel(
     id = id,
     name = name,

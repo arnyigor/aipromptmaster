@@ -21,7 +21,6 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
@@ -30,11 +29,11 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.onEach  // ✅ ВАЖНЫЙ ИМПОРТ
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlin.math.ceil
 
 sealed class ChatUiEvent {
     data class ShowError(val error: Throwable) : ChatUiEvent()
     data class ShareChat(val content: String) : ChatUiEvent()
+    data object RequestClearChat : ChatUiEvent()
 }
 
 class ChatViewModel @AssistedInject constructor(
@@ -53,14 +52,9 @@ class ChatViewModel @AssistedInject constructor(
     val estimatedTokens: StateFlow<Int> = _estimatedTokens
 
     private val _currentInputText = MutableStateFlow("")
-    val currentInputText: StateFlow<String> = _currentInputText
 
     private val _attachedFiles = MutableStateFlow<List<FileAttachment>>(emptyList())
     val attachedFiles: StateFlow<List<FileAttachment>> = _attachedFiles
-
-    // Коэффициент для расчета токенов (символов на токен)
-    private val _tokenRatio = MutableStateFlow(4.0)
-    val tokenRatio: StateFlow<Double> = _tokenRatio
 
     // Точность расчетов (точный/примерный)
     private val _isAccurate = MutableStateFlow(false)
@@ -167,8 +161,7 @@ class ChatViewModel @AssistedInject constructor(
     }
 
     /**
-     * ✅ НОВЫЙ ПУБЛИЧНЫЙ МЕТОД: Добавить сообщение с файлом
-     * Делегирует вызов к interactor
+     * Добавить сообщение с файлом
      */
     suspend fun addMessageWithFile(
         conversationId: String,
@@ -221,11 +214,12 @@ class ChatViewModel @AssistedInject constructor(
 
                 _isStreamingResponse.value = true
 
-                // Сохраняем оценочное количество токенов до отправки для корректировки коэффициента
-                val estimatedTokensBeforeRequest = _estimatedTokens.value
-
                 // Используем sendMessageWithFallback, который правильно обрабатывает файлы
-                interactor.sendMessageWithFallback(selectedModel.id, conversationId)
+                interactor.sendMessageWithFallback(
+                    model = selectedModel.id,
+                    conversationId = conversationId,
+                    estimatedTokens = _estimatedTokens.value
+                )
 
                 // После получения ответа корректируем коэффициент (упрощенная версия)
                 // В реальном приложении нужно извлекать usage из ответа
@@ -247,6 +241,7 @@ class ChatViewModel @AssistedInject constructor(
         viewModelScope.launch {
             try {
                 interactor.setSystemPrompt(currentId, prompt)
+                calculateEstimatedTokens()
             } catch (e: Exception) {
                 _uiEvents.emit(ChatUiEvent.ShowError(e))
             }
@@ -305,9 +300,8 @@ class ChatViewModel @AssistedInject constructor(
      * @param uri URI выбранного файла
      * @return Flow с результатами обработки по чанкам
      */
-    fun processFileFromUri(uri: Uri): Flow<FileProcessingResult> {
-
-        return fileRepository.processFileFromUri(uri)
+    fun processFileFromUri(uri: Uri): Flow<FileProcessingResult> =
+        fileRepository.processFileFromUri(uri)
             .onEach { result ->
                 // Автоматически сохраняем завершенный файл в репозиторий и добавляем в разговор
                 if (result is FileProcessingResult.Complete) {
@@ -324,7 +318,6 @@ class ChatViewModel @AssistedInject constructor(
                 emit(FileProcessingResult.Error(exception.message ?: "Unknown error"))
                 _uiEvents.emit(ChatUiEvent.ShowError(exception))
             }
-    }
 
     /**
      * Сохранить файл во временном репозитории и вернуть его ID.
@@ -377,65 +370,30 @@ class ChatViewModel @AssistedInject constructor(
      * Рассчитать примерное количество токенов
      * Примерно 4 символа на токен
      */
-   private fun calculateEstimatedTokens() {
-       val ratio = _tokenRatio.value
-       var totalTokens = 0
+    private fun calculateEstimatedTokens() {
+        viewModelScope.launch {
+            try {
+                val inputText = _currentInputText.value
+                val attachedFiles = _attachedFiles.value
+                val conversationId = _currentConversationId.value
 
-       // Токены от текста ввода
-       val inputText = _currentInputText.value
-       if (inputText.isNotBlank()) {
-           totalTokens += ceil(inputText.length / ratio).toInt()
-       }
+                val result = interactor.estimateTokensForCurrentChat(
+                    inputText = inputText,
+                    attachedFiles = attachedFiles,
+                    conversationId = conversationId
+                )
 
-       // Токены от прикрепленных файлов
-       _attachedFiles.value.forEach { file ->
-           if (file.mimeType.startsWith("text/")) {
-               totalTokens += ceil(file.originalContent.length / ratio).toInt()
-           }
-       }
+                _estimatedTokens.value = result.estimatedTokens
+                _isAccurate.value = result.isAccurate
+            } catch (e: Exception) {
+                _uiEvents.emit(ChatUiEvent.ShowError(e))
+            }
+        }
+    }
 
-       // Токены от системного промпта
-       val systemPrompt = uiState.value.systemPrompt
-       if (!systemPrompt.isNullOrBlank()) {
-           totalTokens += ceil(systemPrompt.length / ratio).toInt()
-       }
-
-       // Токены от истории сообщений (последние 10)
-       uiState.value.messages.takeLast(10).forEach { message ->
-           totalTokens += ceil(message.content.length / ratio).toInt()
-       }
-
-       _estimatedTokens.value = totalTokens
-   }
-
-   /**
-    * Скорректировать коэффициент расчета на основе реальных данных из API
-    * @param actualPromptTokens реальное количество токенов во входящем сообщении
-    * @param actualCompletionTokens реальное количество токенов в ответе
-    * @param estimatedPromptTokens оценочное количество токенов во входящем сообщении
-    */
-   fun adjustTokenRatio(
-       actualPromptTokens: Int,
-       actualCompletionTokens: Int,
-       estimatedPromptTokens: Int
-   ) {
-       if (actualPromptTokens > 0 && estimatedPromptTokens > 0) {
-           // Рассчитываем новый коэффициент на основе реальных данных
-           val currentRatio = _tokenRatio.value
-           val newRatio = actualPromptTokens.toDouble() / estimatedPromptTokens.toDouble()
-
-           // Плавная корректировка коэффициента (смешивание с текущим значением)
-           val adjustedRatio = (currentRatio * 0.7) + (newRatio * 0.3)
-
-           // Ограничиваем диапазон коэффициента
-           val clampedRatio = adjustedRatio.coerceIn(2.0, 8.0)
-
-           _tokenRatio.value = clampedRatio
-           _isAccurate.value = true
-
-           // Пересчитываем токены с новым коэффициентом
-           calculateEstimatedTokens()
-       }
-   }
-
+    fun onClearChatClicked() {
+        viewModelScope.launch {
+            _uiEvents.emit(ChatUiEvent.RequestClearChat)
+        }
+    }
 }

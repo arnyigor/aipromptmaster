@@ -16,6 +16,7 @@ import com.arny.aipromptmaster.data.repositories.FileRepositoryImpl
 import com.arny.aipromptmaster.data.repositories.PromptsRepositoryImpl
 import com.arny.aipromptmaster.data.repositories.SettingsRepositoryImpl
 import com.arny.aipromptmaster.data.sync.PromptSynchronizerImpl
+import com.arny.aipromptmaster.data.utils.TokenEstimator
 import com.arny.aipromptmaster.domain.repositories.IChatHistoryRepository
 import com.arny.aipromptmaster.domain.repositories.IFeedbackRepository
 import com.arny.aipromptmaster.domain.repositories.IFileRepository
@@ -24,6 +25,7 @@ import com.arny.aipromptmaster.domain.repositories.IPromptSynchronizer
 import com.arny.aipromptmaster.domain.repositories.IPromptsRepository
 import com.arny.aipromptmaster.domain.repositories.ISettingsRepository
 import com.arny.aipromptmaster.domain.services.FileProcessingService
+import com.arny.aipromptmaster.domain.utils.ITokenEstimator
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -88,6 +90,10 @@ interface DataModule {
             fileProcessingService: FileProcessingService
         ): FileRepositoryImpl = FileRepositoryImpl(context, fileProcessingService)
     }
+
+    @Binds
+    @Singleton
+    fun bindTokenEstimator(impl: TokenEstimator): ITokenEstimator
 
     @Binds
     @Singleton

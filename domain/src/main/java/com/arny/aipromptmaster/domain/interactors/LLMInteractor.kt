@@ -11,17 +11,19 @@ import com.arny.aipromptmaster.domain.models.FileAttachment
 import com.arny.aipromptmaster.domain.models.FileAttachmentMetadata
 import com.arny.aipromptmaster.domain.models.FileReference
 import com.arny.aipromptmaster.domain.models.LlmModel
+import com.arny.aipromptmaster.domain.models.TokenEstimationResult
 import com.arny.aipromptmaster.domain.models.errors.DomainError
 import com.arny.aipromptmaster.domain.repositories.IChatHistoryRepository
 import com.arny.aipromptmaster.domain.repositories.IFileRepository
 import com.arny.aipromptmaster.domain.repositories.IOpenRouterRepository
 import com.arny.aipromptmaster.domain.repositories.ISettingsRepository
 import com.arny.aipromptmaster.domain.results.DataResult
+import com.arny.aipromptmaster.domain.utils.FileUtils.formatFileSize
+import com.arny.aipromptmaster.domain.utils.ITokenEstimator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onStart
@@ -34,7 +36,8 @@ class LLMInteractor @Inject constructor(
     private val modelsRepository: IOpenRouterRepository,
     private val settingsRepository: ISettingsRepository,
     private val historyRepository: IChatHistoryRepository,
-    private val fileRepository: IFileRepository
+    private val fileRepository: IFileRepository,
+    private val tokenEstimator: ITokenEstimator
 ) : ILLMInteractor {
 
     // Определяем максимальное количество сообщений в истории.
@@ -43,6 +46,32 @@ class LLMInteractor @Inject constructor(
     private companion object {
         const val MAX_HISTORY_SIZE = 20
         const val FILE_PREVIEW_LENGTH = 500  // Максимальная длина превью файла
+    }
+
+    override suspend fun estimateTokensForCurrentChat(
+        inputText: String,
+        attachedFiles: List<FileAttachment>,
+        conversationId: String?
+    ): TokenEstimationResult {
+        if (conversationId == null) {
+            // Если нет ID чата, используем только ввод и файлы
+            return tokenEstimator.estimateTokens(
+                inputText = inputText,
+                attachedFiles = attachedFiles,
+                systemPrompt = null, //  Понять будет ли передаваться системный промпт глобальный или только для уже созданного чата
+                chatHistory = emptyList(),
+            )
+        }
+
+        val systemPrompt = getSystemPrompt(conversationId) // Используем существующий метод
+        val chatHistory = historyRepository.getHistoryFlow(conversationId).first() // Получаем текущую историю
+
+        return tokenEstimator.estimateTokens(
+            inputText = inputText,
+            attachedFiles = attachedFiles,
+            systemPrompt = systemPrompt,
+            chatHistory = chatHistory,
+        )
     }
 
     override suspend fun createNewConversation(title: String): String {
@@ -213,56 +242,11 @@ class LLMInteractor @Inject constructor(
         )
     }
 
-    /**
-     * Отправляет сообщение, используя ограниченный контекст.
-     */
-    override fun sendMessage(model: String, conversationId: String?): Flow<DataResult<String>> =
-        flow {
-            emit(DataResult.Loading)
-            try {
-                val apiKey = settingsRepository.getApiKey()?.trim()
-                if (apiKey.isNullOrEmpty()) {
-                    emit(DataResult.Error(DomainError.local(R.string.api_key_not_found)))
-                    return@flow
-                }
-
-                // 3. Получаем контекст для API
-                val messagesForApi = getChatHistoryFlow(conversationId)
-                    .first()
-                    .takeLast(MAX_HISTORY_SIZE)
-
-                val result = modelsRepository.getChatCompletion(model, messagesForApi, apiKey)
-                result.fold(
-                    onSuccess = { response ->
-                        val content = response.choices.firstOrNull()?.message?.content
-                        if (content != null) {
-                            // Сохраняем usage информацию в ответе
-                            val contentWithUsage = buildString {
-                                append(content)
-                                response.usage?.let { usage ->
-                                    append("\n\n---\n")
-                                    append("📊 **Использование токенов:**\n")
-                                    append("• Входящие: ${usage.promptTokens}\n")
-                                    append("• Исходящие: ${usage.completionTokens}\n")
-                                    append("• Всего: ${usage.totalTokens}")
-                                }
-                            }
-
-                            // Возвращаем результат с usage информацией для корректировки коэффициента
-                            val resultWithUsage = DataResult.Success(contentWithUsage) to response.usage
-                            emit(resultWithUsage.first)
-                        } else {
-                            emit(DataResult.Error(DomainError.generic(R.string.empty_api_response)))
-                        }
-                    },
-                    onFailure = { exception -> emit(DataResult.Error(exception)) }
-                )
-            } catch (e: Exception) {
-                emit(DataResult.Error(DomainError.Generic(e.message)))
-            }
-        }
-
-    override suspend fun sendMessageWithFallback(model: String, conversationId: String?) {
+    override suspend fun sendMessageWithFallback(
+        model: String,
+        conversationId: String?,
+        estimatedTokens: Int // для точной корректировки количества токенов
+    ) {
         val currentConversationId = conversationId
             ?: throw DomainError.Local("Conversation ID is required")
 
@@ -283,10 +267,21 @@ class LLMInteractor @Inject constructor(
             // 3. Выбираем стратегию отправки в зависимости от наличия файлов
             if (payload.attachedFiles.isNotEmpty()) {
                 // СТРАТЕГИЯ А: Отправка с файлами
-                runStreamingWithFiles(model, payload, apiKey, assistantMessageId)
+                runStreamingWithFiles(
+                    model = model,
+                    payload = payload,
+                    apiKey = apiKey,
+                    messageId = assistantMessageId
+                )
             } else {
                 // СТРАТЕГИЯ Б: Обычная отправка без файлов
-                runStreamingAttempt(model, payload.messages, apiKey, assistantMessageId)
+                runStreamingAttempt(
+                    model = model,
+                    messages = payload.messages,
+                    apiKey = apiKey,
+                    messageId = assistantMessageId,
+                    estimatedTokens = estimatedTokens
+                )
             }
 
         } catch (e: Exception) {
@@ -402,21 +397,19 @@ class LLMInteractor @Inject constructor(
     /**
      * Возвращает реактивный поток с деталями только одной выбранной модели.
      */
-    override fun getSelectedModel(): Flow<DataResult<LlmModel>> {
-        return getModels().map { dataResult ->
-            when (dataResult) {
-                is DataResult.Success -> {
-                    val selected = dataResult.data.find { it.isSelected }
-                    if (selected != null) {
-                        DataResult.Success(selected)
-                    } else {
-                        DataResult.Error(null, R.string.selected_model_not_found)
-                    }
+    override fun getSelectedModel(): Flow<DataResult<LlmModel>> = getModels().map { dataResult ->
+        when (dataResult) {
+            is DataResult.Success -> {
+                val selected = dataResult.data.find { it.isSelected }
+                if (selected != null) {
+                    DataResult.Success(selected)
+                } else {
+                    DataResult.Error(null, R.string.selected_model_not_found)
                 }
-
-                is DataResult.Error -> DataResult.Error(dataResult.exception)
-                is DataResult.Loading -> dataResult
             }
+
+            is DataResult.Error -> DataResult.Error(dataResult.exception)
+            is DataResult.Loading -> dataResult
         }
     }
 
@@ -602,15 +595,15 @@ class LLMInteractor @Inject constructor(
         model: String,
         messages: List<ApiMessage>,
         apiKey: String,
-        messageId: String
+        messageId: String,
+        estimatedTokens: Int
     ) {
         var receivedAnyData = false
         var streamError: DomainError? = null
 
-        // ✅ ИСПРАВЛЕНО: Правильная конвертация ApiMessage -> ChatMessage
         val chatMessages = messages.map { apiMsg ->
             ChatMessage(
-                role = ChatRole.fromApiRole(apiMsg.role),  // ✅ Используем fromApiRole()
+                role = ChatRole.fromApiRole(apiMsg.role),
                 content = apiMsg.content
             )
         }
@@ -653,14 +646,6 @@ class LLMInteractor @Inject constructor(
             }
 
         streamError?.let { throw it }
-    }
-
-    private fun formatFileSize(bytes: Long): String {
-        return when {
-            bytes < 1024 -> "$bytes B"
-            bytes < 1024 * 1024 -> "${bytes / 1024} KB"
-            else -> String.format("%.1f MB", bytes / (1024.0 * 1024.0))
-        }
     }
 
     /**

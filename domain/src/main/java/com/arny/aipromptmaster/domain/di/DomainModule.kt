@@ -9,6 +9,8 @@ import com.arny.aipromptmaster.domain.interactors.SettingsInteractorImpl
 import com.arny.aipromptmaster.domain.repositories.IFeedbackRepository
 import dagger.Binds
 import dagger.Module
+import dagger.Provides
+import kotlinx.serialization.json.Json
 import javax.inject.Singleton
 
 @Module

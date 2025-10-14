@@ -140,7 +140,7 @@ class OpenRouterRepositoryImpl @Inject constructor(
         val request = ChatCompletionRequestDTO(
             model = model,
             messages = messages
-                .map { MessageDTO(it.role.toApiRole(), it.content) }  // ✅ Используем toApiRole()
+                .map { MessageDTO(it.role.toApiRole(), it.content) }
                 .filter { !it.content.isNullOrBlank() },
             maxTokens = 4096,
             stream = true
@@ -186,7 +186,6 @@ class OpenRouterRepositoryImpl @Inject constructor(
     }
 
     /**
-     * ✅ ИСПРАВЛЕНО: buildMessagesWithFileContent теперь не нужен
      * Файлы обрабатываются в LLMInteractor.buildMessagesForApi()
      */
     override fun getChatCompletionStreamWithFiles(
@@ -196,7 +195,6 @@ class OpenRouterRepositoryImpl @Inject constructor(
         emit(DataResult.Loading)
 
         try {
-            // ✅ Просто передаем сообщения как есть
             val apiRequest = ChatCompletionRequestDTO(
                 model = request.model,
                 messages = request.messages.map { apiMsg ->

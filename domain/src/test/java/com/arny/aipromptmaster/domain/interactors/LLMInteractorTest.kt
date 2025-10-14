@@ -6,14 +6,21 @@ import com.arny.aipromptmaster.domain.models.ChatCompletionResponse
 import com.arny.aipromptmaster.domain.models.ChatMessage
 import com.arny.aipromptmaster.domain.models.ChatRole
 import com.arny.aipromptmaster.domain.models.Choice
+import com.arny.aipromptmaster.domain.models.Conversation
+import com.arny.aipromptmaster.domain.models.FileAttachment
+import com.arny.aipromptmaster.domain.models.FileAttachmentMetadata
 import com.arny.aipromptmaster.domain.models.errors.DomainError
 import com.arny.aipromptmaster.domain.repositories.IChatHistoryRepository
+import com.arny.aipromptmaster.domain.repositories.IFileRepository
 import com.arny.aipromptmaster.domain.repositories.IOpenRouterRepository
 import com.arny.aipromptmaster.domain.repositories.ISettingsRepository
 import com.arny.aipromptmaster.domain.results.DataResult
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.just
+import io.mockk.runs
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -27,16 +34,22 @@ class LLMInteractorTest {
 
     @MockK
     private lateinit var modelsRepository: IOpenRouterRepository
+
     @MockK
     private lateinit var settingsRepository: ISettingsRepository
+
     @MockK
     private lateinit var historyRepository: IChatHistoryRepository
 
-    private lateinit var interactor: LLMInteractor
+    @MockK
+    private lateinit var fileRepository: IFileRepository
+
+    private lateinit var interactor: ILLMInteractor
 
     @BeforeEach
     fun setUp() {
-        interactor = LLMInteractor(modelsRepository, settingsRepository, historyRepository)
+        interactor =
+            LLMInteractor(modelsRepository, settingsRepository, historyRepository, fileRepository)
     }
 
     @Test
@@ -60,37 +73,175 @@ class LLMInteractorTest {
     }
 
     @Test
-    fun `sendMessage SHOULD return success WHEN api call is successful`() = runTest {
+    fun `addUserMessageWithFile SHOULD save file and message with metadata`() = runTest {
         // Arrange
-        val fakeApiKey = "valid_api_key"
-        val fakeResponseContent = "Hello from AI!"
-        val fakeHistory = listOf(ChatMessage(role = ChatRole.USER, content = "Hi"))
-
-        // Создаем фальшивый ответ, используя НОВЫЕ доменные модели:
-        // ChatCompletionResponse и Choice.
-        val fakeApiResponse = ChatCompletionResponse(
-            id = "fake_response_id_123",
-            choices = listOf(
-                Choice(
-                    message = ChatMessage(role = ChatRole.ASSISTANT, content = fakeResponseContent)
-                )
-            ),
-            usage = null // usage может быть null, так что это валидный сценарий
+        val conversationId = "conv_123"
+        val userMessage = "Analyze this file"
+        val fileContent = "public class Test { }"
+        val fileAttachment = FileAttachment(
+            id = "file_456",
+            fileName = "Test.java",
+            fileExtension = "java",
+            fileSize = fileContent.length.toLong(),
+            mimeType = "text/x-java",
+            originalContent = fileContent
         )
 
-        coEvery { settingsRepository.getApiKey() } returns fakeApiKey
-        coEvery { historyRepository.getHistoryFlow(any()) } returns flowOf(fakeHistory)
-        // Метод getChatCompletion теперь должен возвращать Result<ChatCompletionResponse>
-        coEvery { modelsRepository.getChatCompletion(any(), any(), fakeApiKey) } returns Result.success(fakeApiResponse)
+        coEvery { historyRepository.getConversation(conversationId) } returns null
+        coEvery { historyRepository.createNewConversation(any()) } returns conversationId
+        coEvery { fileRepository.saveTemporaryFile(fileAttachment) } returns fileAttachment.id
+        coEvery { historyRepository.addMessages(any(), any()) } just runs
 
-        // Act & Assert
-        interactor.sendMessage("test_model", "test_conversation_id").test {
-            assertEquals(DataResult.Loading, awaitItem())
+        // Act
+        interactor.addUserMessageWithFile(conversationId, userMessage, fileAttachment)
 
-            val successResult = awaitItem() as DataResult.Success
-            assertEquals(fakeResponseContent, successResult.data)
+        // Assert
+        coVerify { fileRepository.saveTemporaryFile(fileAttachment) }
+        coVerify {
+            historyRepository.addMessages(
+                eq(conversationId),
+                match { messages ->
+                    messages.size == 1 &&
+                            messages[0].role == ChatRole.USER &&
+                            messages[0].content.contains("Analyze this file") &&
+                            messages[0].content.contains("📎 **Файл**: Test.java") &&
+                            messages[0].fileAttachment?.fileId == "file_456" &&
+                            messages[0].fileAttachment?.preview == fileContent // <= 500 chars
+                }
+            )
+        }
+    }
 
-            awaitComplete()
+    @Test
+    fun `getFullChatForExport SHOULD include attached files in markdown`() = runTest {
+        // Arrange
+        val conversationId = "conv_789"
+        val systemPrompt = "You are a code reviewer."
+        val userMessage = ChatMessage(
+            role = ChatRole.USER,
+            content = "Review this:\n📎 **Файл**: Test.java\n**Размер**: 22 B\n**Превью**:\n```...",
+            fileAttachment = FileAttachmentMetadata(
+                fileId = "file_101",
+                fileName = "Test.java",
+                fileExtension = "java",
+                fileSize = 22L,
+                mimeType = "text/x-java",
+                preview = "public class Test { }"
+            )
+        )
+        val assistantMessage = ChatMessage(role = ChatRole.ASSISTANT, content = "Looks good!")
+
+        val fullFile = FileAttachment(
+            id = "file_101",
+            fileName = "Test.java",
+            fileExtension = "java",
+            fileSize = 22L,
+            mimeType = "text/x-java",
+            originalContent = "public class Test { }"
+        )
+
+        coEvery { historyRepository.getConversation(conversationId) } returns Conversation(
+            conversationId,
+            "Code Review",
+            systemPrompt
+        )
+        coEvery { historyRepository.getFullHistory(conversationId) } returns listOf(
+            userMessage,
+            assistantMessage
+        )
+        coEvery { fileRepository.getTemporaryFile("file_101") } returns fullFile
+
+        // Act
+        val exported = interactor.getFullChatForExport(conversationId)
+
+        // Assert
+        assertTrue(exported.contains("# Диалог: Code Review"))
+        assertTrue(exported.contains("## Системный промпт"))
+        assertTrue(exported.contains(systemPrompt))
+        assertTrue(exported.contains("## Прикрепленные файлы"))
+        assertTrue(exported.contains("### Файл 1: Test.java"))
+        assertTrue(exported.contains("```java\npublic class Test { }\n```"))
+        assertTrue(exported.contains("👤 Пользователь"))
+        assertTrue(exported.contains("Review this:"))
+        assertTrue(exported.contains("🤖 Ассистент"))
+        assertTrue(exported.contains("Looks good!"))
+    }
+
+    @Test
+    fun `sendMessageWithFallback SHOULD stream response and append to message WHEN file is attached`() = runTest {
+        // Arrange
+        val conversationId = "conv_202"
+        val model = "gpt-4o"
+        val apiKey = "sk-123"
+        val fileContent = """{"key": "value"}"""
+        val fileAttachment = FileAttachment(
+            id = "file_999",
+            fileName = "data.json",
+            fileExtension = "json",
+            fileSize = fileContent.length.toLong(),
+            mimeType = "application/json",
+            originalContent = fileContent
+        )
+
+        val userMessage = ChatMessage(
+            role = ChatRole.USER,
+            content = "Analyze this\n📎 **Файл**: data.json...",
+            fileAttachment = FileAttachmentMetadata(
+                fileId = "file_999",
+                fileName = "data.json",
+                fileExtension = "json",
+                fileSize = fileContent.length.toLong(),
+                mimeType = "application/json",
+                preview = fileContent.take(500)
+            )
+        )
+
+        // Моки
+        coEvery { settingsRepository.getApiKey() } returns apiKey
+        coEvery { historyRepository.getSystemPrompt(conversationId) } returns null
+        coEvery { historyRepository.getHistoryFlow(conversationId) } returns flowOf(listOf(userMessage))
+        coEvery { fileRepository.getTemporaryFile("file_999") } returns fileAttachment
+        coEvery { historyRepository.addMessage(conversationId, any()) } returns "msg_111"
+        coEvery { historyRepository.appendContentToMessage(any(), any()) } just runs
+        coEvery { historyRepository.deleteMessage(any()) } just runs
+
+        val fakeResponseFlow = flowOf(
+            DataResult.Success("First"),
+            DataResult.Success(" second.")
+        )
+
+        coEvery {
+            modelsRepository.getChatCompletionStreamWithFiles(
+                match { req ->
+                    req.model == model &&
+                            req.files.size == 1 &&
+                            req.files[0].id == "file_999" &&
+                            req.files[0].content == fileContent
+                },
+                eq(apiKey)
+            )
+        } returns fakeResponseFlow
+
+        // Act
+        interactor.sendMessageWithFallback(model, conversationId, estimatedTokensBeforeRequest)
+
+        // Assert
+        coVerify(exactly = 1) {
+            historyRepository.addMessage(eq(conversationId), any())
+        }
+
+        coVerify(exactly = 2) {
+            historyRepository.appendContentToMessage(eq("msg_111"), any())
+        }
+
+        coVerify {
+            historyRepository.appendContentToMessage("msg_111", "First")
+            historyRepository.appendContentToMessage("msg_111", " second.")
+        }
+
+        // Убеждаемся, что сообщение НЕ удалялось (успешный сценарий)
+        coVerify(exactly = 0) {
+            historyRepository.deleteMessage(any())
         }
     }
 }

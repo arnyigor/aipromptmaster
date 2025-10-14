@@ -19,11 +19,9 @@ interface CoreModule {
 
         @Provides
         @Singleton
-        fun provideMarkwon(context: Context): Markwon {
-            return Markwon.builder(context)
-                .usePlugin(StrikethroughPlugin.create())
-                .usePlugin(TablePlugin.create(context))
-                .build()
-        }
+        fun provideMarkwon(context: Context): Markwon = Markwon.builder(context)
+            .usePlugin(StrikethroughPlugin.create())
+            .usePlugin(TablePlugin.create(context))
+            .build()
     }
 }

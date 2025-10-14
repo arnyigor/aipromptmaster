@@ -4,6 +4,7 @@ import com.arny.aipromptmaster.domain.models.Chat
 import com.arny.aipromptmaster.domain.models.ChatMessage
 import com.arny.aipromptmaster.domain.models.FileAttachment
 import com.arny.aipromptmaster.domain.models.LlmModel
+import com.arny.aipromptmaster.domain.models.TokenEstimationResult
 import com.arny.aipromptmaster.domain.results.DataResult
 import kotlinx.coroutines.flow.Flow
 
@@ -56,15 +57,6 @@ interface ILLMInteractor {
     fun getChatHistoryFlow(conversationId: String?): Flow<List<ChatMessage>>
 
     /**
-     * Отправляет сообщение в указанный диалог, используя указанную модель языка.
-     *
-     * @param model Модель языка, которую нужно использовать.
-     * @param conversationId ID диалога.
-     * @return Поток результатов отправки сообщения, завернутый в [DataResult].
-     */
-    fun sendMessage(model: String, conversationId: String?): Flow<DataResult<String>>
-
-    /**
      * Очищает историю указанного диалога.
      *
      * @param conversationId ID диалога.
@@ -108,7 +100,11 @@ interface ILLMInteractor {
      * @param model Модель языка, которую нужно использовать.
      * @param conversationId ID диалога.
      */
-    suspend fun sendMessageWithFallback(model: String, conversationId: String?)
+    suspend fun sendMessageWithFallback(
+        model: String,
+        conversationId: String?,
+        estimatedTokens: Int
+    )
 
     /**
      * Устанавливает системный промпт для указанного диалога.
@@ -164,4 +160,10 @@ interface ILLMInteractor {
         userMessage: String,
         fileAttachment: FileAttachment
     )
+
+    suspend fun estimateTokensForCurrentChat(
+        inputText: String,
+        attachedFiles: List<FileAttachment>,
+        conversationId: String?,
+    ): TokenEstimationResult
 }
