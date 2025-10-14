@@ -5,7 +5,6 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.arny.aipromptmaster.data.db.entities.ConversationEntity
-import com.arny.aipromptmaster.data.db.entities.MessageEntity
 import com.arny.aipromptmaster.domain.models.Chat
 import kotlinx.coroutines.flow.Flow
 
@@ -150,4 +149,62 @@ interface ChatDao {
      */
     @Query("SELECT * FROM messages WHERE conversationId = :conversationId ORDER BY timestamp ASC")
     suspend fun getAllMessagesForConversation(conversationId: String): List<MessageEntity>
+
+    /**
+     * Обновляет состояние thinking для сообщения.
+     */
+    @Query("UPDATE messages SET content = :content, timestamp = :timestamp WHERE id = :messageId")
+    suspend fun updateMessageThinkingState(
+        messageId: String,
+        isThinking: Boolean,
+        thinkingTime: Long?
+    )
+
+    /**
+     * Обновляет состояние thinking для сообщения (для новых полей).
+     */
+    @Query("UPDATE messages SET content = content WHERE id = :messageId")
+    suspend fun updateMessageThinkingState(
+        messageId: String,
+        isThinking: Boolean,
+        thinkingTime: Long?
+    )
+
+    // 🔥 НОВЫЕ МЕТОДЫ ДЛЯ РАБОТЫ С ФАЙЛАМИ ЧАТА
+
+    /**
+     * Вставляет файл чата в базу данных.
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertConversationFile(file: ConversationFileEntity)
+
+    /**
+     * Удаляет файл чата по ID.
+     */
+    @Query("DELETE FROM conversation_files WHERE id = :fileId")
+    suspend fun deleteConversationFileById(fileId: String)
+
+    /**
+     * Удаляет файл чата по conversationId и fileId.
+     */
+    @Query("DELETE FROM conversation_files WHERE conversationId = :conversationId AND id = :fileId")
+    suspend fun deleteConversationFile(conversationId: String, fileId: String)
+
+    /**
+     * Получает все файлы для указанного чата.
+     */
+    @Query("SELECT * FROM conversation_files WHERE conversationId = :conversationId ORDER BY uploadedAt ASC")
+    suspend fun getConversationFiles(conversationId: String): List<ConversationFileEntity>
+
+    /**
+     * Получает поток файлов для указанного чата.
+     */
+    @Query("SELECT * FROM conversation_files WHERE conversationId = :conversationId ORDER BY uploadedAt ASC")
+    fun getConversationFilesFlow(conversationId: String): Flow<List<ConversationFileEntity>>
+
+    /**
+     * Очищает все файлы для указанного чата.
+     */
+    @Query("DELETE FROM conversation_files WHERE conversationId = :conversationId")
+    suspend fun clearConversationFiles(conversationId: String)
 }

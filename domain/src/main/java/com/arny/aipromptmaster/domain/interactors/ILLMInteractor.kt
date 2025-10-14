@@ -95,14 +95,16 @@ interface ILLMInteractor {
     suspend fun createNewConversation(title: String): String
 
     /**
-     * Отправляет сообщение в указанный диалог, используя указанную модель языка, с использованием резервного метода.
+     * ✅ УПРОЩЕННЫЙ метод отправки сообщения
+     * Файлы автоматически подтягиваются из чата
      *
      * @param model Модель языка, которую нужно использовать.
      * @param conversationId ID диалога.
+     * @param estimatedTokens Предполагаемое количество токенов.
      */
-    suspend fun sendMessageWithFallback(
+    suspend fun sendMessage(
         model: String,
-        conversationId: String?,
+        conversationId: String,
         estimatedTokens: Int
     )
 
@@ -152,14 +154,62 @@ interface ILLMInteractor {
     fun cancelCurrentRequest()
 
     /**
-     * Добавляет сообщение пользователя с файлом в историю
-     * Сохраняет в истории только метаданные и превью файла
+     * Регенерирует последний ответ ассистента
+     * Удаляет последний ответ и отправляет запрос заново
+     * @param model Модель языка
+     * @param conversationId ID диалога
      */
-    suspend fun addUserMessageWithFile(
-        conversationId: String,
-        userMessage: String,
-        fileAttachment: FileAttachment
+    suspend fun regenerateLastResponse(
+        model: String,
+        conversationId: String
     )
+
+    /**
+     * Регенерация ЛЮБОГО сообщения в истории
+     * @param model Модель языка
+     * @param conversationId ID диалога
+     * @param messageId ID сообщения которое нужно регенерировать
+     */
+    suspend fun regenerateMessage(
+        model: String,
+        conversationId: String,
+        messageId: String
+    )
+
+    /**
+     * Добавить файл к чату
+     * @param conversationId ID чата
+     * @param file Файл для добавления
+     */
+    suspend fun addFileToConversation(conversationId: String, file: FileAttachment)
+
+    /**
+     * Удалить файл из чата
+     * @param conversationId ID чата
+     * @param fileId ID файла для удаления
+     */
+    suspend fun removeFileFromConversation(conversationId: String, fileId: String)
+
+    /**
+     * Получить файлы чата
+     * @param conversationId ID чата
+     * @return Список файлов чата
+     */
+    suspend fun getConversationFiles(conversationId: String): List<FileAttachment>
+
+    /**
+     * Получить поток файлов чата
+     * @param conversationId ID чата
+     * @return Поток списка файлов чата
+     */
+    fun getConversationFilesFlow(conversationId: String): Flow<List<FileAttachment>>
+
+
+    /**
+     * Добавляет пустое сообщение ассистента для streaming
+     * @return ID созданного сообщения
+     */
+    suspend fun createAssistantMessage(conversationId: String): String
 
     suspend fun estimateTokensForCurrentChat(
         inputText: String,

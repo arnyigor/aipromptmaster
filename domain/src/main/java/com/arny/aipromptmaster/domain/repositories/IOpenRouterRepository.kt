@@ -20,15 +20,6 @@ interface IOpenRouterRepository {
      */
     suspend fun refreshModels(): Result<Unit>
 
-    /**
-     * Выполняет запрос к API чата.
-     */
-    suspend fun getChatCompletion(
-        model: String,
-        messages: List<ChatMessage>,
-        apiKey: String,
-    ): Result<ChatCompletionResponse>
-
     fun getChatCompletionStream(
         model: String,
         messages: List<ChatMessage>,

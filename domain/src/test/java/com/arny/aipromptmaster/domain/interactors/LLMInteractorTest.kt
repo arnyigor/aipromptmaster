@@ -2,10 +2,8 @@ package com.arny.aipromptmaster.domain.interactors
 
 import app.cash.turbine.test
 import com.arny.aipromptmaster.domain.R
-import com.arny.aipromptmaster.domain.models.ChatCompletionResponse
 import com.arny.aipromptmaster.domain.models.ChatMessage
 import com.arny.aipromptmaster.domain.models.ChatRole
-import com.arny.aipromptmaster.domain.models.Choice
 import com.arny.aipromptmaster.domain.models.Conversation
 import com.arny.aipromptmaster.domain.models.FileAttachment
 import com.arny.aipromptmaster.domain.models.FileAttachmentMetadata
@@ -58,7 +56,7 @@ class LLMInteractorTest {
         coEvery { settingsRepository.getApiKey() } returns null
 
         // Act & Assert
-        interactor.sendMessage("test_model", "test_conversation_id").test {
+        interactor.sendMessageWithFallback("test_model", "test_conversation_id").test {
             assertEquals(DataResult.Loading, awaitItem())
 
             val errorResult = awaitItem() as DataResult.Error

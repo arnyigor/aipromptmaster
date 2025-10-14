@@ -2,18 +2,22 @@ package com.arny.aipromptmaster.data.repositories
 
 import com.arny.aipromptmaster.data.db.daos.ChatDao
 import com.arny.aipromptmaster.data.db.entities.ConversationEntity
+import com.arny.aipromptmaster.data.db.entities.ConversationFileEntity
 import com.arny.aipromptmaster.data.db.entities.MessageEntity
 import com.arny.aipromptmaster.domain.models.Chat
 import com.arny.aipromptmaster.domain.models.ChatMessage
 import com.arny.aipromptmaster.domain.models.ChatRole
 import com.arny.aipromptmaster.domain.models.Conversation
+import com.arny.aipromptmaster.domain.models.FileAttachment
 import com.arny.aipromptmaster.domain.repositories.IChatHistoryRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
 class ChatHistoryRepositoryImpl @Inject constructor(
-    private val chatDao: ChatDao
+    private val chatDao: ChatDao,
+    private val conversationFileDao: ConversationFileDao,
+    private val fileRepository: IFileRepository
 ) : IChatHistoryRepository {
 
     override suspend fun deleteMessage(messageId: String) {
@@ -86,14 +90,19 @@ class ChatHistoryRepositoryImpl @Inject constructor(
     private fun MessageEntity.toDomainModel(): ChatMessage = ChatMessage(
         id = this.id,
         role = ChatRole.fromApiRole(this.role),
-        content = this.content
+        content = this.content,
+        timestamp = this.timestamp,
+        attachedFileIds = emptyList(), // TODO: Загружать из отдельной таблицы
+        thinkingTime = null,
+        isThinking = false
     )
 
     private fun ChatMessage.toEntity(conversationId: String): MessageEntity = MessageEntity(
         id = this.id,
         conversationId = conversationId,
         role = this.role.toString(),
-        content = this.content
+        content = this.content,
+        timestamp = this.timestamp
     )
 
     private fun ConversationEntity.toDomain(): Conversation = Conversation(
@@ -108,4 +117,78 @@ class ChatHistoryRepositoryImpl @Inject constructor(
         role = ChatRole.fromApiRole(this.role),
         content = this.content
     )
+
+    // МАППЕРЫ для файлов чата
+    private fun ConversationFileEntity.toDomain(content: String): FileAttachment {
+        return FileAttachment(
+            id = fileId,
+            fileName = fileName,
+            fileExtension = fileExtension,
+            fileSize = fileSize,
+            mimeType = mimeType,
+            originalContent = content
+        )
+    }
+
+    private fun FileAttachment.toEntity(conversationId: String, filePath: String): ConversationFileEntity {
+        return ConversationFileEntity(
+            id = java.util.UUID.randomUUID().toString(),
+            conversationId = conversationId,
+            fileId = id,
+            fileName = fileName,
+            fileExtension = fileExtension,
+            fileSize = fileSize,
+            mimeType = mimeType,
+            filePath = filePath,
+            preview = originalContent.take(500),
+            uploadedAt = System.currentTimeMillis()
+        )
+    }
+
+    // РЕАЛИЗАЦИЯ МЕТОДОВ ДЛЯ ФАЙЛОВ ЧАТА
+    override suspend fun addFileToConversation(conversationId: String, file: FileAttachment) {
+        // 1. Сохраняем файл во временное хранилище
+        fileRepository.saveTemporaryFile(file)
+
+        // 2. Создаем запись в базе данных
+        val entity = file.toEntity(conversationId, file.id) // filePath = fileId для temp storage
+        conversationFileDao.insertFile(entity)
+    }
+
+    override suspend fun removeFileFromConversation(conversationId: String, fileId: String) {
+        conversationFileDao.deleteFileById(fileId)
+        // Удаляем файл из временного хранилища
+        fileRepository.deleteTemporaryFile(fileId)
+    }
+
+    override suspend fun getConversationFiles(conversationId: String): List<FileAttachment> {
+        val entities = conversationFileDao.getFilesByConversationId(conversationId)
+        return entities.mapNotNull { entity ->
+            // Получаем контент из временного хранилища
+            val content = fileRepository.getTemporaryFileContent(entity.fileId)
+            content?.let { entity.toDomain(it) }
+        }
+    }
+
+    override fun getConversationFilesFlow(conversationId: String): Flow<List<FileAttachment>> {
+        return conversationFileDao.getFilesByConversationIdFlow(conversationId)
+            .map { entities ->
+                entities.mapNotNull { entity ->
+                    val content = fileRepository.getTemporaryFileContent(entity.fileId)
+                    content?.let { entity.toDomain(it) }
+                }
+            }
+    }
+
+    override suspend fun clearConversationFiles(conversationId: String) {
+        conversationFileDao.deleteFilesByConversationId(conversationId)
+    }
+
+    override suspend fun updateMessageThinkingState(
+        messageId: String,
+        isThinking: Boolean,
+        thinkingTime: Long?
+    ) {
+        chatDao.updateMessageThinkingState(messageId, isThinking, thinkingTime)
+    }
 }

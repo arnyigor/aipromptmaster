@@ -6,6 +6,7 @@ import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.arny.aipromptmaster.data.db.AppDatabase
 import com.arny.aipromptmaster.data.db.daos.ChatDao
+import com.arny.aipromptmaster.data.db.daos.ConversationFileDao
 import com.arny.aipromptmaster.data.db.daos.PromptDao
 import com.arny.aipromptmaster.data.models.GitHubConfig
 import com.arny.aipromptmaster.data.openrouter.OpenRouterRepositoryImpl
@@ -64,6 +65,7 @@ interface DataModule {
             .addMigrations(AppDatabase.MIGRATION_1_2)
             .addMigrations(AppDatabase.MIGRATION_2_3)
             .addMigrations(AppDatabase.MIGRATION_3_4)
+            .addMigrations(AppDatabase.MIGRATION_4_5)
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
@@ -78,6 +80,10 @@ interface DataModule {
         @Provides
         @Singleton
         fun provideChatDao(db: AppDatabase): ChatDao = db.chatDao()
+
+        @Provides
+        @Singleton
+        fun provideConversationFileDao(db: AppDatabase): ConversationFileDao = db.conversationFileDao()
 
         @Provides
         @Singleton

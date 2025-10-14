@@ -40,6 +40,12 @@ class FileRepositoryImpl(
         }
     }
 
+    override suspend fun getTemporaryFileContent(id: String): String? {
+        return mutex.withLock {
+            files[id]?.originalContent
+        }
+    }
+
     override suspend fun updateTemporaryFile(id: String, updatedContent: String): Boolean {
         return mutex.withLock {
             files[id]?.let { file ->

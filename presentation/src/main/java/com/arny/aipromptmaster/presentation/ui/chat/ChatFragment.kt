@@ -187,17 +187,9 @@ class ChatFragment : Fragment() {
                 viewModel.processFileFromUri(uri).collect { result ->
                     when (result) {
                         is FileProcessingResult.Complete -> {
-                            viewModel.addAttachedFile(result.fileAttachment)
-
-                            viewModel.addMessageWithFile(
-                                conversationId = args.chatid ?: "",
-                                userMessage = "",
-                                fileAttachment = result.fileAttachment
-                            )
-
                             Toasty.success(
                                 requireContext(),
-                                "Файл ${result.fileAttachment.fileName} добавлен",
+                                "Файл ${result.fileAttachment.fileName} добавлен к чату",
                                 Toast.LENGTH_SHORT
                             ).show()
                         }

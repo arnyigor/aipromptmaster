@@ -8,8 +8,9 @@ import kotlinx.coroutines.flow.Flow
 interface IFileRepository {
     suspend fun saveTemporaryFile(fileAttachment: FileAttachment): String
     suspend fun getTemporaryFile(id: String): FileAttachment?
+    suspend fun getTemporaryFileContent(id: String): String?
     suspend fun updateTemporaryFile(id: String, updatedContent: String): Boolean
     suspend fun deleteTemporaryFile(id: String)
     fun getAllTemporaryFiles(): Flow<List<FileAttachment>>
-      fun processFileFromUri(uri: Uri): Flow<FileProcessingResult>
+    fun processFileFromUri(uri: Uri): Flow<FileProcessingResult>
 }

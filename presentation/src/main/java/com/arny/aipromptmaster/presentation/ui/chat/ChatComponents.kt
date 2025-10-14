@@ -203,15 +203,15 @@ fun ChatMessagesList(
     isStreamingResponse: Boolean,
     markwon: Markwon,
     modelName: String,
+    conversationFiles: List<FileAttachment>,
     onCopyMessage: (String) -> Unit,
     onRegenerateMessage: (String) -> Unit,
-    onViewFile: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
-    // 🔥 Отслеживаем, находимся ли внизу списка
+    // Отслеживаем, находимся ли внизу списка
     val isAtBottom by remember {
         derivedStateOf {
             val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()
@@ -219,7 +219,7 @@ fun ChatMessagesList(
         }
     }
 
-    // 🔥 Плавная прокрутка при новом сообщении (только если уже внизу)
+    // Плавная прокрутка при новом сообщении
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty() && isAtBottom) {
             scope.launch {
@@ -231,14 +231,10 @@ fun ChatMessagesList(
         }
     }
 
-    // 🔥 КЛЮЧЕВАЯ ФИШКА: Плавная прокрутка ПРИ STREAMING
-    // Следим за изменением последнего сообщения во время streaming
+    // Плавная прокрутка при streaming
     LaunchedEffect(isStreamingResponse, messages.lastOrNull()?.content) {
         if (isStreamingResponse && messages.isNotEmpty() && isAtBottom) {
-            // Плавно прокручиваем вниз без прыжков
             scope.launch {
-                // Используем scrollToItem вместо animateScrollToItem
-                // для более плавного скроллинга при streaming
                 listState.scrollToItem(
                     index = messages.size - 1,
                     scrollOffset = 0
@@ -263,23 +259,27 @@ fun ChatMessagesList(
                 items = messages,
                 key = { it.id }
             ) { message ->
-                AnimatedMessageItem(
-                    message = message,
-                    markwon = markwon,
-                    modelName = modelName,
-                    isStreaming = isStreamingResponse && message == messages.lastOrNull(),
-                    onCopyMessage = onCopyMessage,
-                    onRegenerateMessage = onRegenerateMessage,
-                    onViewFile = onViewFile,
-                    modifier = Modifier.animateItem(
-                        fadeInSpec = null,
-                        fadeOutSpec = null,
-                        placementSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessLow
+                when (message.role) {
+                    ChatRole.USER -> {
+                        UserMessageBubble(
+                            message = message,
+                            markwon = markwon,
+                            onCopyMessage = onCopyMessage
                         )
-                    )
-                )
+                    }
+                    ChatRole.ASSISTANT -> {
+                        AiMessageBubble(
+                            message = message,
+                            markwon = markwon,
+                            modelName = modelName,
+                            isStreaming = isStreamingResponse && message == messages.lastOrNull(),
+                            conversationFiles = conversationFiles,
+                            onCopyMessage = onCopyMessage,
+                            onRegenerateMessage = onRegenerateMessage
+                        )
+                    }
+                    else -> {}
+                }
             }
 
             if (isStreamingResponse && messages.lastOrNull()?.role != ChatRole.ASSISTANT) {
@@ -289,7 +289,7 @@ fun ChatMessagesList(
             }
         }
 
-        // 🔥 Кнопка "Прокрутить вниз" (появляется при прокрутке вверх)
+        // Кнопка "Вниз"
         AnimatedVisibility(
             visible = !isAtBottom && messages.isNotEmpty(),
             enter = fadeIn() + scaleIn(),
@@ -317,67 +317,8 @@ fun ChatMessagesList(
     }
 }
 
-@Composable
-private fun AnimatedMessageItem(
-    message: ChatMessage,
-    markwon: Markwon,
-    modelName: String,
-    isStreaming: Boolean,
-    onCopyMessage: (String) -> Unit,
-    onRegenerateMessage: (String) -> Unit,
-    onViewFile: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var isVisible by remember { mutableStateOf(false) }
-
-    LaunchedEffect(message.id) {
-        isVisible = true
-    }
-
-    AnimatedVisibility(
-        visible = isVisible,
-        enter = fadeIn(
-            animationSpec = tween(300, easing = FastOutSlowInEasing)
-        ) + slideInVertically(
-            initialOffsetY = { it / 4 },
-            animationSpec = tween(300, easing = FastOutSlowInEasing)
-        ),
-        modifier = modifier
-    ) {
-        when (message.role) {
-            ChatRole.USER -> {
-                if (message.fileAttachment != null) {
-                    FileMessageBubble(
-                        message = message,
-                        onCopyMessage = onCopyMessage,
-                        onRegenerateMessage = onRegenerateMessage,
-                        onViewFile = onViewFile
-                    )
-                } else {
-                    UserMessageBubble(
-                        message = message,
-                        markwon = markwon,
-                        onCopyMessage = onCopyMessage,
-                        onRegenerateMessage = onRegenerateMessage
-                    )
-                }
-            }
-            ChatRole.ASSISTANT -> {
-                AiMessageBubble(
-                    message = message,
-                    markwon = markwon,
-                    modelName = modelName,
-                    isStreaming = isStreaming,
-                    onCopyMessage = onCopyMessage
-                )
-            }
-            else -> {}
-        }
-    }
-}
-
 // ============================================================
-// MESSAGE BUBBLES (Улучшенные - в стиле RikkaHub)
+// MESSAGE BUBBLES
 // ============================================================
 
 @Composable
@@ -385,7 +326,6 @@ fun UserMessageBubble(
     message: ChatMessage,
     markwon: Markwon,
     onCopyMessage: (String) -> Unit,
-    onRegenerateMessage: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -395,7 +335,7 @@ fun UserMessageBubble(
         horizontalAlignment = Alignment.End
     ) {
         Card(
-            modifier = Modifier.fillMaxWidth(0.98f),
+            modifier = Modifier.fillMaxWidth(0.85f),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.primaryContainer
             ),
@@ -415,6 +355,7 @@ fun UserMessageBubble(
             }
         }
 
+        // Actions (ТОЛЬКО копировать для пользователя)
         Row(
             modifier = Modifier.padding(top = 4.dp, end = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -430,21 +371,12 @@ fun UserMessageBubble(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-
-            IconButton(
-                onClick = { onRegenerateMessage(message.content) },
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    Icons.Outlined.Edit,
-                    contentDescription = "Редактировать",
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
         }
     }
 }
+
+
+// ChatComponents.kt - ОБНОВЛЕННАЯ ВЕРСИЯ AiMessageBubble
 
 @Composable
 fun AiMessageBubble(
@@ -452,7 +384,9 @@ fun AiMessageBubble(
     markwon: Markwon,
     modelName: String,
     isStreaming: Boolean,
+    conversationFiles: List<FileAttachment>,
     onCopyMessage: (String) -> Unit,
+    onRegenerateMessage: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -461,35 +395,60 @@ fun AiMessageBubble(
             .padding(horizontal = 8.dp),
         horizontalAlignment = Alignment.Start
     ) {
-        if (modelName.isNotEmpty()) {
-            Surface(
-                shape = RoundedCornerShape(6.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
-                modifier = Modifier.padding(bottom = 6.dp, start = 4.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+        // Model badge
+        Row(
+            modifier = Modifier.padding(bottom = 6.dp, start = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (modelName.isNotEmpty()) {
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
                 ) {
-                    Icon(
-                        Icons.Filled.SmartToy,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                    Text(
-                        text = modelName,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.SmartToy,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Text(
+                            text = modelName,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         }
 
+        // 🔥 Attached Files (если есть привязанные к сообщению)
+        val messageFiles = conversationFiles.filter { file ->
+            // Здесь можно добавить логику фильтрации файлов по сообщению
+            // Пока показываем все файлы чата для AI ответов
+            false // Временно отключено
+        }
+
+        if (messageFiles.isNotEmpty()) {
+            Column(
+                modifier = Modifier.padding(bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                messageFiles.forEach { file ->
+                    AttachedFileCard(file = file)
+                }
+            }
+        }
+
+        // AI message content
         Card(
-            modifier = Modifier.fillMaxWidth(0.98f),
+            modifier = Modifier.fillMaxWidth(0.95f),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant
             ),
@@ -517,10 +476,12 @@ fun AiMessageBubble(
             }
         }
 
+        // Actions (ТОЛЬКО для ассистента)
         Row(
             modifier = Modifier.padding(top = 4.dp, start = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
+            // Копировать
             IconButton(
                 onClick = { onCopyMessage(message.content) },
                 modifier = Modifier.size(32.dp)
@@ -528,6 +489,19 @@ fun AiMessageBubble(
                 Icon(
                     Icons.Outlined.ContentCopy,
                     contentDescription = "Копировать",
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            // Регенерировать (ТОЛЬКО для ассистента)
+            IconButton(
+                onClick = { onRegenerateMessage(message.id) },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    Icons.Filled.Refresh,
+                    contentDescription = "Регенерировать",
                     modifier = Modifier.size(18.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -536,127 +510,56 @@ fun AiMessageBubble(
     }
 }
 
+/**
+ * Карточка файла (компактная)
+ */
 @Composable
-fun FileMessageBubble(
-    message: ChatMessage,
-    onCopyMessage: (String) -> Unit,
-    onRegenerateMessage: (String) -> Unit,
-    onViewFile: (String) -> Unit,
+fun AttachedFileCard(
+    file: FileAttachment,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp),
-        horizontalAlignment = Alignment.End
+    Card(
+        modifier = modifier.fillMaxWidth(0.9f),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+        shape = RoundedCornerShape(8.dp)
     ) {
-        message.fileAttachment?.let { file ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth(0.85f)
-                    .padding(bottom = 8.dp)
-                    .clickable { onViewFile(file.fileId) },
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f),
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                Icons.Filled.AttachFile,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp),
-                                tint = MaterialTheme.colorScheme.onTertiaryContainer
-                            )
-                        }
-                    }
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = file.fileName,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = formatFileSize(file.fileSize),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer
-                                .copy(alpha = 0.7f)
-                        )
-                    }
-
-                    Icon(
-                        Icons.Filled.ChevronRight,
-                        contentDescription = "Открыть",
-                        tint = MaterialTheme.colorScheme.onTertiaryContainer
-                    )
-                }
-            }
-        }
-
-        if (message.content.isNotBlank()) {
-            Card(
-                modifier = Modifier.fillMaxWidth(0.85f),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                ),
-                shape = RoundedCornerShape(
-                    topStart = 16.dp,
-                    topEnd = 16.dp,
-                    bottomStart = 16.dp,
-                    bottomEnd = 4.dp
-                )
-            ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text(
-                        text = message.content,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
-            }
-        }
-
         Row(
-            modifier = Modifier.padding(top = 4.dp, end = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            IconButton(
-                onClick = { onCopyMessage(message.content) },
-                modifier = Modifier.size(32.dp)
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                modifier = Modifier.size(36.dp)
             ) {
-                Icon(
-                    Icons.Outlined.ContentCopy,
-                    contentDescription = "Копировать",
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Filled.InsertDriveFile,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
             }
 
-            IconButton(
-                onClick = { onRegenerateMessage(message.content) },
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    Icons.Outlined.Edit,
-                    contentDescription = "Редактировать",
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = file.fileName,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = formatFileSize(file.fileSize),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

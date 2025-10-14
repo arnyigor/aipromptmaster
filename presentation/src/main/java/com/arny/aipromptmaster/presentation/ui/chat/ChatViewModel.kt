@@ -26,7 +26,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.onEach  // ✅ ВАЖНЫЙ ИМПОРТ
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -104,6 +104,20 @@ class ChatViewModel @AssistedInject constructor(
         initialValue = ChatUiState()
     )
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val conversationFiles: StateFlow<List<FileAttachment>> =
+        _currentConversationId.flatMapLatest { currentId ->
+            if (currentId != null) {
+                interactor.getConversationFilesFlow(currentId)
+            } else {
+                flowOf(emptyList())
+            }
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000L),
+            initialValue = emptyList()
+        )
+
     private val modelsResult: StateFlow<DataResult<List<LlmModel>>> = interactor.getModels()
         .stateIn(
             scope = viewModelScope,
@@ -161,69 +175,150 @@ class ChatViewModel @AssistedInject constructor(
     }
 
     /**
-     * Добавить сообщение с файлом
+     * ✅ Удалить файл из чата
      */
-    suspend fun addMessageWithFile(
-        conversationId: String,
-        userMessage: String,
-        fileAttachment: FileAttachment
-    ) {
-        try {
-            interactor.addUserMessageWithFile(conversationId, userMessage, fileAttachment)
-        } catch (e: Exception) {
-            _uiEvents.emit(ChatUiEvent.ShowError(e))
-            throw e
+    fun removeFileFromChat(fileId: String) {
+        val currentId = _currentConversationId.value ?: return
+
+        viewModelScope.launch {
+            try {
+                interactor.removeFileFromConversation(currentId, fileId)
+            } catch (e: Exception) {
+                _uiEvents.emit(ChatUiEvent.ShowError(e))
+            }
         }
+    }
+
+    /**
+     * ✅ ИСПРАВЛЕНО: Обработка файлов
+     */
+    fun processFileFromUri(uri: Uri): Flow<FileProcessingResult> {
+        return fileRepository.processFileFromUri(uri)
+            .onEach { result ->
+                if (result is FileProcessingResult.Complete) {
+                    try {
+                        // 1. Сохраняем файл во временное хранилище
+                        fileRepository.saveTemporaryFile(result.fileAttachment)
+
+                        // 2. Добавляем к чату (если чат создан)
+                        _currentConversationId.value?.let { convId ->
+                            interactor.addFileToConversation(convId, result.fileAttachment)
+                        } ?: run {
+                            // Если чата нет, добавляем в локальный список
+                            addAttachedFile(result.fileAttachment)
+                        }
+                    } catch (e: Exception) {
+                        _uiEvents.emit(ChatUiEvent.ShowError(e))
+                    }
+                }
+            }
+            .catch { exception ->
+                emit(FileProcessingResult.Error(exception.message ?: "Unknown error"))
+                _uiEvents.emit(ChatUiEvent.ShowError(exception))
+            }
     }
 
     fun sendMessage(userMessageText: String) {
         if (userMessageText.isBlank() || _isLoading.value) return
 
-        // Отменяем предыдущий запрос, если он есть
         currentRequestJob?.cancel()
-        currentRequestJob = null
-
         currentRequestJob = viewModelScope.launch {
             _isLoading.value = true
             _isStreamingResponse.value = false
+
             try {
-                val conversationId = _currentConversationId.value ?: run {
+                // 1. Создаем или получаем conversationId
+                val currentConversationId = _currentConversationId.value ?: run {
                     val newTitle = userMessageText.take(40).ifEmpty { "Новый чат" }
                     val newId = interactor.createNewConversation(newTitle)
                     _currentConversationId.value = newId
                     newId
                 }
 
-                // Обрабатываем прикрепленные файлы, если они есть
-                val attachedFiles = _attachedFiles.value
-                if (attachedFiles.isNotEmpty()) {
-                    // Если есть файлы, добавляем их в историю через специальный метод
-                    attachedFiles.forEach { file ->
-                        interactor.addUserMessageWithFile(conversationId, userMessageText, file)
-                    }
-                    // Очищаем прикрепленные файлы после добавления в историю
-                    _attachedFiles.value = emptyList()
-                } else {
-                    // Добавляем обычное пользовательское сообщение только если нет файлов
-                    interactor.addUserMessageToHistory(conversationId, userMessageText)
-                }
+                // 2. ПРОСТО добавляем user message (файлы УЖЕ в чате)
+                interactor.addUserMessageToHistory(
+                    currentConversationId,
+                    userMessageText
+                )
 
-                val selectedModelResult = selectedModelResult.value
-                val selectedModel = (selectedModelResult as? DataResult.Success)?.data
+                // 3. Получаем модель
+                val selectedModel = (selectedModelResult.value as? DataResult.Success)?.data
                     ?: throw DomainError.local(R.string.title_llm_interaction_model_not_selected)
 
+                // 4. Отправляем запрос (файлы автоматически подтягиваются из чата)
                 _isStreamingResponse.value = true
-
-                // Используем sendMessageWithFallback, который правильно обрабатывает файлы
-                interactor.sendMessageWithFallback(
+                interactor.sendMessage(
                     model = selectedModel.id,
-                    conversationId = conversationId,
+                    conversationId = currentConversationId,
                     estimatedTokens = _estimatedTokens.value
                 )
 
-                // После получения ответа корректируем коэффициент (упрощенная версия)
-                // В реальном приложении нужно извлекать usage из ответа
-                // Здесь предполагаем, что корректировка происходит в interactor
+            } catch (e: Exception) {
+                _uiEvents.emit(ChatUiEvent.ShowError(e))
+            } finally {
+                _isLoading.value = false
+                _isStreamingResponse.value = false
+                currentRequestJob = null
+            }
+        }
+    }
+
+    /**
+     * Регенерация последнего ответа
+     */
+    fun regenerateLastResponse() {
+        if (_isLoading.value) return
+
+        val currentConversationId = _currentConversationId.value ?: return
+
+        currentRequestJob?.cancel()
+        currentRequestJob = viewModelScope.launch {
+            _isLoading.value = true
+            _isStreamingResponse.value = false
+
+            try {
+                val selectedModel = (selectedModelResult.value as? DataResult.Success)?.data
+                    ?: throw DomainError.local(R.string.title_llm_interaction_model_not_selected)
+
+                _isStreamingResponse.value = true
+                interactor.regenerateLastResponse(
+                    model = selectedModel.id,
+                    conversationId = currentConversationId
+                )
+
+            } catch (e: Exception) {
+                _uiEvents.emit(ChatUiEvent.ShowError(e))
+            } finally {
+                _isLoading.value = false
+                _isStreamingResponse.value = false
+                currentRequestJob = null
+            }
+        }
+    }
+
+    /**
+     * Регенерация конкретного сообщения
+     */
+    fun regenerateMessage(messageId: String) {
+        if (_isLoading.value) return
+
+        val currentConversationId = _currentConversationId.value ?: return
+
+        currentRequestJob?.cancel()
+        currentRequestJob = viewModelScope.launch {
+            _isLoading.value = true
+            _isStreamingResponse.value = false
+
+            try {
+                val selectedModel = (selectedModelResult.value as? DataResult.Success)?.data
+                    ?: throw DomainError.local(R.string.title_llm_interaction_model_not_selected)
+
+                _isStreamingResponse.value = true
+                interactor.regenerateMessage(
+                    model = selectedModel.id,
+                    conversationId = currentConversationId,
+                    messageId = messageId
+                )
 
             } catch (e: Exception) {
                 _uiEvents.emit(ChatUiEvent.ShowError(e))
@@ -294,47 +389,6 @@ class ChatViewModel @AssistedInject constructor(
     }
 
     /**
-     * ✅ ЕДИНСТВЕННАЯ функция для обработки файлов через fileProcessingService.
-     * Делегирует обработку в FileRepository, который использует FileProcessingService.
-     * Автоматически проверяет тип файла и обрабатывает только текстовые файлы.
-     * @param uri URI выбранного файла
-     * @return Flow с результатами обработки по чанкам
-     */
-    fun processFileFromUri(uri: Uri): Flow<FileProcessingResult> =
-        fileRepository.processFileFromUri(uri)
-            .onEach { result ->
-                // Автоматически сохраняем завершенный файл в репозиторий и добавляем в разговор
-                if (result is FileProcessingResult.Complete) {
-                    try {
-                        // ✅ ТОЛЬКО сохраняем файл, НЕ добавляем в историю
-                        fileRepository.saveTemporaryFile(result.fileAttachment)
-                    } catch (e: Exception) {
-                        _uiEvents.emit(ChatUiEvent.ShowError(e))
-                    }
-                }
-            }
-            .catch { exception ->
-                // Преобразуем любые ошибки в FileProcessingResult.Error
-                emit(FileProcessingResult.Error(exception.message ?: "Unknown error"))
-                _uiEvents.emit(ChatUiEvent.ShowError(exception))
-            }
-
-    /**
-     * Сохранить файл во временном репозитории и вернуть его ID.
-     * @return ID сохраненного файла
-     */
-    fun saveFileAttachment(fileAttachment: FileAttachment): String {
-        viewModelScope.launch {
-            try {
-                fileRepository.saveTemporaryFile(fileAttachment)
-            } catch (e: Exception) {
-                _uiEvents.emit(ChatUiEvent.ShowError(e))
-            }
-        }
-        return fileAttachment.id
-    }
-
-    /**
      * Обновить текущий текст ввода для расчета токенов
      */
     fun updateInputText(text: String) {
@@ -347,22 +401,6 @@ class ChatViewModel @AssistedInject constructor(
      */
     fun addAttachedFile(file: FileAttachment) {
         _attachedFiles.value = _attachedFiles.value + file
-        calculateEstimatedTokens()
-    }
-
-    /**
-     * Удалить файл из расчета токенов
-     */
-    fun removeAttachedFile(fileId: String) {
-        _attachedFiles.value = _attachedFiles.value.filter { it.id != fileId }
-        calculateEstimatedTokens()
-    }
-
-    /**
-     * Очистить все прикрепленные файлы
-     */
-    fun clearAttachedFiles() {
-        _attachedFiles.value = emptyList()
         calculateEstimatedTokens()
     }
 

@@ -3,6 +3,7 @@ package com.arny.aipromptmaster.domain.repositories
 import com.arny.aipromptmaster.domain.models.Chat
 import com.arny.aipromptmaster.domain.models.ChatMessage
 import com.arny.aipromptmaster.domain.models.Conversation
+import com.arny.aipromptmaster.domain.models.FileAttachment
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -118,4 +119,56 @@ interface IChatHistoryRepository {
      * @param conversationId Уникальный идентификатор диалога для удаления.
      */
     suspend fun deleteConversation(conversationId: String)
+
+    /**
+     * Добавляет файл к чату.
+     *
+     * @param conversationId Уникальный идентификатор чата.
+     * @param file Файловое вложение для добавления.
+     */
+    suspend fun addFileToConversation(conversationId: String, file: FileAttachment)
+
+    /**
+     * Удаляет файл из чата.
+     *
+     * @param conversationId Уникальный идентификатор чата.
+     * @param fileId Уникальный идентификатор файла для удаления.
+     */
+    suspend fun removeFileFromConversation(conversationId: String, fileId: String)
+
+    /**
+     * Получает все файлы чата.
+     *
+     * @param conversationId Уникальный идентификатор чата.
+     * @return Список файлов чата.
+     */
+    suspend fun getConversationFiles(conversationId: String): List<FileAttachment>
+
+    /**
+     * Возвращает поток файлов чата.
+     *
+     * @param conversationId Уникальный идентификатор чата.
+     * @return Поток списка файлов чата.
+     */
+    fun getConversationFilesFlow(conversationId: String): Flow<List<FileAttachment>>
+
+    /**
+     * Очищает все файлы чата.
+     *
+     * @param conversationId Уникальный идентификатор чата.
+     */
+    suspend fun clearConversationFiles(conversationId: String)
+
+    /**
+     * Обновляет состояние thinking для сообщения.
+     *
+     * @param messageId ID сообщения.
+     * @param isThinking Состояние thinking.
+     * @param thinkingTime Время обработки в миллисекундах.
+     */
+    suspend fun updateMessageThinkingState(
+        messageId: String,
+        isThinking: Boolean,
+        thinkingTime: Long? = null
+    )
 }

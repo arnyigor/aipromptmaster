@@ -65,37 +65,6 @@ class OpenRouterRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getChatCompletion(
-        model: String,
-        messages: List<ChatMessage>,
-        apiKey: String,
-    ): Result<ChatCompletionResponse> = withContext(dispatcher) {
-        val request = ChatCompletionRequestDTO(
-            model = model,
-            messages = messages.map { MessageDTO(it.role.toString(), it.content) },
-            maxTokens = 4096 // Нужно будет вынести в настройки
-        )
-
-        try {
-            // Retrofit сам парсит успешный ответ
-            val response = service.getChatCompletion("Bearer $apiKey", request = request)
-
-            if (response.isSuccessful && response.body() != null) {
-                val domainResponse = ChatMapper.toDomain(response.body()!!)
-                Result.success(domainResponse)
-            } else {
-                val domainError = parseErrorBody(
-                    response.code(),
-                    response.errorBody()?.string(),
-                    response.message()
-                )
-                Result.failure(domainError)
-            }
-        } catch (e: Exception) {
-            Result.failure(mapNetworkException(e))
-        }
-    }
-
     // Хелпер для парсинга тела ошибки
     private fun parseErrorBody(code: Int, body: String?, message: String): DomainError {
         if (body.isNullOrBlank()) {

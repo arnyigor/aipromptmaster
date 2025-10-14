@@ -7,7 +7,12 @@ data class ChatMessage(
     val id: String = UUID.randomUUID().toString(),
     val role: ChatRole, // "user", "assistant", "system"
     val content: String,
-    val fileAttachment: FileAttachmentMetadata? = null
+    val timestamp: Long = System.currentTimeMillis(),
+    // Список файлов привязанных к сообщению (для отображения)
+    val attachedFileIds: List<String> = emptyList(),
+    // Метаданные streaming (для reasoning)
+    val thinkingTime: Long? = null, // Время обработки в миллисекундах
+    val isThinking: Boolean = false
 )
 
 /**
