@@ -5,6 +5,8 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.arny.aipromptmaster.data.db.entities.ConversationEntity
+import com.arny.aipromptmaster.data.db.entities.ConversationFileEntity
+import com.arny.aipromptmaster.data.db.entities.MessageEntity
 import com.arny.aipromptmaster.domain.models.Chat
 import kotlinx.coroutines.flow.Flow
 
@@ -92,7 +94,7 @@ interface ChatDao {
         FROM conversations c
         ORDER BY c.lastUpdated DESC
     """)
-    fun getChatList(): Flow<List<Chat>> // Room сам смаппит результат в data class Chat
+    fun getChatList(): Flow<List<Chat>>
 
     /**
      * Обновляет временную метку последнего обновления диалога.
@@ -142,7 +144,7 @@ interface ChatDao {
      * Получает один диалог по его ID.
      */
     @Query("SELECT * FROM conversations WHERE id = :conversationId")
-    suspend fun getConversation(conversationId: String): ConversationEntity? // Nullable на случай неверного ID
+    suspend fun getConversation(conversationId: String): ConversationEntity?
 
     /**
      * Получает ВСЕ сообщения для диалога, отсортированные по времени.
@@ -151,26 +153,29 @@ interface ChatDao {
     suspend fun getAllMessagesForConversation(conversationId: String): List<MessageEntity>
 
     /**
-     * Обновляет состояние thinking для сообщения.
+     * Обновляет содержимое и временную метку сообщения.
+     * Используется для обновления сообщения после завершения обработки.
+     *
+     * @param messageId Идентификатор сообщения.
+     * @param content Новое содержимое сообщения.
+     * @param timestamp Новая временная метка.
      */
     @Query("UPDATE messages SET content = :content, timestamp = :timestamp WHERE id = :messageId")
-    suspend fun updateMessageThinkingState(
+    suspend fun updateMessageContentAndTimestamp(
         messageId: String,
-        isThinking: Boolean,
-        thinkingTime: Long?
+        content: String,
+        timestamp: Long
     )
 
     /**
-     * Обновляет состояние thinking для сообщения (для новых полей).
+     * Обновляет состояние "думает" для сообщения.
      */
-    @Query("UPDATE messages SET content = content WHERE id = :messageId")
+    @Query("UPDATE messages SET isThinking = :isThinking, thinkingTime = :thinkingTime WHERE id = :messageId")
     suspend fun updateMessageThinkingState(
         messageId: String,
         isThinking: Boolean,
         thinkingTime: Long?
     )
-
-    // 🔥 НОВЫЕ МЕТОДЫ ДЛЯ РАБОТЫ С ФАЙЛАМИ ЧАТА
 
     /**
      * Вставляет файл чата в базу данных.

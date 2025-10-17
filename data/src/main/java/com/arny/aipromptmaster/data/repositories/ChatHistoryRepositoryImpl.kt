@@ -1,6 +1,7 @@
 package com.arny.aipromptmaster.data.repositories
 
 import com.arny.aipromptmaster.data.db.daos.ChatDao
+import com.arny.aipromptmaster.data.db.daos.ConversationFileDao
 import com.arny.aipromptmaster.data.db.entities.ConversationEntity
 import com.arny.aipromptmaster.data.db.entities.ConversationFileEntity
 import com.arny.aipromptmaster.data.db.entities.MessageEntity
@@ -10,6 +11,7 @@ import com.arny.aipromptmaster.domain.models.ChatRole
 import com.arny.aipromptmaster.domain.models.Conversation
 import com.arny.aipromptmaster.domain.models.FileAttachment
 import com.arny.aipromptmaster.domain.repositories.IChatHistoryRepository
+import com.arny.aipromptmaster.domain.repositories.IFileRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -191,4 +193,5 @@ class ChatHistoryRepositoryImpl @Inject constructor(
     ) {
         chatDao.updateMessageThinkingState(messageId, isThinking, thinkingTime)
     }
+
 }

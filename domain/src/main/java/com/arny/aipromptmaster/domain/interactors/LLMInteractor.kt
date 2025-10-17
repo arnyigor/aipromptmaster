@@ -1,5 +1,6 @@
 package com.arny.aipromptmaster.domain.interactors
 
+import android.util.Log
 import com.arny.aipromptmaster.domain.R
 import com.arny.aipromptmaster.domain.models.ApiMessage
 import com.arny.aipromptmaster.domain.models.ApiRequestPayload
@@ -11,6 +12,7 @@ import com.arny.aipromptmaster.domain.models.FileAttachment
 import com.arny.aipromptmaster.domain.models.FileAttachmentMetadata
 import com.arny.aipromptmaster.domain.models.FileReference
 import com.arny.aipromptmaster.domain.models.LlmModel
+import com.arny.aipromptmaster.domain.models.StreamChunk
 import com.arny.aipromptmaster.domain.models.TokenEstimationResult
 import com.arny.aipromptmaster.domain.models.errors.DomainError
 import com.arny.aipromptmaster.domain.repositories.IChatHistoryRepository
@@ -36,7 +38,6 @@ class LLMInteractor @Inject constructor(
     private val modelsRepository: IOpenRouterRepository,
     private val settingsRepository: ISettingsRepository,
     private val historyRepository: IChatHistoryRepository,
-    private val fileRepository: IFileRepository,
     private val tokenEstimator: ITokenEstimator
 ) : ILLMInteractor {
 
@@ -304,8 +305,11 @@ class LLMInteractor @Inject constructor(
     ) {
         var receivedAnyData = false
         var streamError: DomainError? = null
+        val startTime = System.currentTimeMillis()
 
-        // Формируем специальный запрос с файлами
+        // Устанавливаем состояние "думает"
+        historyRepository.updateMessageThinkingState(messageId, isThinking = true, thinkingTime = null)
+
         val requestWithFiles = ApiRequestWithFiles(
             model = model,
             messages = payload.messages,
@@ -321,17 +325,22 @@ class LLMInteractor @Inject constructor(
 
         modelsRepository.getChatCompletionStreamWithFiles(requestWithFiles, apiKey)
             .onCompletion { cause ->
+                val thinkingTime = System.currentTimeMillis() - startTime
+
                 if (cause != null) {
                     streamError = when (cause) {
                         is DomainError -> cause
                         else -> DomainError.Generic(cause.localizedMessage ?: "Unknown flow error")
                     }
+                    historyRepository.updateMessageThinkingState(messageId, isThinking = false, thinkingTime = null)
                     return@onCompletion
                 }
 
                 if (!receivedAnyData && streamError == null) {
                     streamError = DomainError.Generic("Stream completed without emitting any data.")
                 }
+
+                historyRepository.updateMessageThinkingState(messageId, isThinking = false, thinkingTime = thinkingTime)
             }
             .collect { result ->
                 when (result) {
@@ -339,7 +348,6 @@ class LLMInteractor @Inject constructor(
                         historyRepository.appendContentToMessage(messageId, result.data)
                         receivedAnyData = true
                     }
-
                     is DataResult.Error -> {
                         val exception = result.exception
                         streamError = when (exception) {
@@ -350,9 +358,7 @@ class LLMInteractor @Inject constructor(
                             )
                         }
                     }
-
-                    DataResult.Loading -> { /* Игнорируем */
-                    }
+                    DataResult.Loading -> { /* Игнорируем */ }
                 }
             }
 
@@ -446,7 +452,7 @@ class LLMInteractor @Inject constructor(
     }
 
     /**
-     * ✅ УПРОЩЕННЫЙ метод отправки сообщения
+     * метод отправки сообщения
      */
     override suspend fun sendMessage(
         model: String,
@@ -490,7 +496,7 @@ class LLMInteractor @Inject constructor(
     }
 
     /**
-     * ✅ НОВАЯ АРХИТЕКТУРА: Построение сообщений для API
+     * Построение сообщений для API
      * Файлы берутся из ЧАТА, а не из отдельных сообщений
      */
     private suspend fun buildMessagesForApi(
@@ -548,9 +554,6 @@ class LLMInteractor @Inject constructor(
         )
     }
 
-    /**
-     * ✅ ИСПРАВЛЕНО: Правильный маппинг ролей
-     */
     private suspend fun runStreamingAttempt(
         model: String,
         messages: List<ApiMessage>,
@@ -560,51 +563,81 @@ class LLMInteractor @Inject constructor(
     ) {
         var receivedAnyData = false
         var streamError: DomainError? = null
+        var actualPromptTokens: Int? = null
+        val startTime = System.currentTimeMillis()
 
-        val chatMessages = messages.map { apiMsg ->
-            ChatMessage(
-                role = ChatRole.fromApiRole(apiMsg.role),
-                content = apiMsg.content
-            )
-        }
+        // Включаем индикатор "думает"
+        historyRepository.updateMessageThinkingState(messageId, isThinking = true, thinkingTime = null)
 
-        modelsRepository.getChatCompletionStream(model, chatMessages, apiKey)
-            .onCompletion { cause ->
-                if (cause != null) {
-                    streamError = when (cause) {
-                        is DomainError -> cause
-                        else -> DomainError.Generic(cause.localizedMessage ?: "Unknown flow error")
-                    }
-                    return@onCompletion
-                }
-
-                if (!receivedAnyData && streamError == null) {
-                    streamError = DomainError.Generic("Stream completed without emitting any data.")
-                }
+        try {
+            val chatMessages = messages.map { apiMsg ->
+                ChatMessage(
+                    role = ChatRole.fromApiRole(apiMsg.role),
+                    content = apiMsg.content
+                )
             }
-            .collect { result ->
-                when (result) {
-                    is DataResult.Success -> {
-                        historyRepository.appendContentToMessage(messageId, result.data)
-                        receivedAnyData = true
+
+            modelsRepository.getChatCompletionStream(model, chatMessages, apiKey)
+                .onCompletion { cause ->
+                    val thinkingTime = System.currentTimeMillis() - startTime
+
+                    if (cause != null) {
+                        streamError = when (cause) {
+                            is DomainError -> cause
+                            else -> DomainError.Generic(cause.localizedMessage ?: "Unknown flow error")
+                        }
+                        historyRepository.updateMessageThinkingState(messageId, isThinking = false, thinkingTime = null)
+                        return@onCompletion
                     }
 
-                    is DataResult.Error -> {
-                        val exception = result.exception
-                        streamError = when (exception) {
-                            is DomainError -> exception
-                            null -> DomainError.Generic("Stream returned an error with no exception details")
-                            else -> DomainError.Generic(
-                                exception.localizedMessage ?: "Unknown stream error"
-                            )
+                    if (!receivedAnyData && streamError == null) {
+                        streamError = DomainError.Generic("Stream completed without emitting any data.")
+                    }
+
+                    // Калибруем токены, если получили реальные данные
+                    actualPromptTokens?.let { actual ->
+                        if (estimatedTokens > 0) {
+                            tokenEstimator.adjustTokenRatio(actual, estimatedTokens)
+                            Log.d("TokenCalibration", "Estimated: $estimatedTokens, Actual: $actual, New Ratio: ${tokenEstimator.getCurrentRatio()}")
                         }
                     }
 
-                    DataResult.Loading -> { /* Игнорируем */
+                    historyRepository.updateMessageThinkingState(messageId, isThinking = false, thinkingTime = thinkingTime)
+                }
+                .collect { result ->
+                    when (result) {
+                        is DataResult.Success -> {
+                            when (val chunk = result.data) {
+                                is StreamChunk.Content -> {
+                                    historyRepository.appendContentToMessage(messageId, chunk.text)
+                                    receivedAnyData = true
+                                }
+                                is StreamChunk.Usage -> {
+                                    // Сохраняем реальное количество токенов
+                                    actualPromptTokens = chunk.promptTokens
+                                    Log.d("TokenUsage", "Prompt: ${chunk.promptTokens}, Completion: ${chunk.completionTokens}")
+                                }
+                            }
+                        }
+                        is DataResult.Error -> {
+                            val exception = result.exception
+                            streamError = when (exception) {
+                                is DomainError -> exception
+                                null -> DomainError.Generic("Stream returned an error with no exception details")
+                                else -> DomainError.Generic(
+                                    exception.localizedMessage ?: "Unknown stream error"
+                                )
+                            }
+                        }
+                        DataResult.Loading -> { }
                     }
                 }
-            }
 
-        streamError?.let { throw it }
+            streamError?.let { throw it }
+        } catch (e: Exception) {
+            historyRepository.updateMessageThinkingState(messageId, isThinking = false, thinkingTime = null)
+            throw e
+        }
     }
+
 }

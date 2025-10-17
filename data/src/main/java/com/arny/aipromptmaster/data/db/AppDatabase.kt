@@ -9,6 +9,7 @@ import com.arny.aipromptmaster.data.db.daos.ConversationFileDao
 import com.arny.aipromptmaster.data.db.daos.PromptDao
 import com.arny.aipromptmaster.data.db.entities.ConversationEntity
 import com.arny.aipromptmaster.data.db.entities.ConversationFileEntity
+import com.arny.aipromptmaster.data.db.entities.MessageEntity
 import com.arny.aipromptmaster.data.db.entities.PromptEntity
 
 @Database(
@@ -18,7 +19,7 @@ import com.arny.aipromptmaster.data.db.entities.PromptEntity
         MessageEntity::class,
         ConversationFileEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -64,7 +65,6 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_messages_conversationId` ON `messages` (`conversationId`)")
             }
         }
-
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // Добавляем новую колонку 'systemPrompt' в таблицу 'conversations'
@@ -77,11 +77,6 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE prompts ADD COLUMN prompt_variants_json TEXT NOT NULL DEFAULT '[]'")
             }
         }
-
-        /**
-         * 🔥 МИГРАЦИЯ 4 -> 5: Создание таблицы conversation_files
-         * Удаление поля fileAttachment из chat_messages
-         */
         val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 // 1. Создаем новую таблицу для файлов
@@ -119,7 +114,8 @@ abstract class AppDatabase : RoomDatabase() {
                     var hasFileAttachment = false
 
                     while (cursor.moveToNext()) {
-                        val columnName = cursor.getString(cursor.getColumnIndex("name"))
+                        val index = cursor.getColumnIndex("name")
+                        val columnName = cursor.getString(index)
                         if (columnName == "fileAttachment") {
                             hasFileAttachment = true
                             break
@@ -165,5 +161,16 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
         }
+        val MIGRATION_5_6 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE messages ADD COLUMN isThinking INTEGER NOT NULL DEFAULT 0"
+                )
+                db.execSQL(
+                    "ALTER TABLE messages ADD COLUMN thinkingTime INTEGER"
+                )
+            }
+        }
+
     }
 }

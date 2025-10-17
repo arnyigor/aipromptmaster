@@ -48,25 +48,25 @@ data class ConversationFileEntity(
 
 @Entity(
     tableName = "messages",
-    // 1. Объявляем внешний ключ
     foreignKeys = [
         ForeignKey(
             entity = ConversationEntity::class,
             parentColumns = ["id"],
             childColumns = ["conversationId"],
-            onDelete = ForeignKey.CASCADE // При удалении диалога удалять и сообщения
+            onDelete = ForeignKey.CASCADE
         )
     ],
-    // 2. Объявляем индекс, который мы создаем в миграции
     indices = [Index(value = ["conversationId"])]
 )
 data class MessageEntity(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
     val conversationId: String,
-    val role: String, // например, "user" или "model"
+    val role: String,
     val content: String,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val isThinking: Boolean = false,
+    val thinkingTime: Long? = null
 )
 
 @Entity(

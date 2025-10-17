@@ -17,11 +17,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -42,16 +42,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.arny.aipromptmaster.domain.models.errors.DomainError
 import com.arny.aipromptmaster.domain.models.FileAttachment
+import com.arny.aipromptmaster.domain.models.errors.DomainError
 import com.arny.aipromptmaster.domain.results.DataResult
 import com.arny.aipromptmaster.domain.utils.FileUtils.formatFileSize
 import com.arny.aipromptmaster.presentation.ui.chat.compose.ApiErrorDialog
 import com.arny.aipromptmaster.presentation.ui.chat.compose.DestructiveConfirmDialog
 import com.arny.aipromptmaster.presentation.utils.asString
 import io.noties.markwon.Markwon
-
-const val TAG = "ChatComposeScreen"
 
 @Composable
 fun ChatComposeScreen(
@@ -109,7 +107,11 @@ fun ChatComposeScreen(
                             } else {
                                 // Остальные API ошибки → Карточка
                                 errorState = ErrorState(
-                                    message = handleErrorMessage(context, error, error.detailedMessage),
+                                    message = handleErrorMessage(
+                                        context,
+                                        error,
+                                        error.detailedMessage
+                                    ),
                                     severity = when (error.code) {
                                         429 -> ErrorSeverity.WARNING
                                         else -> ErrorSeverity.ERROR
@@ -140,9 +142,11 @@ fun ChatComposeScreen(
                         }
                     }
                 }
+
                 is ChatUiEvent.RequestClearChat -> {
                     showClearChatDialog = true
                 }
+
                 else -> {}
             }
         }
@@ -248,7 +252,6 @@ fun ChatComposeScreen(
         }
     }
 }
-
 
 
 /**

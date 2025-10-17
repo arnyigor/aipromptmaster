@@ -2,7 +2,6 @@ package com.arny.aipromptmaster.data.openrouter
 
 import android.util.Log
 import com.arny.aipromptmaster.data.api.OpenRouterService
-import com.arny.aipromptmaster.data.mappers.ChatMapper
 import com.arny.aipromptmaster.data.mappers.toDomain
 import com.arny.aipromptmaster.data.mappers.toDomainError
 import com.arny.aipromptmaster.data.models.ApiErrorResponse
@@ -11,9 +10,9 @@ import com.arny.aipromptmaster.data.models.ChatCompletionResponseDTO
 import com.arny.aipromptmaster.data.models.MessageDTO
 import com.arny.aipromptmaster.domain.R
 import com.arny.aipromptmaster.domain.models.ApiRequestWithFiles
-import com.arny.aipromptmaster.domain.models.ChatCompletionResponse
 import com.arny.aipromptmaster.domain.models.ChatMessage
 import com.arny.aipromptmaster.domain.models.LlmModel
+import com.arny.aipromptmaster.domain.models.StreamChunk
 import com.arny.aipromptmaster.domain.models.errors.DomainError
 import com.arny.aipromptmaster.domain.models.strings.StringHolder
 import com.arny.aipromptmaster.domain.repositories.IOpenRouterRepository
@@ -105,7 +104,7 @@ class OpenRouterRepositoryImpl @Inject constructor(
         model: String,
         messages: List<ChatMessage>,
         apiKey: String
-    ): Flow<DataResult<String>> = flow {
+    ): Flow<DataResult<StreamChunk>> = flow {
         val request = ChatCompletionRequestDTO(
             model = model,
             messages = messages
@@ -117,7 +116,6 @@ class OpenRouterRepositoryImpl @Inject constructor(
 
         try {
             val response = service.getChatCompletionStream("Bearer $apiKey", request = request)
-
             if (response.isSuccessful && response.body() != null) {
                 response.body()!!.source().use { source ->
                     while (!source.exhausted()) {
@@ -125,11 +123,28 @@ class OpenRouterRepositoryImpl @Inject constructor(
                         if (line?.startsWith("data:") == true) {
                             val json = line.substring(5).trim()
                             if (json == "[DONE]") break
+
                             try {
-                                val chunk = jsonParser.decodeFromString<ChatCompletionResponseDTO>(json)
+                                val chunk =
+                                    jsonParser.decodeFromString<ChatCompletionResponseDTO>(json)
+
+                                // Проверяем content
                                 val contentDelta = chunk.choices.firstOrNull()?.delta?.content
                                 if (contentDelta != null) {
-                                    emit(DataResult.Success(contentDelta))
+                                    emit(DataResult.Success(StreamChunk.Content(contentDelta)))
+                                }
+
+                                // Проверяем usage (приходит в последнем чанке)
+                                chunk.usage?.let { usage ->
+                                    emit(
+                                        DataResult.Success(
+                                            StreamChunk.Usage(
+                                                promptTokens = usage.promptTokens,
+                                                completionTokens = usage.completionTokens,
+                                                totalTokens = usage.totalTokens
+                                            )
+                                        )
+                                    )
                                 }
                             } catch (e: Exception) {
                                 Log.w("ChatStream", "Failed to parse stream chunk: $json", e)
@@ -179,7 +194,15 @@ class OpenRouterRepositoryImpl @Inject constructor(
 
             if (!response.isSuccessful) {
                 val errorBody = response.errorBody()?.string()
-                emit(DataResult.Error(parseErrorBody(response.code(), errorBody, response.message())))
+                emit(
+                    DataResult.Error(
+                        parseErrorBody(
+                            response.code(),
+                            errorBody,
+                            response.message()
+                        )
+                    )
+                )
                 return@flow
             }
 
@@ -190,7 +213,8 @@ class OpenRouterRepositoryImpl @Inject constructor(
                         val json = line.substring(6).trim()
                         if (json != "[DONE]") {
                             try {
-                                val streamResponse = jsonParser.decodeFromString<ChatCompletionResponseDTO>(json)
+                                val streamResponse =
+                                    jsonParser.decodeFromString<ChatCompletionResponseDTO>(json)
                                 val content = streamResponse.choices.firstOrNull()?.delta?.content
                                 if (content != null) {
                                     emit(DataResult.Success(content))

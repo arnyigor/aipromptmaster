@@ -4,6 +4,7 @@ import com.arny.aipromptmaster.domain.models.ApiRequestWithFiles
 import com.arny.aipromptmaster.domain.models.ChatCompletionResponse
 import com.arny.aipromptmaster.domain.models.LlmModel
 import com.arny.aipromptmaster.domain.models.ChatMessage
+import com.arny.aipromptmaster.domain.models.StreamChunk
 import com.arny.aipromptmaster.domain.results.DataResult
 import kotlinx.coroutines.flow.Flow
 
@@ -24,7 +25,7 @@ interface IOpenRouterRepository {
         model: String,
         messages: List<ChatMessage>,
         apiKey: String
-    ): Flow<DataResult<String>>
+    ): Flow<DataResult<StreamChunk>>
 
     /**
      * Streaming с файлами

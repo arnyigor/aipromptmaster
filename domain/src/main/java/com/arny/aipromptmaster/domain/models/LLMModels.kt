@@ -1,5 +1,6 @@
 package com.arny.aipromptmaster.domain.models
 
+import kotlinx.serialization.Serializable
 import java.math.BigDecimal
 import java.util.UUID
 
@@ -69,7 +70,6 @@ enum class ChatRole {
     }
 }
 
-
 data class ChatCompletionResponse(
     val id: String,
     val choices: List<Choice>,
@@ -127,3 +127,8 @@ data class FileReference(
     val content: String,
     val mimeType: String
 )
+
+sealed class StreamChunk {
+    data class Content(val text: String) : StreamChunk()
+    data class Usage(val promptTokens: Int, val completionTokens: Int, val totalTokens: Int) : StreamChunk()
+}
