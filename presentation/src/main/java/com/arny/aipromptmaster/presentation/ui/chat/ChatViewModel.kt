@@ -147,18 +147,6 @@ class ChatViewModel @AssistedInject constructor(
                 }
             }
         }
-        refreshModels()
-    }
-
-    private fun refreshModels() {
-        viewModelScope.launch {
-            val initialData = modelsResult.value
-            if (initialData is DataResult.Loading ||
-                (initialData is DataResult.Success && initialData.data.isEmpty())
-            ) {
-                interactor.refreshModels()
-            }
-        }
     }
 
     fun onExportChatClicked() {

@@ -66,7 +66,8 @@ data class MessageEntity(
     val content: String,
     val timestamp: Long = System.currentTimeMillis(),
     val isThinking: Boolean = false,
-    val thinkingTime: Long? = null
+    val thinkingTime: Long? = null,
+    val modelId: String? = null
 )
 
 @Entity(

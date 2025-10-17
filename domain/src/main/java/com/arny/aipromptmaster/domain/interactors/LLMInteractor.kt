@@ -46,7 +46,6 @@ class LLMInteractor @Inject constructor(
     // Можно вынести в настройки, если хотите дать пользователю выбор.
     private companion object {
         const val MAX_HISTORY_SIZE = 20
-        const val FILE_PREVIEW_LENGTH = 500  // Максимальная длина превью файла
     }
 
     override suspend fun estimateTokensForCurrentChat(

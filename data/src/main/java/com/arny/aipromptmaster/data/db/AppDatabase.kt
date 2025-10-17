@@ -19,7 +19,7 @@ import com.arny.aipromptmaster.data.db.entities.PromptEntity
         MessageEntity::class,
         ConversationFileEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -78,9 +78,9 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
         val MIGRATION_4_5 = object : Migration(4, 5) {
-            override fun migrate(database: SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 // 1. Создаем новую таблицу для файлов
-                database.execSQL("""
+                db.execSQL("""
                     CREATE TABLE IF NOT EXISTS conversation_files (
                         id TEXT NOT NULL PRIMARY KEY,
                         conversationId TEXT NOT NULL,
@@ -97,12 +97,12 @@ abstract class AppDatabase : RoomDatabase() {
                 """.trimIndent())
 
                 // 2. Создаем индексы
-                database.execSQL("""
+                db.execSQL("""
                     CREATE INDEX IF NOT EXISTS index_conversation_files_conversationId
                     ON conversation_files(conversationId)
                 """.trimIndent())
 
-                database.execSQL("""
+                db.execSQL("""
                     CREATE UNIQUE INDEX IF NOT EXISTS index_conversation_files_fileId
                     ON conversation_files(fileId)
                 """.trimIndent())
@@ -110,7 +110,7 @@ abstract class AppDatabase : RoomDatabase() {
                 // 3. Мигрируем существующие файлы из сообщений (если есть поле fileAttachment)
                 try {
                     // Проверяем, есть ли столбец fileAttachment
-                    val cursor = database.query("PRAGMA table_info(messages)")
+                    val cursor = db.query("PRAGMA table_info(messages)")
                     var hasFileAttachment = false
 
                     while (cursor.moveToNext()) {
@@ -125,7 +125,7 @@ abstract class AppDatabase : RoomDatabase() {
 
                     if (hasFileAttachment) {
                         // Создаем временную таблицу без fileAttachment
-                        database.execSQL("""
+                        db.execSQL("""
                             CREATE TABLE messages_new (
                                 id TEXT NOT NULL PRIMARY KEY,
                                 conversationId TEXT NOT NULL,
@@ -137,20 +137,20 @@ abstract class AppDatabase : RoomDatabase() {
                         """.trimIndent())
 
                         // Копируем данные (без fileAttachment)
-                        database.execSQL("""
+                        db.execSQL("""
                             INSERT INTO messages_new (id, conversationId, role, content, timestamp)
                             SELECT id, conversationId, role, content, timestamp
                             FROM messages
                         """.trimIndent())
 
                         // Удаляем старую таблицу
-                        database.execSQL("DROP TABLE messages")
+                        db.execSQL("DROP TABLE messages")
 
                         // Переименовываем новую таблицу
-                        database.execSQL("ALTER TABLE messages_new RENAME TO messages")
+                        db.execSQL("ALTER TABLE messages_new RENAME TO messages")
 
                         // Воссоздаем индексы
-                        database.execSQL("""
+                        db.execSQL("""
                             CREATE INDEX IF NOT EXISTS index_messages_conversationId
                             ON messages(conversationId)
                         """.trimIndent())
@@ -161,7 +161,7 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
         }
-        val MIGRATION_5_6 = object : Migration(1, 2) {
+        val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
                     "ALTER TABLE messages ADD COLUMN isThinking INTEGER NOT NULL DEFAULT 0"
@@ -169,6 +169,11 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL(
                     "ALTER TABLE messages ADD COLUMN thinkingTime INTEGER"
                 )
+            }
+        }
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE messages ADD COLUMN modelId TEXT")
             }
         }
 

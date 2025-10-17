@@ -401,7 +401,8 @@ fun AiMessageBubble(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (modelName.isNotEmpty()) {
+            val modelId = message.modelId
+            if (!modelId.isNullOrBlank()) {
                 Surface(
                     shape = RoundedCornerShape(6.dp),
                     color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
@@ -418,7 +419,7 @@ fun AiMessageBubble(
                             tint = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                         Text(
-                            text = modelName,
+                            text = modelId,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer,
                             fontWeight = FontWeight.SemiBold
@@ -428,10 +429,7 @@ fun AiMessageBubble(
             }
         }
 
-        // 🔥 Attached Files (если есть привязанные к сообщению)
         val messageFiles = conversationFiles.filter { file ->
-            // Здесь можно добавить логику фильтрации файлов по сообщению
-            // Пока показываем все файлы чата для AI ответов
             false // Временно отключено
         }
 

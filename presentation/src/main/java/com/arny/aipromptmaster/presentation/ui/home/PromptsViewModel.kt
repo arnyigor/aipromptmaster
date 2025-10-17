@@ -9,6 +9,7 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.arny.aipromptmaster.domain.R
+import com.arny.aipromptmaster.domain.interactors.ILLMInteractor
 import com.arny.aipromptmaster.domain.interactors.IPromptsInteractor
 import com.arny.aipromptmaster.domain.interactors.ISettingsInteractor
 import com.arny.aipromptmaster.domain.models.Prompt
@@ -30,6 +31,7 @@ import kotlinx.coroutines.launch
 
 class PromptsViewModel @AssistedInject constructor(
     private val interactor: IPromptsInteractor,
+    private val llmInteractor: ILLMInteractor,
     private val settingsInteractor: ISettingsInteractor
 ) : ViewModel() {
 
@@ -54,6 +56,16 @@ class PromptsViewModel @AssistedInject constructor(
 
     init {
         loadSortData()
+        loadModels()
+    }
+
+    /**
+     * Принудительно загружает модели
+     */
+    private fun loadModels() {
+        viewModelScope.launch {
+            llmInteractor.refreshModels()
+        }
     }
 
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)

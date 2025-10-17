@@ -1,6 +1,5 @@
 package com.arny.aipromptmaster.domain.models
 
-import kotlinx.serialization.Serializable
 import java.math.BigDecimal
 import java.util.UUID
 
@@ -9,11 +8,8 @@ data class ChatMessage(
     val role: ChatRole, // "user", "assistant", "system"
     val content: String,
     val timestamp: Long = System.currentTimeMillis(),
-    // Список файлов привязанных к сообщению (для отображения)
-    val attachedFileIds: List<String> = emptyList(),
-    // Метаданные streaming (для reasoning)
-    val thinkingTime: Long? = null, // Время обработки в миллисекундах
-    val isThinking: Boolean = false
+    val isThinking: Boolean = false,
+    val modelId: String? = null
 )
 
 /**
@@ -130,5 +126,6 @@ data class FileReference(
 
 sealed class StreamChunk {
     data class Content(val text: String) : StreamChunk()
-    data class Usage(val promptTokens: Int, val completionTokens: Int, val totalTokens: Int) : StreamChunk()
+    data class Usage(val promptTokens: Int, val completionTokens: Int, val totalTokens: Int) :
+        StreamChunk()
 }

@@ -41,12 +41,10 @@ class ChatHistoryRepositoryImpl @Inject constructor(
         chatDao.appendContentToMessage(messageId, contentChunk) // Новый метод в DAO
     }
 
-    override fun getHistoryFlow(conversationId: String): Flow<List<ChatMessage>> {
-        return chatDao.getMessagesForConversation(conversationId).map { entities ->
-            // Преобразуем List<MessageEntity> в List<ChatMessage>
+    override fun getHistoryFlow(conversationId: String): Flow<List<ChatMessage>> =
+        chatDao.getMessagesForConversation(conversationId).map { entities ->
             entities.map { it.toDomainModel() }
         }
-    }
 
     override suspend fun addMessages(conversationId: String, messages: List<ChatMessage>) {
         val messageEntities = messages.map { it.toEntity(conversationId) }
@@ -94,9 +92,7 @@ class ChatHistoryRepositoryImpl @Inject constructor(
         role = ChatRole.fromApiRole(this.role),
         content = this.content,
         timestamp = this.timestamp,
-        attachedFileIds = emptyList(), // TODO: Загружать из отдельной таблицы
-        thinkingTime = null,
-        isThinking = false
+        modelId = this.modelId
     )
 
     private fun ChatMessage.toEntity(conversationId: String): MessageEntity = MessageEntity(
@@ -104,7 +100,8 @@ class ChatHistoryRepositoryImpl @Inject constructor(
         conversationId = conversationId,
         role = this.role.toString(),
         content = this.content,
-        timestamp = this.timestamp
+        timestamp = this.timestamp,
+        modelId = this.modelId
     )
 
     private fun ConversationEntity.toDomain(): Conversation = Conversation(

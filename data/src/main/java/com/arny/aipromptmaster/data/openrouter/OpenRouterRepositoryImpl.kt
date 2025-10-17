@@ -43,9 +43,19 @@ class OpenRouterRepositoryImpl @Inject constructor(
     override fun getModelsFlow(): Flow<List<LlmModel>> = _modelsCache.asStateFlow()
 
     override suspend fun refreshModels(): Result<Unit> = withContext(dispatcher) {
+        // Проверяем, есть ли уже данные в кэше
+        if (_modelsCache.value.isNotEmpty()) {
+            Log.d("OpenRouterRepository", "Models already cached, skipping refresh")
+            return@withContext Result.success(Unit)
+        }
+
         refreshMutex.withLock {
+            // Double-check внутри lock для потокобезопасности
+            if (_modelsCache.value.isNotEmpty()) {
+                return@withContext Result.success(Unit)
+            }
+
             try {
-                // Теперь Retrofit сам парсит ответ благодаря ConverterFactory
                 val response = service.getModels()
                 if (response.isSuccessful && response.body() != null) {
                     _modelsCache.value = response.body()!!.models.map { it.toDomain() }
@@ -230,5 +240,4 @@ class OpenRouterRepositoryImpl @Inject constructor(
             emit(DataResult.Error(mapNetworkException(e)))
         }
     }
-
 }

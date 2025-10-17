@@ -77,34 +77,32 @@ class ChatFragment : Fragment() {
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View {
-        return ComposeView(requireContext()).apply {
-            setViewCompositionStrategy(
-                ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
-            )
+    ): View = ComposeView(requireContext()).apply {
+        setViewCompositionStrategy(
+            ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
+        )
 
-            setContent {
-                ChatComposeScreen(
-                    viewModel = viewModel,
-                    markwon = markwon,
-                    onNavigateToFileViewer = { fileId ->
-                        val action = ChatFragmentDirections
-                            .actionChatFragmentToFileViewerFragment(fileId)
-                        findNavController().navigate(action)
-                    },
-                    onAttachFileClick = {
-                        filePickerLauncher.launch("*/*")
-                    },
-                    onNavigateToSettings = {
-                        findNavController().navigate(
-                            ChatFragmentDirections.actionNavChatToNavSettings()
-                        )
-                    },
-                    onCopyToClipboard = { text ->
-                        copyToClipboard(text)
-                    }
-                )
-            }
+        setContent {
+            ChatComposeScreen(
+                viewModel = viewModel,
+                markwon = markwon,
+                onNavigateToFileViewer = { fileId ->
+                    val action = ChatFragmentDirections
+                        .actionChatFragmentToFileViewerFragment(fileId)
+                    findNavController().navigate(action)
+                },
+                onAttachFileClick = {
+                    filePickerLauncher.launch("*/*")
+                },
+                onNavigateToSettings = {
+                    findNavController().navigate(
+                        ChatFragmentDirections.actionNavChatToNavSettings()
+                    )
+                },
+                onCopyToClipboard = { text ->
+                    copyToClipboard(text)
+                }
+            )
         }
     }
 

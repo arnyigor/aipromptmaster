@@ -13,7 +13,6 @@ import androidx.navigation.fragment.navArgs
 import com.arny.aipromptmaster.domain.models.FileAttachment
 import com.arny.aipromptmaster.presentation.databinding.FragmentFileViewerBinding
 import com.arny.aipromptmaster.domain.utils.FileUtils
-import dagger.android.support.AndroidSupportInjection
 import io.noties.markwon.Markwon
 import kotlinx.coroutines.launch
 

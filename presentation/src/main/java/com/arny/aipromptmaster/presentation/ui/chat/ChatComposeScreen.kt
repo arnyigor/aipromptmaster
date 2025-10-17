@@ -221,9 +221,9 @@ fun ChatComposeScreen(
                         is DataResult.Success -> result.data.name
                         else -> ""
                     },
-                    conversationFiles = conversationFiles, // 🔥 Передаем файлы чата
+                    conversationFiles = conversationFiles,
                     onCopyMessage = onCopyToClipboard,
-                    onRegenerateMessage = { messageId -> // 🔥 ИЗМЕНЕНО
+                    onRegenerateMessage = { messageId ->
                         viewModel.regenerateMessage(messageId)
                     },
                     modifier = Modifier.weight(1f)
