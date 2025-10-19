@@ -33,7 +33,7 @@ import com.arny.aipromptmaster.domain.models.Prompt
 import com.arny.aipromptmaster.domain.models.SyncConflict
 import com.arny.aipromptmaster.domain.models.strings.StringHolder.Formatted
 import com.arny.aipromptmaster.presentation.R
-import com.arny.aipromptmaster.presentation.databinding.FragmentHomeBinding
+import com.arny.aipromptmaster.presentation.databinding.FragmentPromptsBinding
 import com.arny.aipromptmaster.presentation.utils.asString
 import com.arny.aipromptmaster.presentation.utils.autoClean
 import com.arny.aipromptmaster.presentation.utils.getParcelableCompat
@@ -55,7 +55,7 @@ import javax.inject.Inject
 
 class PromptsFragment : Fragment() {
 
-    private var _binding: FragmentHomeBinding? = null
+    private var _binding: FragmentPromptsBinding? = null
     private val binding get() = _binding!!
 
     @AssistedFactory
@@ -95,7 +95,7 @@ class PromptsFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentHomeBinding.inflate(inflater, container, false)
+        _binding = FragmentPromptsBinding.inflate(inflater, container, false)
         return binding.root
     }
 

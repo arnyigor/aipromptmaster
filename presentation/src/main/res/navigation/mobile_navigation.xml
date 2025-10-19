@@ -8,7 +8,7 @@
         android:id="@+id/nav_home"
         android:name="com.arny.aipromptmaster.presentation.ui.home.PromptsFragment"
         android:label="@string/title_home"
-        tools:layout="@layout/fragment_home">
+        tools:layout="@layout/fragment_prompts">
         <action
             android:id="@+id/action_nav_home_to_promptViewFragment"
             app:destination="@id/promptViewFragment" />

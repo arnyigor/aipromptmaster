@@ -31,10 +31,10 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="16dp"
+        android:layout_marginEnd="@dimen/fab_margin_large"
+        android:layout_marginBottom="@dimen/fab_margin_large"
         android:contentDescription="@null"
         android:src="@drawable/ic_plus"
-        app:fabCustomSize="40dp" />
+        app:fabCustomSize="@dimen/fab_size_standard" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

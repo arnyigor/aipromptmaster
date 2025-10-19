@@ -2,7 +2,13 @@ package com.arny.aipromptmaster.presentation
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import androidx.navigation.findNavController
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.isVisible
+import androidx.core.view.updatePadding
+import androidx.navigation.NavController
+import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
@@ -18,6 +24,7 @@ class MainActivity : AppCompatActivity(), HasAndroidInjector {
 
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
+    private lateinit var navController: NavController
 
     @Inject
     lateinit var dispatchingAndroidInjector: DispatchingAndroidInjector<Any>
@@ -30,25 +37,58 @@ class MainActivity : AppCompatActivity(), HasAndroidInjector {
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        setupEdgeToEdge()
         setSupportActionBar(binding.toolbar)
+        setupNavigation()
+    }
 
-        val navController = findNavController(R.id.nav_host_fragment_activity_main)
+    private fun setupEdgeToEdge() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        binding.navView.setupWithNavController(navController)
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+
+            // Toolbar padding для статус бара
+            binding.toolbar.updatePadding(top = systemBars.top)
+
+            // BottomNavigation padding для навигационного бара
+            binding.bottomNavigation.updatePadding(bottom = systemBars.bottom)
+
+            insets
+        }
+    }
+
+    private fun setupNavigation() {
+        val navHostFragment = supportFragmentManager
+            .findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
+        navController = navHostFragment.navController
+
+        binding.bottomNavigation.setupWithNavController(navController)
 
         appBarConfiguration = AppBarConfiguration(
             setOf(
-                R.id.nav_home, R.id.nav_history, R.id.nav_models, R.id.nav_settings
-            ),
-            binding.drawerLayout // Передаем DrawerLayout в AppBarConfiguration
+                R.id.nav_home,
+                R.id.nav_history,
+            )
         )
 
-        // Navigation Controller автоматически управляет drawer toggle
         setupActionBarWithNavController(navController, appBarConfiguration)
+
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            when (destination.id) {
+                R.id.nav_home,
+                R.id.nav_history -> {
+                    binding.bottomNavigation.isVisible = true
+                }
+                else -> {
+                    binding.bottomNavigation.isVisible = false
+                }
+            }
+        }
     }
 
     override fun onSupportNavigateUp(): Boolean {
-        val navController = findNavController(R.id.nav_host_fragment_activity_main)
         return navController.navigateUp(appBarConfiguration) || super.onSupportNavigateUp()
     }
 }

@@ -130,6 +130,8 @@ class PromptViewFragment : Fragment() {
     private fun updateMenuVisibility() {
         deleteMenuItem?.isVisible = isDeleteMenuVisible
         editMenuItem?.isVisible = isEditMenuVisible
+        // Принудительно обновляем меню для корректного отображения
+        requireActivity().invalidateOptionsMenu()
     }
 
     private fun setupViews() {
