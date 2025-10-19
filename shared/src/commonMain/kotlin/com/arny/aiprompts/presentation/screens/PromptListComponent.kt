@@ -53,6 +53,7 @@ interface PromptListComponent {
     fun onHideDeleteAllDialog()
     fun onConfirmDeleteAll()
     fun onSyncClicked()
+    fun onToggleFiltersExpanded()
 }
 
 class DefaultPromptListComponent(
@@ -93,7 +94,12 @@ class DefaultPromptListComponent(
                         _state.update { it.copy(allPrompts = prompts, isLoading = false) }
                         applyFiltersAndSorting() // Применяем фильтры к новым данным
                     }.onFailure { error ->
-                        _state.update { it.copy(error = StringHolder.Text(error.message), isLoading = false) }
+                        _state.update {
+                            it.copy(
+                                error = StringHolder.Text(error.message),
+                                isLoading = false
+                            )
+                        }
                     }
                 }
         }
@@ -208,6 +214,10 @@ class DefaultPromptListComponent(
         }
     }
 
+    override fun onToggleFiltersExpanded() {
+        _state.update { it.copy(isFiltersExpanded = !it.isFiltersExpanded) }
+    }
+
     override fun onMoreMenuToggle(isVisible: Boolean) {
         _state.update { it.copy(isMoreMenuVisible = isVisible) }
     }
@@ -291,14 +301,14 @@ class DefaultPromptListComponent(
         }
     }
 
-    // А этот метод для полного обновления с нуля (pull-to-refresh)
     override fun onRefresh() {
         scope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
-            val result = importJsonUseCase()
-            result.onSuccess { count ->
-                println("Успешно импортировано $count промптов.")
-                // Данные в state обновятся автоматически благодаря Flow в observePrompts()
+            importJsonUseCase().onSuccess { count ->
+                if (count > 0) {
+                    println("Успешно импортировано $count промптов.")
+                }
+                onSyncClicked()
             }.onFailure { error ->
                 _state.update {
                     it.copy(
@@ -306,6 +316,7 @@ class DefaultPromptListComponent(
                         error = StringHolder.Text("Ошибка импорта: ${error.message}")
                     )
                 }
+                onSyncClicked()
             }
         }
     }

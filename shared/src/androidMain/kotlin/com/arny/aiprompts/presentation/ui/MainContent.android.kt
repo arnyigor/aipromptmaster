@@ -31,16 +31,23 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.input.TextFieldValue
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
-import com.arkivanov.essenty.backhandler.BackHandler
 import com.arny.aiprompts.presentation.navigation.MainComponent
 import com.arny.aiprompts.presentation.navigation.MainScreen
+import com.arny.aiprompts.presentation.ui.prompts.PromptsScreen
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,7 +61,9 @@ import kotlinx.coroutines.launch
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    // Handle back navigation - removed BackHandler as it's causing compilation issues
+    // Search state
+    val searchQuery = remember { mutableStateOf("") }
+    val isSearchActive = remember { mutableStateOf(false) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -79,6 +88,26 @@ import kotlinx.coroutines.launch
                         onMenuClick = {
                             scope.launch {
                                 drawerState.open()
+                            }
+                        },
+                        onSyncClick = {
+                            // Get prompts component and call sync
+                            val promptsChild = childStack.active.instance as? MainComponent.Child.Prompts
+                            promptsChild?.component?.onSyncClicked()
+                        },
+                        searchQuery = searchQuery.value,
+                        onSearchQueryChange = { query ->
+                            searchQuery.value = query
+                            val promptsChild = childStack.active.instance as? MainComponent.Child.Prompts
+                            promptsChild?.component?.onSearchQueryChanged(query)
+                        },
+                        isSearchActive = isSearchActive.value,
+                        onSearchActiveChange = { active ->
+                            isSearchActive.value = active
+                            if (!active) {
+                                searchQuery.value = ""
+                                val promptsChild = childStack.active.instance as? MainComponent.Child.Prompts
+                                promptsChild?.component?.onSearchQueryChanged("")
                             }
                         }
                     )
@@ -128,10 +157,7 @@ import kotlinx.coroutines.launch
                             MainScreen.PROMPTS -> {
                                 val promptsChild = childStack.active.instance as? MainComponent.Child.Prompts
                                 promptsChild?.component?.let { promptsComponent ->
-                                    Text(
-                                        text = "Prompts Module - ${promptsComponent.state.value.allPrompts.size} prompts loaded",
-                                        modifier = Modifier.fillMaxSize()
-                                    )
+                                    PromptsScreen(component = promptsComponent)
                                 } ?: Text("Loading Prompts...", modifier = Modifier.fillMaxSize())
                             }
                             MainScreen.CHAT -> {
@@ -243,39 +269,70 @@ private fun MainNavigationDrawer(
     }
 }
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MainTopBar(
     currentScreen: MainScreen,
-    onMenuClick: () -> Unit
+    onMenuClick: () -> Unit,
+    onSyncClick: () -> Unit,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    isSearchActive: Boolean,
+    onSearchActiveChange: (Boolean) -> Unit
 ) {
-    TopAppBar(
-        title = {
-            Text(
-                text = when (currentScreen) {
-                    MainScreen.PROMPTS -> "Prompts"
-                    MainScreen.CHAT -> "Chat"
-                    MainScreen.IMPORT -> "Import"
-                    MainScreen.SETTINGS -> "Settings"
-                    MainScreen.SCRAPER -> "Scraper"
+    if (currentScreen == MainScreen.PROMPTS && isSearchActive) {
+        SearchBar(
+            query = searchQuery,
+            onQueryChange = onSearchQueryChange,
+            onSearch = { onSearchActiveChange(false) },
+            active = isSearchActive,
+            onActiveChange = onSearchActiveChange,
+            placeholder = { Text("Search prompts...") },
+            leadingIcon = {
+                IconButton(onClick = { onSearchActiveChange(false) }) {
+                    Icon(Icons.Default.Menu, contentDescription = "Back")
                 }
-            )
-        },
-        navigationIcon = {
-            IconButton(onClick = onMenuClick) {
-                Icon(Icons.Default.Menu, contentDescription = "Menu")
+            },
+            trailingIcon = {
+                IconButton(onClick = { onSearchQueryChange("") }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "Clear")
+                }
+            },
+            content = {}
+        )
+    } else {
+        TopAppBar(
+            title = {
+                Text(
+                    text = when (currentScreen) {
+                        MainScreen.PROMPTS -> "Prompts"
+                        MainScreen.CHAT -> "Chat"
+                        MainScreen.IMPORT -> "Import"
+                        MainScreen.SETTINGS -> "Settings"
+                        MainScreen.SCRAPER -> "Scraper"
+                    }
+                )
+            },
+            navigationIcon = {
+                IconButton(onClick = onMenuClick) {
+                    Icon(Icons.Default.Menu, contentDescription = "Menu")
+                }
+            },
+            actions = {
+                if (currentScreen == MainScreen.PROMPTS) {
+                    IconButton(onClick = { onSearchActiveChange(true) }) {
+                        Icon(Icons.Default.Search, contentDescription = "Search")
+                    }
+                    IconButton(onClick = onSyncClick) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Sync")
+                    }
+                }
+                IconButton(onClick = { /* TODO: Settings */ }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "More")
+                }
             }
-        },
-        actions = {
-            IconButton(onClick = { /* TODO: Search */ }) {
-                Icon(Icons.Default.Search, contentDescription = "Search")
-            }
-            IconButton(onClick = { /* TODO: Settings */ }) {
-                Icon(Icons.Default.MoreVert, contentDescription = "More")
-            }
-        }
-    )
+        )
+    }
 }
 
 @Composable

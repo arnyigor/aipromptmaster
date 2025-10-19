@@ -6,6 +6,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MoreVert
@@ -55,7 +57,7 @@ fun PromptsScreen(component: PromptListComponent) {
             },
             bottomBar = { },
             snackbarHost = { SnackbarHost(snackbarHostState) },
-            contentWindowInsets = WindowInsets.systemBars
+            contentWindowInsets = WindowInsets(0.dp) // Убираем системные отступы, так как они уже есть в основном Scaffold
         ) { paddingValues ->
             // Основной контент
             Box(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
@@ -142,7 +144,6 @@ private fun DesktopLayout(state: PromptsListState, component: PromptListComponen
     }
 }
 
-
 @Composable
 fun ActionPanel(
     modifier: Modifier = Modifier,
@@ -168,7 +169,6 @@ fun ActionPanel(
     }
 }
 
-
 @Composable
 private fun MobileLayout(state: PromptsListState, component: PromptListComponent) {
     MainContent(
@@ -186,13 +186,19 @@ private fun PromptsTopAppBar(
     component: PromptListComponent
 ) {
     TopAppBar(
-        title = {
-            // Разный заголовок для разных лейаутов
-            val titleText = when (screenSize) {
-                ScreenSize.DESKTOP -> "Prompt Manager - Показано ${state.currentPrompts.size} из ${state.allPrompts.size}"
-                ScreenSize.MOBILE -> "Prompts"
+        navigationIcon = {
+            // Кнопка сворачивания/разворачивания фильтров слева
+            if (screenSize == ScreenSize.DESKTOP) {
+                IconButton(onClick = component::onToggleFiltersExpanded) {
+                    Icon(
+                        imageVector = if (state.isFiltersExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (state.isFiltersExpanded) "Свернуть фильтры" else "Развернуть фильтры"
+                    )
+                }
             }
-            Text(titleText)
+        },
+        title = {
+            Text("Prompt Manager - Показано ${state.currentPrompts.size} из ${state.allPrompts.size}")
         },
         actions = {
             // Показываем меню "три точки" только на мобильной и планшетной версиях
@@ -269,7 +275,9 @@ private fun MainContent(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        FilterPanel(state = state, component = component)
+        if (state.isFiltersExpanded) {
+            FilterPanel(state = state, component = component)
+        }
 
         when {
             state.isLoading && state.currentPrompts.isEmpty() -> Box(
@@ -365,7 +373,6 @@ fun PromptListItem(
         }
     }
 }
-
 
 // Вспомогательные Composable для состояний
 @Composable

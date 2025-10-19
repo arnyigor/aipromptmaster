@@ -43,6 +43,7 @@ data class PromptsListState(
     // Состояние для правой панели
     val selectedPromptId: String? = null,
     val isMoreMenuVisible: Boolean = false, // Для управления выпадающим меню на mobile
+    val isFiltersExpanded: Boolean = true, // Для управления видимостью фильтров
 
     // Состояние CRUD операций
     val isCreatingPrompt: Boolean = false,
