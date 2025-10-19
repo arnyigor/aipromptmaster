@@ -1,7 +1,7 @@
 package com.arny.aiprompts.domain.errors
 
-import androidx.annotation.StringRes
 import com.arny.aiprompts.domain.strings.StringHolder
+import org.jetbrains.compose.resources.StringResource
 
 /**
  * Базовый класс для всех доменных ошибок в приложении.
@@ -95,36 +95,36 @@ sealed class DomainError(open val stringHolder: StringHolder) : Exception() {
         /**
          * Создает локальную ошибку с использованием строкового ресурса.
          *
-         * @param resId Идентификатор строкового ресурса.
+         * @param resource Строковый ресурс.
          * @return Экземпляр Local ошибки.
          */
-        fun local(@StringRes resId: Int) = Local(StringHolder.Resource(resId))
+        fun local(resource: StringResource) = Local(StringHolder.Resource(resource))
 
         /**
          * Создает сетевую ошибку с использованием строкового ресурса.
          *
-         * @param resId Идентификатор строкового ресурса.
+         * @param resource Строковый ресурс.
          * @return Экземпляр Network ошибки.
          */
-        fun network(@StringRes resId: Int) = Network(StringHolder.Resource(resId))
+        fun network(resource: StringResource) = Network(StringHolder.Resource(resource))
 
         /**
          * Создает общую ошибку с использованием строкового ресурса.
          *
-         * @param resId Идентификатор строкового ресурса.
+         * @param resource Строковый ресурс.
          * @return Экземпляр Generic ошибки.
          */
-        fun generic(@StringRes resId: Int) = Generic(StringHolder.Resource(resId))
+        fun generic(resource: StringResource) = Generic(StringHolder.Resource(resource))
 
         /**
          * Создает API ошибку с использованием строкового ресурса.
          *
-         * @param resId Идентификатор строкового ресурса.
+         * @param resource Строковый ресурс.
          * @param code Код ошибки, возвращенный API.
          * @param detailed Детализированное техническое сообщение об ошибке.
          * @return Экземпляр Api ошибки.
          */
-        fun api(@StringRes resId: Int, code: Int, detailed: String) =
-            Api(code, StringHolder.Resource(resId), detailed)
+        fun api(resource: StringResource, code: Int, detailed: String) =
+            Api(code, StringHolder.Resource(resource), detailed)
     }
 }

@@ -43,7 +43,7 @@ compose.desktop {
                 TargetFormat.Msi,
                 TargetFormat.Deb
             )
-            packageName = "CodeMerger"
+            packageName = ""
             packageVersion = "1.0.0"
         }
     }

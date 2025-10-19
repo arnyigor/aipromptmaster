@@ -37,13 +37,13 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 // Compose
-                api(compose.runtime)
-                api(compose.foundation)
-                api(compose.material3)
-                api(compose.ui)
+                api(libs.compose.runtime)
+                api(libs.compose.foundation)
+                api(libs.compose.material3)
+                api(libs.compose.ui)
                 api(libs.compose.material.icons.extended)
                 @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
-                api(compose.components.resources)
+                api(libs.compose.components.resources)
                 api("com.arkivanov.decompose:decompose:${libs.versions.decompose.get()}")
                 api("com.arkivanov.decompose:extensions-compose:${libs.versions.decompose.get()}")
                 api("com.arkivanov.essenty:lifecycle-coroutines:${libs.versions.lifecycle.coroutines.get()}")
@@ -68,7 +68,6 @@ kotlin {
                 implementation(libs.russhwolf.settings)
                 implementation(libs.russhwolf.settings.datastore)
                 implementation(libs.russhwolf.settings.coroutines)
-                implementation(project.dependencies.platform("androidx.compose:compose-bom:2023.10.01"))
             }
         }
 

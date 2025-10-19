@@ -6,6 +6,8 @@ android-targetSdk = "36"
 composeMarkdown = "0.2.6"
 kotlin = "2.1.0"
 compose-plugin = "1.8.2"
+# Compose Multiplatform
+compose = "1.8.2"
 decompose ="3.3.0"
 lifecycle-coroutines ="2.5.0"
 icons = "1.7.2"
@@ -51,6 +53,13 @@ kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-c
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
 compose-material-icons-extended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "icons" }
+
+# Compose Multiplatform
+compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose" }
+compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose" }
+compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose" }
+compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose" }
+compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose" }
 
 # --- ROOM ---
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }

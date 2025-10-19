@@ -44,7 +44,6 @@ fun FilterPanel(state: PromptsListState, component: PromptListComponent) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp), // Пространство между строками, если будет перенос
-            itemVerticalAlignment = Alignment.CenterVertically
         ) {
             ExposedDropdown(
                 modifier = Modifier.widthIn(min = 150.dp),
