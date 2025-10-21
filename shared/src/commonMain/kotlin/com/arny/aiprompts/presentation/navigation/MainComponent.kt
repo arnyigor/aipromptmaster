@@ -11,6 +11,7 @@ import com.arkivanov.decompose.router.stack.push
 import com.arkivanov.decompose.value.Value
 import com.arny.aiprompts.data.model.Platform
 import com.arny.aiprompts.data.model.getPlatform
+import com.arny.aiprompts.data.repositories.ISettingsRepository
 import com.arny.aiprompts.data.scraper.WebScraper
 import com.arny.aiprompts.domain.files.FileMetadataReader
 import com.arny.aiprompts.domain.interactors.ILLMInteractor
@@ -35,8 +36,10 @@ import com.arny.aiprompts.presentation.navigation.MainComponent.Child
 import com.arny.aiprompts.presentation.navigation.MainComponent.Companion.IS_IMPORT_ENABLED
 import com.arny.aiprompts.presentation.screens.DefaultPromptDetailComponent
 import com.arny.aiprompts.presentation.screens.DefaultPromptListComponent
+import com.arny.aiprompts.presentation.screens.DefaultSettingsComponent
 import com.arny.aiprompts.presentation.screens.PromptDetailComponent
 import com.arny.aiprompts.presentation.screens.PromptListComponent
+import com.arny.aiprompts.presentation.screens.SettingsComponent
 import com.arny.aiprompts.presentation.ui.importer.DefaultImporterComponent
 import com.arny.aiprompts.presentation.ui.importer.ImporterComponent
 import com.arny.aiprompts.presentation.ui.scraper.DefaultScraperComponent
@@ -104,6 +107,7 @@ class DefaultMainComponent(
     private val systemInteraction: SystemInteraction,
     private val fileMetadataReader: FileMetadataReader,
     private val llmInteractor: ILLMInteractor,
+    private val settingsRepository: ISettingsRepository,
 ) : MainComponent, ComponentContext by componentContext {
 
     private val navigation = StackNavigation<MainConfig>()
@@ -209,7 +213,9 @@ class DefaultMainComponent(
 
             is MainConfig.Settings -> Child.Settings(
                 DefaultSettingsComponent(
-                    componentContext = context
+                    componentContext = context,
+                    settingsRepository = settingsRepository,
+                    onBack = { navigation.pop() }
                 )
             )
         }
@@ -245,7 +251,6 @@ class DefaultMainComponent(
             println("Import is only available in development mode")
         }
     }
-
 
     override fun navigateToSettings() {
         navigation.navigate { listOf(MainConfig.Settings) }
@@ -307,14 +312,3 @@ data class WorkspaceSettings(
     val language: String = "en",
     val autoSave: Boolean = true
 )
-
-// Settings component interface (to be implemented)
-interface SettingsComponent {
-    // Settings component methods will be defined here
-}
-
-class DefaultSettingsComponent(
-    componentContext: ComponentContext
-) : SettingsComponent, ComponentContext by componentContext {
-    // Settings component implementation
-}

@@ -16,8 +16,15 @@ interface LlmComponent {
 
     fun onPromptChanged(newPrompt: String)
     fun onModelSelected(modelId: String)
-    fun onGenerateClicked()
     fun refreshModels()
     fun clearChat()
     fun onNavigateBack()
+    fun onSearchQueryChanged(query: String)
+    fun onCategorySelected(category: ModelCategory)
+    fun onSortOrderSelected(sortOrder: ModelSortOrder)
+    fun toggleModelSearch()
+    fun onStreamingGenerateClicked()
+    fun onCancelGenerating()
+    fun onRetryMessage(messageId: String)
+    fun clearError()
 }

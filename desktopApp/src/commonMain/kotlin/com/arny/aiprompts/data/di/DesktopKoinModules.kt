@@ -12,6 +12,8 @@ import com.arny.aiprompts.data.repositories.IChatHistoryRepository
 import com.arny.aiprompts.data.repositories.OpenRouterRepositoryImpl
 import com.arny.aiprompts.data.repositories.SettingsRepositoryImpl
 import com.arny.aiprompts.data.repositories.ChatHistoryRepositoryImpl
+import com.arny.aiprompts.presentation.screens.DefaultSettingsComponent
+import com.arny.aiprompts.presentation.screens.SettingsComponent
 import com.arny.aiprompts.data.repository.PromptsRepositoryImpl
 import com.arny.aiprompts.data.scraper.SeleniumWebScraper
 import com.arny.aiprompts.data.scraper.WebScraper
@@ -24,6 +26,7 @@ import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.serialization.json.Json
 import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
@@ -52,20 +55,30 @@ val desktopLlmModule = module {
     single {
         HttpClient(CIO) {
             install(ContentNegotiation) {
-                json(json = kotlinx.serialization.json.Json {
+                json(json = Json {
                     ignoreUnknownKeys = true
+                    isLenient = true // может помочь с JSON, содержащим непредсказуемые поля
                 })
             }
         }
     }
     single<LLMService> { NoOpLLMService() }
+
+    single<Json> {
+        Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+        }
+    }
+
+    single<IOpenRouterRepository> { OpenRouterRepositoryImpl(get(), get(), get()) } // Передаем зависимости через get()
 }
 
 val desktopLlmRepositoriesModule = module {
-    singleOf(::OpenRouterRepositoryImpl) { bind<IOpenRouterRepository>() }
     single { SettingsFactory() }
     singleOf(::SettingsRepositoryImpl) { bind<ISettingsRepository>() }
     singleOf(::ChatHistoryRepositoryImpl) { bind<IChatHistoryRepository>() }
+    singleOf(::DefaultSettingsComponent) { bind<SettingsComponent>() }
 }
 
 val desktopLlmUiModule = module {

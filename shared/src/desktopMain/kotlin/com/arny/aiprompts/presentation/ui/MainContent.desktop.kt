@@ -44,6 +44,7 @@ import com.arny.aiprompts.presentation.ui.importer.ImporterScreen
 import com.arny.aiprompts.presentation.ui.llm.LlmScreen
 import com.arny.aiprompts.presentation.ui.prompts.PromptsScreen
 import com.arny.aiprompts.presentation.ui.scraper.ScraperScreen
+import com.arny.aiprompts.presentation.ui.settings.SettingsScreen
 
 @Composable
 fun MainContentDesktopImpl(component: MainComponent) {
@@ -77,11 +78,6 @@ fun MainContentDesktopImpl(component: MainComponent) {
                     (keyEvent.key == Key.CtrlLeft || keyEvent.key == Key.CtrlRight) &&
                             keyEvent.key == Key.Four && keyEvent.type == KeyEventType.KeyDown -> {
                         component.navigateToSettings()
-                        true
-                    }
-
-                    keyEvent.key == Key.B && keyEvent.type == KeyEventType.KeyDown -> {
-                        component.toggleSidebar()
                         true
                     }
 
@@ -144,7 +140,7 @@ fun MainContentDesktopImpl(component: MainComponent) {
                             Text("Import not available", modifier = Modifier.fillMaxSize())
                         }
                     }
-                    is MainComponent.Child.Settings -> Text("Settings Screen - Coming Soon", modifier = Modifier.fillMaxSize(), style = MaterialTheme.typography.headlineMedium)
+                    is MainComponent.Child.Settings -> SettingsScreen(component = instance.component)
                 }
             }
 

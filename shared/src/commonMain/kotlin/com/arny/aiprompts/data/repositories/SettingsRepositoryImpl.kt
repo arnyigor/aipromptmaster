@@ -24,6 +24,14 @@ class SettingsRepositoryImpl(private val settingsFactory: SettingsFactory) : ISe
         return settings.getStringOrNull("api_key")
     }
 
+    override fun saveOpenRouterApiKey(apiKey: String) {
+        settings.putString("openrouter_api_key", apiKey)
+    }
+
+    override fun getOpenRouterApiKey(): String? {
+        return settings.getStringOrNull("openrouter_api_key")
+    }
+
     override fun setSelectedModelId(id: String?) {
         settings.putString("selected_model_id", id ?: "")
         _selectedId.update { id }

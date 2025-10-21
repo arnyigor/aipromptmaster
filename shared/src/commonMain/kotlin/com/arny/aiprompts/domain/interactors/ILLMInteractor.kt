@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface ILLMInteractor {
     fun sendMessage(model: String, userMessage: String): Flow<DataResult<String>>
+    fun sendStreamingMessage(model: String, userMessage: String): Flow<DataResult<ChatMessage>>
     fun getModels(): Flow<DataResult<List<LlmModel>>>
     fun getSelectedModel(): Flow<DataResult<LlmModel>>
     suspend fun selectModel(id: String)
@@ -14,4 +15,6 @@ interface ILLMInteractor {
     suspend fun toggleModelSelection(clickedModelId: String)
     fun getChatHistoryFlow(): Flow<List<ChatMessage>>
     suspend fun clearChat()
+    suspend fun retryMessage(messageId: String)
+    suspend fun cancelStreaming()
 }

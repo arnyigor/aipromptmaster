@@ -32,7 +32,8 @@ class MainActivity : ComponentActivity() {
             fileMetadataReader = get(),
             llmInteractor = get(),
             scrapeUseCase = get(),
-            webScraper = get()
+            webScraper = get(),
+            settingsRepository = get()
         )
 
         setContent {

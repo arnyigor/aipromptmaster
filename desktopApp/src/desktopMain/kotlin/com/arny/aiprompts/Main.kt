@@ -61,6 +61,7 @@ fun main() {
                 llmInteractor = getKoin().get(),
                 scrapeUseCase = getKoin().get(),
                 webScraper = getKoin().get(),
+                settingsRepository = getKoin().get(),
             )
         }
 

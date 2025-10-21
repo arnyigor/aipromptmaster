@@ -2,43 +2,47 @@ package com.arny.aiprompts.presentation.features.llm
 
 import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.essenty.lifecycle.coroutines.coroutineScope
-import com.arkivanov.essenty.lifecycle.doOnDestroy
 import com.arny.aiprompts.domain.interactors.ILLMInteractor
-import com.arny.aiprompts.data.model.LlmModel
 import com.arny.aiprompts.results.DataResult
-import kotlinx.coroutines.cancel
+import com.arny.aiprompts.utils.Logger
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 
-// Реализация компонента
 class DefaultLlmComponent(
     componentContext: ComponentContext,
     private val llmInteractor: ILLMInteractor,
     private val onBack: () -> Unit,
 ) : LlmComponent, ComponentContext by componentContext {
 
-    // CoroutineScope, привязанный к жизненному циклу компонента (аналог viewModelScope)
-    // Эта функция-расширение создает scope, который автоматически
-    // отменится при уничтожении компонента (onDestroy).
     private val scope = coroutineScope()
+    private var streamingJob: Job? = null
 
     private val _uiState = MutableStateFlow(LlmUiState())
     override val uiState: StateFlow<LlmUiState> = _uiState.asStateFlow()
 
     init {
-        // При уничтожении компонента scope будет отменен
-        lifecycle.doOnDestroy {
-            scope.cancel()
-        }
-
-        // Вся логика из init ViewModel переезжает сюда
+        // Подписка на модели
         llmInteractor.getModels()
             .onEach { modelsResult ->
                 _uiState.update { it.copy(modelsResult = modelsResult) }
             }
             .launchIn(scope)
 
-        refreshModels()
+        // Подписка на историю чата
+        llmInteractor.getChatHistoryFlow()
+            .onEach { chatHistory ->
+                _uiState.update { state ->
+                    state.copy(
+                        chatHistory = chatHistory,
+                    )
+                }
+            }
+            .launchIn(scope)
+
+        // Загружаем модели
+        scope.launch {
+            llmInteractor.refreshModels()
+        }
     }
 
     override fun onPromptChanged(newPrompt: String) {
@@ -51,26 +55,74 @@ class DefaultLlmComponent(
         }
     }
 
-    override fun onGenerateClicked() {
+    override fun onStreamingGenerateClicked() {
         val currentState = _uiState.value
-        val selectedModel = currentState.selectedModel ?: return
-        if (currentState.isGenerating) return
+        val selectedModel = currentState.selectedModel
 
-        scope.launch {
-            llmInteractor.sendMessage(selectedModel.id, currentState.prompt)
-                .onStart {
-                    _uiState.update { it.copy(isGenerating = true, responseText = "") }
+        // Валидация
+        when {
+            selectedModel == null -> {
+                _uiState.update { it.copy(errorMessage = "Выберите модель") }
+                return
+            }
+            currentState.isGenerating -> {
+                Logger.w("DefaultLlmComponent","Generation already in progress")
+                return
+            }
+            currentState.prompt.isBlank() -> {
+                _uiState.update { it.copy(errorMessage = "Введите сообщение") }
+                return
+            }
+        }
+
+        val messageToSend = currentState.prompt
+
+        // Отменяем предыдущий запрос (если есть)
+        streamingJob?.cancel()
+
+        streamingJob = scope.launch {
+            llmInteractor.sendStreamingMessage(
+                model = selectedModel.id,
+                userMessage = messageToSend
+            )
+                .catch { error ->
+                    Logger.e(error, "Streaming error")
+                    _uiState.update {
+                        it.copy(
+                            errorMessage = error.message ?: "Произошла ошибка",
+                        )
+                    }
                 }
                 .onCompletion {
-                    _uiState.update { it.copy(isGenerating = false) }
                 }
                 .collect { result ->
                     when (result) {
-                        is DataResult.Success -> _uiState.update { it.copy(responseText = result.data) }
-                        is DataResult.Error -> _uiState.update { it.copy(responseText = "Error: ${result.exception?.message}") }
-                        is DataResult.Loading -> _uiState.update { it.copy(responseText = "Generating...") }
+                        is DataResult.Success -> {
+                            // Обновления идут через chatHistory flow
+                            Logger.d("DefaultLlmComponent","Streaming chunk received message:${result.data.content}")
+                        }
+                        is DataResult.Error -> {
+                            val errorMsg = result.exception?.message ?: "Ошибка генерации"
+                            _uiState.update {
+                                it.copy(errorMessage = errorMsg)
+                            }
+                        }
+                        is DataResult.Loading -> {
+                            // Начало стриминга
+                        }
                     }
                 }
+        }
+    }
+
+    override fun onCancelGenerating() {
+        streamingJob?.cancel()
+        Logger.d("DefaultLlmComponent","Generation cancelled by user")
+    }
+
+    override fun onRetryMessage(messageId: String) {
+        scope.launch {
+            llmInteractor.retryMessage(messageId)
         }
     }
 
@@ -85,6 +137,29 @@ class DefaultLlmComponent(
     }
 
     override fun clearChat() {
-        _uiState.update { it.copy(prompt = "", responseText = "") }
+        scope.launch {
+            llmInteractor.clearChat()
+            _uiState.update { it.copy(prompt = "") }
+        }
+    }
+
+    override fun onSearchQueryChanged(query: String) {
+        _uiState.update { it.copy(searchQuery = query) }
+    }
+
+    override fun onCategorySelected(category: ModelCategory) {
+        _uiState.update { it.copy(selectedCategory = category) }
+    }
+
+    override fun onSortOrderSelected(sortOrder: ModelSortOrder) {
+        _uiState.update { it.copy(selectedSortOrder = sortOrder) }
+    }
+
+    override fun toggleModelSearch() {
+        _uiState.update { it.copy(showModelSearch = !it.showModelSearch) }
+    }
+
+    override fun clearError() {
+        _uiState.update { it.copy(errorMessage = null) }
     }
 }

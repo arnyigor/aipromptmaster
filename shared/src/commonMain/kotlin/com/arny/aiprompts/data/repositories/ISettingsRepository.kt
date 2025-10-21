@@ -5,6 +5,8 @@ import kotlinx.coroutines.flow.Flow
 interface ISettingsRepository {
     fun saveApiKey(apiKey: String)
     fun getApiKey(): String?
+    fun saveOpenRouterApiKey(apiKey: String)
+    fun getOpenRouterApiKey(): String?
     fun setSelectedModelId(id: String?)
     fun getSelectedModelId(): Flow<String?>
     fun setLastSyncTime(timestamp: Long)

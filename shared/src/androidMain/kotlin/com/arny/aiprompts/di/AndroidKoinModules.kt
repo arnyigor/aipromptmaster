@@ -10,6 +10,8 @@ import com.arny.aiprompts.data.repositories.IChatHistoryRepository
 import com.arny.aiprompts.data.repositories.SettingsRepositoryImpl
 import com.arny.aiprompts.data.repositories.ChatHistoryRepositoryImpl
 import com.arny.aiprompts.data.repositories.OpenRouterRepositoryImpl
+import com.arny.aiprompts.presentation.screens.DefaultSettingsComponent
+import com.arny.aiprompts.presentation.screens.SettingsComponent
 import com.arny.aiprompts.domain.interfaces.FileDataSource
 import com.arny.aiprompts.domain.interfaces.IFileParser
 import com.arny.aiprompts.domain.interfaces.IHybridParser
@@ -27,6 +29,7 @@ val androidModules = module {
     singleOf(::SettingsRepositoryImpl) { bind<ISettingsRepository>() }
     singleOf(::ChatHistoryRepositoryImpl) { bind<IChatHistoryRepository>() }
     singleOf(::OpenRouterRepositoryImpl) { bind<IOpenRouterRepository>() }
+    singleOf(::DefaultSettingsComponent) { bind<SettingsComponent>() }
     single<FileDataSource> { FileDataSourceImpl(androidContext()) }
     singleOf(::SimpleParser) { bind<IFileParser>() }
     singleOf(::HybridParserImpl) { bind<IHybridParser>() }

@@ -48,6 +48,7 @@ import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import com.arny.aiprompts.presentation.navigation.MainComponent
 import com.arny.aiprompts.presentation.navigation.MainScreen
 import com.arny.aiprompts.presentation.ui.prompts.PromptsScreen
+import com.arny.aiprompts.presentation.ui.settings.SettingsScreen
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -172,10 +173,10 @@ import kotlinx.coroutines.launch
                             }
                             // Import доступен только на Desktop в dev режиме
                             MainScreen.SETTINGS -> {
-                                Text(
-                                    text = "Settings Screen - Coming Soon",
-                                    modifier = Modifier.fillMaxSize()
-                                )
+                                val settingsChild = childStack.active.instance as? MainComponent.Child.Settings
+                                settingsChild?.component?.let { settingsComponent ->
+                                    SettingsScreen(component = settingsComponent)
+                                } ?: Text("Loading Settings...", modifier = Modifier.fillMaxSize())
                             }
 
                             MainScreen.IMPORT -> {}
