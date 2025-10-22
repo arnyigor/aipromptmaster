@@ -16,7 +16,9 @@ data class LlmUiState(
     val chatHistory: List<ChatMessage> = emptyList(),
     val chatSessions: List<ChatSession> = emptyList(),
     val selectedChatId: String? = null,
-    val showModelSearch: Boolean = false,
+    val showChatList: Boolean = true,
+    val showParameters: Boolean = true,
+    val showModelDialog: Boolean = false,
     val errorMessage: String? = null
 ) {
     // Вспомогательное свойство для удобного доступа к выбранной модели

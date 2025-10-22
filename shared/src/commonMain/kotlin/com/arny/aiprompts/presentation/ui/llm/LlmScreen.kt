@@ -1,6 +1,5 @@
 package com.arny.aiprompts.presentation.ui.llm
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,18 +24,17 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SmartToy
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -56,7 +54,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -75,6 +72,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import com.arny.aiprompts.data.model.ChatMessage
 import com.arny.aiprompts.data.model.ChatMessageRole
 import com.arny.aiprompts.data.model.ChatSession
@@ -118,28 +116,51 @@ fun LlmScreen(component: LlmComponent) {
             if (maxWidth > 900.dp) {
                 // Desktop: lmstudio-подобный layout (чаты | чат | параметры)
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // Поиск моделей сверху
-                    ModelSearchBar(
-                        state = uiState,
-                        onSearchQueryChanged = component::onSearchQueryChanged,
-                        onCategorySelected = component::onCategorySelected,
-                        onSortOrderSelected = component::onSortOrderSelected,
-                        modifier = Modifier.fillMaxWidth().height(120.dp)
-                    )
+                    // Кнопка для открытия диалога моделей
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Button(
+                            onClick = component::toggleModelDialog,
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.Search, contentDescription = "Выбрать модель")
+                            Spacer(Modifier.width(8.dp))
+                            Text("Выбрать модель")
+                        }
+                        Spacer(Modifier.weight(1f))
+                        Text(
+                            text = "Выбрана: ${uiState.selectedModel?.name ?: "Нет"}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     HorizontalDivider()
                     // Основной layout
                     Row(modifier = Modifier.weight(1f)) {
-                        ChatListPanel(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .width(300.dp),
-                            state = uiState,
-                            onChatSessionSelected = component::onChatSessionSelected,
-                            onCreateNewChatSession = component::onCreateNewChatSession,
-                            onDeleteChatSession = component::onDeleteChatSession,
-                            onRenameChatSession = component::onRenameChatSession
-                        )
-                        VerticalDivider(modifier = Modifier.fillMaxHeight())
+                        // Левая панель с чатами
+                        if (uiState.showChatList) {
+                            ChatListPanel(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .width(300.dp),
+                                state = uiState,
+                                onChatSessionSelected = component::onChatSessionSelected,
+                                onCreateNewChatSession = component::onCreateNewChatSession,
+                                onDeleteChatSession = component::onDeleteChatSession,
+                                onRenameChatSession = component::onRenameChatSession
+                            )
+                            VerticalDivider(modifier = Modifier.fillMaxHeight())
+                        }
+                        IconButton(onClick = component::toggleChatList) {
+                            Icon(
+                                imageVector = if (uiState.showChatList) Icons.Default.ChevronRight else Icons.Default.ChevronLeft,
+                                contentDescription = "Toggle Chat List"
+                            )
+                        }
+
+                        // Центральный чат
                         ChatPanel(
                             modifier = Modifier
                                 .fillMaxHeight()
@@ -149,13 +170,22 @@ fun LlmScreen(component: LlmComponent) {
                             onGenerateClicked = component::onStreamingGenerateClicked,
                             onRetryMessage = component::onRetryMessage
                         )
-                        VerticalDivider(modifier = Modifier.fillMaxHeight())
-                        ParametersPanel(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .width(300.dp),
-                            state = uiState
-                        )
+
+                        // Правая панель с параметрами
+                        IconButton(onClick = component::toggleParameters) {
+                            Icon(
+                                imageVector = if (uiState.showParameters) Icons.Default.ChevronLeft else Icons.Default.ChevronRight,
+                                contentDescription = "Toggle Parameters"
+                            )
+                        }
+                        if (uiState.showParameters) {
+                            VerticalDivider(modifier = Modifier.fillMaxHeight())
+                            ParametersPanel(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .width(300.dp),
+                            )
+                        }
                     }
                     HorizontalDivider()
                     // Статистика внизу
@@ -167,14 +197,15 @@ fun LlmScreen(component: LlmComponent) {
             } else {
                 // Mobile: вертикальный стек
                 Column(modifier = Modifier.fillMaxSize()) {
-                    if (uiState.showModelSearch) {
-                        ModelSearchPanel(
-                            state = uiState,
-                            onSearchQueryChanged = component::onSearchQueryChanged,
-                            onCategorySelected = component::onCategorySelected,
-                            onClose = component::toggleModelSearch,
-                            modifier = Modifier.fillMaxWidth().height(200.dp)
-                        )
+                    // Кнопка для открытия диалога моделей
+                    Button(
+                        onClick = component::toggleModelDialog,
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Search, contentDescription = "Выбрать модель")
+                        Spacer(Modifier.width(8.dp))
+                        Text("Выбрать модель")
                     }
                     HorizontalDivider()
                     ChatPanel(
@@ -190,78 +221,16 @@ fun LlmScreen(component: LlmComponent) {
             }
         }
     }
-}
 
-@Suppress("UnusedBoxWithConstraintsScope")
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun LlmContent(
-    state: LlmUiState,
-    onPromptChanged: (String) -> Unit,
-    onModelSelected: (String) -> Unit,
-    onGenerateClicked: () -> Unit,
-    onSearchQueryChanged: (String) -> Unit,
-    onCategorySelected: (ModelCategory) -> Unit,
-    onSortOrderSelected: (ModelSortOrder) -> Unit,
-    toggleModelSearch: () -> Unit,
-    paddingValues: PaddingValues
-) {
-    Scaffold() { scaffoldPadding ->
-        // Используем paddingValues для правильного позиционирования контента
-        // clearError используется при очистке чата для сброса ошибок
-        BoxWithConstraints(
-            modifier = Modifier
-                .padding(scaffoldPadding)
-                .consumeWindowInsets(paddingValues) // Правильно используем paddingValues
-        ) {
-            // Проверяем доступную ширину
-            if (maxWidth > 900.dp) {
-                // --- ЛЭЙАУТ ДЛЯ ШИРОКИХ ЭКРАНОВ (DESKTOP) ---
-                Row(modifier = Modifier.fillMaxSize()) {
-                    // Левая панель с моделями
-                    ModelListPanel(
-                        modifier = Modifier.fillMaxHeight().width(380.dp),
-                        state = state,
-                        onModelSelected = onModelSelected,
-                        onSearchQueryChanged = onSearchQueryChanged,
-                        onCategorySelected = onCategorySelected,
-                        onSortOrderSelected = onSortOrderSelected
-                    )
-                    // Разделитель
-                    VerticalDivider(modifier = Modifier.fillMaxHeight())
-                    // Основной чат
-                    ChatPanel(
-                        modifier = Modifier.fillMaxHeight().weight(1f),
-                        state = state,
-                        onPromptChanged = onPromptChanged,
-                        onGenerateClicked = onGenerateClicked
-                    )
-                }
-            } else {
-                // --- ЛЭЙАУТ ДЛЯ УЗКИХ ЭКРАНОВ (МОБИЛЬНЫЕ) ---
-                Column(modifier = Modifier.fillMaxSize()) {
-                    // Панель поиска моделей (если включена)
-                    if (state.showModelSearch) {
-                        ModelSearchPanel(
-                            state = state,
-                            onSearchQueryChanged = onSearchQueryChanged,
-                            onCategorySelected = onCategorySelected,
-                            onClose = toggleModelSearch,
-                            modifier = Modifier.fillMaxWidth().height(200.dp)
-                        )
-                        HorizontalDivider()
-                    }
-
-                    // Основной чат
-                    ChatPanel(
-                        modifier = Modifier.fillMaxSize().weight(1f),
-                        state = state,
-                        onPromptChanged = onPromptChanged,
-                        onGenerateClicked = onGenerateClicked,
-                    )
-                }
-            }
-        }
+    if (uiState.showModelDialog) {
+        ModelDialog(
+            state = uiState,
+            onModelSelected = component::onModelSelected,
+            onSearchQueryChanged = component::onSearchQueryChanged,
+            onCategorySelected = component::onCategorySelected,
+            onSortOrderSelected = component::onSortOrderSelected,
+            onClose = component::toggleModelDialog
+        )
     }
 }
 
@@ -388,204 +357,45 @@ fun ModelListPanel(
 }
 
 @Composable
-fun ModelSearchPanel(
+fun ParametersPanel(
     modifier: Modifier = Modifier,
-    state: LlmUiState,
-    onSearchQueryChanged: (String) -> Unit,
-    onCategorySelected: (ModelCategory) -> Unit,
-    onClose: () -> Unit
 ) {
-    Column(modifier = modifier.background(MaterialTheme.colorScheme.surface)) {
-        // Заголовок с кнопкой закрытия
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+    Surface(
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 2.dp,
+        shape = RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
             Text(
-                "Модели",
-                style = MaterialTheme.typography.titleMedium
-            )
-            Spacer(Modifier.weight(1f))
-            IconButton(onClick = onClose) {
-                Icon(Icons.Default.Close, contentDescription = "Закрыть")
-            }
-        }
-
-        HorizontalDivider()
-
-        // Поиск и фильтры
-        Column(modifier = Modifier.padding(16.dp)) {
-            OutlinedTextField(
-                value = state.searchQuery,
-                onValueChange = onSearchQueryChanged,
-                placeholder = { Text("Поиск моделей...") },
-                leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = "Поиск")
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                "Параметры",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(16.dp)
             )
 
-            Spacer(Modifier.height(12.dp))
+            HorizontalDivider()
 
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(ModelCategory.entries) { category ->
-                    FilterChip(
-                        selected = state.selectedCategory == category,
-                        onClick = { onCategorySelected(category) },
-                        label = { Text(category.displayName) }
+            // Здесь можно добавить параметры, такие как температура, max_tokens и т.д.
+            // Для примера, пока просто placeholder
+            Box(
+                modifier = Modifier.weight(1f).padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Параметры модели",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "Температура: 0.7\nMax tokens: 2048\nTop P: 0.9",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
                     )
                 }
             }
-        }
-
-        HorizontalDivider()
-
-        // ✅ Правильная обработка результата с использованием переменной
-        Box(modifier = Modifier.weight(1f)) {
-            when (val modelsResult = state.modelsResult) {
-                is DataResult.Success -> {
-                    if (state.displayModels.isEmpty()) {
-                        // Пустой результат
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "Модели не найдены",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    } else {
-                        // Отображаем модели
-                        LazyColumn {
-                            items(state.displayModels) { model ->
-                                ModelItem(
-                                    model = model,
-                                    isSelected = model.isSelected,
-                                    onClick = { /* TODO: onModelSelected(model.id) */ }
-                                )
-                            }
-                        }
-                    }
-                }
-                is DataResult.Loading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
-                is DataResult.Error -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                Icons.Default.Error,
-                                contentDescription = "Ошибка",
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(48.dp)
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                "Ошибка загрузки моделей",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                            modelsResult.exception?.message?.let { errorMsg ->
-                                Text(
-                                    errorMsg,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ModelSearchBar(
-    modifier: Modifier = Modifier,
-    state: LlmUiState,
-    onSearchQueryChanged: (String) -> Unit,
-    onCategorySelected: (ModelCategory) -> Unit,
-    onSortOrderSelected: (ModelSortOrder) -> Unit
-) {
-    Column(modifier = modifier.background(MaterialTheme.colorScheme.surface)) {
-        // Поиск
-        OutlinedTextField(
-            value = state.searchQuery,
-            onValueChange = onSearchQueryChanged,
-            placeholder = { Text("Поиск моделей...") },
-            leadingIcon = {
-                Icon(Icons.Default.Search, contentDescription = "Поиск")
-            },
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            shape = RoundedCornerShape(12.dp)
-        )
-
-        // Фильтры категорий
-        LazyRow(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(ModelCategory.entries) { category ->
-                FilterChip(
-                    selected = state.selectedCategory == category,
-                    onClick = { onCategorySelected(category) },
-                    label = { Text(category.displayName) }
-                )
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        // Сортировка
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text("Сортировка:", style = MaterialTheme.typography.bodySmall)
-            ModelSortOrder.entries.forEach { sortOrder ->
-                FilterChip(
-                    selected = state.selectedSortOrder == sortOrder,
-                    onClick = { onSortOrderSelected(sortOrder) },
-                    label = { Text(sortOrder.displayName) }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun ParametersPanel(
-    modifier: Modifier = Modifier,
-    state: LlmUiState
-) {
-    Column(modifier = modifier) {
-        Text("Параметры", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(16.dp))
-
-        HorizontalDivider()
-
-        // Здесь можно добавить параметры, такие как температура, max_tokens и т.д.
-        // Для примера, пока просто placeholder
-        Box(modifier = Modifier.weight(1f).padding(16.dp), contentAlignment = Alignment.Center) {
-            Text(
-                text = "Параметры модели\n(температура, токены и т.д.)",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
         }
     }
 }
@@ -595,21 +405,27 @@ fun StatisticsBar(
     modifier: Modifier = Modifier,
     state: LlmUiState
 ) {
-    Row(
-        modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    Surface(
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shadowElevation = 1.dp
     ) {
-        Text(
-            text = "Токены: ${state.currentChatHistory.sumOf { it.tokenCount ?: 0 }}",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = "Модель: ${state.selectedModel?.name ?: "Не выбрана"}",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Токены: ${state.currentChatHistory.sumOf { it.tokenCount ?: 0 }}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "Модель: ${state.selectedModel?.name ?: "Не выбрана"}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -622,42 +438,49 @@ fun ChatListPanel(
     onDeleteChatSession: (String) -> Unit,
     onRenameChatSession: (String, String) -> Unit
 ) {
-    Column(modifier = modifier) {
-        // Заголовок с кнопкой добавить
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Чаты", style = MaterialTheme.typography.titleLarge)
-            Spacer(Modifier.weight(1f))
-            IconButton(onClick = onCreateNewChatSession) {
-                Icon(Icons.Default.Add, contentDescription = "Добавить чат")
-            }
-        }
-
-        HorizontalDivider()
-
-        // Список чатов
-        Box(modifier = Modifier.weight(1f)) {
-            if (state.chatSessions.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "Нет чатов",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
+    Surface(
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 2.dp,
+        shape = RoundedCornerShape(topEnd = 8.dp, bottomEnd = 8.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Заголовок с кнопкой добавить
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Чаты", style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = onCreateNewChatSession) {
+                    Icon(Icons.Default.Add, contentDescription = "Добавить чат")
                 }
-            } else {
-                LazyColumn {
-                    items(state.chatSessions, key = { it.id }) { session ->
-                        ChatSessionItem(
-                            session = session,
-                            isSelected = session.id == state.selectedChatId,
-                            onClick = { onChatSessionSelected(session.id) },
-                            onDelete = { onDeleteChatSession(session.id) },
-                            onRename = { newName -> onRenameChatSession(session.id, newName) }
+            }
+
+            HorizontalDivider()
+
+            // Список чатов
+            Box(modifier = Modifier.weight(1f)) {
+                if (state.chatSessions.isEmpty()) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "Нет чатов",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
                         )
+                    }
+                } else {
+                    LazyColumn {
+                        items(state.chatSessions, key = { it.id }) { session ->
+                            ChatSessionItem(
+                                session = session,
+                                isSelected = session.id == state.selectedChatId,
+                                onClick = { onChatSessionSelected(session.id) },
+                                onDelete = { onDeleteChatSession(session.id) },
+                                onRename = { newName -> onRenameChatSession(session.id, newName) }
+                            )
+                        }
                     }
                 }
             }
@@ -993,6 +816,7 @@ private fun StatusIndicator(
                 )
             }
         }
+
         is MessageStatus.Failed -> {
             TextButton(
                 onClick = onRetry,
@@ -1007,6 +831,7 @@ private fun StatusIndicator(
                 Text("Повторить", style = MaterialTheme.typography.bodySmall)
             }
         }
+
         is MessageStatus.Sending -> {
             CircularProgressIndicator(
                 progress = { status.progress },
@@ -1014,6 +839,7 @@ private fun StatusIndicator(
                 strokeWidth = 1.5.dp
             )
         }
+
         MessageStatus.Sent -> {
             // Для успешных сообщений индикатор не нужен
         }
@@ -1136,5 +962,149 @@ fun formatTimestamp(timestamp: Long): String {
     } catch (e: Exception) {
         e.printStackTrace()
         "Неизвестно"
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ModelDialog(
+    state: LlmUiState,
+    onModelSelected: (String) -> Unit,
+    onSearchQueryChanged: (String) -> Unit,
+    onCategorySelected: (ModelCategory) -> Unit,
+    onSortOrderSelected: (ModelSortOrder) -> Unit,
+    onClose: () -> Unit
+) {
+    Dialog(onDismissRequest = onClose) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .fillMaxHeight(0.8f),
+            shape = RoundedCornerShape(16.dp),
+            shadowElevation = 8.dp
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Заголовок с кнопкой закрытия
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Выберите модель",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                    Spacer(Modifier.weight(1f))
+                    IconButton(onClick = onClose) {
+                        Icon(Icons.Default.Close, contentDescription = "Закрыть")
+                    }
+                }
+
+                HorizontalDivider()
+
+                // Поиск и фильтры
+                Column(modifier = Modifier.padding(16.dp)) {
+                    OutlinedTextField(
+                        value = state.searchQuery,
+                        onValueChange = onSearchQueryChanged,
+                        placeholder = { Text("Поиск моделей...") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Search, contentDescription = "Поиск")
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(ModelCategory.entries) { category ->
+                            FilterChip(
+                                selected = state.selectedCategory == category,
+                                onClick = { onCategorySelected(category) },
+                                label = { Text(category.displayName) }
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text("Сортировка:", style = MaterialTheme.typography.bodySmall)
+                        ModelSortOrder.entries.forEach { sortOrder ->
+                            FilterChip(
+                                selected = state.selectedSortOrder == sortOrder,
+                                onClick = { onSortOrderSelected(sortOrder) },
+                                label = { Text(sortOrder.displayName) }
+                            )
+                        }
+                    }
+                }
+
+                HorizontalDivider()
+
+                // Список моделей
+                Box(modifier = Modifier.weight(1f)) {
+                    when (val result = state.modelsResult) {
+                        is DataResult.Loading -> {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator()
+                            }
+                        }
+
+                        is DataResult.Success -> {
+                            if (state.displayModels.isEmpty()) {
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = "Модели не найдены",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            } else {
+                                LazyColumn {
+                                    items(state.displayModels, key = { it.id }) { model ->
+                                        ModelItem(
+                                            model = model,
+                                            isSelected = model.isSelected,
+                                            onClick = { onModelSelected(model.id) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        is DataResult.Error -> {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        Icons.Default.Error,
+                                        contentDescription = "Ошибка",
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(48.dp)
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        "Ошибка загрузки моделей",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                    result.exception?.message?.let {
+                                        Text(
+                                            it,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

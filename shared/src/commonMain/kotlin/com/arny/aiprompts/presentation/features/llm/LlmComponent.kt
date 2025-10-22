@@ -23,7 +23,6 @@ interface LlmComponent {
     fun onSearchQueryChanged(query: String)
     fun onCategorySelected(category: ModelCategory)
     fun onSortOrderSelected(sortOrder: ModelSortOrder)
-    fun toggleModelSearch()
     fun onStreamingGenerateClicked()
     fun onCancelGenerating()
     fun onRetryMessage(messageId: String)
@@ -36,4 +35,9 @@ interface LlmComponent {
     fun onDeleteChatSession(sessionId: String)
     // переименование сесии чата
     fun onRenameChatSession(sessionId: String, newName: String)
+
+    // Toggle видимости панелей
+    fun toggleChatList()
+    fun toggleParameters()
+    fun toggleModelDialog()
 }

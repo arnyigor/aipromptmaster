@@ -137,7 +137,7 @@ class DefaultLlmComponent(
                         }
                     }
                 }
-        }
+            }
     }
 
     /** Отменяет текущую потоковую генерацию. */
@@ -196,10 +196,6 @@ class DefaultLlmComponent(
         _uiState.update { it.copy(selectedSortOrder = sortOrder) }
     }
 
-    /** Переключает видимость панели поиска модели. */
-    override fun toggleModelSearch() {
-        _uiState.update { it.copy(showModelSearch = !it.showModelSearch) }
-    }
 
     /** Очищает сообщение об ошибке, если оно было показано. */
     override fun clearError() {
@@ -259,5 +255,18 @@ class DefaultLlmComponent(
                 )
             }
         }
+    }
+
+    // Toggle видимости панелей
+    override fun toggleChatList() {
+        _uiState.update { it.copy(showChatList = !it.showChatList) }
+    }
+
+    override fun toggleParameters() {
+        _uiState.update { it.copy(showParameters = !it.showParameters) }
+    }
+
+    override fun toggleModelDialog() {
+        _uiState.update { it.copy(showModelDialog = !it.showModelDialog) }
     }
 }
