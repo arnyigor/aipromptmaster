@@ -24,9 +24,6 @@ kotlin {
     // Desktop target
     jvm("desktop") {
         compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
-//        testRuns["test"].executionTask.configure {
-//            useJUnitPlatform()
-//        }
     }
 
     configurations.all {
@@ -89,7 +86,7 @@ kotlin {
         val androidMain by getting {
             dependencies {
                 implementation(libs.androidx.core.ktx)
-                implementation(libs.kotlinx.coroutines.android) // ПРАВИЛЬНОЕ МЕСТО
+                implementation(libs.kotlinx.coroutines.android)
                 implementation(libs.koin.android)
                 implementation(libs.androidx.security.crypto)
                 implementation(libs.androidx.datastore.preferences)
@@ -155,18 +152,6 @@ afterEvaluate {
         }
     }
 }
-
-compose.desktop {
-    application {
-        mainClass = "com.arny.aiprompts.MainKt"
-        nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "aiprompts"
-            packageVersion = "1.0.0"
-        }
-    }
-}
-
 
 dependencies {
     // Указываем, что room-compiler - это KSP процессор для каждой цели

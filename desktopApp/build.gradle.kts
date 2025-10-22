@@ -25,7 +25,6 @@ kotlin {
             dependencies {
                 implementation(project(":shared"))
                 implementation(compose.desktop.currentOs)
-                implementation(libs.ktor.client.okhttp)
                 implementation(libs.ktor.client.cio)
                 implementation(libs.logback.classic)
                 implementation(libs.kotlinx.coroutines.swing)

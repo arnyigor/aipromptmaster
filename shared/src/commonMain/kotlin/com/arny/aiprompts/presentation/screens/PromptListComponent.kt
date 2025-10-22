@@ -4,17 +4,18 @@ import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.essenty.lifecycle.coroutines.coroutineScope
 import com.arny.aiprompts.domain.errors.DomainError
 import com.arny.aiprompts.domain.model.Prompt
+import com.arny.aiprompts.domain.repositories.IPromptSynchronizer
 import com.arny.aiprompts.domain.repositories.SyncResult
 import com.arny.aiprompts.domain.strings.StringHolder
 import com.arny.aiprompts.domain.usecase.DeleteAllPromptsUseCase
 import com.arny.aiprompts.domain.usecase.DeletePromptUseCase
 import com.arny.aiprompts.domain.usecase.GetPromptsUseCase
 import com.arny.aiprompts.domain.usecase.ImportJsonUseCase
-import com.arny.aiprompts.domain.usecase.SyncPromptsUseCase
 import com.arny.aiprompts.domain.usecase.ToggleFavoriteUseCase
 import com.arny.aiprompts.presentation.ui.prompts.PromptsListState
 import com.arny.aiprompts.presentation.ui.prompts.SortOrder
 import com.benasher44.uuid.uuid4
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -63,7 +64,7 @@ class DefaultPromptListComponent(
     private val importJsonUseCase: ImportJsonUseCase,
     private val deletePromptUseCase: DeletePromptUseCase,
     private val deleteAllPromptsUseCase: DeleteAllPromptsUseCase,
-    private val syncPromptsUseCase: SyncPromptsUseCase,
+    private val promptSynchronizer: IPromptSynchronizer,
     private val onNavigateToDetails: (promptId: String) -> Unit,
     private val onNavigateToScraper: () -> Unit,
     private val onNavigateToLLM: () -> Unit,
@@ -76,7 +77,7 @@ class DefaultPromptListComponent(
     private val _state = MutableStateFlow(PromptsListState(isLoading = true))
     override val state: StateFlow<PromptsListState> = _state.asStateFlow()
 
-    private val scope = coroutineScope()
+    private val scope = componentContext.coroutineScope(Dispatchers.Default)
 
     init {
         // Подписываемся на Flow из репозитория, который теперь будет обновляться
@@ -279,7 +280,7 @@ class DefaultPromptListComponent(
     override fun onSyncClicked() {
         scope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
-            val result = syncPromptsUseCase(ignoreCooldown = true)
+            val result = promptSynchronizer.synchronize(true)
             when (result) {
                 is SyncResult.Success -> {
                     _state.update { it.copy(isLoading = false) }

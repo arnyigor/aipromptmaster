@@ -22,7 +22,7 @@ class GetPromptsUseCase(
         // но для реактивности, представим что у нас есть flow-версия
         // Для MVP начнем с getAllPromptsFlow
         return promptsRepository.getAllPrompts()
-            // .map { ... здесь можно применить фильтрацию на стороне клиента, если нужно }
+            // .map {... здесь можно применить фильтрацию на стороне клиента, если нужно}
             .map { prompts -> Result.success(prompts) }
             .catch { throwable ->
                 // Если в Flow происходит ошибка, ловим ее

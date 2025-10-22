@@ -53,7 +53,7 @@ fun main() {
                 importJsonUseCase = getKoin().get(),
                 parseRawPostsUseCase = getKoin().get(),
                 savePromptsAsFilesUseCase = getKoin().get(),
-                syncPromptsUseCase = getKoin().get(),
+                promptSynchronizer = getKoin().get(),
                 hybridParser = getKoin().get(),
                 httpClient = getKoin().get(),
                 systemInteraction = getKoin().get(),

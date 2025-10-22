@@ -16,6 +16,7 @@ import com.arny.aiprompts.data.scraper.WebScraper
 import com.arny.aiprompts.domain.files.FileMetadataReader
 import com.arny.aiprompts.domain.interactors.ILLMInteractor
 import com.arny.aiprompts.domain.interfaces.IHybridParser
+import com.arny.aiprompts.domain.repositories.IPromptSynchronizer
 import com.arny.aiprompts.domain.system.SystemInteraction
 import com.arny.aiprompts.domain.usecase.CreatePromptUseCase
 import com.arny.aiprompts.domain.usecase.DeleteAllPromptsUseCase
@@ -27,7 +28,6 @@ import com.arny.aiprompts.domain.usecase.ImportJsonUseCase
 import com.arny.aiprompts.domain.usecase.ParseRawPostsUseCase
 import com.arny.aiprompts.domain.usecase.SavePromptsAsFilesUseCase
 import com.arny.aiprompts.domain.usecase.ScrapeWebsiteUseCase
-import com.arny.aiprompts.domain.usecase.SyncPromptsUseCase
 import com.arny.aiprompts.domain.usecase.ToggleFavoriteUseCase
 import com.arny.aiprompts.domain.usecase.UpdatePromptUseCase
 import com.arny.aiprompts.presentation.features.llm.DefaultLlmComponent
@@ -101,7 +101,7 @@ class DefaultMainComponent(
     private val importJsonUseCase: ImportJsonUseCase,
     private val parseRawPostsUseCase: ParseRawPostsUseCase,
     private val savePromptsAsFilesUseCase: SavePromptsAsFilesUseCase,
-    private val syncPromptsUseCase: SyncPromptsUseCase,
+    private val promptSynchronizer: IPromptSynchronizer,
     private val hybridParser: IHybridParser,
     private val httpClient: HttpClient,
     private val systemInteraction: SystemInteraction,
@@ -143,7 +143,7 @@ class DefaultMainComponent(
                     importJsonUseCase = importJsonUseCase,
                     deletePromptUseCase = deletePromptUseCase,
                     deleteAllPromptsUseCase = deleteAllPromptsUseCase,
-                    syncPromptsUseCase = syncPromptsUseCase,
+                    promptSynchronizer = promptSynchronizer,
                     onNavigateToDetails = { promptId ->
                         navigation.push(MainConfig.PromptDetails(promptId))
                     },
