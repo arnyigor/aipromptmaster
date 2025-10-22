@@ -1,14 +1,32 @@
 package com.arny.aiprompts.presentation.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.MenuOpen
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
@@ -26,8 +44,6 @@ import com.arny.aiprompts.presentation.ui.llm.LlmScreen
 import com.arny.aiprompts.presentation.ui.prompts.PromptsScreen
 import com.arny.aiprompts.presentation.ui.scraper.ScraperScreen
 import com.arny.aiprompts.presentation.ui.settings.SettingsScreen
-import kotlinx.coroutines.delay
-import kotlin.system.exitProcess
 
 @Composable
 fun MainContentDesktopImpl(component: MainComponent) {
@@ -44,7 +60,7 @@ fun MainContentDesktopImpl(component: MainComponent) {
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .onPreviewKeyEvent { keyEvent ->
+            .onKeyEvent { keyEvent ->
                 when {
                     (keyEvent.key == Key.CtrlLeft || keyEvent.key == Key.CtrlRight) &&
                             keyEvent.key == Key.One && keyEvent.type == KeyEventType.KeyDown -> {
@@ -116,7 +132,6 @@ fun MainContentDesktopImpl(component: MainComponent) {
                             ScraperScreen(component = instance.component)
                         }
                     }
-
                     is MainComponent.Child.Import -> {
                         if (MainComponent.IS_IMPORT_ENABLED) {
                             ImporterScreen(component = instance.component)
@@ -124,12 +139,7 @@ fun MainContentDesktopImpl(component: MainComponent) {
                             Text("Import not available", modifier = Modifier.fillMaxSize())
                         }
                     }
-
-                    is MainComponent.Child.Settings -> Text(
-                        "Settings Screen - Coming Soon",
-                        modifier = Modifier.fillMaxSize(),
-                        style = MaterialTheme.typography.headlineMedium
-                    )
+                    is MainComponent.Child.Settings -> SettingsScreen(component = instance.component)
                 }
             }
 

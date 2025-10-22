@@ -111,13 +111,10 @@ fun LlmScreen(component: LlmComponent) {
             onPromptChanged = component::onPromptChanged,
             onModelSelected = component::onModelSelected,
             onGenerateClicked = component::onStreamingGenerateClicked,
-            onClearChat = component::clearChat,
-            onNavigateBack = component::onNavigateBack,
             onSearchQueryChanged = component::onSearchQueryChanged,
             onCategorySelected = component::onCategorySelected,
             onSortOrderSelected = component::onSortOrderSelected,
             toggleModelSearch = component::toggleModelSearch,
-            clearError = component::clearError,
             paddingValues = paddingValues
         )
     }
@@ -131,55 +128,13 @@ fun LlmContent(
     onPromptChanged: (String) -> Unit,
     onModelSelected: (String) -> Unit,
     onGenerateClicked: () -> Unit,
-    onClearChat: () -> Unit,
-    onNavigateBack: () -> Unit,
     onSearchQueryChanged: (String) -> Unit,
     onCategorySelected: (ModelCategory) -> Unit,
     onSortOrderSelected: (ModelSortOrder) -> Unit,
     toggleModelSearch: () -> Unit,
-    clearError: () -> Unit,
     paddingValues: PaddingValues
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("AI Чат", style = MaterialTheme.typography.titleLarge)
-                        state.selectedModel?.let {
-                            Text(
-                                text = it.name,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Назад"
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = toggleModelSearch) {
-                        Icon(
-                            imageVector = if (state.showModelSearch) Icons.Default.Close else Icons.Default.Search,
-                            contentDescription = if (state.showModelSearch) "Скрыть поиск" else "Показать поиск"
-                        )
-                    }
-                    IconButton(onClick = {
-                        onClearChat()
-                        clearError() // Очищаем ошибки при очистке чата
-                    }) {
-                        Icon(Icons.Default.Clear, contentDescription = "Очистить чат")
-                    }
-                }
-            )
-        }
-    ) { scaffoldPadding ->
+    Scaffold() { scaffoldPadding ->
         // Используем paddingValues для правильного позиционирования контента
         // clearError используется при очистке чата для сброса ошибок
         BoxWithConstraints(
