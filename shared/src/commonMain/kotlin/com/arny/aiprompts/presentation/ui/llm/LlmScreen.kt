@@ -30,10 +30,13 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -74,6 +77,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.arny.aiprompts.data.model.ChatMessage
 import com.arny.aiprompts.data.model.ChatMessageRole
+import com.arny.aiprompts.data.model.ChatSession
 import com.arny.aiprompts.data.model.LlmModel
 import com.arny.aiprompts.data.model.MessageStatus
 import com.arny.aiprompts.presentation.features.llm.LlmComponent
@@ -85,12 +89,12 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
+@Suppress("UnusedBoxWithConstraintsScope")
 @Composable
 fun LlmScreen(component: LlmComponent) {
     val uiState by component.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Показываем ошибку в Snackbar
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let { errorMessage ->
             snackbarHostState.showSnackbar(
@@ -105,18 +109,86 @@ fun LlmScreen(component: LlmComponent) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        // Передаем состояние и коллбэки из компонента в UI
-        LlmContent(
-            state = uiState,
-            onPromptChanged = component::onPromptChanged,
-            onModelSelected = component::onModelSelected,
-            onGenerateClicked = component::onStreamingGenerateClicked,
-            onSearchQueryChanged = component::onSearchQueryChanged,
-            onCategorySelected = component::onCategorySelected,
-            onSortOrderSelected = component::onSortOrderSelected,
-            toggleModelSearch = component::toggleModelSearch,
-            paddingValues = paddingValues
-        )
+        // Адаптивный layout: desktop vs mobile
+        BoxWithConstraints(
+            modifier = Modifier
+                .padding(paddingValues)
+                .consumeWindowInsets(paddingValues)
+        ) {
+            if (maxWidth > 900.dp) {
+                // Desktop: lmstudio-подобный layout (чаты | чат | параметры)
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Поиск моделей сверху
+                    ModelSearchBar(
+                        state = uiState,
+                        onSearchQueryChanged = component::onSearchQueryChanged,
+                        onCategorySelected = component::onCategorySelected,
+                        onSortOrderSelected = component::onSortOrderSelected,
+                        modifier = Modifier.fillMaxWidth().height(120.dp)
+                    )
+                    HorizontalDivider()
+                    // Основной layout
+                    Row(modifier = Modifier.weight(1f)) {
+                        ChatListPanel(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(300.dp),
+                            state = uiState,
+                            onChatSessionSelected = component::onChatSessionSelected,
+                            onCreateNewChatSession = component::onCreateNewChatSession,
+                            onDeleteChatSession = component::onDeleteChatSession,
+                            onRenameChatSession = component::onRenameChatSession
+                        )
+                        VerticalDivider(modifier = Modifier.fillMaxHeight())
+                        ChatPanel(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .weight(1f),
+                            state = uiState,
+                            onPromptChanged = component::onPromptChanged,
+                            onGenerateClicked = component::onStreamingGenerateClicked,
+                            onRetryMessage = component::onRetryMessage
+                        )
+                        VerticalDivider(modifier = Modifier.fillMaxHeight())
+                        ParametersPanel(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(300.dp),
+                            state = uiState
+                        )
+                    }
+                    HorizontalDivider()
+                    // Статистика внизу
+                    StatisticsBar(
+                        state = uiState,
+                        modifier = Modifier.fillMaxWidth().height(40.dp)
+                    )
+                }
+            } else {
+                // Mobile: вертикальный стек
+                Column(modifier = Modifier.fillMaxSize()) {
+                    if (uiState.showModelSearch) {
+                        ModelSearchPanel(
+                            state = uiState,
+                            onSearchQueryChanged = component::onSearchQueryChanged,
+                            onCategorySelected = component::onCategorySelected,
+                            onClose = component::toggleModelSearch,
+                            modifier = Modifier.fillMaxWidth().height(200.dp)
+                        )
+                    }
+                    HorizontalDivider()
+                    ChatPanel(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .weight(1f),
+                        state = uiState,
+                        onPromptChanged = component::onPromptChanged,
+                        onGenerateClicked = component::onStreamingGenerateClicked,
+                        onRetryMessage = component::onRetryMessage
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -441,6 +513,210 @@ fun ModelSearchPanel(
 }
 
 @Composable
+fun ModelSearchBar(
+    modifier: Modifier = Modifier,
+    state: LlmUiState,
+    onSearchQueryChanged: (String) -> Unit,
+    onCategorySelected: (ModelCategory) -> Unit,
+    onSortOrderSelected: (ModelSortOrder) -> Unit
+) {
+    Column(modifier = modifier.background(MaterialTheme.colorScheme.surface)) {
+        // Поиск
+        OutlinedTextField(
+            value = state.searchQuery,
+            onValueChange = onSearchQueryChanged,
+            placeholder = { Text("Поиск моделей...") },
+            leadingIcon = {
+                Icon(Icons.Default.Search, contentDescription = "Поиск")
+            },
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            shape = RoundedCornerShape(12.dp)
+        )
+
+        // Фильтры категорий
+        LazyRow(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(ModelCategory.entries) { category ->
+                FilterChip(
+                    selected = state.selectedCategory == category,
+                    onClick = { onCategorySelected(category) },
+                    label = { Text(category.displayName) }
+                )
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        // Сортировка
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("Сортировка:", style = MaterialTheme.typography.bodySmall)
+            ModelSortOrder.entries.forEach { sortOrder ->
+                FilterChip(
+                    selected = state.selectedSortOrder == sortOrder,
+                    onClick = { onSortOrderSelected(sortOrder) },
+                    label = { Text(sortOrder.displayName) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ParametersPanel(
+    modifier: Modifier = Modifier,
+    state: LlmUiState
+) {
+    Column(modifier = modifier) {
+        Text("Параметры", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(16.dp))
+
+        HorizontalDivider()
+
+        // Здесь можно добавить параметры, такие как температура, max_tokens и т.д.
+        // Для примера, пока просто placeholder
+        Box(modifier = Modifier.weight(1f).padding(16.dp), contentAlignment = Alignment.Center) {
+            Text(
+                text = "Параметры модели\n(температура, токены и т.д.)",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
+fun StatisticsBar(
+    modifier: Modifier = Modifier,
+    state: LlmUiState
+) {
+    Row(
+        modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Токены: ${state.currentChatHistory.sumOf { it.tokenCount ?: 0 }}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = "Модель: ${state.selectedModel?.name ?: "Не выбрана"}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+fun ChatListPanel(
+    modifier: Modifier = Modifier,
+    state: LlmUiState,
+    onChatSessionSelected: (String) -> Unit,
+    onCreateNewChatSession: () -> Unit,
+    onDeleteChatSession: (String) -> Unit,
+    onRenameChatSession: (String, String) -> Unit
+) {
+    Column(modifier = modifier) {
+        // Заголовок с кнопкой добавить
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Чаты", style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.weight(1f))
+            IconButton(onClick = onCreateNewChatSession) {
+                Icon(Icons.Default.Add, contentDescription = "Добавить чат")
+            }
+        }
+
+        HorizontalDivider()
+
+        // Список чатов
+        Box(modifier = Modifier.weight(1f)) {
+            if (state.chatSessions.isEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "Нет чатов",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else {
+                LazyColumn {
+                    items(state.chatSessions, key = { it.id }) { session ->
+                        ChatSessionItem(
+                            session = session,
+                            isSelected = session.id == state.selectedChatId,
+                            onClick = { onChatSessionSelected(session.id) },
+                            onDelete = { onDeleteChatSession(session.id) },
+                            onRename = { newName -> onRenameChatSession(session.id, newName) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ChatSessionItem(
+    session: ChatSession,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onDelete: () -> Unit,
+    onRename: (String) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected)
+                MaterialTheme.colorScheme.primaryContainer
+            else
+                MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = session.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                )
+                Text(
+                    text = session.lastMessage,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+                Text(
+                    text = formatTimestamp(session.timestamp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, contentDescription = "Удалить чат")
+            }
+        }
+    }
+}
+
+@Composable
 fun ChatPanel(
     modifier: Modifier = Modifier,
     state: LlmUiState,
@@ -469,9 +745,9 @@ fun ChatPanel(
             state = listState,
             reverseLayout = true
         ) {
-            // Отображаем все сообщения из истории (включая streaming)
+            // Отображаем все сообщения из текущей сессии (включая streaming)
             items(
-                items = state.chatHistory.reversed(),
+                items = state.currentChatHistory.reversed(),
                 key = { it.id }
             ) { message ->
                 ChatMessageItem(
@@ -482,7 +758,7 @@ fun ChatPanel(
             }
 
             // Placeholder для пустого чата
-            if (state.chatHistory.isEmpty()) {
+            if (state.currentChatHistory.isEmpty()) {
                 item {
                     EmptyChatPlaceholder(
                         selectedModel = state.selectedModel,

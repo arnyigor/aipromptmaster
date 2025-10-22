@@ -51,50 +51,12 @@ fun MainContentDesktopImpl(component: MainComponent) {
     val childStack by component.childStack.subscribeAsState()
     val activeChild = childStack.active.instance
 
-    // Keyboard shortcuts
-    LaunchedEffect(Unit) {
-        // Note: In a real implementation, you would use a proper keyboard event handler
-        // This is a simplified example
-    }
-
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .onKeyEvent { keyEvent ->
-                when {
-                    (keyEvent.key == Key.CtrlLeft || keyEvent.key == Key.CtrlRight) &&
-                            keyEvent.key == Key.One && keyEvent.type == KeyEventType.KeyDown -> {
-                        component.navigateToPrompts()
-                        true
-                    }
-
-                    (keyEvent.key == Key.CtrlLeft || keyEvent.key == Key.CtrlRight) &&
-                            keyEvent.key == Key.Two && keyEvent.type == KeyEventType.KeyDown -> {
-                        component.navigateToChat()
-                        true
-                    }
-                    // Import доступен только на Desktop в dev режиме - проверяется в IS_IMPORT_ENABLED
-                    (keyEvent.key == Key.CtrlLeft || keyEvent.key == Key.CtrlRight) &&
-                            keyEvent.key == Key.Four && keyEvent.type == KeyEventType.KeyDown -> {
-                        component.navigateToSettings()
-                        true
-                    }
-
-                    keyEvent.key == Key.F11 && keyEvent.type == KeyEventType.KeyDown -> {
-                        // Fullscreen toggle (would need window management)
-                        true
-                    }
-
-                    keyEvent.key == Key.Escape && keyEvent.type == KeyEventType.KeyDown -> {
-                        // Close dialogs or go back
-                        true
-                    }
-
-                    else -> false
-                }
-            }
+            .background(MaterialTheme.colorScheme.surface)
     ) {
-        // Left Sidebar - Navigation
+        // Sidebar (navigation + workspace)
         MainSidebar(
             currentScreen = state.currentScreen,
             sidebarCollapsed = state.sidebarCollapsed,
@@ -107,9 +69,8 @@ fun MainContentDesktopImpl(component: MainComponent) {
             modifier = Modifier.width(if (state.sidebarCollapsed) 60.dp else 240.dp)
         )
 
-        // Main Content Area
+        // Central content area (chat, etc)
         Column(modifier = Modifier.weight(1f)) {
-            // Top Bar
             MainTopBarDesktop(
                 activeChild = activeChild,
                 onToggleSidebar = component::toggleSidebar,
@@ -117,8 +78,6 @@ fun MainContentDesktopImpl(component: MainComponent) {
                 sidebarCollapsed = state.sidebarCollapsed,
                 propertiesPanelCollapsed = state.propertiesPanelCollapsed
             )
-
-            // Content based on child stack
             Children(
                 stack = component.childStack,
                 animation = stackAnimation(fade())
@@ -127,29 +86,15 @@ fun MainContentDesktopImpl(component: MainComponent) {
                     is MainComponent.Child.Prompts -> PromptsScreen(component = instance.component)
                     is MainComponent.Child.PromptDetails -> AdaptivePromptDetailLayout(component = instance.component)
                     is MainComponent.Child.Chat -> LlmScreen(component = instance.component)
-                    is MainComponent.Child.Scraper -> {
-                        if (MainComponent.IS_IMPORT_ENABLED) {
-                            ScraperScreen(component = instance.component)
-                        }
-                    }
-                    is MainComponent.Child.Import -> {
-                        if (MainComponent.IS_IMPORT_ENABLED) {
-                            ImporterScreen(component = instance.component)
-                        } else {
-                            Text("Import not available", modifier = Modifier.fillMaxSize())
-                        }
-                    }
+                    is MainComponent.Child.Scraper -> if (MainComponent.IS_IMPORT_ENABLED) ScraperScreen(component = instance.component)
+                    is MainComponent.Child.Import -> if (MainComponent.IS_IMPORT_ENABLED) ImporterScreen(component = instance.component) else Text("Import not available", modifier = Modifier.fillMaxSize())
                     is MainComponent.Child.Settings -> SettingsScreen(component = instance.component)
                 }
             }
-
-            // Status Bar
-            MainStatusBar(
-                activeWorkspace = state.activeWorkspace
-            )
+            MainStatusBar(activeWorkspace = state.activeWorkspace)
         }
 
-        // Right Properties Panel (collapsible)
+        // Properties panel, collapsible (right)
         if (!state.propertiesPanelCollapsed) {
             MainPropertiesPanel(
                 activeChild = activeChild,

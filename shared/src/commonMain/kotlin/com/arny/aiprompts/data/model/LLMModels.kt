@@ -126,7 +126,6 @@ data class ChatCompletionRequest(
     @SerialName("stream") val stream: Boolean = false
 )
 
-// Модели для стримингового ответа
 @Serializable
 data class StreamingChatResponse(
     val id: String? = null,
@@ -160,6 +159,19 @@ data class StreamingChatChoice(
     @SerialName("finish_reason") val finishReason: String? = null,
 )
 
+/**
+ * Модель, представляющая часть ответа от OpenRouter при стриминговом запросе.
+ *
+ * @property content Текст, полученный в этом чанке.
+ * @property finishReason Причина завершения (если есть).
+ * @property isComplete Флаг, указывающий, что это последний чанк потока.
+ */
+data class StreamingChatChunk(
+    val content: String,
+    val finishReason: String? = null,
+    val isComplete: Boolean = false
+)
+
 @Serializable
 data class ReasoningDetail(
     val id: String? = null,
@@ -181,4 +193,56 @@ data class CompletionTokensDetails(
 data class PromptTokensDetails(
     val cachedTokens: Int? = null,               // Кэшированные токены запроса
     val audioTokens: Int? = null                  // Аудио-токены в запросе
+)
+
+@Serializable
+data class ModelsResponseDTO(
+    @SerialName("data") val models: List<ModelDTO>
+)
+
+
+@Serializable
+data class ModelDTO(
+    @SerialName("id") val id: String,
+    @SerialName("name") val name: String,
+    @Contextual @SerialName("context_length") val contextLength: Int,
+    @SerialName("description") val description: String,
+    @SerialName("created") val created: Long,
+    @SerialName("architecture") val architecture: ModelArchitecture,
+    @SerialName("pricing") val pricing: ModelPricing,
+)
+
+fun ModelDTO.toDomain(): LlmModel = LlmModel(
+    id = id,
+    name = name,
+    description = description,
+    created = created,
+    contextLength = contextLength.toLong(),
+    pricingPrompt = pricing.prompt.toBigDecimalOrNull(),
+    pricingCompletion = pricing.completion.toBigDecimalOrNull(),
+    pricingImage = pricing.image.toBigDecimalOrNull(),
+    inputModalities = architecture.inputModalities,
+    outputModalities = architecture.outputModalities,
+    isSelected = false
+)
+
+
+@Serializable
+data class ModelPricing(
+    @SerialName("prompt") val prompt: String = "0", // Оставляем String, конвертируем в mapper'е
+    @SerialName("completion") val completion: String = "0",
+    @SerialName("image") val image: String = "0",
+    @SerialName("request") val request: String = "0",
+    @SerialName("web_search") val webSearch: String = "0",
+    @SerialName("internal_reasoning") val internalReasoning: String = "0",
+    @SerialName("input_cache_read") val inputCacheRead: String = "0",
+    @SerialName("input_cache_write") val inputCacheWrite: String = "0"
+)
+
+@Serializable
+data class ModelArchitecture(
+    @SerialName("input_modalities") val inputModalities: List<String> = emptyList(),
+    @SerialName("output_modalities") val outputModalities: List<String> = emptyList(),
+    @SerialName("tokenizer") val tokenizer: String? = null,
+    @SerialName("instruct_type") val instructType: String? = null
 )

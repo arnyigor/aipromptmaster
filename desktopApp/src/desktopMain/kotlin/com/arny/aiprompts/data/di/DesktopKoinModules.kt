@@ -90,7 +90,6 @@ val fileModule = module {
     singleOf(::FileDataSourceImpl) { bind<FileDataSource>() }
 }
 
-
 val desktopModules =
     listOf(
         desktopDataModule,

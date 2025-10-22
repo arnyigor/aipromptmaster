@@ -2,6 +2,7 @@ package com.arny.aiprompts.presentation.features.llm
 
 import com.arny.aiprompts.data.model.LlmModel
 import com.arny.aiprompts.data.model.ChatMessage
+import com.arny.aiprompts.data.model.ChatSession
 import com.arny.aiprompts.results.DataResult
 
 // Единый класс состояния для всего экрана
@@ -13,6 +14,8 @@ data class LlmUiState(
     val selectedSortOrder: ModelSortOrder = ModelSortOrder.NAME,
     val prompt: String = "",
     val chatHistory: List<ChatMessage> = emptyList(),
+    val chatSessions: List<ChatSession> = emptyList(),
+    val selectedChatId: String? = null,
     val showModelSearch: Boolean = false,
     val errorMessage: String? = null
 ) {
@@ -63,6 +66,14 @@ data class LlmUiState(
             }
             else -> emptyList()
         }
+
+    // Текущая выбранная сессия чата
+    val selectedChatSession: ChatSession?
+        get() = chatSessions.firstOrNull { it.id == selectedChatId }
+
+    // История текущей сессии
+    val currentChatHistory: List<ChatMessage>
+        get() = selectedChatSession?.messages ?: chatHistory
 }
 
 enum class ModelCategory(val displayName: String) {

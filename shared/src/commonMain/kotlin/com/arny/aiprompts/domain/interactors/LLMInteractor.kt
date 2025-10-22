@@ -4,7 +4,7 @@ import com.arny.aiprompts.data.model.ChatMessage
 import com.arny.aiprompts.data.model.ChatMessageRole
 import com.arny.aiprompts.data.model.LlmModel
 import com.arny.aiprompts.data.model.MessageStatus
-import com.arny.aiprompts.data.repositories.ApiException
+import com.arny.aiprompts.data.model.ApiException
 import com.arny.aiprompts.data.repositories.IChatHistoryRepository
 import com.arny.aiprompts.data.repositories.IOpenRouterRepository
 import com.arny.aiprompts.data.repositories.ISettingsRepository
@@ -24,80 +24,47 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.datetime.Clock
 import java.util.UUID
 
+/**
+ * Основной бизнес‑логический слой взаимодействия с LLM‑сервисом.
+ *
+ * @property modelsRepository Репозиторий моделей OpenRouter.
+ * @property settingsRepository Репозиторий настроек приложения (API‑ключ, выбранная модель и т.п.).
+ * @property historyRepository Репозиторий истории чата.
+ */
 class LLMInteractor(
     private val modelsRepository: IOpenRouterRepository,
     private val settingsRepository: ISettingsRepository,
     private val historyRepository: IChatHistoryRepository
 ) : ILLMInteractor {
 
+    /** Хранит ошибку, возникшую при принудительном обновлении списка моделей. */
     private val _refreshError = MutableStateFlow<Exception?>(null)
 
-    override fun sendMessage(model: String, userMessage: String): Flow<DataResult<String>> =
-        flow {
-            emit(DataResult.Loading)
-            try {
-                // 1. Создаем сообщение пользователя и сразу добавляем его в историю.
-                historyRepository.addMessages(
-                    listOf(
-                        ChatMessage(
-                            role = ChatMessageRole.USER,
-                            content = userMessage,
-                            timestamp = Clock.System.now().toEpochMilliseconds()
-                        )
-                    )
-                )
-
-                // 3. Формируем полный контекст для API.
-                // Берем историю (которая уже включает новое сообщение) и ограничиваем до 20 последних сообщений.
-                val fullHistory = historyRepository.getHistoryFlow().first()
-                val messagesForApi = if (fullHistory.size > 20) {
-                    // Оставляем последние 20 сообщений (10 пар вопрос-ответ)
-                    fullHistory.takeLast(20)
-                } else {
-                    fullHistory
-                }
-
-                // 4. Проверяем API ключ
-                val apiKey = settingsRepository.getOpenRouterApiKey()?.trim()
-                if (apiKey.isNullOrEmpty()) {
-                    emit(DataResult.Error(IllegalArgumentException("OpenRouter API ключ не настроен. Пожалуйста, введите API ключ в настройках.")))
-                    return@flow
-                }
-
-                // 5. Выполняем запрос с полным контекстом
-                val result = modelsRepository.getChatCompletion(model, messagesForApi, apiKey)
-
-                result.fold(
-                    onSuccess = { response ->
-                        val content = response.choices?.firstOrNull()?.message?.content
-                        if (content != null) {
-                            // 6. При успехе добавляем ответ модели в историю
-                            val modelMessage = ChatMessage(
-                                role = ChatMessageRole.MODEL,
-                                content = content,
-                                timestamp = Clock.System.now().toEpochMilliseconds()
-                            )
-                            historyRepository.addMessages(listOf(modelMessage))
-                            emit(DataResult.Success(content))
-                        } else {
-                            emit(DataResult.Error(Exception("Empty response from API")))
-                        }
-                    },
-                    onFailure = { exception -> emit(DataResult.Error(exception)) }
-                )
-            } catch (e: Exception) {
-                emit(DataResult.Error(e))
-            }
-        }
-
-    // НОВЫЙ МЕТОД для получения истории для UI
+    /**
+     * Возвращает поток с полной историей чата.
+     *
+     * @return Поток, публикующий список всех сообщений.
+     */
     override fun getChatHistoryFlow(): Flow<List<ChatMessage>> = historyRepository.getHistoryFlow()
 
-    // МЕТОД для очистки истории
+    /**
+     * Очищает историю чата в репозитории.
+     */
     override suspend fun clearChat() {
         historyRepository.clearHistory()
     }
 
+    /**
+     * Отправляет сообщение модели с потоковой обработкой ответа.
+     *
+     * Сначала сохраняется пользовательское сообщение, затем создаётся заглушка для ответа,
+     * после чего начинается потоковое получение данных от API. Каждое полученное
+     * «частичное» сообщение обновляется в истории и публикуется как `DataResult.Success`.
+     *
+     * @param model Идентификатор модели.
+     * @param userMessage Текст пользовательского сообщения.
+     * @return Поток, публикующий `Success` с частями ответа или `Error` при сбое.
+     */
     override fun sendStreamingMessage(
         model: String,
         userMessage: String
@@ -121,7 +88,6 @@ class LLMInteractor(
             timestamp = Clock.System.now().toEpochMilliseconds(),
             status = MessageStatus.Sent
         )
-
         historyRepository.addMessage(userMsg)
 
         // 2. Создаем заглушку для ответа модели
@@ -134,7 +100,6 @@ class LLMInteractor(
             status = MessageStatus.Streaming(isComplete = false),
             modelId = model
         )
-
         historyRepository.addMessage(modelMsg)
         emit(DataResult.Success(modelMsg))
 
@@ -143,34 +108,26 @@ class LLMInteractor(
 
         // 4. Стримим ответ
         val accumulatedContent = StringBuilder()
-
         modelsRepository.getStreamingChatCompletion(model, context, apiKey)
             .collect { result ->
                 result.fold(
                     onSuccess = { chunk ->
-                        // только дополняй, если контент не пустой
                         if (chunk.content.isNotEmpty()) {
                             accumulatedContent.append(chunk.content)
                         }
                         val updatedMsg = modelMsg.copy(
                             content = accumulatedContent.toString(),
-                            status = if (chunk.isComplete) MessageStatus.Sent else MessageStatus.Streaming(
-                                false
-                            )
+                            status = if (chunk.isComplete) MessageStatus.Sent else MessageStatus.Streaming(false)
                         )
                         historyRepository.updateMessage(updatedMsg)
                         emit(DataResult.Success(updatedMsg))
                     },
                     onFailure = { error ->
                         Logger.e(error, "LLMInteractor", "Streaming failed")
-
                         val failedMsg = modelMsg.copy(
                             content = accumulatedContent.toString(),
-                            status = MessageStatus.Failed(
-                                error = error.message ?: "Unknown error"
-                            )
+                            status = MessageStatus.Failed(error.message ?: "Unknown error")
                         )
-
                         historyRepository.updateMessage(failedMsg)
                         emit(DataResult.Error(error))
                     }
@@ -182,13 +139,29 @@ class LLMInteractor(
         emit(DataResult.Error(e))
     }
 
+    /**
+     * Формирует контекст из истории чата для последующего запроса к модели.
+     *
+     * Возвращает только сообщения с состоянием `Sent` и ограничивает их
+     * до `MAX_CONTEXT_MESSAGES` последних элементов.
+     *
+     * @return Список сообщений‑контекста.
+     */
     private suspend fun buildApiContext(): List<ChatMessage> {
         return historyRepository.getHistoryFlow()
             .first()
-            .filter { it.status is MessageStatus.Sent } // Только успешные
+            .filter { it.status is MessageStatus.Sent }
             .takeLast(MAX_CONTEXT_MESSAGES)
     }
 
+    /**
+     * Повторяет отправку сообщения модели, если предыдущее завершилось с ошибкой.
+     *
+     * Принимает ID сообщения‑ошибки, ищет связанное пользовательское сообщение,
+     * удаляет `Failed`‑сообщение и инициирует новый потоковой запрос.
+     *
+     * @param messageId Идентификатор сообщения модели с ошибкой.
+     */
     override suspend fun retryMessage(messageId: String) {
         val message = historyRepository.getMessage(messageId) ?: return
 
@@ -211,18 +184,20 @@ class LLMInteractor(
         }
     }
 
+    /**
+     * Отмена потоковой операции (вызывается из UI‑компонента).
+     *
+     * Реализация зависит от того, как управляется `CoroutineScope` в компоненте.
+     */
     override suspend fun cancelStreaming() {
-        // Отмена через scope cancellation в компоненте
         Logger.d("LLMInteractor", "Cancelling streaming")
     }
 
-    companion object {
-        const val MAX_CONTEXT_MESSAGES = 20
-        const val MIN_MESSAGE_LENGTH = 1
-    }
-
     /**
-     * Предоставляет поток со списком моделей, обогащенным состоянием выбора.
+     * Возвращает поток с обновляемым списком моделей OpenRouter,
+     * где каждая модель помечена флагом `isSelected`.
+     *
+     * @return Поток, публикующий `DataResult` со списком моделей.
      */
     override fun getModels(): Flow<DataResult<List<LlmModel>>> {
         val selectedIdFlow: Flow<String?> = settingsRepository.getSelectedModelId()
@@ -232,8 +207,6 @@ class LLMInteractor(
             modelsListFlow,
             _refreshError
         ) { selectedId, modelsList, refreshError ->
-//            println("${this::class.java.simpleName} getModels: selectedId: $selectedId, modelsList: ${modelsList.size}, refreshError: $refreshError")
-            // Эта лямбда будет выполняться каждый раз, когда меняется ID, список моделей или ошибка.
             if (modelsList.isEmpty()) {
                 if (refreshError != null) {
                     DataResult.Error(refreshError)
@@ -246,11 +219,13 @@ class LLMInteractor(
                 }
                 DataResult.Success(mappedList)
             }
-        }.onStart { emit(DataResult.Loading) } // Начинаем с Loading в любом случае.
+        }.onStart { emit(DataResult.Loading) }
     }
 
     /**
-     * Возвращает реактивный поток с деталями только одной выбранной модели.
+     * Возвращает поток с деталями только выбранной модели.
+     *
+     * @return Поток, публикующий `DataResult` с моделью либо ошибкой/загрузкой.
      */
     override fun getSelectedModel(): Flow<DataResult<LlmModel>> {
         return getModels().map { dataResult ->
@@ -271,14 +246,20 @@ class LLMInteractor(
     }
 
     /**
-     * Сохраняет выбор пользователя в репозитории настроек.
+     * Сохраняет выбранный пользователем ID модели в репозитории настроек.
+     *
+     * @param id Идентификатор модели, которую нужно выбрать.
      */
     override suspend fun selectModel(id: String) {
         settingsRepository.setSelectedModelId(id)
     }
 
     /**
-     * Запускает принудительное обновление списка моделей.
+     * Запускает принудительное обновление списка моделей у сервиса OpenRouter.
+     *
+     * При ошибке сохраняется в `_refreshError`, чтобы UI могло отобразить её.
+     *
+     * @return `Result` с `Unit` при успехе или ошибкой.
      */
     override suspend fun refreshModels(): Result<Unit> {
         val result = modelsRepository.refreshModels()
@@ -291,20 +272,27 @@ class LLMInteractor(
     }
 
     /**
-     * НОВЫЙ МЕТОД: Обрабатывает клик, решая, выбрать или отменить выбор.
+     * Обрабатывает клик по элементу модели в списке.
+     *
+     * Если пользователь нажал на уже выбранную модель – снимает выбор,
+     * иначе выбирает новую модель, обновляя состояние в репозитории настроек.
+     *
+     * @param clickedModelId ID модели, по которой был произведён клик.
      */
     override suspend fun toggleModelSelection(clickedModelId: String) {
-        // 1. Получаем ТЕКУЩИЙ выбранный ID.
-        //    Используем `first()` чтобы получить однократное значение из потока.
         val currentlySelectedId = settingsRepository.getSelectedModelId().firstOrNull()
-
-        // 2. Принимаем решение
         if (currentlySelectedId == clickedModelId) {
-            // Если кликнули на уже выбранную модель -> отменяем выбор
             settingsRepository.setSelectedModelId(null)
         } else {
-            // Если кликнули на другую модель -> выбираем ее
             settingsRepository.setSelectedModelId(clickedModelId)
         }
+    }
+
+    companion object {
+        /** Максимальное число сообщений, которые будут отправлены в один запрос к модели. */
+        const val MAX_CONTEXT_MESSAGES = 20
+
+        /** Минимальная длина пользовательского сообщения. */
+        const val MIN_MESSAGE_LENGTH = 1
     }
 }

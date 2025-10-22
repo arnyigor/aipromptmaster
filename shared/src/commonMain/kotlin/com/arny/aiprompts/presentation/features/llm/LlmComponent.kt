@@ -5,6 +5,7 @@ import com.arkivanov.essenty.lifecycle.coroutines.coroutineScope
 import com.arkivanov.essenty.lifecycle.doOnDestroy
 import com.arny.aiprompts.domain.interactors.ILLMInteractor
 import com.arny.aiprompts.data.model.LlmModel
+import com.arny.aiprompts.data.model.ChatSession
 import com.arny.aiprompts.results.DataResult
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.*
@@ -27,4 +28,12 @@ interface LlmComponent {
     fun onCancelGenerating()
     fun onRetryMessage(messageId: String)
     fun clearError()
+    // выбор сессии чата
+    fun onChatSessionSelected(sessionId: String)
+    // создание новой сессии чата
+    fun onCreateNewChatSession()
+    // удаление сессии чата
+    fun onDeleteChatSession(sessionId: String)
+    // переименование сесии чата
+    fun onRenameChatSession(sessionId: String, newName: String)
 }

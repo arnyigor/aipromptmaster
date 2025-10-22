@@ -1,20 +1,31 @@
 package com.arny.aiprompts.data.repositories
 
+import com.arny.aiprompts.data.model.ApiException
 import com.arny.aiprompts.data.model.ChatCompletionRequest
 import com.arny.aiprompts.data.model.ChatCompletionResponse
 import com.arny.aiprompts.data.model.ChatMessage
 import com.arny.aiprompts.data.model.LlmModel
 import com.arny.aiprompts.data.model.ModelsResponseDTO
+import com.arny.aiprompts.data.model.StreamingChatChunk
 import com.arny.aiprompts.data.model.StreamingChatResponse
 import com.arny.aiprompts.data.model.toDomain
 import com.arny.aiprompts.utils.Logger
-import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.plugins.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
-import io.ktor.utils.io.*
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.plugins.timeout
+import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.client.request.preparePost
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsChannel
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.contentType
+import io.ktor.http.isSuccess
+import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.readUTF8Line
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -24,18 +35,48 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.Json.Default.decodeFromString
 
+/**
+ * Реализация репозитория взаимодействия с API OpenRouter.
+ *
+ * Вся логика, связанная с сетевыми запросами и парсингом SSE‑потока,
+ * находится в этом классе. Он использует `HttpClient` из Ktor и
+ * `Json` для сериализации/десериализации JSON‑объектов.
+ *
+ * @property httpClient Клиент HTTP‑запросов (Ktor).
+ * @property json Сериализатор/десериализатор Kotlinx‑Serialization.
+ * @property settingsRepository Репозиторий настроек, из которого берётся API‑ключ
+ * при необходимости.
+ */
 class OpenRouterRepositoryImpl(
     private val httpClient: HttpClient,
     private val json: Json,
     private val settingsRepository: ISettingsRepository
 ) : IOpenRouterRepository {
 
+    /** Состояние списка моделей в виде `MutableStateFlow`. */
     private val _modelsFlow = MutableStateFlow<List<LlmModel>>(emptyList())
 
+    /**
+     * Возвращает поток с текущим списком доступных моделей.
+     *
+     * Публикует список при каждом обновлении `_modelsFlow`.
+     *
+     * @return Поток со списком `LlmModel`.
+     */
     override fun getModelsFlow(): Flow<List<LlmModel>> = _modelsFlow.asStateFlow()
 
+    /**
+     * Запрашивает у OpenRouter актуальный список моделей и сохраняет его в
+     * `_modelsFlow`. Если запрос завершился ошибкой, результат будет содержать
+     * исключение.
+     *
+     * При отмене операции (`CancellationException`) метод просто завершается без
+     * генерации ошибки – это нормальное поведение при разрушении UI‑компонента.
+     *
+     * @return `Result<Unit>` – `Success` при успешном обновлении,
+     * иначе `Failure` с подробным исключением.
+     */
     override suspend fun refreshModels(): Result<Unit> = try {
         val response: ModelsResponseDTO =
             httpClient.get("https://openrouter.ai/api/v1/models").body()
@@ -51,6 +92,19 @@ class OpenRouterRepositoryImpl(
         Result.failure(e)
     }
 
+    /**
+     * Делает запрос к OpenRouter за завершённым чатом.
+     *
+     * Если в ответе присутствует поле `error`, генерируется `ApiException.HttpError`.
+     * Если ключ API не найден – генерируется `ApiException.MissingApiKey`.
+     *
+     * @param model Идентификатор модели, которую нужно вызвать.
+     * @param messages Список сообщений чата (история).
+     * @param apiKey Ключ API. Если `null`, берётся из настроек через
+     * `settingsRepository.getOpenRouterApiKey()`.
+     * @return `Result<ChatCompletionResponse>` – успешный результат с объектом
+     * ответа или исключением.
+     */
     override suspend fun getChatCompletion(
         model: String,
         messages: List<ChatMessage>,
@@ -90,6 +144,18 @@ class OpenRouterRepositoryImpl(
         }
     }
 
+    /**
+     * Выполняет потоковый запрос к OpenRouter. Возвращает `Flow<Result<StreamingChatChunk>>`,
+     * где каждый элемент представляет собой часть ответа модели.
+     *
+     * Если в процессе запроса возникнет `CancellationException`, он будет проброшен
+     * наружу, что позволит отменить поток из UI‑компонента.
+     *
+     * @param model Идентификатор модели.
+     * @param messages История чата.
+     * @param apiKey Ключ API. Если `null`, берётся из настроек.
+     * @return Поток с результатами – либо успешные чанки, либо ошибки.
+     */
     override fun getStreamingChatCompletion(
         model: String,
         messages: List<ChatMessage>,
@@ -150,6 +216,16 @@ class OpenRouterRepositoryImpl(
         emit(Result.failure(e))
     }
 
+    /**
+     * Парсит серверные события (SSE), полученные в `ByteReadChannel`.
+     *
+     * Внутри цикла читается строка, отбрасываются пустые строки и комментарии.
+     * Если строка начинается с префикса `data:`, из неё извлекаются JSON‑данные,
+     * десериализуются в `StreamingChatResponse` и формируются `StreamingChatChunk`.
+     *
+     * @param channel Канал, содержащий байты SSE‑потока.
+     * @return Поток с частями ответа модели (`StreamingChatChunk`).
+     */
     private fun parseServerSentEvents(channel: ByteReadChannel): Flow<StreamingChatChunk> = flow {
         while (!channel.isClosedForRead) {
             currentCoroutineContext().ensureActive()
@@ -167,11 +243,11 @@ class OpenRouterRepositoryImpl(
                     val choice = chunk.choices?.firstOrNull()
                     val delta = choice?.delta
 
-                    // !-! изменено: просто пропустим если нет контента и finish_reason не пришел
+                    // Пропускаем пустые куски без finish_reason
                     if ((delta?.content == null || delta.content.isEmpty())
                         && choice?.finishReason == null
                     ) {
-                        continue // skip
+                        continue
                     }
 
                     emit(
@@ -184,37 +260,14 @@ class OpenRouterRepositoryImpl(
                 } catch (e: Exception) {
                     e.printStackTrace()
                     Logger.w("OpenRouterRepo", "Failed to parse SSE chunk: $jsonData")
-                    // continue
+                    // Продолжаем обработку следующего сообщения
                 }
             }
         }
     }
 
-    companion object {
+    private companion object {
         const val SSE_DATA_PREFIX = "data: "
         const val SSE_DONE_MARKER = "[DONE]"
-    }
-}
-
-// Модель для стриминговых чанков
-data class StreamingChatChunk(
-    val content: String,
-    val finishReason: String? = null,
-    val isComplete: Boolean = false
-)
-
-// Кастомные исключения
-sealed class ApiException : Exception() {
-    class MissingApiKey : ApiException() {
-        override val message: String =
-            "OpenRouter API ключ не настроен. Пожалуйста, введите API ключ в настройках."
-    }
-
-    data class HttpError(val code: Int, val body: String) : ApiException() {
-        override val message: String = "API Error ($code): $body"
-    }
-
-    data class ParseError(val raw: String) : ApiException() {
-        override val message: String = "Failed to parse response: $raw"
     }
 }

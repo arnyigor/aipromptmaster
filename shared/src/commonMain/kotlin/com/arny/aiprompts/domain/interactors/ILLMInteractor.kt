@@ -6,7 +6,6 @@ import com.arny.aiprompts.results.DataResult
 import kotlinx.coroutines.flow.Flow
 
 interface ILLMInteractor {
-    fun sendMessage(model: String, userMessage: String): Flow<DataResult<String>>
     fun sendStreamingMessage(model: String, userMessage: String): Flow<DataResult<ChatMessage>>
     fun getModels(): Flow<DataResult<List<LlmModel>>>
     fun getSelectedModel(): Flow<DataResult<LlmModel>>
