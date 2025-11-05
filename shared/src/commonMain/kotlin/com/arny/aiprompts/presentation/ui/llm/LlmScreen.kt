@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -45,6 +46,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -66,6 +68,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
@@ -155,7 +158,7 @@ fun LlmScreen(component: LlmComponent) {
                         }
                         IconButton(onClick = component::toggleChatList) {
                             Icon(
-                                imageVector = if (uiState.showChatList) Icons.Default.ChevronRight else Icons.Default.ChevronLeft,
+                                imageVector = if (uiState.showChatList) Icons.Default.ChevronLeft else Icons.Default.ChevronRight,
                                 contentDescription = "Toggle Chat List"
                             )
                         }
@@ -174,7 +177,7 @@ fun LlmScreen(component: LlmComponent) {
                         // Правая панель с параметрами
                         IconButton(onClick = component::toggleParameters) {
                             Icon(
-                                imageVector = if (uiState.showParameters) Icons.Default.ChevronLeft else Icons.Default.ChevronRight,
+                                imageVector = if (uiState.showParameters) Icons.Default.ChevronRight else Icons.Default.ChevronLeft,
                                 contentDescription = "Toggle Parameters"
                             )
                         }
@@ -229,130 +232,9 @@ fun LlmScreen(component: LlmComponent) {
             onSearchQueryChanged = component::onSearchQueryChanged,
             onCategorySelected = component::onCategorySelected,
             onSortOrderSelected = component::onSortOrderSelected,
+            onRefreshModels = component::refreshModels,
             onClose = component::toggleModelDialog
         )
-    }
-}
-
-@Composable
-fun ModelListPanel(
-    modifier: Modifier = Modifier,
-    state: LlmUiState,
-    onModelSelected: (String) -> Unit,
-    onSearchQueryChanged: (String) -> Unit,
-    onCategorySelected: (ModelCategory) -> Unit,
-    onSortOrderSelected: (ModelSortOrder) -> Unit
-) {
-    Column(modifier = modifier) {
-        // Заголовок и поиск
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("Выберите модель", style = MaterialTheme.typography.titleLarge)
-            Spacer(Modifier.height(8.dp))
-
-            // Поле поиска
-            OutlinedTextField(
-                value = state.searchQuery,
-                onValueChange = onSearchQueryChanged,
-                placeholder = { Text("Поиск моделей...") },
-                leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = "Поиск")
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            // Фильтры категорий
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(ModelCategory.entries) { category ->
-                    FilterChip(
-                        selected = state.selectedCategory == category,
-                        onClick = { onCategorySelected(category) },
-                        label = { Text(category.displayName) }
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // Сортировка
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text("Сортировка:", style = MaterialTheme.typography.bodySmall)
-                ModelSortOrder.entries.forEach { sortOrder ->
-                    FilterChip(
-                        selected = state.selectedSortOrder == sortOrder,
-                        onClick = { onSortOrderSelected(sortOrder) },
-                        label = { Text(sortOrder.displayName) }
-                    )
-                }
-            }
-        }
-
-        HorizontalDivider()
-
-        // Список моделей
-        Box(modifier = Modifier.weight(1f)) {
-            when (val result = state.modelsResult) {
-                is DataResult.Loading -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                }
-
-                is DataResult.Success -> {
-                    if (state.displayModels.isEmpty()) {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(
-                                text = "Модели не найдены",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    } else {
-                        LazyColumn {
-                            items(state.displayModels, key = { it.id }) { model ->
-                                ModelItem(
-                                    model = model,
-                                    isSelected = model.isSelected,
-                                    onClick = { onModelSelected(model.id) }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                is DataResult.Error -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                Icons.Default.Error,
-                                contentDescription = "Ошибка",
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(48.dp)
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                "Ошибка загрузки моделей",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                            result.exception?.message?.let {
-                                Text(
-                                    it,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -736,7 +618,7 @@ fun ChatMessageItem(
         Surface(
             color = backgroundColor,
             shape = shape,
-            modifier = Modifier.widthIn(max = 320.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
                 // Аватар для AI
@@ -897,15 +779,15 @@ fun ChatInputPanel(
             modifier = Modifier.fillMaxWidth().onKeyEvent { keyEvent ->
                 if (keyEvent.type == KeyEventType.KeyDown) {
                     when {
-                        // Ctrl+Enter для отправки
-                        (keyEvent.isCtrlPressed && keyEvent.key == Key.Enter) -> {
+                        // Enter для отправки
+                        (!keyEvent.isShiftPressed && keyEvent.key == Key.Enter) -> {
                             if (prompt.isNotBlank() && selectedModel != null && !isGenerating) {
                                 onGenerateClicked()
                                 true
                             } else false
                         }
                         // Enter для новой строки (стандартное поведение)
-                        (keyEvent.key == Key.Enter && !keyEvent.isCtrlPressed) -> {
+                        (keyEvent.key == Key.Enter && keyEvent.isShiftPressed) -> {
                             // Разрешаем перенос строки
                             false
                         }
@@ -973,13 +855,14 @@ fun ModelDialog(
     onSearchQueryChanged: (String) -> Unit,
     onCategorySelected: (ModelCategory) -> Unit,
     onSortOrderSelected: (ModelSortOrder) -> Unit,
-    onClose: () -> Unit
+    onRefreshModels: () -> Unit,
+    onClose: () -> Unit,
 ) {
     Dialog(onDismissRequest = onClose) {
         Surface(
             modifier = Modifier
-                .fillMaxWidth(0.8f)
-                .fillMaxHeight(0.8f),
+                .requiredWidth(800.dp)
+                .fillMaxHeight(0.85f),
             shape = RoundedCornerShape(16.dp),
             shadowElevation = 8.dp
         ) {
@@ -1079,7 +962,10 @@ fun ModelDialog(
 
                         is DataResult.Error -> {
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.padding(16.dp)
+                                ) {
                                     Icon(
                                         Icons.Default.Error,
                                         contentDescription = "Ошибка",
@@ -1096,9 +982,22 @@ fun ModelDialog(
                                         Text(
                                             it,
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.padding(horizontal = 16.dp)
                                         )
                                     }
+                                    Spacer(Modifier.height(16.dp))
+                                    OutlinedButton(onClick = onRefreshModels) {
+                                        Icon(
+                                            Icons.Default.Refresh,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("Повторить попытку")
+                                    }
+
                                 }
                             }
                         }

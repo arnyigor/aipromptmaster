@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.*
  * @param llmInteractor Слой бизнес‑логики для взаимодействия с LLM‑сервисом.
  * @param onBack Функция‑обработчик «назад» (вызывается при переходе к предыдущему экрану).
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class DefaultLlmComponent(
     componentContext: ComponentContext,
     private val llmInteractor: ILLMInteractor,
@@ -35,14 +36,20 @@ class DefaultLlmComponent(
     /** Состояние UI, опубликованное через `StateFlow`. */
     private val _uiState = MutableStateFlow(LlmUiState())
     override val uiState: StateFlow<LlmUiState> = _uiState.asStateFlow()
+    private val refreshTrigger = MutableSharedFlow<Unit>(replay = 1)
 
     init {
-        // Подписка на список моделей
-        llmInteractor.getModels()
+        refreshTrigger
+            .flatMapLatest {
+                llmInteractor.getModels()
+            }
             .onEach { modelsResult ->
                 _uiState.update { it.copy(modelsResult = modelsResult) }
             }
             .launchIn(scope)
+
+        // Первоначальная загрузка
+        loadModels()
 
         // Подписка на историю чата
         llmInteractor.getChatHistoryFlow()
@@ -56,6 +63,12 @@ class DefaultLlmComponent(
         // Инициируем загрузку моделей при создании компонента
         scope.launch {
             llmInteractor.refreshModels()
+        }
+    }
+
+    fun loadModels() {
+        scope.launch {
+            refreshTrigger.emit(Unit)
         }
     }
 
@@ -94,6 +107,7 @@ class DefaultLlmComponent(
                 return
             }
             currentState.isGenerating -> {
+                _uiState.update { it.copy(prompt = "") }
                 Logger.w("DefaultLlmComponent","Generation already in progress")
                 return
             }
@@ -126,7 +140,7 @@ class DefaultLlmComponent(
                     when (result) {
                         is DataResult.Success -> {
                             // Обновления идут через chatHistory flow
-                            Logger.d("DefaultLlmComponent","Streaming chunk received message:${result.data.content}")
+//                            Logger.d("DefaultLlmComponent","Streaming chunk received message:${result.data.content}")
                         }
                         is DataResult.Error -> {
                             val errorMsg = result.exception?.message ?: "Ошибка генерации"
@@ -164,9 +178,7 @@ class DefaultLlmComponent(
 
     /** Принудительно обновляет список моделей (собирает из API). */
     override fun refreshModels() {
-        scope.launch {
-            llmInteractor.refreshModels()
-        }
+        loadModels()
     }
 
     /**
