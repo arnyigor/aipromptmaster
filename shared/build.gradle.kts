@@ -61,6 +61,7 @@ kotlin {
                 api(libs.jsoup)
                 implementation(libs.selenium.java)
                 implementation(libs.compose.markdown)
+                implementation(libs.compose.markdown.render.m3)
                 implementation(libs.richeditor.compose)
                 implementation(libs.russhwolf.settings)
                 implementation(libs.russhwolf.settings.datastore)

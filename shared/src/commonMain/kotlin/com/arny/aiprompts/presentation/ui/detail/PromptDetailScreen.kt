@@ -62,6 +62,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.arny.aiprompts.presentation.screens.PromptDetailComponent
 import com.arny.aiprompts.presentation.screens.PromptDetailEvent
+import com.mikepenz.markdown.m3.Markdown
+import com.mikepenz.markdown.model.rememberMarkdownState
 import com.mohamedrejeb.richeditor.model.rememberRichTextState
 import com.mohamedrejeb.richeditor.ui.material3.RichText
 import kotlinx.datetime.TimeZone
@@ -196,7 +198,13 @@ private fun DesktopPromptDetailLayout(
                                 item(key = "title") {
                                     OutlinedTextField(
                                         value = promptToDisplay.title,
-                                        onValueChange = { component.onEvent(PromptDetailEvent.TitleChanged(it)) },
+                                        onValueChange = {
+                                            component.onEvent(
+                                                PromptDetailEvent.TitleChanged(
+                                                    it
+                                                )
+                                            )
+                                        },
                                         label = { Text("Заголовок") },
                                         modifier = Modifier.fillMaxWidth()
                                     )
@@ -211,9 +219,20 @@ private fun DesktopPromptDetailLayout(
                                         editText = ruContent,
                                         isEditing = state.isEditing,
                                         onValueChange = { newText ->
-                                            component.onEvent(PromptDetailEvent.ContentChanged(PromptLanguage.RU, newText))
+                                            component.onEvent(
+                                                PromptDetailEvent.ContentChanged(
+                                                    PromptLanguage.RU,
+                                                    newText
+                                                )
+                                            )
                                         },
-                                        onCopyClick = { clipboardManager.setText(AnnotatedString(ruContent)) }
+                                        onCopyClick = {
+                                            clipboardManager.setText(
+                                                AnnotatedString(
+                                                    ruContent
+                                                )
+                                            )
+                                        }
                                     )
                                 }
                             }
@@ -226,9 +245,20 @@ private fun DesktopPromptDetailLayout(
                                         editText = enContent,
                                         isEditing = state.isEditing,
                                         onValueChange = { newText ->
-                                            component.onEvent(PromptDetailEvent.ContentChanged(PromptLanguage.EN, newText))
+                                            component.onEvent(
+                                                PromptDetailEvent.ContentChanged(
+                                                    PromptLanguage.EN,
+                                                    newText
+                                                )
+                                            )
                                         },
-                                        onCopyClick = { clipboardManager.setText(AnnotatedString(enContent)) }
+                                        onCopyClick = {
+                                            clipboardManager.setText(
+                                                AnnotatedString(
+                                                    enContent
+                                                )
+                                            )
+                                        }
                                     )
                                 }
                             }
@@ -238,8 +268,20 @@ private fun DesktopPromptDetailLayout(
                                     title = "Теги",
                                     tags = promptToDisplay.tags,
                                     isEditing = state.isEditing,
-                                    onAddTag = { tag -> component.onEvent(PromptDetailEvent.TagAdded(tag)) },
-                                    onRemoveTag = { tag -> component.onEvent(PromptDetailEvent.TagRemoved(tag)) },
+                                    onAddTag = { tag ->
+                                        component.onEvent(
+                                            PromptDetailEvent.TagAdded(
+                                                tag
+                                            )
+                                        )
+                                    },
+                                    onRemoveTag = { tag ->
+                                        component.onEvent(
+                                            PromptDetailEvent.TagRemoved(
+                                                tag
+                                            )
+                                        )
+                                    },
                                     availableTags = state.availableTags,
                                     enableColorCoding = true
                                 )
@@ -260,7 +302,10 @@ private fun DesktopPromptDetailLayout(
                         item(key = "info_card") {
                             Card {
                                 Column(modifier = Modifier.padding(16.dp)) {
-                                    Text("Информация о промпте", style = MaterialTheme.typography.titleMedium)
+                                    Text(
+                                        "Информация о промпте",
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
                                         text = promptToDisplay.title,
@@ -364,7 +409,11 @@ private fun DesktopPromptDetailLayout(
                                             )
                                             Spacer(modifier = Modifier.width(4.dp))
                                             Text(
-                                                text = "Изменено: ${modified.toLocalDateTime(TimeZone.currentSystemDefault()).date}",
+                                                text = "Изменено: ${
+                                                    modified.toLocalDateTime(
+                                                        TimeZone.currentSystemDefault()
+                                                    ).date
+                                                }",
                                                 style = MaterialTheme.typography.bodyMedium
                                             )
                                         }
@@ -493,7 +542,7 @@ private fun ConfirmDeleteDialog(
 
 
 @Composable
-fun RichMarkdownDisplay(
+fun MarkdownDisplay(
     content: String,
     modifier: Modifier = Modifier
 ) {
