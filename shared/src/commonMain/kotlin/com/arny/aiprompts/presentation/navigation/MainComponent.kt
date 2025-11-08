@@ -9,6 +9,7 @@ import com.arkivanov.decompose.router.stack.navigate
 import com.arkivanov.decompose.router.stack.pop
 import com.arkivanov.decompose.router.stack.push
 import com.arkivanov.decompose.value.Value
+import com.arny.aiprompts.BuildConfig
 import com.arny.aiprompts.data.model.Platform
 import com.arny.aiprompts.data.model.getPlatform
 import com.arny.aiprompts.data.repositories.ISettingsRepository
@@ -64,15 +65,9 @@ interface MainComponent {
     }
 
     companion object {
+        val IS_DEBUG_MODE: Boolean = BuildConfig.DEBUG
         val IS_IMPORT_ENABLED: Boolean = getPlatform() == Platform.Desktop &&
-                (System.getProperty("java.vm.name")?.contains("OpenJDK") == true ||
-                        System.getenv("DEBUG_MODE") == "true" ||
-                        try {
-                            Class.forName("kotlinx.coroutines.debug.DebugProbes")
-                            true
-                        } catch (_: ClassNotFoundException) {
-                            false
-                        })
+                BuildConfig.IS_IMPORT_ENABLED
     }
 
     fun navigateToScraper()

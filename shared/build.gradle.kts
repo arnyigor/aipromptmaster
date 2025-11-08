@@ -13,6 +13,7 @@ plugins {
     alias(libs.plugins.room)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kover)
+    alias(libs.plugins.buildconfig)
 }
 
 kotlin {
@@ -112,46 +113,25 @@ kotlin {
     }
 }
 
+buildConfig {
+    packageName("com.arny.aiprompts")
+
+    // Определяем, debug это или release
+    val isDebug = project.findProperty("app.debug") == "true" ||
+            System.getenv("DEBUG_MODE") == "true"
+
+    buildConfigField("Boolean", "DEBUG", isDebug.toString())
+    buildConfigField("Boolean", "IS_IMPORT_ENABLED", isDebug.toString())
+
+    // Дополнительные поля
+    buildConfigField("String", "VERSION", "\"${project.version}\"")
+}
+
 // Загружаем свойства из local.properties
 val localProperties = Properties()
 val localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
     localProperties.load(FileInputStream(localPropertiesFile))
-}
-
-// Получаем значения из local.properties
-val isDebug = localProperties.getProperty("app.debug", "false").toBoolean()
-
-val generateDesktopBuildConfig by tasks.registering {
-    val outputFile = file("src/desktopMain/kotlin/com/arny/aiprompts/BuildConfig.kt")
-
-    inputs.property("debug", isDebug)
-    outputs.file(outputFile)
-
-    doLast {
-        outputFile.parentFile?.mkdirs()
-        outputFile.writeText("""
-            package com.arny.aiprompts
-            
-            object BuildConfig {
-                const val DEBUG = ${inputs.properties["debug"]}
-            }
-        """.trimIndent())
-    }
-}
-
-// Только основная зависимость компиляции
-tasks.named("compileKotlinDesktop") {
-    dependsOn(generateDesktopBuildConfig)
-}
-
-// Находим все KSP задачи динамически
-afterEvaluate {
-    tasks.names.filter { it.startsWith("ksp") }.forEach { taskName ->
-        tasks.named(taskName) {
-            dependsOn(generateDesktopBuildConfig)
-        }
-    }
 }
 
 dependencies {
@@ -160,7 +140,6 @@ dependencies {
     add("kspDesktop", libs.androidx.room.compiler)
     add("kspAndroid", libs.androidx.room.compiler)
 }
-
 
 android {
     namespace = "com.arny.aiprompts.shared"

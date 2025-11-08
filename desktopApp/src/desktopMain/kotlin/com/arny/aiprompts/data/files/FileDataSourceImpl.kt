@@ -1,13 +1,13 @@
 package com.arny.aiprompts.data.files
 
-import com.arny.aiprompts.BuildsConfig
 import com.arny.aiprompts.data.model.PlatformFile
 import com.arny.aiprompts.data.model.PromptJson
 import com.arny.aiprompts.domain.interfaces.FileDataSource
+import com.arny.aiprompts.presentation.navigation.MainComponent.Companion.IS_DEBUG_MODE
+import com.arny.aiprompts.presentation.navigation.MainComponent.Companion.IS_IMPORT_ENABLED
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.nio.charset.StandardCharsets
-import java.nio.file.Paths
 
 class FileDataSourceImpl : FileDataSource {
     // Используем Json с красивым форматированием для читаемости файлов
@@ -20,19 +20,12 @@ class FileDataSourceImpl : FileDataSource {
     }
 
     override suspend fun savePromptJson(promptJson: PromptJson): File {
-        // ✅ В PROD запрещаем сохранение
-        if (!BuildsConfig.DEBUG) {
-            log("⚠️ [PROD] Сохранение локальных файлов отключено")
-            throw UnsupportedOperationException("Local file operations are disabled in PROD")
-        }
-
         val rootDir = findProjectRootDir()
             ?: throw Exception("Не удалось найти корневую директорию проекта")
 
         val promptsDir = File(rootDir, "prompts")
         if (!promptsDir.exists()) {
             promptsDir.mkdirs()
-            log("✅ Создана директория: ${promptsDir.absolutePath}")
         }
 
         val category = promptJson.category?.takeIf { it.isNotBlank() } ?: "general"
@@ -40,14 +33,12 @@ class FileDataSourceImpl : FileDataSource {
 
         if (!categoryDir.exists()) {
             categoryDir.mkdirs()
-            log("✅ Создана категория: ${categoryDir.absolutePath}")
         }
 
         val targetFile = File(categoryDir, "${promptJson.id}.json")
         val jsonString = json.encodeToString(promptJson)
         targetFile.writeText(jsonString, StandardCharsets.UTF_8)
 
-        log("✅ [DEV] Файл сохранен: ${targetFile.absolutePath}")
         return targetFile
     }
 
@@ -72,10 +63,6 @@ class FileDataSourceImpl : FileDataSource {
     }
 
     override suspend fun getPromptFiles(): List<PlatformFile> {
-        if (!BuildsConfig.DEBUG) {
-            return emptyList()
-        }
-
         val rootDir = findProjectRootDir()
         if (rootDir == null) {
             log("❌ Не удалось найти корневую директорию проекта (.git)")
