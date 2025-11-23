@@ -63,9 +63,8 @@ import androidx.compose.ui.window.DialogProperties
 import com.arny.aiprompts.presentation.screens.PromptDetailComponent
 import com.arny.aiprompts.presentation.screens.PromptDetailEvent
 import com.mikepenz.markdown.m3.Markdown
-import com.mikepenz.markdown.model.rememberMarkdownState
-import com.mohamedrejeb.richeditor.model.rememberRichTextState
-import com.mohamedrejeb.richeditor.ui.material3.RichText
+import com.mikepenz.markdown.m3.markdownColor
+import com.mikepenz.markdown.m3.markdownTypography
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
@@ -546,16 +545,9 @@ fun MarkdownDisplay(
     content: String,
     modifier: Modifier = Modifier
 ) {
-    val richTextState = rememberRichTextState()
-    LaunchedEffect(content) {
-        richTextState.setMarkdown(content)
-    }
-    RichText(
-        state = richTextState,
+    Markdown(
+        content = content,
         modifier = modifier,
-        style = MaterialTheme.typography.bodyMedium.copy(
-            color = MaterialTheme.colorScheme.onSurface
-        )
     )
 }
 

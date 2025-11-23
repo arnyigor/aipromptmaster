@@ -4,52 +4,109 @@ import com.arny.aiprompts.domain.interfaces.IHybridParser
 import com.arny.aiprompts.presentation.ui.importer.EditedPostData
 import com.arny.aiprompts.presentation.ui.importer.PromptVariantData
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Element
+import org.jsoup.nodes.TextNode
 
 class HybridParserImpl : IHybridParser {
 
     override fun analyzeAndExtract(htmlContent: String): EditedPostData? {
-        val postElement = Jsoup.parse("<body>$htmlContent</body>").body()
-        val contentBody = postElement.selectFirst("div.postcolor") ?: return null
+        val doc = Jsoup.parseBodyFragment(htmlContent)
+        val contentBody = doc.selectFirst("div.postcolor") ?: doc.body()
 
-        // --- 1. Находим все спойлеры, игнорируя те, что с изображениями ---
-        val allSpoilers = contentBody.select("div.post-block.spoil")
-        val promptSpoilers = allSpoilers
-            .filterNot { it.selectFirst(".block-title")?.text()?.contains("Прикрепленные изображения", true) == true }
-
-        // --- НОВАЯ ЛОГИКА ИЗВЛЕЧЕНИЯ ВАРИАНТОВ ---
-        val variants = promptSpoilers.mapNotNull { spoiler ->
-            val variantTitle = spoiler.selectFirst(".block-title")?.text()?.trim() ?: "Вариант"
-            val variantContent = cleanHtmlToText(spoiler.selectFirst(".block-body"))
-            if (variantContent.isNotBlank()) {
-                PromptVariantData(title = variantTitle, content = variantContent)
-            } else {
-                null
+        // --- 1. Чистка от мусора (изображения, подписи) ---
+        contentBody.select(".edit").remove() // Удаляем надпись "Сообщение отредактировал"
+        contentBody.select("div.post-block.spoil").forEach { spoiler ->
+            val title = spoiler.selectFirst(".block-title")?.text().orEmpty()
+            if (title.contains("Прикрепленные изображения", true)) {
+                spoiler.remove()
             }
         }
 
-        // Если вариантов нет, это не промпт
+        // --- 2. Умный поиск вариантов (с учетом вложенности) ---
+        // Ищем только спойлеры, которые НЕ содержат внутри других спойлеров.
+        // Это позволяет игнорировать "Сборники" и брать только конечные "Листья"-промпты.
+        val allSpoilers = contentBody.select("div.post-block.spoil")
+        val leafSpoilers = allSpoilers.filter { it.select("div.post-block.spoil").isEmpty() }
+
+        val variants = mutableListOf<PromptVariantData>()
+
+        if (leafSpoilers.isNotEmpty()) {
+            // СТРАТЕГИЯ А: Есть спойлеры -> берем их как варианты
+            leafSpoilers.forEach { spoiler ->
+                val variantTitle = spoiler.selectFirst(".block-title")?.text()?.trim() ?: "Вариант"
+                // Берем тело спойлера
+                val bodyElement = spoiler.selectFirst(".block-body") ?: return@forEach
+                val variantContent = parseHtmlToPromptText(bodyElement)
+
+                if (variantContent.isNotBlank()) {
+                    variants.add(PromptVariantData(title = variantTitle, content = variantContent))
+                }
+            }
+        } else {
+            // СТРАТЕГИЯ Б: Нет спойлеров -> весь пост это один промпт
+            // Ищем блоки кода, так как промпты часто там
+            val codeBlocks = contentBody.select("div.code-box")
+            if (codeBlocks.isNotEmpty()) {
+                codeBlocks.forEachIndexed { index, element ->
+                    val codeText = parseHtmlToPromptText(element.selectFirst(".code-body") ?: element)
+                    variants.add(PromptVariantData(title = "Code Block ${index + 1}", content = codeText))
+                }
+            } else {
+                // Если нет ни спойлеров, ни кода -> берем весь текст поста
+                val fullText = parseHtmlToPromptText(contentBody)
+                if (fullText.length > 20) { // Фильтр от совсем коротких сообщений "Спасибо"
+                    variants.add(PromptVariantData(title = "General Content", content = fullText))
+                }
+            }
+        }
+
         if (variants.isEmpty()) return null
 
-        // --- 4. Извлекаем ОПИСАНИЕ (все, что находится ВНЕ спойлеров) ---
+        // --- 3. Описание (все что осталось снаружи вариантов) ---
         val descriptionElement = contentBody.clone()
-        // Удаляем из клона все спойлеры, чтобы остался только текст описания
-        descriptionElement.select("div.post-block.spoil").remove()
-        val description = cleanHtmlToText(descriptionElement)
+        // Удаляем из клона все найденные leaf-спойлеры, чтобы получить чистый контекст/описание
+        // (Если пост был без спойлеров, description будет дублировать content, можно очистить)
+        if (leafSpoilers.isNotEmpty()) {
+            descriptionElement.select("div.post-block.spoil").filter { it.select("div.post-block.spoil").isEmpty() }.forEach { it.remove() }
+        } else {
+            descriptionElement.empty() // Если мы забрали весь текст как вариант, описание пустое
+        }
+        val description = parseHtmlToPromptText(descriptionElement)
 
-        // --- 5. Извлекаем ЗАГОЛОВОК по приоритетам ---
-        val title = // Приоритет 1: Заголовок первого спойлера
-            promptSpoilers.first().selectFirst(".block-title")?.text()
-                ?.replace("ПРОМПТ №?\\d+?".toRegex(), "")?.trim()
-                // Приоритет 2: Первая осмысленная строка описания
-                ?: description.lines().firstOrNull { it.trim().length in 5..100 }
-                // Приоритет 3: Fallback
-                ?: ""
+        // --- 4. Заголовок ---
+        val firstVariantTitle = variants.firstOrNull()?.title ?: ""
+        val cleanTitle = firstVariantTitle
+            .replace("(?i)ПРОМПТ( №\\s*\\d+)?".toRegex(), "") // Удаляем "ПРОМПТ №1"
+            .replace("(?i)Спойлер".toRegex(), "")
+            .trim()
+            .takeIf { it.isNotEmpty() }
+            ?: description.lines().firstOrNull { it.isNotBlank() }?.take(50)
+            ?: "New Prompt"
 
         return EditedPostData(
-            title = title,
+            title = cleanTitle,
             description = description,
-            content = variants.first().content, // Основной контент - из первого варианта
+            content = variants.first().content,
             variants = variants
         )
+    }
+
+    // Важная функция для сохранения переносов строк
+    private fun parseHtmlToPromptText(element: Element): String {
+        val sb = StringBuilder()
+        element.childNodes().forEach { node ->
+            when (node) {
+                is TextNode -> sb.append(node.text())
+                is Element -> {
+                    if (node.tagName() == "br") sb.append("\n")
+                    else if (node.tagName() == "p" || node.tagName() == "div") {
+                        sb.append("\n").append(parseHtmlToPromptText(node)).append("\n")
+                    } else {
+                        sb.append(parseHtmlToPromptText(node))
+                    }
+                }
+            }
+        }
+        return sb.toString().trim()
     }
 }

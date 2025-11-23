@@ -3,8 +3,6 @@ package com.arny.aiprompts.data.files
 import com.arny.aiprompts.data.model.PlatformFile
 import com.arny.aiprompts.data.model.PromptJson
 import com.arny.aiprompts.domain.interfaces.FileDataSource
-import com.arny.aiprompts.presentation.navigation.MainComponent.Companion.IS_DEBUG_MODE
-import com.arny.aiprompts.presentation.navigation.MainComponent.Companion.IS_IMPORT_ENABLED
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.nio.charset.StandardCharsets

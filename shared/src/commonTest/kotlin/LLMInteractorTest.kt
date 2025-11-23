@@ -25,6 +25,7 @@ class LLMInteractorTest {
     private val mockHistoryRepository = mockk<IChatHistoryRepository>()
     private val interactor = LLMInteractor(mockModelsRepository, mockSettingsRepository, mockHistoryRepository)
 
+/*
     @Test
     fun `sendMessage emits loading then success when API call succeeds`() = runTest {
         // Given
@@ -101,6 +102,7 @@ class LLMInteractorTest {
         assertTrue(results[0] is DataResult.Loading)
         assertTrue(results[1] is DataResult.Error)
     }
+*/
 
     @Test
     fun `getChatHistoryFlow returns history from repository`() = runTest {

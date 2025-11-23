@@ -2,23 +2,18 @@
 android-compileSdk = "36"
 android-minSdk = "24"
 android-targetSdk = "36"
-# Core
-composeMarkdown = "0.2.6"
-markdownRender = "0.38.1"
 kotlin = "2.1.0"
 compose-plugin = "1.8.2"
-# Compose Multiplatform
 compose = "1.8.2"
 decompose ="3.3.0"
 lifecycle-coroutines ="2.5.0"
 icons = "1.7.2"
-# Android (не используется сейчас, но полезно для будущего)
 agp = "8.9.1"
+markdownRender = "0.30.0"
 androidx-core = "1.17.0"
 androidx-activity = "1.8.2"
 androidx-lifecycle = "2.9.3"
 ksp = "2.1.0-1.0.29"
-# Libraries
 ktor = "3.1.3"
 richeditorCompose = "1.0.0-rc04"
 room = "2.7.2"
@@ -27,11 +22,8 @@ kotlinx-serialization = "1.7.3"
 kotlinx-coroutines = "1.9.0"
 kotlinx-datetime = "0.6.2"
 uuid = "0.8.4"
-# Logging
 logback = "1.4.14"
-#koin
 koin = "4.0.4"
-
 junit = "5.10.2"
 truth = "1.1.4"
 mockk = "1.14.5"
@@ -46,16 +38,13 @@ multiplatform-settings = "1.3.0"
 okio = "3.9.0"
 nirmato-ollama = "0.2.0"
 kover = "0.8.3"
-buildconfig = "5.5.0"
+buildconfig = "6.0.1"
 
 [libraries]
 # Ktor for networking
-compose-markdown = { module = "com.github.jeziellago:compose-markdown", version.ref = "composeMarkdown" }
-compose-markdown-render-m3 = { module = "com.mikepenz:multiplatform-markdown-renderer-m3", version.ref = "markdownRender" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
-compose-material-icons-extended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "icons" }
 
 # Compose Multiplatform
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose" }
@@ -63,13 +52,12 @@ compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", v
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose" }
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose" }
-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version = "1.8.2" }
+compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version = "compose" }
+compose-material-icons-extended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "icons" }
 
 # --- ROOM ---
-androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
-richeditor-compose = { module = "com.mohamedrejeb.richeditor:richeditor-compose", version.ref = "richeditorCompose" }
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite-bundled" }
 
 # --- DECOMPOSE ---
@@ -80,7 +68,6 @@ lifecycle-coroutines = { module = "com.arkivanov.essenty:lifecycle-coroutines", 
 # --- KOIN ---
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
-koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
 koin-androidx-compose = { group = "io.insert-koin", name = "koin-androidx-compose", version.ref = "koin" }
 
 # --- Android ---
@@ -105,6 +92,9 @@ uuid = { module = "com.benasher44:uuid", version.ref = "uuid" }
 
 selenium-java = { module = "org.seleniumhq.selenium:selenium-java", version.ref = "selenium" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
+
+compose-markdown-render = { module = "com.mikepenz:multiplatform-markdown-renderer-m3", version.ref = "markdownRender" }
+compose-markdown-render-coil = { module = "com.mikepenz:multiplatform-markdown-renderer-coil3", version.ref = "markdownRender" }
 
 # --- TESTING ---
 junit = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }

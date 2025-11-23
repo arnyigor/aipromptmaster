@@ -65,9 +65,7 @@ interface MainComponent {
     }
 
     companion object {
-        val IS_DEBUG_MODE: Boolean = BuildConfig.DEBUG
-        val IS_IMPORT_ENABLED: Boolean = getPlatform() == Platform.Desktop &&
-                BuildConfig.IS_IMPORT_ENABLED
+        val IS_IMPORT_ENABLED: Boolean = getPlatform() == Platform.Desktop && BuildConfig.DEBUG
     }
 
     fun navigateToScraper()

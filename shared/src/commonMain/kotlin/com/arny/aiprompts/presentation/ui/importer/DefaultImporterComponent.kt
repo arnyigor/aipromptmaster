@@ -530,15 +530,12 @@ class DefaultImporterComponent(
         if (!_state.value.editedData.containsKey(post.postId)) {
             val extractedData = hybridParser.analyzeAndExtract(post.fullHtmlContent)
 
-            val newEditedData = if (extractedData != null) {
-                // Нормализуем переводы строк в извлеченных данных
-                extractedData.copy(
-                    title = normalizeLineBreaks(extractedData.title),
-                    description = normalizeLineBreaks(extractedData.description),
-                    content = normalizeLineBreaks(extractedData.content)
-                )
-            } else {
-                EditedPostData(
+            val newEditedData = extractedData?.copy(
+                title = normalizeLineBreaks(extractedData.title),
+                description = normalizeLineBreaks(extractedData.description),
+                content = normalizeLineBreaks(extractedData.content)
+            )
+                ?: EditedPostData(
                     title = "Промпт от ${post.author.name} (${post.postId})",
                     description = normalizeLineBreaks(
                         post.fullHtmlContent
@@ -548,7 +545,6 @@ class DefaultImporterComponent(
                     ),
                     content = ""
                 )
-            }
             _state.update {
                 it.copy(editedData = it.editedData + (post.postId to newEditedData))
             }
@@ -890,7 +886,7 @@ class DefaultImporterComponent(
     }
 
     override fun validateEditedData(postId: String): Boolean {
-        var resultJson: PromptJson?=null
+        var resultJson: PromptJson? = null
         val editedData = _state.value.editedData[postId] ?: return false
         val errors = mutableMapOf<String, String>()
 

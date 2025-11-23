@@ -1,5 +1,4 @@
 // shared/build.gradle.kts
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.io.FileInputStream
 import java.util.*
@@ -61,9 +60,8 @@ kotlin {
                 api(libs.uuid)
                 api(libs.jsoup)
                 implementation(libs.selenium.java)
-                implementation(libs.compose.markdown)
-                implementation(libs.compose.markdown.render.m3)
-                implementation(libs.richeditor.compose)
+                implementation(libs.compose.markdown.render)
+                implementation(libs.compose.markdown.render.coil)
                 implementation(libs.russhwolf.settings)
                 implementation(libs.russhwolf.settings.datastore)
                 implementation(libs.russhwolf.settings.coroutines)
@@ -113,25 +111,28 @@ kotlin {
     }
 }
 
+// Загружаем свойства из local.properties
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(FileInputStream(localPropertiesFile))
+}
+
+fun getProperty(key: String): String? {
+    return localProperties.getProperty(key)
+}
+
+// 2. Используем (Lazy не обязателен, если чтение быстрое, но хорош для порядка)
+val isDebug = getProperty("DEBUG_MODE")?.toBoolean() ?: false
+
 buildConfig {
     packageName("com.arny.aiprompts")
-
-    // Определяем, debug это или release
-    val isDebug = project.findProperty("app.debug") == "true" ||
-            System.getenv("DEBUG_MODE") == "true"
 
     buildConfigField("Boolean", "DEBUG", isDebug.toString())
     buildConfigField("Boolean", "IS_IMPORT_ENABLED", isDebug.toString())
 
     // Дополнительные поля
     buildConfigField("String", "VERSION", "\"${project.version}\"")
-}
-
-// Загружаем свойства из local.properties
-val localProperties = Properties()
-val localPropertiesFile = rootProject.file("local.properties")
-if (localPropertiesFile.exists()) {
-    localProperties.load(FileInputStream(localPropertiesFile))
 }
 
 dependencies {
@@ -154,7 +155,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    buildFeatures{
+    buildFeatures {
         buildConfig = true
     }
 }
