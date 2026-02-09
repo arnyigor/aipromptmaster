@@ -3,8 +3,9 @@ android-compileSdk = "36"
 android-minSdk = "24"
 android-targetSdk = "36"
 kotlin = "2.1.0"
-compose-plugin = "1.8.2"
-compose = "1.8.2"
+compose-plugin = "1.10.0"
+compose = "1.10.0"
+compose-material3 = "1.9.0"
 decompose ="3.3.0"
 lifecycle-coroutines ="2.5.0"
 icons = "1.7.2"
@@ -20,7 +21,8 @@ room = "2.7.2"
 sqlite-bundled = "2.5.2"
 kotlinx-serialization = "1.7.3"
 kotlinx-coroutines = "1.9.0"
-kotlinx-datetime = "0.6.2"
+kotlinx-datetime = "0.7.1"
+uiToolingPreview = "1.10.0"
 uuid = "0.8.4"
 logback = "1.4.14"
 koin = "4.0.4"
@@ -39,6 +41,7 @@ okio = "3.9.0"
 nirmato-ollama = "0.2.0"
 kover = "0.8.3"
 buildconfig = "6.0.1"
+uiToolingPreviewDesktop = "1.7.0"
 
 [libraries]
 # Ktor for networking
@@ -49,10 +52,11 @@ kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-
 # Compose Multiplatform
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose" }
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose" }
-compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose" }
+compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-material3" }
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version = "compose" }
+ui-tooling-preview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "compose" }
 compose-material-icons-extended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "icons" }
 
 # --- ROOM ---
@@ -97,7 +101,8 @@ compose-markdown-render = { module = "com.mikepenz:multiplatform-markdown-render
 compose-markdown-render-coil = { module = "com.mikepenz:multiplatform-markdown-renderer-coil3", version.ref = "markdownRender" }
 
 # --- TESTING ---
-junit = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+junit-jupiter-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit" }
 truth = { module = "com.google.truth:truth", version.ref = "truth" }
 mockk-common = { module = "io.mockk:mockk", version.ref = "mockk" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines-test" }

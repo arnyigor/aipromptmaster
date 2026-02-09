@@ -65,6 +65,7 @@ kotlin {
                 implementation(libs.russhwolf.settings)
                 implementation(libs.russhwolf.settings.datastore)
                 implementation(libs.russhwolf.settings.coroutines)
+                implementation(libs.ui.tooling.preview)
             }
         }
 
@@ -74,12 +75,21 @@ kotlin {
                 implementation(libs.keytar.java)
                 // Платформенные реализации
                 implementation(libs.kotlinx.coroutines.swing) // ПРАВИЛЬНОЕ МЕСТО
+                implementation(compose.desktop.currentOs)
+                // Обязательно добавьте это для работы @Preview
+                implementation(libs.ui.tooling.preview)
             }
         }
 
         val desktopTest by getting {
             dependencies {
-                // Убираем все test зависимости временно
+                implementation(kotlin("test"))
+                implementation(libs.junit.jupiter)
+                implementation(libs.junit.jupiter.params)
+                implementation(libs.truth)
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.selenium.java)
+                implementation(libs.kotlinx.datetime)
             }
         }
 
@@ -98,7 +108,8 @@ kotlin {
         val commonTest by getting {
             dependencies {
                 implementation(kotlin("test"))
-                implementation(libs.junit)
+                implementation(libs.junit.jupiter)
+                implementation(libs.junit.jupiter.params)
                 implementation(libs.truth)
                 implementation(libs.mockk.common)
                 implementation(libs.kotlinx.coroutines.test)
