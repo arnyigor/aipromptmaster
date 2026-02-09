@@ -20,6 +20,8 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
+import kotlin.time.ExperimentalTime
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -27,7 +29,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class, ExperimentalTime::class)
 class PromptDetailComponentTest {
 
     private val mockGetPromptUseCase = mockk<GetPromptUseCase>()
@@ -60,8 +62,8 @@ class PromptDetailComponentTest {
         compatibleModels = emptyList(),
         status = "active",
         isLocal = true,
-        createdAt = Clock.System.now(),
-        modifiedAt = Clock.System.now(),
+        createdAt = Instant.fromEpochMilliseconds(java.lang.System.currentTimeMillis()),
+        modifiedAt = Instant.fromEpochMilliseconds(java.lang.System.currentTimeMillis()),
         isFavorite = false
     )
 

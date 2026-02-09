@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalTime::class)
+
 package com.arny.aiprompts.data.parser
 
 import com.arny.aiprompts.domain.interfaces.IFileParser
@@ -5,8 +7,13 @@ import com.arny.aiprompts.domain.model.Author
 import com.arny.aiprompts.domain.model.FileAttachment
 import com.arny.aiprompts.domain.model.FileType
 import com.arny.aiprompts.domain.model.RawPostData
-import kotlinx.datetime.*
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 import org.jsoup.Jsoup
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 /**
  * Простой и надежный парсер, который реализует интерфейс IFileParser.

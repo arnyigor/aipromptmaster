@@ -1,9 +1,22 @@
 package com.arny.aiprompts.presentation.ui.scraper
 
-import com.arny.aiprompts.data.scraper.PreScrapeCheck
+import com.arny.aiprompts.domain.analysis.AnalyzerPipelineProgress
+import com.arny.aiprompts.domain.analysis.AnalyzerPipelineResult
+import com.arny.aiprompts.domain.analysis.AnalyzerStats
+import com.arny.aiprompts.domain.analysis.IAnalyzerPipeline
+import com.arny.aiprompts.domain.interfaces.PreScrapeCheck
 import com.arny.aiprompts.domain.model.PromptData
+import com.arny.aiprompts.domain.repositories.SyncResult
+import com.arny.aiprompts.domain.usecase.ProcessScrapedPostsUseCase
 import kotlinx.coroutines.flow.StateFlow
-import java.io.File
+
+/**
+ * Статистика промптов по типу хранения.
+ */
+data class PromptsStats(
+    val localCount: Int,
+    val syncedCount: Int
+)
 
 interface ScraperComponent {
     val state: StateFlow<ScraperState>
@@ -12,6 +25,7 @@ interface ScraperComponent {
     fun onPagesChanged(pages: String)
     fun onStartScrapingClicked()
     fun onParseAndSaveClicked()
+    fun onRunAnalyzerPipelineClicked()
     fun onOpenDirectoryClicked()
     fun onNavigateToImporterClicked()
     fun onBackClicked()
@@ -20,31 +34,99 @@ interface ScraperComponent {
     fun onOverwriteConfirmed()
     fun onContinueConfirmed()
     fun onDialogDismissed()
+
+    // Статистика промптов
+    suspend fun getPromptsStats(): PromptsStats
+
+    // Синхронизация с удалённым источником
+    suspend fun syncWithRemote(): SyncResult
 }
 
 /**
- * Data-класс, представляющий полное состояние экрана скрапера (ScraperScreen).
- * Является единым источником правды для UI.
+ * Represents the state of the analyzer pipeline.
+ */
+enum class PipelineStage {
+    IDLE,
+    LOADING_INDEX,
+    MAPPING_FILES,
+    DEDUPLICATING,
+    PARSING,
+    EXPORTING,
+    COMPLETED,
+    ERROR
+}
+
+/**
+ * Represents the result of running the analyzer pipeline.
+ */
+data class PipelineExecutionResult(
+    val success: Boolean,
+    val totalProcessed: Int,
+    val newPrompts: Int,
+    val skippedDuplicates: Int,
+    val missingPages: Int,
+    val errors: Int,
+    val outputFiles: List<String>,
+    val durationMs: Long,
+    val categoryBreakdown: Map<String, Int> = emptyMap()
+)
+
+/**
+ * Data class representing the complete state of the scraper screen (ScraperScreen).
+ * Single source of truth for UI.
  *
- * @property pagesToScrape Строковое значение из поля ввода "Количество страниц".
- * @property logs Список сообщений для отображения в панели логов.
- * @property savedHtmlFiles Список уже скачанных HTML-файлов, найденных на диске.
- * @property parsedPrompts Список промптов, извлеченных из HTML после парсинга.
- * @property lastSavedJsonFiles Список JSON-файлов, созданных в последней сессии сохранения.
- * @property inProgress Флаг, указывающий, что идет длительная операция (скрапинг или парсинг).
- * @property preScrapeCheckResult Результат предварительной проверки файлов. Если не null, показывается диалог.
+ * @property pagesToScrape String value from "Number of pages" input field.
+ * @property logs List of messages for log panel display.
+ * @property savedHtmlFiles List of downloaded HTML files (paths), found on disk.
+ * @property parsedPrompts List of prompts extracted from HTML after parsing.
+ * @property lastSavedJsonFiles List of JSON files created in last save session.
+ * @property inProgress Flag indicating a long-running operation (scraping or parsing).
+ * @property preScrapeCheckResult Result of pre-processing file check. If not null, dialog is shown.
+ * @property processingResult Processing result with detailed statistics.
+ *
+ * @property pipelineStage Current stage of the analyzer pipeline.
+ * @property pipelineProgress Current progress (0-100).
+ * @property pipelineCurrentPost Current post being processed.
+ * @property pipelineTotalPosts Total posts to process.
+ * @property pipelineLogs Pipeline-specific logs for detailed progress display.
+ * @property pipelineResult Result of the last pipeline execution.
+ * @property categoryFiles List of exported category files with prompt counts.
  */
 data class ScraperState(
-    // --- Состояние полей ввода ---
+    // --- Input field state ---
     val pagesToScrape: String = "10",
 
-    // --- Данные для отображения ---
+    // --- Data for display ---
     val logs: List<String> = listOf("Готов к запуску."),
-    val savedHtmlFiles: List<File> = emptyList(),
+    val savedHtmlFiles: List<String> = emptyList(),
     val parsedPrompts: List<PromptData> = emptyList(),
-    val lastSavedJsonFiles: List<File> = emptyList(),
+    val lastSavedJsonFiles: List<String> = emptyList(),
 
-    // --- Состояние UI ---
+    // --- UI state ---
     val inProgress: Boolean = false,
-    val preScrapeCheckResult: PreScrapeCheck? = null
+    val preScrapeCheckResult: PreScrapeCheck? = null,
+    val processingResult: ProcessScrapedPostsUseCase.ProcessingResult? = null,
+
+    // --- Analyzer Pipeline state ---
+    val pipelineStage: PipelineStage = PipelineStage.IDLE,
+    val pipelineProgress: Float = 0f,
+    val pipelineCurrentPost: String = "",
+    val pipelineTotalPosts: Int = 0,
+    val pipelineLogs: List<String> = emptyList(),
+    val pipelineResult: PipelineExecutionResult? = null,
+    val categoryFiles: List<CategoryFileInfo> = emptyList(),
+
+    // --- Sync Statistics ---
+    val lastSyncTime: String? = null,
+    val localPromptsCount: Int = 0,
+    val syncedPromptsCount: Int = 0
+)
+
+/**
+ * Information about an exported category file.
+ */
+data class CategoryFileInfo(
+    val categoryName: String,
+    val filePath: String,
+    val promptCount: Int
 )

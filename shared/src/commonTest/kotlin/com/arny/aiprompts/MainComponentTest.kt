@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class MainComponentTest {
 
@@ -32,9 +33,11 @@ class MainComponentTest {
     @Test
     fun testMainScreenValues() {
         val screens = MainScreen.values()
-        assertEquals(4, screens.size) // PROMPTS, CHAT, IMPORT, SETTINGS
+        // Main screens: SCRAPER, PROMPTS, CHAT, IMPORT, SETTINGS (5 screens)
+        assertEquals(5, screens.size)
 
         val expectedScreens = setOf(
+            MainScreen.SCRAPER,
             MainScreen.PROMPTS,
             MainScreen.CHAT,
             MainScreen.IMPORT,
@@ -50,6 +53,7 @@ class MainComponentTest {
     fun testNavigationFlow() {
         // Test that navigation between screens works as expected
         val screens = listOf(
+            MainScreen.SCRAPER,
             MainScreen.PROMPTS,
             MainScreen.CHAT,
             MainScreen.IMPORT,
@@ -61,10 +65,11 @@ class MainComponentTest {
             assertNotNull(screen) { "Screen at index $index should not be null" }
         }
 
-        // Test circular navigation
-        assertEquals(MainScreen.PROMPTS, screens[0])
-        assertEquals(MainScreen.CHAT, screens[1])
-        assertEquals(MainScreen.IMPORT, screens[2])
-        assertEquals(MainScreen.SETTINGS, screens[3])
+        // Test that all expected screens are present
+        assertTrue(MainScreen.SCRAPER in screens)
+        assertTrue(MainScreen.PROMPTS in screens)
+        assertTrue(MainScreen.CHAT in screens)
+        assertTrue(MainScreen.IMPORT in screens)
+        assertTrue(MainScreen.SETTINGS in screens)
     }
 }

@@ -13,7 +13,9 @@ import com.arny.aiprompts.BuildConfig
 import com.arny.aiprompts.data.model.Platform
 import com.arny.aiprompts.data.model.getPlatform
 import com.arny.aiprompts.data.repositories.ISettingsRepository
-import com.arny.aiprompts.data.scraper.WebScraper
+import com.arny.aiprompts.domain.analysis.IAnalyzerPipeline
+import com.arny.aiprompts.domain.interfaces.IWebScraper
+import com.arny.aiprompts.domain.interfaces.IPromptsRepository
 import com.arny.aiprompts.domain.files.FileMetadataReader
 import com.arny.aiprompts.domain.interactors.ILLMInteractor
 import com.arny.aiprompts.domain.interfaces.IHybridParser
@@ -27,6 +29,7 @@ import com.arny.aiprompts.domain.usecase.GetPromptUseCase
 import com.arny.aiprompts.domain.usecase.GetPromptsUseCase
 import com.arny.aiprompts.domain.usecase.ImportJsonUseCase
 import com.arny.aiprompts.domain.usecase.ParseRawPostsUseCase
+import com.arny.aiprompts.domain.usecase.ProcessScrapedPostsUseCase
 import com.arny.aiprompts.domain.usecase.SavePromptsAsFilesUseCase
 import com.arny.aiprompts.domain.usecase.ScrapeWebsiteUseCase
 import com.arny.aiprompts.domain.usecase.ToggleFavoriteUseCase
@@ -89,18 +92,21 @@ class DefaultMainComponent(
     private val createPromptUseCase: CreatePromptUseCase,
     private val updatePromptUseCase: UpdatePromptUseCase,
     private val scrapeUseCase: ScrapeWebsiteUseCase,
-    private val webScraper: WebScraper,
+    private val webScraper: IWebScraper,
+    private val processScrapedPostsUseCase: ProcessScrapedPostsUseCase,
     private val getAvailableTagsUseCase: GetAvailableTagsUseCase,
     private val importJsonUseCase: ImportJsonUseCase,
     private val parseRawPostsUseCase: ParseRawPostsUseCase,
     private val savePromptsAsFilesUseCase: SavePromptsAsFilesUseCase,
     private val promptSynchronizer: IPromptSynchronizer,
+    private val promptsRepository: IPromptsRepository,
     private val hybridParser: IHybridParser,
     private val httpClient: HttpClient,
     private val systemInteraction: SystemInteraction,
     private val fileMetadataReader: FileMetadataReader,
     private val llmInteractor: ILLMInteractor,
     private val settingsRepository: ISettingsRepository,
+    private val analyzerPipeline: IAnalyzerPipeline,
 ) : MainComponent, ComponentContext by componentContext {
 
     private val navigation = StackNavigation<MainConfig>()
@@ -177,7 +183,10 @@ class DefaultMainComponent(
                     scrapeUseCase = scrapeUseCase,
                     webScraper = webScraper,
                     parseRawPostsUseCase = parseRawPostsUseCase,
-                    savePromptsAsFilesUseCase = savePromptsAsFilesUseCase,
+                    processScrapedPostsUseCase = processScrapedPostsUseCase,
+                    analyzerPipeline = analyzerPipeline,
+                    promptSynchronizer = promptSynchronizer,
+                    promptsRepository = promptsRepository,
                     onNavigateToImporter = { files ->
                         if (files.isNotEmpty()) {
                             navigation.push(MainConfig.Import)

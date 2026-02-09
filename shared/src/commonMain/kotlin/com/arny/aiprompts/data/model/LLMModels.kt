@@ -1,11 +1,12 @@
 package com.arny.aiprompts.data.model
 
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.math.BigDecimal
 import java.util.UUID
+import kotlin.time.ExperimentalTime
 
 @Serializable
 sealed class MessageStatus {
@@ -23,7 +24,7 @@ sealed class MessageStatus {
 }
 
 @Serializable
-data class ChatMessage(
+data class ChatMessage @OptIn(ExperimentalTime::class) constructor(
     val id: String = UUID.randomUUID().toString(),
     val role: ChatMessageRole,
     val content: String,

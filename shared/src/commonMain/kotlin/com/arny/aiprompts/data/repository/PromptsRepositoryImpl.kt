@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalTime::class)
+
 package com.arny.aiprompts.data.repository
 
 import com.arny.aiprompts.data.db.daos.PromptDao
@@ -9,6 +11,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import kotlin.time.ExperimentalTime
 
 class PromptsRepositoryImpl(
     private val promptDao: PromptDao,
@@ -54,30 +57,34 @@ class PromptsRepositoryImpl(
     }
 
     override suspend fun savePrompts(prompts: List<Prompt>) = withContext(dispatcher) {
-        // 1. Получаем все локальные промпты из базы ОДНИМ запросом.
-        val localPrompts = promptDao.getAllPrompts().associateBy { it.id }
+        // 1. Получаем все существующие промпты из базы ОДНИМ запросом.
+        val existingEntities = promptDao.getAllPrompts().associateBy { it.id }
 
-        // 2. Создаем "слитый" список.
+        // 2. Создаем "слитый" список с защитой локальных промптов.
         val mergedPrompts = prompts.map { remotePrompt ->
-            // Ищем соответствующий локальный промпт.
-            val localPrompt = localPrompts[remotePrompt.id]
+            val existingEntity = existingEntities[remotePrompt.id]
 
-            // Если локальный промпт существует и он избранный,
-            // то мы создаем копию удаленного промпта, но с флагом isFavorite = true.
-            if (localPrompt != null && localPrompt.isFavorite) {
-                remotePrompt.copy(isFavorite = true)
-            } else {
-                // Иначе просто берем промпт с сервера как есть.
-                remotePrompt
+            when {
+                // Если промпт уже существует и является локальным - НЕ перезаписываем, берем локальную версию
+                existingEntity != null && existingEntity.isLocal -> {
+                    existingEntity.toDomain()
+                }
+                // Если промпт существует и избранный - сохраняем избранность
+                existingEntity != null && existingEntity.isFavorite -> {
+                    remotePrompt.copy(isFavorite = true)
+                }
+                // Если промпт существует (non-local) - обновляем, но сохраняем избранность если она была
+                existingEntity != null -> {
+                    remotePrompt.copy(isFavorite = existingEntity.isFavorite)
+                }
+                // Новый промпт - добавляем как есть
+                else -> remotePrompt
             }
         }
 
-        // 3. Сохраняем "слитый" список в базу.
-        // OnConflictStrategy.REPLACE теперь работает правильно: он заменяет данные,
-        // но флаг isFavorite мы уже сохранили.
-        val entitiesToSave = mergedPrompts.map { it.toEntity() }
-        entitiesToSave.forEach { entity ->
-            promptDao.insertPrompt(entity)
+        // 3. Сохраняем все mergedPrompts
+        mergedPrompts.forEach { prompt ->
+            promptDao.insertPrompt(prompt.toEntity())
         }
     }
 

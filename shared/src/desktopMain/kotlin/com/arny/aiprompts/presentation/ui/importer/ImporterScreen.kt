@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalTime::class)
+
 package com.arny.aiprompts.presentation.ui.importer
 
 import androidx.compose.foundation.border
@@ -94,9 +96,12 @@ import com.arny.aiprompts.data.parser.PostStructureParser
 import com.arny.aiprompts.domain.model.FileAttachment
 import com.arny.aiprompts.domain.model.FileType
 import com.arny.aiprompts.domain.model.RawPostData
-import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -975,8 +980,8 @@ private fun BasicEditorTab(state: ImporterState, editedData: EditedPostData, com
         fun formatDate(instant: Instant): String {
             return try {
                 val localDateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
-                "${localDateTime.dayOfMonth.toString().padStart(2, '0')}.${
-                    localDateTime.monthNumber.toString().padStart(2, '0')
+                "${localDateTime.day.toString().padStart(2, '0')}.${
+                    localDateTime.month.number.toString().padStart(2, '0')
                 }.${localDateTime.year} ${localDateTime.hour.toString().padStart(2, '0')}:${
                     localDateTime.minute.toString().padStart(2, '0')
                 }"

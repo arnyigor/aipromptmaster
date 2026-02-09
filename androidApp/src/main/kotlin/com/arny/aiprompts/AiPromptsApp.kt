@@ -25,6 +25,13 @@ class AiPromptsApp: Application() {
         // Запуск синхронизации промптов в фоне
         CoroutineScope(Dispatchers.IO).launch {
             val synchronizer = getKoin().get<IPromptSynchronizer>()
+
+            // Сначала загружаем локальные промпты (созданные через Importer)
+            println("✅ [AiPromptsApp] Загрузка локальных промптов...")
+            synchronizer.loadLocalPrompts()
+
+            // Затем синхронизируем с GitHub
+            println("✅ [AiPromptsApp] Синхронизация с GitHub...")
             synchronizer.synchronize()
         }
     }

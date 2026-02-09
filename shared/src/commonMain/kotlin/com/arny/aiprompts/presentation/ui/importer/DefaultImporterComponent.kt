@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalTime::class)
+
 package com.arny.aiprompts.presentation.ui.importer
 
 import com.arkivanov.decompose.ComponentContext
@@ -27,6 +29,7 @@ import java.io.File
 import java.io.IOException
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
+import kotlin.time.ExperimentalTime
 
 class DefaultImporterComponent(
     componentContext: ComponentContext,

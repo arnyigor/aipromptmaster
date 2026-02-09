@@ -8,8 +8,7 @@ import com.arny.aiprompts.data.repositories.ISettingsRepository
 import com.arny.aiprompts.data.repositories.PromptSynchronizerImpl
 import com.arny.aiprompts.data.repositories.SettingsRepositoryImpl
 import com.arny.aiprompts.data.repository.PromptsRepositoryImpl
-import com.arny.aiprompts.data.scraper.SeleniumWebScraper
-import com.arny.aiprompts.data.scraper.WebScraper
+import com.arny.aiprompts.domain.interfaces.IWebScraper
 import com.arny.aiprompts.domain.files.FileMetadataReader
 import com.arny.aiprompts.domain.interactors.ILLMInteractor
 import com.arny.aiprompts.domain.interactors.LLMInteractor
@@ -45,10 +44,8 @@ val dataModule = module {
     singleOf(::PromptSynchronizerImpl) { bind<IPromptSynchronizer>() }
 }
 
-// Добавляем новый модуль для скрапера
+// Добавляем новый модуль для скрапера (реализация в desktopMain)
 val scraperModule = module {
-    // Используем singleOf, так как SeleniumWebScraper не имеет зависимостей
-    singleOf(::SeleniumWebScraper) { bind<WebScraper>() }
     singleOf(::ScrapeWebsiteUseCase)
 }
 

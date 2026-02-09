@@ -12,7 +12,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlinx.datetime.Instant
+import kotlin.time.ExperimentalTime
 
+@OptIn(ExperimentalTime::class)
 class PromptExtensionsTest {
 
     @Test
@@ -175,7 +177,7 @@ class PromptExtensionsTest {
     }
 
     private fun createTestPromptData(): PromptData {
-        val now = kotlinx.datetime.Clock.System.now()
+        val nowMillis = java.lang.System.currentTimeMillis()
         return PromptData(
             id = "test-id",
             sourceId = "post-123",
@@ -183,8 +185,8 @@ class PromptExtensionsTest {
             description = "Test description",
             variants = listOf(PromptVariant(content = "Test content")),
             author = Author(id = "author-id", name = "Test Author"),
-            createdAt = now.toEpochMilliseconds(),
-            updatedAt = now.toEpochMilliseconds(),
+            createdAt = nowMillis,
+            updatedAt = nowMillis,
             category = "test",
             tags = listOf("tag1", "tag2"),
             source = "test-source"

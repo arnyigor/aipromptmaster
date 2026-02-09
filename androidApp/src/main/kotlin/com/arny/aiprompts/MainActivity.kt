@@ -26,6 +26,7 @@ class MainActivity : ComponentActivity() {
             parseRawPostsUseCase = get(),
             savePromptsAsFilesUseCase = get(),
             promptSynchronizer = get(),
+            promptsRepository = get(),
             hybridParser = get(),
             httpClient = get(),
             systemInteraction = get(),

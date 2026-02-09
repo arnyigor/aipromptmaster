@@ -7,7 +7,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -19,7 +19,8 @@ import java.time.format.DateTimeFormatter
 
 /**
  * Main pipeline for analyzing and parsing prompts from 4pda forum.
- * 
+ * Implements IAnalyzerPipeline interface for KMP compatibility.
+ *
  * Pipeline stages:
  * 1. Load index from CSV/JSON
  * 2. Map postId → HTML file
@@ -41,8 +42,8 @@ class PromptAnalyzerPipeline(
         System.getProperty("user.home"),
         ".aiprompts/integration_test/index_export.json"
     )
-) {
-    
+) : IAnalyzerPipeline {
+
     companion object {
         private val ISO_FORMAT = DateTimeFormatter.ISO_INSTANT
         private val json = Json {
@@ -55,148 +56,198 @@ class PromptAnalyzerPipeline(
     private val exporter = CategoryPromptExporter(outputDir)
 
     /**
-     * Progress update during pipeline execution.
+     * Run the full analysis pipeline with progress updates.
+     * Returns a Flow that emits progress at each stage.
+     * Uses callbackFlow to support concurrent emissions.
      */
-    sealed class PipelineProgress {
-        data class Loading(val message: String) : PipelineProgress()
-        data class Mapping(val message: String) : PipelineProgress()
-        data class Deduplicating(val message: String) : PipelineProgress()
-        data class Parsing(val current: Int, val total: Int, val postId: String) : PipelineProgress()
-        data class Exporting(val message: String) : PipelineProgress()
-        data class Completed(val result: PipelineResult) : PipelineProgress()
-        data class Error(val message: String) : PipelineProgress()
-    }
+    override fun runPipelineFlow(): Flow<AnalyzerPipelineProgress> = callbackFlow {
+        val startTime = System.currentTimeMillis()
+        val errors = mutableListOf<String>()
+        var newPrompts = 0
+        var skippedDuplicates = 0
+        var missingPages = 0
 
-    /**
-     * Final result of pipeline execution.
-     */
-    data class PipelineResult(
-        val success: Boolean,
-        val totalProcessed: Int,
-        val newPrompts: Int,
-        val skippedDuplicates: Int,
-        val missingPages: Int,
-        val errors: Int,
-        val outputFiles: List<String>,
-        val durationMs: Long
-    )
+        trySend(AnalyzerPipelineProgress.Loading("🚀 Starting Prompt Analyzer Pipeline"))
+        trySend(AnalyzerPipelineProgress.Loading("📂 Scraped pages: ${scrapedPagesDir.absolutePath}"))
+        trySend(AnalyzerPipelineProgress.Loading("📄 Index file: ${indexFile.absolutePath}"))
+        trySend(AnalyzerPipelineProgress.Loading("📁 Output dir: ${outputDir.absolutePath}"))
 
-    /**
-     * Entry from index export.
-     */
-    @Serializable
-    data class IndexEntry(
-        val category: String,
-        val title: String,
-        val postId: String,
-        val url: String
-    )
+        // 1. Load index
+        trySend(AnalyzerPipelineProgress.Loading("\n📥 Stage 1: Loading index..."))
+        val indexEntries = loadIndex()
+        if (indexEntries.isEmpty()) {
+            trySend(AnalyzerPipelineProgress.Error("Failed to load index: file not found or empty"))
+            trySend(AnalyzerPipelineProgress.Completed(AnalyzerPipelineResult(
+                success = false,
+                totalProcessed = 0,
+                newPrompts = 0,
+                skippedDuplicates = 0,
+                missingPages = 0,
+                errors = 1,
+                outputFiles = emptyList(),
+                durationMs = System.currentTimeMillis() - startTime
+            )))
+            close()
+            return@callbackFlow
+        }
+        trySend(AnalyzerPipelineProgress.Loading("   Loaded ${indexEntries.size} entries from index"))
 
-    /**
-     * Run the full analysis pipeline.
-     */
-    suspend fun runPipeline(includeContent: Boolean = true): PipelineResult = 
-        withContext(Dispatchers.IO) {
-            val startTime = System.currentTimeMillis()
-            val errors = mutableListOf<String>()
-            var newPrompts = 0
-            var skippedDuplicates = 0
-            var missingPages = 0
-            
-            println("🚀 Starting Prompt Analyzer Pipeline")
-            println("📂 Scraped pages: ${scrapedPagesDir.absolutePath}")
-            println("📄 Index file: ${indexFile.absolutePath}")
-            println("📁 Output dir: ${outputDir.absolutePath}")
+        // 2. Map postId → HTML file
+        trySend(AnalyzerPipelineProgress.Mapping("\n🔗 Stage 2: Mapping postId to HTML files..."))
+        val postIdToFile = mapPostIdToFile(indexEntries)
+        trySend(AnalyzerPipelineProgress.Mapping("   Mapped ${postIdToFile.size} postIds to files"))
 
-            // 1. Load index
-            println("\n📥 Stage 1: Loading index...")
-            val indexEntries = loadIndex()
-            if (indexEntries.isEmpty()) {
-                return@withContext PipelineResult(
-                    success = false,
-                    totalProcessed = 0,
-                    newPrompts = 0,
-                    skippedDuplicates = 0,
-                    missingPages = 0,
-                    errors = 1,
-                    outputFiles = emptyList(),
-                    durationMs = System.currentTimeMillis() - startTime
-                )
-            }
-            println("   Loaded ${indexEntries.size} entries from index")
+        // 3. Load already processed
+        trySend(AnalyzerPipelineProgress.Deduplicating("\n🔄 Stage 3: Checking already processed..."))
+        val processedIds = loadProcessedIds()
+        trySend(AnalyzerPipelineProgress.Deduplicating("   Already processed: ${processedIds.size} prompts"))
 
-            // 2. Map postId → HTML file
-            println("\n🔗 Stage 2: Mapping postId to HTML files...")
-            val postIdToFile = mapPostIdToFile(indexEntries)
-            println("   Mapped ${postIdToFile.size} postIds to files")
-
-            // 3. Load already processed
-            println("\n🔄 Stage 3: Checking already processed...")
-            val processedIds = loadProcessedIds()
-            println("   Already processed: ${processedIds.size} prompts")
-
-            // 4. Filter entries
-            val entriesToProcess = indexEntries.filter { entry ->
-                when {
-                    entry.postId in processedIds -> {
-                        skippedDuplicates++
-                        false
-                    }
-                    entry.postId !in postIdToFile -> {
-                        missingPages++
-                        errors.add("Missing page for: ${entry.postId}")
-                        false
-                    }
-                    else -> true
+        // 4. Filter entries
+        val entriesToProcess = indexEntries.filter { entry ->
+            when {
+                entry.postId in processedIds -> {
+                    skippedDuplicates++
+                    false
                 }
+                entry.postId !in postIdToFile -> {
+                    missingPages++
+                    errors.add("Missing page for: ${entry.postId}")
+                    false
+                }
+                else -> true
             }
-            println("   To process: ${entriesToProcess.size} new prompts")
+        }
+        trySend(AnalyzerPipelineProgress.Deduplicating("   To process: ${entriesToProcess.size} new prompts"))
 
-            if (entriesToProcess.isEmpty()) {
-                println("\n⚠️ No new prompts to process")
-                return@withContext PipelineResult(
-                    success = true,
-                    totalProcessed = 0,
-                    newPrompts = 0,
-                    skippedDuplicates = skippedDuplicates,
-                    missingPages = missingPages,
-                    errors = errors.size,
-                    outputFiles = emptyList(),
-                    durationMs = System.currentTimeMillis() - startTime
-                )
-            }
-
-            // 5. Parse HTML pages
-            println("\n🔍 Stage 4: Parsing ${entriesToProcess.size} pages...")
-            val parsedResults = parsePages(entriesToProcess, postIdToFile)
-            newPrompts = parsedResults.count { it.success && it.prompt != null }
-
-            // 6. Export
-            println("\n💾 Stage 5: Exporting to category files...")
-            val exportResult = exporter.exportByCategory(parsedResults, includeContent)
-            errors.addAll(exportResult.errors)
-
-            // 7. Save processed IDs
-            saveProcessedIds(parsedResults)
-
-            val duration = System.currentTimeMillis() - startTime
-            println("\n✅ Pipeline completed in ${duration}ms")
-            println("   New prompts: $newPrompts")
-            println("   Skipped: $skippedDuplicates")
-            println("   Missing pages: $missingPages")
-            println("   Errors: ${errors.size}")
-
-            PipelineResult(
-                success = errors.isEmpty() || newPrompts > 0,
-                totalProcessed = parsedResults.size,
-                newPrompts = newPrompts,
+        if (entriesToProcess.isEmpty()) {
+            trySend(AnalyzerPipelineProgress.Loading("\n⚠️ No new prompts to process"))
+            trySend(AnalyzerPipelineProgress.Completed(AnalyzerPipelineResult(
+                success = true,
+                totalProcessed = 0,
+                newPrompts = 0,
                 skippedDuplicates = skippedDuplicates,
                 missingPages = missingPages,
                 errors = errors.size,
-                outputFiles = exportResult.byCategory.values.map { it.path },
-                durationMs = duration
-            )
+                outputFiles = emptyList(),
+                durationMs = System.currentTimeMillis() - startTime
+            )))
+            close()
+            return@callbackFlow
         }
+
+        // 5. Parse HTML pages
+        trySend(AnalyzerPipelineProgress.Parsing(0, entriesToProcess.size, ""))
+        val parsedResults = parsePages(entriesToProcess, postIdToFile)
+
+        // Emit progress for each parsed page
+        parsedResults.forEachIndexed { index, result ->
+            trySend(AnalyzerPipelineProgress.Parsing(index + 1, parsedResults.size, result.postId ?: "unknown"))
+        }
+
+        newPrompts = parsedResults.count { it.success && it.prompt != null }
+
+        // 6. Export
+        trySend(AnalyzerPipelineProgress.Exporting("\n💾 Stage 5: Exporting to category files..."))
+        val exportResult = exporter.exportByCategory(parsedResults, true)
+        errors.addAll(exportResult.errors)
+
+        // 7. Save processed IDs
+        saveProcessedIds(parsedResults)
+
+        val duration = System.currentTimeMillis() - startTime
+        trySend(AnalyzerPipelineProgress.Exporting("\n✅ Pipeline completed in ${duration}ms"))
+        trySend(AnalyzerPipelineProgress.Exporting("   New prompts: $newPrompts"))
+        trySend(AnalyzerPipelineProgress.Exporting("   Skipped: $skippedDuplicates"))
+        trySend(AnalyzerPipelineProgress.Exporting("   Missing pages: $missingPages"))
+        trySend(AnalyzerPipelineProgress.Exporting("   Errors: ${errors.size}"))
+
+        trySend(AnalyzerPipelineProgress.Completed(AnalyzerPipelineResult(
+            success = errors.isEmpty() || newPrompts > 0,
+            totalProcessed = parsedResults.size,
+            newPrompts = newPrompts,
+            skippedDuplicates = skippedDuplicates,
+            missingPages = missingPages,
+            errors = errors.size,
+            outputFiles = exportResult.byCategory.values.map { it.path },
+            durationMs = duration
+        )))
+
+        close()
+    }
+
+    /**
+     * Parse pages in parallel.
+     */
+    private suspend fun parsePages(
+        entries: List<IndexEntry>,
+        postIdToFile: Map<String, File>
+    ): List<ParsedPromptResult> = coroutineScope {
+        entries.map { entry ->
+            async(Dispatchers.IO) {
+                val file = postIdToFile[entry.postId]
+                if (file == null) {
+                    ParsedPromptResult(
+                        success = false,
+                        postId = entry.postId,
+                        prompt = null,
+                        error = "HTML file not found"
+                    )
+                } else {
+                    parseSinglePage(entry, file)
+                }
+            }
+        }.awaitAll()
+    }
+
+    /**
+     * Get pipeline statistics.
+     */
+    override fun getStats(): AnalyzerStats {
+        val stats = exporter.getStats()
+        val processedFile = File(outputDir, "processed_ids.json")
+        var processedCount = 0
+
+        if (processedFile.exists()) {
+            try {
+                val content = processedFile.readText(StandardCharsets.UTF_8)
+                val data = json.decodeFromString(ProcessedIds.serializer(), content)
+                processedCount = data.ids.size
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
+
+        return AnalyzerStats(
+            scrapedPages = scrapedPagesDir.listFiles { f -> f.name.startsWith("page_") }?.size ?: 0,
+            processedPrompts = processedCount,
+            exportedPrompts = stats.totalPrompts,
+            exportedCategories = stats.categories,
+            outputDir = outputDir.absolutePath
+        )
+    }
+
+    /**
+     * Run the full analysis pipeline (blocking version).
+     */
+    suspend fun runPipeline(): AnalyzerPipelineResult {
+        var result: AnalyzerPipelineResult? = null
+        runPipelineFlow().collect { progress ->
+            when (progress) {
+                is AnalyzerPipelineProgress.Completed -> result = progress.result
+                else -> { /* ignore intermediate progress */ }
+            }
+        }
+        return result ?: AnalyzerPipelineResult(
+            success = false,
+            totalProcessed = 0,
+            newPrompts = 0,
+            skippedDuplicates = 0,
+            missingPages = 0,
+            errors = 1,
+            outputFiles = emptyList(),
+            durationMs = 0
+        )
+    }
 
     /**
      * Load index entries from JSON file.
@@ -237,7 +288,7 @@ class PromptAnalyzerPipeline(
         return try {
             val lines = csvFile.readLines()
             if (lines.size <= 1) return emptyList()
-            
+
             lines.drop(1).mapNotNull { line ->
                 val parts = parseCsvLine(line)
                 if (parts.size >= 4) {
@@ -259,7 +310,7 @@ class PromptAnalyzerPipeline(
         val result = mutableListOf<String>()
         var current = StringBuilder()
         var inQuotes = false
-        
+
         for (char in line) {
             when {
                 char == '"' -> inQuotes = !inQuotes
@@ -279,7 +330,7 @@ class PromptAnalyzerPipeline(
      */
     private fun mapPostIdToFile(entries: List<IndexEntry>): Map<String, File> {
         val map = mutableMapOf<String, File>()
-        
+
         // First, create reverse index from HTML files
         scrapedPagesDir.listFiles { f -> f.name.startsWith("page_") && f.name.endsWith(".html") }
             ?.forEach { file ->
@@ -287,13 +338,13 @@ class PromptAnalyzerPipeline(
                     .substringAfter("page_")
                     .substringBefore(".html")
                     .toIntOrNull()
-                
+
                 if (pageNum != null) {
                     // Parse the file and extract postIds
                     try {
                         val content = file.readText(StandardCharsets.UTF_8)
                         val postIds = extractPostIdsFromHtml(content)
-                        
+
                         postIds.forEach { postId ->
                             if (!map.containsKey(postId)) {
                                 map[postId] = file
@@ -304,7 +355,7 @@ class PromptAnalyzerPipeline(
                     }
                 }
             }
-        
+
         return map
     }
 
@@ -324,7 +375,7 @@ class PromptAnalyzerPipeline(
     private fun loadProcessedIds(): Set<String> {
         val processedFile = File(outputDir, "processed_ids.json")
         if (!processedFile.exists()) return emptySet()
-        
+
         return try {
             val content = processedFile.readText(StandardCharsets.UTF_8)
             json.decodeFromString(ProcessedIds.serializer(), content).ids.toSet()
@@ -341,7 +392,7 @@ class PromptAnalyzerPipeline(
         val ids = results
             .filter { it.success && it.prompt != null }
             .mapNotNull { it.postId }
-        
+
         try {
             val data = ProcessedIds(
                 lastUpdated = ISO_FORMAT.format(Instant.now()),
@@ -355,36 +406,11 @@ class PromptAnalyzerPipeline(
     }
 
     /**
-     * Parse pages in parallel.
-     */
-    private suspend fun parsePages(
-        entries: List<IndexEntry>,
-        postIdToFile: Map<String, File>
-    ): List<ParsedPromptResult> = coroutineScope {
-        entries.mapIndexed { index, entry ->
-            async(Dispatchers.IO) {
-                val file = postIdToFile[entry.postId]
-                
-                if (file == null) {
-                    ParsedPromptResult(
-                        success = false,
-                        postId = entry.postId,
-                        prompt = null,
-                        error = "HTML file not found"
-                    )
-                } else {
-                    parseSinglePage(entry, file)
-                }
-            }
-        }.awaitAll()
-    }
-
-    /**
      * Parse a single page.
      */
     private suspend fun parseSinglePage(entry: IndexEntry, file: File): ParsedPromptResult {
         val parseResult = pageParser.parsePage(file, entry.postId)
-        
+
         if (!parseResult.success) {
             return ParsedPromptResult(
                 success = false,
@@ -397,7 +423,7 @@ class PromptAnalyzerPipeline(
         // Generate ID
         val id = generatePromptId(entry.postId)
         val timestamp = ISO_FORMAT.format(Instant.now())
-        
+
         // Get tags from category and auto-detect
         val tags = CategoryTagMapper.getTagsWithAutoDetect(
             entry.category,
@@ -455,39 +481,12 @@ class PromptAnalyzerPipeline(
             .toIntOrNull()
     }
 
-    /**
-     * Get pipeline statistics.
-     */
-    fun getStats(): PipelineStats {
-        val stats = exporter.getStats()
-        val processedFile = File(outputDir, "processed_ids.json")
-        var processedCount = 0
-        
-        if (processedFile.exists()) {
-            try {
-                val content = processedFile.readText(StandardCharsets.UTF_8)
-                val data = json.decodeFromString(ProcessedIds.serializer(), content)
-                processedCount = data.ids.size
-            } catch (e: Exception) {
-                // Ignore
-            }
-        }
-        
-        return PipelineStats(
-            scrapedPages = scrapedPagesDir.listFiles { f -> f.name.startsWith("page_") }?.size ?: 0,
-            processedPrompts = processedCount,
-            exportedPrompts = stats.totalPrompts,
-            exportedCategories = stats.categories,
-            outputDir = outputDir.absolutePath
-        )
-    }
-
-    data class PipelineStats(
-        val scrapedPages: Int,
-        val processedPrompts: Int,
-        val exportedPrompts: Int,
-        val exportedCategories: Int,
-        val outputDir: String
+    @Serializable
+    data class IndexEntry(
+        val category: String,
+        val title: String,
+        val postId: String,
+        val url: String
     )
 
     @Serializable

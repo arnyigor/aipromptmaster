@@ -1,4 +1,9 @@
+@file:OptIn(ExperimentalTime::class)
+
 package com.arny.aiprompts.utils
+
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 /**
  * Простая реализация Timber-подобного логирования для Kotlin Multiplatform
@@ -9,7 +14,7 @@ object Logger {
     }
 
     private fun log(level: Level, tag: String?, message: String, throwable: Throwable? = null) {
-        val timestamp = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+        val timestamp = Clock.System.now().toEpochMilliseconds()
         val thread = getCurrentThreadName()
         val tagStr = tag ?: "APP"
         val fullMessage = "[$timestamp] [$thread] $tagStr: $message"

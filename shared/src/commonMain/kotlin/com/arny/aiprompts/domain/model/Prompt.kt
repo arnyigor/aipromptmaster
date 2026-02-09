@@ -1,7 +1,10 @@
+@file:OptIn(ExperimentalTime::class)
+
 package com.arny.aiprompts.domain.model
 
 import com.arny.aiprompts.data.model.PromptMetadata
-import kotlinx.datetime.Instant
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 data class Prompt(
     val id: String,

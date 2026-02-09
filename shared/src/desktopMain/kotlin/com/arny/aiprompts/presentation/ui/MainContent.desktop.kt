@@ -15,7 +15,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.MenuOpen
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Work
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,12 +33,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.key.*
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.arkivanov.decompose.extensions.compose.stack.Children
 import com.arkivanov.decompose.extensions.compose.stack.animation.fade
@@ -44,6 +52,42 @@ import com.arny.aiprompts.presentation.ui.llm.LlmScreen
 import com.arny.aiprompts.presentation.ui.prompts.PromptsScreen
 import com.arny.aiprompts.presentation.ui.scraper.ScraperScreen
 import com.arny.aiprompts.presentation.ui.settings.SettingsScreen
+
+
+/**
+ * ---- 4️⃣  Individual previews (optional but handy for quick checks)----
+ */
+@Preview
+@Composable
+private fun PreviewSidebarExpanded() {
+    MainSidebar(
+        currentScreen = MainScreen.PROMPTS,
+        sidebarCollapsed = false,
+        onNavigateToScraper = {},
+        onNavigateToPrompts = {},
+        onNavigateToChat = {},
+        onNavigateToImport = {},
+        onNavigateToSettings = {},
+        onToggleSidebar = {},
+        modifier = Modifier
+    )
+}
+
+@Preview
+@Composable
+private fun PreviewSidebarCollapsed() {
+    MainSidebar(
+        currentScreen = MainScreen.PROMPTS,
+        sidebarCollapsed = true,
+        onNavigateToScraper = {},
+        onNavigateToPrompts = {},
+        onNavigateToChat = {},
+        onNavigateToImport = {},
+        onNavigateToSettings = {},
+        onToggleSidebar = {},
+        modifier = Modifier
+    )
+}
 
 @Composable
 fun MainContentDesktopImpl(component: MainComponent) {
@@ -86,8 +130,14 @@ fun MainContentDesktopImpl(component: MainComponent) {
                     is MainComponent.Child.Prompts -> PromptsScreen(component = instance.component)
                     is MainComponent.Child.PromptDetails -> AdaptivePromptDetailLayout(component = instance.component)
                     is MainComponent.Child.Chat -> LlmScreen(component = instance.component)
-                    is MainComponent.Child.Scraper -> if (MainComponent.IS_IMPORT_ENABLED) ScraperScreen(component = instance.component)
-                    is MainComponent.Child.Import -> if (MainComponent.IS_IMPORT_ENABLED) ImporterScreen(component = instance.component) else Text("Import not available", modifier = Modifier.fillMaxSize())
+                    is MainComponent.Child.Scraper -> if (MainComponent.IS_IMPORT_ENABLED) ScraperScreen(
+                        component = instance.component
+                    )
+
+                    is MainComponent.Child.Import -> if (MainComponent.IS_IMPORT_ENABLED) ImporterScreen(
+                        component = instance.component
+                    ) else Text("Import not available", modifier = Modifier.fillMaxSize())
+
                     is MainComponent.Child.Settings -> SettingsScreen(component = instance.component)
                 }
             }

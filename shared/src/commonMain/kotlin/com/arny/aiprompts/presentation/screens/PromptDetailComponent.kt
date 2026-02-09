@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalTime::class)
+
 package com.arny.aiprompts.presentation.screens
 
 import com.arkivanov.decompose.ComponentContext
@@ -17,7 +19,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 // Добавим события для управления редактированием
 sealed interface PromptDetailEvent {
@@ -84,6 +87,7 @@ class DefaultPromptDetailComponent(
         }
     }
 
+    @OptIn(ExperimentalTime::class)
     private fun createNewPrompt(): PromptDetailState = PromptDetailState(
         isLoading = false,
         isEditing = true,

@@ -1,8 +1,10 @@
+@file:OptIn(ExperimentalTime::class)
+
 package com.arny.aiprompts.domain.usecase
 
 import com.arny.aiprompts.domain.interfaces.IPromptsRepository
-import com.arny.aiprompts.domain.model.Prompt
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 /**
  * UseCase для обновления существующего промпта

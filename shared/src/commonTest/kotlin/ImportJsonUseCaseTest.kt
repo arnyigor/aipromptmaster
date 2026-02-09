@@ -10,7 +10,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
+import kotlin.time.ExperimentalTime
 
+@OptIn(ExperimentalTime::class)
 class ImportJsonUseCaseTest {
 
     private val mockRepository = mockk<IPromptsRepository>()

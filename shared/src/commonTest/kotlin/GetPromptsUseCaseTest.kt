@@ -11,7 +11,9 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
+import kotlin.time.ExperimentalTime
 
+@OptIn(ExperimentalTime::class)
 class GetPromptsUseCaseTest {
 
     private val mockRepository = mockk<IPromptsRepository>()

@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalTime::class)
+
 package com.arny.aiprompts.presentation.ui.llm
 
 import androidx.compose.foundation.clickable
@@ -89,6 +91,8 @@ import com.arny.aiprompts.results.DataResult
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 @Suppress("UnusedBoxWithConstraintsScope")
 @Composable
@@ -837,7 +841,7 @@ fun ChatInputPanel(
 
 fun formatTimestamp(timestamp: Long): String {
     return try {
-        val instant = kotlinx.datetime.Instant.fromEpochMilliseconds(timestamp)
+        val instant = Instant.fromEpochMilliseconds(timestamp)
         val localDateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
         val time = localDateTime.time
         "${time.hour.toString().padStart(2, '0')}:${time.minute.toString().padStart(2, '0')}"

@@ -29,7 +29,13 @@ fun main() {
     // Запуск синхронизации промптов в фоне
     CoroutineScope(Dispatchers.IO).launch {
         val synchronizer = getKoin().get<IPromptSynchronizer>()
-        println("✅ [main]  synchronizer.synchronize()")
+        
+        // Сначала загружаем локальные промпты (созданные через Importer)
+        println("✅ [main] Загрузка локальных промптов...")
+        synchronizer.loadLocalPrompts()
+        
+        // Затем синхронизируем с GitHub
+        println("✅ [main] Синхронизация с GitHub...")
         synchronizer.synchronize()
     }
 
@@ -55,6 +61,7 @@ fun main() {
                 parseRawPostsUseCase = getKoin().get(),
                 savePromptsAsFilesUseCase = getKoin().get(),
                 promptSynchronizer = getKoin().get(),
+                promptsRepository = getKoin().get(),
                 hybridParser = getKoin().get(),
                 httpClient = getKoin().get(),
                 systemInteraction = getKoin().get(),
@@ -62,7 +69,9 @@ fun main() {
                 llmInteractor = getKoin().get(),
                 scrapeUseCase = getKoin().get(),
                 webScraper = getKoin().get(),
+                processScrapedPostsUseCase = getKoin().get(),
                 settingsRepository = getKoin().get(),
+                analyzerPipeline = getKoin().get(),
             )
         }
 
