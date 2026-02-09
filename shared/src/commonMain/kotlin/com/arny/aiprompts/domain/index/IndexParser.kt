@@ -22,6 +22,12 @@ class IndexParser {
         /** Regex to extract topic ID from URL */
         private val TOPIC_ID_REGEX = Regex("""showtopic=(\d+)""")
         
+        /** Regex to extract prompt number from title */
+        private val PROMPT_NUM_REGEX = Regex("""[Пп]РОМПТ\s*[№#]\s*(\d+)""")
+        
+        /** Regex to clean prompt title */
+        private val CLEAN_PROMPT_REGEX = Regex("""<[^>]+>""")
+        
         /** Base URL for 4pda forum */
         private const val BASE_URL = "https://4pda.to/forum"
     }
@@ -42,8 +48,8 @@ class IndexParser {
                     ?: document.selectFirst("div.post[data-post]")
                     ?: return@withContext IndexParseResult.Error("First post not found in HTML")
                 
-                // Extract all spoilers from the first post
-                // 4pda uses div.post-block.spoil or .block-title structure
+                // Extract all spoilers with categories from the first post
+                // Structure: div.post-block.spoil > div.block-title + div.block-body
                 val spoilers = firstPost.select("div.post-block.spoil")
                     .ifEmpty { firstPost.select("div.spoiler") }
                     .ifEmpty { 
@@ -64,33 +70,45 @@ class IndexParser {
                 }
 
                 val allLinks = mutableListOf<IndexLink>()
-                val currentTime = 0L // TODO: Use proper time source
+                val currentTime = System.currentTimeMillis()
                 
                 spoilers.forEachIndexed { index, spoiler ->
-                    val spoilerTitle = spoiler.selectFirst(".block-title")?.text()?.trim()
+                    // Extract category from block-title
+                    // Format: "1. 🌀 Универсальные / Метапромпты" or "2. 🔒 Обход цензуры"
+                    val categoryTitle = spoiler.selectFirst(".block-title")?.text()?.trim()
                         ?: spoiler.selectFirst("[class*=block-title]")?.text()?.trim()
                         ?: spoiler.selectFirst("a[name*='Spoil']")?.attr("name")
                     
-                    val category = extractCategory(spoiler, spoilerTitle)
+                    // Clean category name (remove number prefix like "1. ")
+                    val category = cleanCategoryName(categoryTitle)
                     
-                    // Find all links in this spoiler
-                    val links = spoiler.select("a[href]")
+                    // Extract all links from block-body
+                    val blockBody = spoiler.selectFirst(".block-body")
+                        ?: spoiler.selectFirst(".block-content")
                     
-                    links.forEach { linkElement ->
-                        val href = linkElement.attr("href")
-                        val fullUrl = resolveUrl(href)
+                    if (blockBody != null) {
+                        val links = blockBody.select("a[href]")
                         
-                        // Extract post ID from URL
-                        val postId = extractPostId(fullUrl)
-                        
-                        if (postId != null && isPromptLink(fullUrl)) {
-                            allLinks.add(IndexLink(
-                                postId = postId,
-                                originalUrl = fullUrl,
-                                spoilerTitle = spoilerTitle,
-                                category = category,
-                                parsedAt = currentTime
-                            ))
+                        links.forEach { linkElement ->
+                            val href = linkElement.attr("href")
+                            val fullUrl = resolveUrl(href)
+                            
+                            // Extract post ID from URL
+                            val postId = extractPostId(fullUrl)
+                            
+                            if (postId != null && isPromptLink(fullUrl)) {
+                                // Extract prompt title from link text
+                                val linkText = linkElement.text().trim()
+                                val promptTitle = extractPromptTitle(linkText, postId)
+                                
+                                allLinks.add(IndexLink(
+                                    postId = postId,
+                                    originalUrl = fullUrl,
+                                    spoilerTitle = promptTitle,
+                                    category = category,
+                                    parsedAt = currentTime
+                                ))
+                            }
                         }
                     }
                 }
@@ -115,6 +133,39 @@ class IndexParser {
                 IndexParseResult.Error("Failed to parse index: ${e.message}", e)
             }
         }
+    
+    /**
+     * Clean category name by removing number prefix.
+     * Example: "1. 🌀 Универсальные / Метапромпты" -> "Универсальные / Метапромпты"
+     */
+    private fun cleanCategoryName(name: String?): String? {
+        if (name == null) return null
+        // Remove leading number, dot, and spaces
+        val cleaned = name.replaceFirst(Regex("""^\d+\.\s*"""), "").trim()
+        // Remove emoji prefix if present (common patterns)
+        return cleaned.replaceFirst(Regex("""^[🌀🔒💼🎨📚💻🔬📊🎯🚀💡📝🎭🧠⚡🌐📈🔧📱🎬🎮🔍✨📖💪🌍🎓💰🎵🔮📢🎪🛠️🌟📋🔑💻📎🗂️📌💼📁🔎📃📑📕📗📘📙📚📔]+"""), "").trim()
+    }
+    
+    /**
+     * Extract prompt title from link text.
+     * Format: "ПРОМПТ № 003 - Попросите ChatGPT писать с разных точек зрения"
+     * or: "★ Подсказка к празднованию Дня Победы 9 мая! ★"
+     */
+    private fun extractPromptTitle(linkText: String, postId: String): String {
+        // Try to extract prompt number
+        val promptNumMatch = PROMPT_NUM_REGEX.find(linkText)
+        val promptNum = promptNumMatch?.groupValues?.get(1)
+        
+        // Remove HTML tags and clean
+        var title = CLEAN_PROMPT_REGEX.replace(linkText, "").trim()
+        
+        // If title is empty or too short, use postId
+        if (title.isBlank() || title.length < 3) {
+            title = "Prompt #$postId"
+        }
+        
+        return title
+    }
 
     /**
      * Update parsed index with page locations after resolving redirects.
