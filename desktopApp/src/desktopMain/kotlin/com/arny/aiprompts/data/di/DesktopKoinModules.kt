@@ -2,6 +2,7 @@ package com.arny.aiprompts.data.di
 
 
 import com.arny.aiprompts.data.db.AppDatabase
+import com.arny.aiprompts.data.db.getAppDatabase
 import com.arny.aiprompts.data.files.FileDataSourceImpl
 import com.arny.aiprompts.data.llm.NoOpLLMService
 import com.arny.aiprompts.data.parser.HybridParserImpl
@@ -38,8 +39,10 @@ import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
 
 val desktopDataModule = module {
-    single { AppDatabase.getInstance() }
+    single { getAppDatabase() }
     single { get<AppDatabase>().promptDao() }
+    single { get<AppDatabase>().chatSessionDao() }
+    single { get<AppDatabase>().chatMessageDao() }
     singleOf(::PromptsRepositoryImpl) { bind<IPromptsRepository>() }
     single { Dispatchers.IO }
 }

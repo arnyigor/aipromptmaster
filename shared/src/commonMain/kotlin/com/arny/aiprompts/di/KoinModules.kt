@@ -3,10 +3,9 @@ package com.arny.aiprompts.di
 import com.arny.aiprompts.data.api.GitHubService
 import com.arny.aiprompts.data.api.GitHubServiceImpl
 import com.arny.aiprompts.data.db.AppDatabase
+import com.arny.aiprompts.data.db.getAppDatabase
 import com.arny.aiprompts.data.llm.NoOpLLMService
-import com.arny.aiprompts.data.repositories.ISettingsRepository
-import com.arny.aiprompts.data.repositories.PromptSynchronizerImpl
-import com.arny.aiprompts.data.repositories.SettingsRepositoryImpl
+import com.arny.aiprompts.data.repositories.*
 import com.arny.aiprompts.data.repository.PromptsRepositoryImpl
 import com.arny.aiprompts.domain.interfaces.IWebScraper
 import com.arny.aiprompts.domain.files.FileMetadataReader
@@ -22,6 +21,7 @@ import io.ktor.client.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.serialization.json.Json
 import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
@@ -29,14 +29,25 @@ import org.koin.dsl.module
 
 // Модуль для слоя данных
 val dataModule = module {
-    // Создаем синглтон AppDatabase
-    single { AppDatabase.getInstance() }
+    // Создаем синглтон AppDatabase - platform-specific getInstance
+    single { getAppDatabase() }
     // Создаем синглтон PromptDao
     single { get<AppDatabase>().promptDao() }
+    // NEW: DAO для чатов
+    single { get<AppDatabase>().chatSessionDao() }
+    single { get<AppDatabase>().chatMessageDao() }
     // Создаем синглтон PromptsRepositoryImpl и связываем его с интерфейсом IPromptsRepository
     singleOf(::PromptsRepositoryImpl) { bind<IPromptsRepository>() }
     // Создаем синглтон SettingsRepositoryImpl и связываем его с интерфейсом ISettingsRepository
     singleOf(::SettingsRepositoryImpl) { bind<ISettingsRepository>() }
+    // NEW: Репозиторий сессий чата
+    singleOf(::ChatSessionRepositoryImpl) { bind<IChatSessionRepository>() }
+    // NEW: Репозиторий истории чата (для обратной совместимости)
+    singleOf(::ChatHistoryRepositoryImpl) { bind<IChatHistoryRepository>() }
+    // NEW: Репозиторий OpenRouter
+    singleOf(::OpenRouterRepositoryImpl) { bind<IOpenRouterRepository>() }
+    // NEW: JSON сериализатор
+    single { Json { ignoreUnknownKeys = true } }
     // Предоставляем диспатчер для фоновых задач
     single { Dispatchers.IO }
     // Синхронизатор

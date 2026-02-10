@@ -1,41 +1,67 @@
 package com.arny.aiprompts.data.db
 
+import androidx.room.ConstructedBy
 import androidx.room.Database
-import androidx.room.Room
 import androidx.room.RoomDatabase
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import androidx.room.RoomDatabaseConstructor
+import com.arny.aiprompts.data.db.daos.ChatMessageDao
+import com.arny.aiprompts.data.db.daos.ChatSessionDao
 import com.arny.aiprompts.data.db.daos.PromptDao
+import com.arny.aiprompts.data.db.entities.ChatMessageEntity
+import com.arny.aiprompts.data.db.entities.ChatSessionEntity
 import com.arny.aiprompts.data.db.entities.PromptEntity
-import kotlinx.coroutines.Dispatchers
-import java.io.File
 
+// The Room compiler generates the `actual` implementations.
+@Suppress("NO_ACTUAL_FOR_EXPECT")
+expect object AppDatabaseCtor : RoomDatabaseConstructor<AppDatabase>
+
+/**
+ * Platform-specific function to get database instance.
+ */
+expect fun getAppDatabase(): AppDatabase
+
+/**
+ * Главный класс базы данных Room для приложения AI Prompts.
+ *
+ * Версия 2: Добавлены таблицы для чатов
+ * - chat_sessions: хранит сессии чата с настройками
+ * - chat_messages: хранит сообщения внутри сессий
+ *
+ * @property promptDao DAO для работы с промптами
+ * @property chatSessionDao DAO для работы с сессиями чата
+ * @property chatMessageDao DAO для работы с сообщениями чата
+ */
 @Database(
-    entities = [PromptEntity::class], // Перечисляем все наши Entity (пока одна)
-    version = 1,                      // Версия БД. Увеличивать при изменении схемы
-    exportSchema = true               // Рекомендуется для отслеживания истории миграций
+    entities = [
+        PromptEntity::class,
+        ChatSessionEntity::class,
+        ChatMessageEntity::class
+    ],
+    version = 2,
+    exportSchema = true
 )
+@ConstructedBy(AppDatabaseCtor::class)
 abstract class AppDatabase : RoomDatabase() {
 
-    // Абстрактная функция, которая вернет нам наш DAO
+    /**
+     * Возвращает DAO для работы с промптами.
+     */
     abstract fun promptDao(): PromptDao
 
+    /**
+     * Возвращает DAO для работы с сессиями чата.
+     */
+    abstract fun chatSessionDao(): ChatSessionDao
+
+    /**
+     * Возвращает DAO для работы с сообщениями чата.
+     */
+    abstract fun chatMessageDao(): ChatMessageDao
+
     companion object {
-        const val DBNAME = "AiPromptDB.db" // Название БД
-        // Volatile гарантирует, что значение INSTANCE всегда будет актуальным
-        // для всех потоков.
-        @Volatile
-        private var INSTANCE: AppDatabase? = null
-
-        fun getInstance(): AppDatabase {
-            // Если INSTANCE не null, возвращаем его.
-            // Если null, то создаем базу данных в синхронизированном блоке.
-            return INSTANCE ?: synchronized(this) {
-                val instance = buildDatabase()
-                INSTANCE = instance
-                instance
-            }
-        }
-
-        private fun buildDatabase(): AppDatabase = getDatabaseBuilder().build()
+        /**
+         * Имя файла базы данных.
+         */
+        const val DB_NAME = "AiPromptDB.db"
     }
 }

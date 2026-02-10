@@ -2,23 +2,28 @@ package com.arny.aiprompts.presentation.features.llm
 
 import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.essenty.lifecycle.coroutines.coroutineScope
-import com.arny.aiprompts.domain.interactors.ILLMInteractor
+import com.arny.aiprompts.data.model.ChatMessage
 import com.arny.aiprompts.data.model.ChatSession
+import com.arny.aiprompts.data.model.ChatSettings
+import com.arny.aiprompts.domain.interactors.ILLMInteractor
 import com.arny.aiprompts.results.DataResult
 import com.arny.aiprompts.utils.Logger
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
 /**
- * Реализация UI‑компонента для работы с LLM‑моделями.
+ * Реализация компонента для работы с LLM чатом.
  *
- * Компонент управляет состоянием экрана генерации текста, подписывается на поток моделей и
- * историю чата из `ILLMInteractor`, а также обрабатывает пользовательские действия
- * (выбор модели, отправка сообщения, отмена/повтор запроса, навигация).
+ * ОБНОВЛЕНИЯ (Phase 6):
+ * - Полная поддержка сессий чата с persistence в Room
+ * - System prompt для каждой сессии
+ * - Настройки генерации (temperature, maxTokens, etc.)
+ * - Улучшенная обработка ошибок и управление Job
+ * - Подписка на изменения сессий и сообщений из БД
  *
- * @param componentContext Контекст Decompose‑компонента.
- * @param llmInteractor Слой бизнес‑логики для взаимодействия с LLM‑сервисом.
- * @param onBack Функция‑обработчик «назад» (вызывается при переходе к предыдущему экрану).
+ * @param componentContext Контекст Decompose-компонента
+ * @param llmInteractor Интерактор для работы с LLM
+ * @param onBack Callback для возврата назад
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class DefaultLlmComponent(
@@ -27,88 +32,237 @@ class DefaultLlmComponent(
     private val onBack: () -> Unit,
 ) : LlmComponent, ComponentContext by componentContext {
 
-    /** Корутинный scope, привязанный к жизненному циклу компонента. */
+    /** Scope для корутин, привязанный к жизненному циклу. */
     private val scope = coroutineScope()
 
-    /** Текущая задача генерации (если есть), чтобы можно было отменить её. */
+    /** Текущая задача генерации. */
     private var streamingJob: Job? = null
 
-    /** Состояние UI, опубликованное через `StateFlow`. */
+    /** Состояние UI. */
     private val _uiState = MutableStateFlow(LlmUiState())
     override val uiState: StateFlow<LlmUiState> = _uiState.asStateFlow()
+
+    /** Триггер для обновления списка моделей. */
     private val refreshTrigger = MutableSharedFlow<Unit>(replay = 1)
 
     init {
+        setupFlows()
+        loadInitialData()
+    }
+
+    /** Настраивает потоки данных. */
+    private fun setupFlows() {
+        // Поток моделей
         refreshTrigger
-            .flatMapLatest {
-                llmInteractor.getModels()
-            }
-            .onEach { modelsResult ->
-                _uiState.update { it.copy(modelsResult = modelsResult) }
+            .flatMapLatest { llmInteractor.getModels() }
+            .onEach { result ->
+                _uiState.update { it.copy(modelsResult = result) }
             }
             .launchIn(scope)
 
-        // Первоначальная загрузка
-        loadModels()
-
-        // Подписка на историю чата
-        llmInteractor.getChatHistoryFlow()
-            .onEach { chatHistory ->
+        // Поток сессий из БД
+        llmInteractor.getAllSessions()
+            .onEach { sessions ->
                 _uiState.update { state ->
-                    state.copy(chatHistory = chatHistory)
+                    // Если нет выбранной сессии, выбираем первую активную
+                    val newSelectedId = state.selectedChatId 
+                        ?: sessions.firstOrNull()?.id
+                    state.copy(
+                        chatSessions = sessions,
+                        selectedChatId = newSelectedId
+                    )
                 }
+                
+                // Обновляем подписку на сообщения текущей сессии
+                observeCurrentSessionMessages()
             }
             .launchIn(scope)
 
-        // Инициируем загрузку моделей при создании компонента
+        // Начальная загрузка моделей
         scope.launch {
             llmInteractor.refreshModels()
         }
     }
 
-    fun loadModels() {
+    /** Загружает начальные данные. */
+    private fun loadInitialData() {
         scope.launch {
             refreshTrigger.emit(Unit)
         }
     }
 
-    /** Вызывается при изменении текста запроса в поле ввода. */
-    override fun onPromptChanged(newPrompt: String) {
-        _uiState.update { it.copy(prompt = newPrompt) }
+    /** Подписка на сообщения текущей сессии. */
+    private var messagesJob: Job? = null
+
+    private fun observeCurrentSessionMessages() {
+        // Отменяем предыдущую подписку
+        messagesJob?.cancel()
+        
+        val sessionId = _uiState.value.selectedChatId ?: return
+        
+        messagesJob = llmInteractor.getMessagesForSession(sessionId)
+            .onEach { messages ->
+                _uiState.update { it.copy(messages = messages) }
+            }
+            .catch { e ->
+                Logger.e(e, "DefaultLlmComponent", "Error loading messages")
+            }
+            .launchIn(scope)
     }
 
-    /**
-     * Обрабатывает выбор модели пользователем.
-     *
-     * Внутри вызывает `toggleModelSelection`, чтобы либо выбрать новую модель,
-     * либо снять выделение с текущей.
-     */
+    // ==================== Навигация ====================
+
+    override fun onNavigateBack() {
+        onBack()
+    }
+
+    // ==================== Модели ====================
+
     override fun onModelSelected(modelId: String) {
         scope.launch {
             llmInteractor.toggleModelSelection(modelId)
         }
     }
 
-    /**
-     * Запускает потоковую генерацию текста модели.
-     *
-     * Выполняет валидацию выбранной модели, состояния генерации и пустоты запроса,
-     * отменяет предыдущий поток (если он существует) и подписывается на
-     * `sendStreamingMessage`. Обновления приходят как `DataResult`‑объекты.
-     */
+    override fun onSearchQueryChanged(query: String) {
+        _uiState.update { it.copy(searchQuery = query) }
+    }
+
+    override fun onCategorySelected(category: ModelCategory) {
+        _uiState.update { it.copy(selectedCategory = category) }
+    }
+
+    override fun onSortOrderSelected(sortOrder: ModelSortOrder) {
+        _uiState.update { it.copy(selectedSortOrder = sortOrder) }
+    }
+
+    override fun refreshModels() {
+        scope.launch {
+            refreshTrigger.emit(Unit)
+        }
+    }
+
+    override fun toggleModelDialog() {
+        _uiState.update { it.copy(showModelDialog = !it.showModelDialog) }
+    }
+
+    // ==================== Сессии чата ====================
+
+    override fun onChatSessionSelected(sessionId: String) {
+        _uiState.update { it.copy(selectedChatId = sessionId) }
+        observeCurrentSessionMessages()
+    }
+
+    override fun onCreateNewChatSession() {
+        scope.launch {
+            try {
+                val newSession = llmInteractor.createSession(
+                    name = "Новый чат ${System.currentTimeMillis() / 1000}",
+                    systemPrompt = null
+                )
+                _uiState.update { state ->
+                    state.copy(selectedChatId = newSession.id)
+                }
+                observeCurrentSessionMessages()
+            } catch (e: Exception) {
+                Logger.e(e, "DefaultLlmComponent", "Failed to create session")
+                _uiState.update { it.copy(errorMessage = "Не удалось создать чат: ${e.message}") }
+            }
+        }
+    }
+
+    override fun onDeleteChatSession(sessionId: String) {
+        scope.launch {
+            try {
+                llmInteractor.deleteSession(sessionId)
+                // Если удалили текущую сессию, сбрасываем выбор
+                _uiState.update { state ->
+                    if (state.selectedChatId == sessionId) {
+                        state.copy(selectedChatId = null, messages = emptyList())
+                    } else state
+                }
+            } catch (e: Exception) {
+                Logger.e(e, "DefaultLlmComponent", "Failed to delete session")
+                _uiState.update { it.copy(errorMessage = "Не удалось удалить чат: ${e.message}") }
+            }
+        }
+    }
+
+    override fun onRenameChatSession(sessionId: String, newName: String) {
+        scope.launch {
+            try {
+                llmInteractor.renameSession(sessionId, newName)
+            } catch (e: Exception) {
+                Logger.e(e, "DefaultLlmComponent", "Failed to rename session")
+                _uiState.update { it.copy(errorMessage = "Не удалось переименовать чат: ${e.message}") }
+            }
+        }
+    }
+
+    override fun onArchiveChatSession(sessionId: String) {
+        scope.launch {
+            try {
+                llmInteractor.archiveSession(sessionId)
+            } catch (e: Exception) {
+                Logger.e(e, "DefaultLlmComponent", "Failed to archive session")
+                _uiState.update { it.copy(errorMessage = "Не удалось архивировать чат: ${e.message}") }
+            }
+        }
+    }
+
+    override fun onSystemPromptChanged(systemPrompt: String) {
+        val sessionId = _uiState.value.selectedChatId ?: return
+        scope.launch {
+            try {
+                llmInteractor.updateSystemPrompt(sessionId, systemPrompt)
+            } catch (e: Exception) {
+                Logger.e(e, "DefaultLlmComponent", "Failed to update system prompt")
+                _uiState.update { it.copy(errorMessage = "Не удалось обновить system prompt: ${e.message}") }
+            }
+        }
+    }
+
+    override fun onChatSettingsChanged(settings: ChatSettings) {
+        val sessionId = _uiState.value.selectedChatId ?: return
+        scope.launch {
+            try {
+                llmInteractor.updateChatSettings(sessionId, settings)
+            } catch (e: Exception) {
+                Logger.e(e, "DefaultLlmComponent", "Failed to update settings")
+                _uiState.update { it.copy(errorMessage = "Не удалось обновить настройки: ${e.message}") }
+            }
+        }
+    }
+
+    override fun toggleChatList() {
+        _uiState.update { it.copy(showChatList = !it.showChatList) }
+    }
+
+    // ==================== Сообщения ====================
+
+    override fun onPromptChanged(newPrompt: String) {
+        _uiState.update { it.copy(prompt = newPrompt) }
+    }
+
     override fun onStreamingGenerateClicked() {
         val currentState = _uiState.value
+        val sessionId = currentState.selectedChatId
         val selectedModel = currentState.selectedModel
 
         // Валидация
         when {
+            sessionId == null -> {
+                _uiState.update { it.copy(errorMessage = "Выберите или создайте чат") }
+                return
+            }
             selectedModel == null -> {
                 _uiState.update { it.copy(errorMessage = "Выберите модель") }
                 return
             }
             currentState.isGenerating -> {
-                _uiState.update { it.copy(prompt = "") }
-                Logger.w("DefaultLlmComponent","Generation already in progress")
+                _uiState.update { 
+                    it.copy(errorMessage = "Дождитесь завершения текущей генерации") 
+                }
                 return
             }
             currentState.prompt.isBlank() -> {
@@ -119,166 +273,131 @@ class DefaultLlmComponent(
 
         val messageToSend = currentState.prompt
 
-        // Отменяем предыдущий запрос (если есть)
+        // Отменяем предыдущий запрос
         streamingJob?.cancel()
 
         streamingJob = scope.launch {
-            llmInteractor.sendStreamingMessage(
-                model = selectedModel.id,
-                userMessage = messageToSend
+            // Очищаем prompt сразу после отправки
+            _uiState.update { it.copy(prompt = "") }
+            
+            llmInteractor.sendMessage(
+                sessionId = sessionId!!,
+                content = messageToSend
             )
                 .catch { error ->
                     Logger.e(error, "Streaming error")
                     _uiState.update {
-                        it.copy(
-                            errorMessage = error.message ?: "Произошла ошибка",
-                        )
+                        it.copy(errorMessage = error.message ?: "Произошла ошибка")
                     }
                 }
-                .onCompletion { /* можно обработать завершение потока */ }
+                .onCompletion { cause ->
+                    streamingJob = null
+                    if (cause != null && cause !is CancellationException) {
+                        Logger.e(cause, "Streaming completed with error")
+                    }
+                }
                 .collect { result ->
                     when (result) {
                         is DataResult.Success -> {
-                            // Обновления идут через chatHistory flow
-//                            Logger.d("DefaultLlmComponent","Streaming chunk received message:${result.data.content}")
+                            // Обновления приходят через Flow сообщений
+                            Logger.d("DefaultLlmComponent", "Message updated")
                         }
                         is DataResult.Error -> {
                             val errorMsg = result.exception?.message ?: "Ошибка генерации"
                             _uiState.update { it.copy(errorMessage = errorMsg) }
                         }
                         is DataResult.Loading -> {
-                            // Начало стриминга – можно показать индикатор
+                            // Индикатор начала загрузки
                         }
                     }
                 }
-            }
+        }
     }
 
-    /** Отменяет текущую потоковую генерацию. */
     override fun onCancelGenerating() {
         streamingJob?.cancel()
-        Logger.d("DefaultLlmComponent","Generation cancelled by user")
+        streamingJob = null
+        scope.launch {
+            llmInteractor.cancelStreaming()
+        }
+        Logger.d("DefaultLlmComponent", "Generation cancelled")
     }
 
-    /**
-     * Запускает повторный запрос для сообщения, которое завершилось ошибкой.
-     *
-     * Внутри вызывает `retryMessage` в интеракторе и подписывается на результат.
-     */
     override fun onRetryMessage(messageId: String) {
         scope.launch {
-            llmInteractor.retryMessage(messageId)
-        }
-    }
-
-    /** Обрабатывает переход «назад» – просто вызываем переданный callback. */
-    override fun onNavigateBack() {
-        onBack()
-    }
-
-    /** Принудительно обновляет список моделей (собирает из API). */
-    override fun refreshModels() {
-        loadModels()
-    }
-
-    /**
-     * Очищает историю чата и сбрасывает поле ввода запроса.
-     *
-     * После очистки состояние UI обновляется с пустым `prompt`.
-     */
-    override fun clearChat() {
-        scope.launch {
-            llmInteractor.clearChat()
-            _uiState.update { it.copy(prompt = "") }
-        }
-    }
-
-    /** Обновляет строку поиска модели. */
-    override fun onSearchQueryChanged(query: String) {
-        _uiState.update { it.copy(searchQuery = query) }
-    }
-
-    /** Устанавливает выбранную категорию фильтрации моделей. */
-    override fun onCategorySelected(category: ModelCategory) {
-        _uiState.update { it.copy(selectedCategory = category) }
-    }
-
-    /** Устанавливает порядок сортировки списка моделей. */
-    override fun onSortOrderSelected(sortOrder: ModelSortOrder) {
-        _uiState.update { it.copy(selectedSortOrder = sortOrder) }
-    }
-
-
-    /** Очищает сообщение об ошибке, если оно было показано. */
-    override fun clearError() {
-        _uiState.update { it.copy(errorMessage = null) }
-    }
-
-    // выбор сессии чата
-    override fun onChatSessionSelected(sessionId: String) {
-        _uiState.update { it.copy(selectedChatId = sessionId) }
-    }
-
-    // создание сессии чата
-    override fun onCreateNewChatSession() {
-        scope.launch {
-            val newSession = ChatSession(
-                id = java.util.UUID.randomUUID().toString(),
-                name = "Новый чат",
-                timestamp = System.currentTimeMillis(),
-                lastMessage = "",
-                messages = emptyList()
-            )
-            _uiState.update { state ->
-                state.copy(
-                    chatSessions = state.chatSessions + newSession,
-                    selectedChatId = newSession.id
-                )
+            try {
+                llmInteractor.retryMessage(messageId)
+            } catch (e: Exception) {
+                Logger.e(e, "DefaultLlmComponent", "Failed to retry message")
+                _uiState.update { it.copy(errorMessage = "Не удалось повторить: ${e.message}") }
             }
         }
     }
 
-    // удаление сессии чата
-    override fun onDeleteChatSession(sessionId: String) {
+    override fun onEditMessage(messageId: String, newContent: String) {
         scope.launch {
-            _uiState.update { state ->
-                val updatedSessions = state.chatSessions.filter { it.id != sessionId }
-                val newSelectedId = if (state.selectedChatId == sessionId) {
-                    updatedSessions.firstOrNull()?.id
-                } else {
-                    state.selectedChatId
-                }
-                state.copy(
-                    chatSessions = updatedSessions,
-                    selectedChatId = newSelectedId
-                )
-            }
-        }
-    }
-
-    // переименование сессии чата
-    override fun onRenameChatSession(sessionId: String, newName: String) {
-        scope.launch {
-            _uiState.update { state ->
-                state.copy(
-                    chatSessions = state.chatSessions.map {
-                        if (it.id == sessionId) it.copy(name = newName) else it
+            try {
+                llmInteractor.editMessage(messageId, newContent)
+                    .collect { result ->
+                        when (result) {
+                            is DataResult.Success -> {
+                                Logger.d("DefaultLlmComponent", "Message edited")
+                            }
+                            is DataResult.Error -> {
+                                _uiState.update { 
+                                    it.copy(errorMessage = result.exception?.message ?: "Ошибка редактирования") 
+                                }
+                            }
+                            else -> {}
+                        }
                     }
-                )
+            } catch (e: Exception) {
+                Logger.e(e, "DefaultLlmComponent", "Failed to edit message")
+                _uiState.update { it.copy(errorMessage = "Не удалось отредактировать: ${e.message}") }
             }
         }
     }
 
-    // Toggle видимости панелей
-    override fun toggleChatList() {
-        _uiState.update { it.copy(showChatList = !it.showChatList) }
+    override fun onDeleteMessage(messageId: String) {
+        scope.launch {
+            try {
+                llmInteractor.deleteMessage(messageId)
+            } catch (e: Exception) {
+                Logger.e(e, "DefaultLlmComponent", "Failed to delete message")
+                _uiState.update { it.copy(errorMessage = "Не удалось удалить сообщение: ${e.message}") }
+            }
+        }
     }
+
+    override fun clearChat() {
+        val sessionId = _uiState.value.selectedChatId
+        scope.launch {
+            try {
+                llmInteractor.clearChat(sessionId)
+            } catch (e: Exception) {
+                Logger.e(e, "DefaultLlmComponent", "Failed to clear chat")
+                _uiState.update { it.copy(errorMessage = "Не удалось очистить чат: ${e.message}") }
+            }
+        }
+    }
+
+    // ==================== UI ====================
 
     override fun toggleParameters() {
         _uiState.update { it.copy(showParameters = !it.showParameters) }
     }
 
-    override fun toggleModelDialog() {
-        _uiState.update { it.copy(showModelDialog = !it.showModelDialog) }
+    override fun clearError() {
+        _uiState.update { it.copy(errorMessage = null) }
+    }
+
+    override fun onSearchInHistory(query: String) {
+        _uiState.update { 
+            it.copy(
+                searchHistoryQuery = query,
+                isSearchingHistory = query.isNotBlank()
+            ) 
+        }
+        // TODO: Реализовать фильтрацию сообщений по запросу
     }
 }

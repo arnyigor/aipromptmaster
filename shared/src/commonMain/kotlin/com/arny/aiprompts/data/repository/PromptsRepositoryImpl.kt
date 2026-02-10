@@ -96,9 +96,7 @@ class PromptsRepositoryImpl(
         offset: Int,
         limit: Int
     ): List<Prompt> = withContext(dispatcher) {
-
         val prompts = if (tags.isEmpty()) {
-            // Если фильтра по тегам нет, используем простой и быстрый запрос
             promptDao.getPromptsWithoutTags(
                 searchQuery = search,
                 category = category,
@@ -107,44 +105,31 @@ class PromptsRepositoryImpl(
                 offset = offset
             )
         } else {
-            // Если есть теги, строим строку с условиями
-            // Пример: " (',' || tags || ',' LIKE '%,general,%') AND (',' || tags || ',' LIKE '%,ai,%') "
-            val tagCondition = tags.joinToString(separator = " AND ") { tag ->
-                // Оборачиваем в запятые, чтобы избежать частичных совпадений (например, "ai" в "train")
-                " (',' || tags || ',' LIKE '%,' || :tag_${tag} || ',%') "
+            // Build tag condition string for SQL
+            val tagCondition = tags.joinToString(" AND ") { tag ->
+                "tags LIKE '%$tag%'"
             }
-
-            // К сожалению, Room не позволяет напрямую подставлять такую строку в @Query.
-            // Это ограничение.
-            // Значит, нам придется фильтровать теги уже после получения данных из БД.
-
-            // ПОЭТОМУ, САМЫЙ РЕАЛИСТИЧНЫЙ ВАРИАНТ БЕЗ ИЗМЕНЕНИЯ СХЕМЫ:
-
-            // 1. Получаем из БД все, что подходит под другие фильтры
-            val allMatchingPrompts = promptDao.getPromptsWithoutTags(
+            promptDao.getPromptsWithTagCondition(
                 searchQuery = search,
                 category = category,
                 status = status,
-                limit = Int.MAX_VALUE, // Загружаем все, чтобы отфильтровать в памяти
-                offset = 0
+                tagCondition = tagCondition,
+                limit = limit,
+                offset = offset
             )
+        }.map { it.toDomain() }
 
-            // 2. Фильтруем по тегам в коде
-            val filteredByTags = allMatchingPrompts.filter { entity ->
-                val entityTags = entity.tags.split(',').map { it.trim() }.toSet()
-                // Проверяем, что все теги из фильтра содержатся в тегах сущности
-                tags.all { filterTag -> entityTags.contains(filterTag) }
-            }
-
-            // 3. Применяем пагинацию (limit/offset) вручную
-            filteredByTags.drop(offset).take(limit)
-        }
-
-        prompts.map { it.toDomain() }
+        prompts
     }
 
     override suspend fun getAllUniqueTags(): List<String> = withContext(dispatcher) {
-        promptDao.getAllUniqueTags()
+        promptDao.getAllPrompts().flatMap { entity ->
+            if (entity.tags.isNotBlank()) {
+                entity.tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
+            } else {
+                emptyList()
+            }
+        }.distinct().sorted()
     }
 
     override suspend fun invalidateSortDataCache() = withContext(dispatcher) {

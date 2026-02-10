@@ -4,19 +4,22 @@ package com.arny.aiprompts.domain.interactors
 
 import com.arny.aiprompts.data.model.ChatMessage
 import com.arny.aiprompts.data.model.ChatMessageRole
+import com.arny.aiprompts.data.model.ChatSession
+import com.arny.aiprompts.data.model.ChatSettings
 import com.arny.aiprompts.data.model.LlmModel
 import com.arny.aiprompts.data.model.MessageStatus
 import com.arny.aiprompts.data.model.ApiException
 import com.arny.aiprompts.data.repositories.IChatHistoryRepository
+import com.arny.aiprompts.data.repositories.IChatSessionRepository
 import com.arny.aiprompts.data.repositories.IOpenRouterRepository
 import com.arny.aiprompts.data.repositories.ISettingsRepository
 import com.arny.aiprompts.domain.strings.StringHolder
 import com.arny.aiprompts.results.DataResult
 import com.arny.aiprompts.utils.Logger
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
@@ -30,178 +33,32 @@ import kotlin.time.ExperimentalTime
 /**
  * Основной бизнес‑логический слой взаимодействия с LLM‑сервисом.
  *
+ * ОБНОВЛЕНИЯ:
+ * - Поддержка множественных сессий чата с persistence в Room
+ * - System prompt для каждой сессии
+ * - Настройки генерации (temperature, maxTokens и т.д.)
+ * - Улучшенная обработка ошибок
+ *
  * @property modelsRepository Репозиторий моделей OpenRouter.
- * @property settingsRepository Репозиторий настроек приложения (API‑ключ, выбранная модель и т.п.).
- * @property historyRepository Репозиторий истории чата.
+ * @property settingsRepository Репозиторий настроек приложения.
+ * @property chatSessionRepository Репозиторий сессий чата (NEW).
+ * @property historyRepository Репозиторий истории чата (для обратной совместимости).
  */
 class LLMInteractor(
     private val modelsRepository: IOpenRouterRepository,
     private val settingsRepository: ISettingsRepository,
+    private val chatSessionRepository: IChatSessionRepository, // NEW
     private val historyRepository: IChatHistoryRepository
 ) : ILLMInteractor {
 
     /** Хранит ошибку, возникшую при принудительном обновлении списка моделей. */
     private val _refreshError = MutableStateFlow<Exception?>(null)
 
-    /**
-     * Возвращает поток с полной историей чата.
-     *
-     * @return Поток, публикующий список всех сообщений.
-     */
-    override fun getChatHistoryFlow(): Flow<List<ChatMessage>> = historyRepository.getHistoryFlow()
+    /** Текущая задача генерации для возможности отмены. */
+    private var currentStreamingJob: kotlinx.coroutines.Job? = null
 
-    /**
-     * Очищает историю чата в репозитории.
-     */
-    override suspend fun clearChat() {
-        historyRepository.clearHistory()
-    }
+    // ==================== Модели ====================
 
-    /**
-     * Отправляет сообщение модели с потоковой обработкой ответа.
-     *
-     * Сначала сохраняется пользовательское сообщение, затем создаётся заглушка для ответа,
-     * после чего начинается потоковое получение данных от API. Каждое полученное
-     * «частичное» сообщение обновляется в истории и публикуется как `DataResult.Success`.
-     *
-     * @param model Идентификатор модели.
-     * @param userMessage Текст пользовательского сообщения.
-     * @return Поток, публикующий `Success` с частями ответа или `Error` при сбое.
-     */
-    override fun sendStreamingMessage(
-        model: String,
-        userMessage: String
-    ): Flow<DataResult<ChatMessage>> = flow {
-        if (userMessage.length < MIN_MESSAGE_LENGTH) {
-            emit(DataResult.Error(IllegalArgumentException("Message too short")))
-            return@flow
-        }
-
-        val apiKey = settingsRepository.getOpenRouterApiKey()?.trim()
-        if (apiKey.isNullOrEmpty()) {
-            emit(DataResult.Error(ApiException.MissingApiKey()))
-            return@flow
-        }
-
-        // 1. Создаем и сохраняем сообщение пользователя
-        val userMsg = ChatMessage(
-            id = UUID.randomUUID().toString(),
-            role = ChatMessageRole.USER,
-            content = userMessage,
-            timestamp = Clock.System.now().toEpochMilliseconds(),
-            status = MessageStatus.Sent
-        )
-        historyRepository.addMessage(userMsg)
-
-        // 2. Создаем заглушку для ответа модели
-        val modelMsgId = UUID.randomUUID().toString()
-        val modelMsg = ChatMessage(
-            id = modelMsgId,
-            role = ChatMessageRole.MODEL,
-            content = "",
-            timestamp = Clock.System.now().toEpochMilliseconds(),
-            status = MessageStatus.Streaming(isComplete = false),
-            modelId = model
-        )
-        historyRepository.addMessage(modelMsg)
-        emit(DataResult.Success(modelMsg))
-
-        // 3. Получаем контекст для API
-        val context = buildApiContext()
-
-        // 4. Стримим ответ
-        val accumulatedContent = StringBuilder()
-        modelsRepository.getStreamingChatCompletion(model, context, apiKey)
-            .collect { result ->
-                result.fold(
-                    onSuccess = { chunk ->
-                        if (chunk.content.isNotEmpty()) {
-                            accumulatedContent.append(chunk.content)
-                        }
-                        val updatedMsg = modelMsg.copy(
-                            content = accumulatedContent.toString(),
-                            status = if (chunk.isComplete) MessageStatus.Sent else MessageStatus.Streaming(false)
-                        )
-                        historyRepository.updateMessage(updatedMsg)
-                        emit(DataResult.Success(updatedMsg))
-                    },
-                    onFailure = { error ->
-                        Logger.e(error, "LLMInteractor", "Streaming failed")
-                        val failedMsg = modelMsg.copy(
-                            content = accumulatedContent.toString(),
-                            status = MessageStatus.Failed(error.message ?: "Unknown error")
-                        )
-                        historyRepository.updateMessage(failedMsg)
-                        emit(DataResult.Error(error))
-                    }
-                )
-            }
-
-    }.catch { e ->
-        Logger.e(e, "LLMInteractor", "Unexpected error in sendStreamingMessage")
-        emit(DataResult.Error(e))
-    }
-
-    /**
-     * Формирует контекст из истории чата для последующего запроса к модели.
-     *
-     * Возвращает только сообщения с состоянием `Sent` и ограничивает их
-     * до `MAX_CONTEXT_MESSAGES` последних элементов.
-     *
-     * @return Список сообщений‑контекста.
-     */
-    private suspend fun buildApiContext(): List<ChatMessage> {
-        return historyRepository.getHistoryFlow()
-            .first()
-            .filter { it.status is MessageStatus.Sent }
-            .takeLast(MAX_CONTEXT_MESSAGES)
-    }
-
-    /**
-     * Повторяет отправку сообщения модели, если предыдущее завершилось с ошибкой.
-     *
-     * Принимает ID сообщения‑ошибки, ищет связанное пользовательское сообщение,
-     * удаляет `Failed`‑сообщение и инициирует новый потоковой запрос.
-     *
-     * @param messageId Идентификатор сообщения модели с ошибкой.
-     */
-    override suspend fun retryMessage(messageId: String) {
-        val message = historyRepository.getMessage(messageId) ?: return
-
-        if (message.role == ChatMessageRole.MODEL && message.isFailed()) {
-            // Находим предыдущее пользовательское сообщение
-            val userMessage = historyRepository.getHistoryFlow()
-                .first()
-                .takeWhile { it.id != messageId }
-                .lastOrNull { it.role == ChatMessageRole.USER }
-                ?: return
-
-            // Удаляем failed сообщение
-            historyRepository.deleteMessage(messageId)
-
-            // Повторяем запрос
-            sendStreamingMessage(
-                model = message.modelId ?: return,
-                userMessage = userMessage.content
-            ).collect()
-        }
-    }
-
-    /**
-     * Отмена потоковой операции (вызывается из UI‑компонента).
-     *
-     * Реализация зависит от того, как управляется `CoroutineScope` в компоненте.
-     */
-    override suspend fun cancelStreaming() {
-        Logger.d("LLMInteractor", "Cancelling streaming")
-    }
-
-    /**
-     * Возвращает поток с обновляемым списком моделей OpenRouter,
-     * где каждая модель помечена флагом `isSelected`.
-     *
-     * @return Поток, публикующий `DataResult` со списком моделей.
-     */
     override fun getModels(): Flow<DataResult<List<LlmModel>>> {
         val selectedIdFlow: Flow<String?> = settingsRepository.getSelectedModelId()
         val modelsListFlow: Flow<List<LlmModel>> = modelsRepository.getModelsFlow()
@@ -225,11 +82,6 @@ class LLMInteractor(
         }.onStart { emit(DataResult.Loading) }
     }
 
-    /**
-     * Возвращает поток с деталями только выбранной модели.
-     *
-     * @return Поток, публикующий `DataResult` с моделью либо ошибкой/загрузкой.
-     */
     override fun getSelectedModel(): Flow<DataResult<LlmModel>> {
         return getModels().map { dataResult ->
             when (dataResult) {
@@ -241,29 +93,16 @@ class LLMInteractor(
                         DataResult.Error(null, StringHolder.Text("Selected model not found").value)
                     }
                 }
-
                 is DataResult.Error -> DataResult.Error(dataResult.exception)
                 is DataResult.Loading -> dataResult
             }
         }
     }
 
-    /**
-     * Сохраняет выбранный пользователем ID модели в репозитории настроек.
-     *
-     * @param id Идентификатор модели, которую нужно выбрать.
-     */
     override suspend fun selectModel(id: String) {
         settingsRepository.setSelectedModelId(id)
     }
 
-    /**
-     * Запускает принудительное обновление списка моделей у сервиса OpenRouter.
-     *
-     * При ошибке сохраняется в `_refreshError`, чтобы UI могло отобразить её.
-     *
-     * @return `Result` с `Unit` при успехе или ошибкой.
-     */
     override suspend fun refreshModels(): Result<Unit> {
         val result = modelsRepository.refreshModels()
         if (result.isFailure) {
@@ -274,14 +113,6 @@ class LLMInteractor(
         return result
     }
 
-    /**
-     * Обрабатывает клик по элементу модели в списке.
-     *
-     * Если пользователь нажал на уже выбранную модель – снимает выбор,
-     * иначе выбирает новую модель, обновляя состояние в репозитории настроек.
-     *
-     * @param clickedModelId ID модели, по которой был произведён клик.
-     */
     override suspend fun toggleModelSelection(clickedModelId: String) {
         val currentlySelectedId = settingsRepository.getSelectedModelId().firstOrNull()
         if (currentlySelectedId == clickedModelId) {
@@ -289,6 +120,216 @@ class LLMInteractor(
         } else {
             settingsRepository.setSelectedModelId(clickedModelId)
         }
+    }
+
+    // ==================== Сессии чата ====================
+
+    override fun getAllSessions(): Flow<List<ChatSession>> {
+        return chatSessionRepository.getAllSessions()
+    }
+
+    override fun getSessionById(sessionId: String): Flow<ChatSession?> {
+        return chatSessionRepository.getSessionById(sessionId)
+    }
+
+    override suspend fun createSession(name: String, systemPrompt: String?): ChatSession {
+        return chatSessionRepository.createSession(name, systemPrompt)
+    }
+
+    override suspend fun deleteSession(sessionId: String) {
+        chatSessionRepository.deleteSession(sessionId)
+    }
+
+    override suspend fun archiveSession(sessionId: String) {
+        chatSessionRepository.archiveSession(sessionId)
+    }
+
+    override suspend fun renameSession(sessionId: String, newName: String) {
+        chatSessionRepository.renameSession(sessionId, newName)
+    }
+
+    override suspend fun updateSystemPrompt(sessionId: String, systemPrompt: String?) {
+        chatSessionRepository.updateSystemPrompt(sessionId, systemPrompt)
+    }
+
+    override suspend fun updateChatSettings(sessionId: String, settings: ChatSettings) {
+        chatSessionRepository.updateSession(
+            chatSessionRepository.getSessionById(sessionId).firstOrNull()?.copy(settings = settings)
+                ?: return
+        )
+    }
+
+    // ==================== Сообщения ====================
+
+    override fun sendMessage(sessionId: String, content: String): Flow<DataResult<ChatMessage>> = flow {
+        // Валидация
+        if (content.length < MIN_MESSAGE_LENGTH) {
+            emit(DataResult.Error(IllegalArgumentException("Message too short")))
+            return@flow
+        }
+
+        // Получаем API ключ
+        val apiKey = settingsRepository.getOpenRouterApiKey()?.trim()
+        if (apiKey.isNullOrEmpty()) {
+            emit(DataResult.Error(ApiException.MissingApiKey()))
+            return@flow
+        }
+
+        // Получаем сессию и модель
+        val session = chatSessionRepository.getSessionById(sessionId).firstOrNull()
+            ?: run {
+                emit(DataResult.Error(IllegalStateException("Session not found")))
+                return@flow
+            }
+
+        val modelId = session.modelId ?: settingsRepository.getSelectedModelId().firstOrNull()
+            ?: run {
+                emit(DataResult.Error(IllegalStateException("No model selected")))
+                return@flow
+            }
+
+        // 1. Создаем и сохраняем сообщение пользователя
+        val userMsg = ChatMessage(
+            id = UUID.randomUUID().toString(),
+            role = ChatMessageRole.USER,
+            content = content,
+            timestamp = Clock.System.now().toEpochMilliseconds(),
+            status = MessageStatus.Sent
+        )
+        chatSessionRepository.addMessage(sessionId, userMsg)
+
+        // 2. Создаем заглушку для ответа модели
+        val modelMsgId = UUID.randomUUID().toString()
+        val modelMsg = ChatMessage(
+            id = modelMsgId,
+            role = ChatMessageRole.MODEL,
+            content = "",
+            timestamp = Clock.System.now().toEpochMilliseconds(),
+            status = MessageStatus.Streaming(isComplete = false),
+            modelId = modelId
+        )
+        chatSessionRepository.addMessage(sessionId, modelMsg)
+        emit(DataResult.Success(modelMsg))
+
+        // 3. Формируем контекст для API
+        val context = buildApiContext(sessionId, session.systemPrompt)
+
+        // 4. Стримим ответ
+        val accumulatedContent = StringBuilder()
+        modelsRepository.getStreamingChatCompletion(modelId, context, apiKey)
+            .collect { result ->
+                result.fold(
+                    onSuccess = { chunk ->
+                        if (chunk.content.isNotEmpty()) {
+                            accumulatedContent.append(chunk.content)
+                        }
+                        val updatedMsg = modelMsg.copy(
+                            content = accumulatedContent.toString(),
+                            status = if (chunk.isComplete) MessageStatus.Sent else MessageStatus.Streaming(false)
+                        )
+                        chatSessionRepository.updateMessage(updatedMsg)
+                        emit(DataResult.Success(updatedMsg))
+                    },
+                    onFailure = { error ->
+                        Logger.e(error, "LLMInteractor", "Streaming failed")
+                        val failedMsg = modelMsg.copy(
+                            content = accumulatedContent.toString(),
+                            status = MessageStatus.Failed(error.message ?: "Unknown error")
+                        )
+                        chatSessionRepository.updateMessage(failedMsg)
+                        emit(DataResult.Error(error))
+                    }
+                )
+            }
+
+    }.catch { e ->
+        if (e is CancellationException) {
+            Logger.d("LLMInteractor", "Streaming cancelled")
+            throw e
+        }
+        Logger.e(e, "LLMInteractor", "Unexpected error in sendMessage")
+        emit(DataResult.Error(e))
+    }
+
+    override fun getMessagesForSession(sessionId: String): Flow<List<ChatMessage>> {
+        return chatSessionRepository.getMessagesForSession(sessionId)
+    }
+
+    override fun getChatHistoryFlow(): Flow<List<ChatMessage>> {
+        // Для обратной совместимости - возвращаем глобальную историю
+        return historyRepository.getHistoryFlow()
+    }
+
+    override suspend fun clearChat(sessionId: String?) {
+        if (sessionId != null) {
+            chatSessionRepository.clearSessionMessages(sessionId)
+        } else {
+            historyRepository.clearHistory()
+        }
+    }
+
+    override suspend fun deleteMessage(messageId: String) {
+        chatSessionRepository.deleteMessage(messageId)
+    }
+
+    override suspend fun retryMessage(messageId: String) {
+        val message = chatSessionRepository.getMessagesForSession("")
+            .first()
+            .find { it.id == messageId }
+            ?: return
+
+        if (message.role == ChatMessageRole.MODEL && message.isFailed()) {
+            // Находим предыдущее пользовательское сообщение в той же сессии
+            // Это упрощенная версия - нужно знать sessionId
+            Logger.d("LLMInteractor", "Retry message: $messageId")
+            // TODO: Реализовать логику retry с учетом сессии
+        }
+    }
+
+    override suspend fun editMessage(messageId: String, newContent: String): Flow<DataResult<ChatMessage>> {
+        // TODO: Реализовать редактирование сообщения
+        return flow { emit(DataResult.Error(NotImplementedError("Edit not implemented yet"))) }
+    }
+
+    override suspend fun cancelStreaming() {
+        currentStreamingJob?.cancel()
+        currentStreamingJob = null
+        Logger.d("LLMInteractor", "Streaming cancelled")
+    }
+
+    // ==================== Private Methods ====================
+
+    /**
+     * Формирует контекст из истории чата для запроса к модели.
+     * Включает system prompt если он задан.
+     *
+     * @param sessionId ID сессии
+     * @param systemPrompt System prompt (может быть null)
+     * @return Список сообщений для API
+     */
+    private suspend fun buildApiContext(sessionId: String, systemPrompt: String?): List<ChatMessage> {
+        val messages = mutableListOf<ChatMessage>()
+        
+        // Добавляем system prompt если есть
+        systemPrompt?.takeIf { it.isNotBlank() }?.let {
+            messages.add(
+                ChatMessage(
+                    id = "system",
+                    role = ChatMessageRole.SYSTEM,
+                    content = it,
+                    timestamp = 0,
+                    status = MessageStatus.Sent
+                )
+            )
+        }
+        
+        // Добавляем историю сообщений
+        val history = chatSessionRepository.getRecentMessagesForContext(sessionId, MAX_CONTEXT_MESSAGES)
+            .filter { it.status is MessageStatus.Sent }
+        
+        messages.addAll(history)
+        
+        return messages
     }
 
     companion object {
