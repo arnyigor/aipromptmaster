@@ -47,15 +47,37 @@ data class ChatMessage @OptIn(ExperimentalTime::class) constructor(
 data class MessageAttachment(
     val id: String = UUID.randomUUID().toString(),
     val type: AttachmentType,
-    val uri: String,
+    val uri: String, // Internal file path
+    val fileName: String? = null,
     val mimeType: String? = null,
-    val size: Long? = null
+    val size: Long? = null,
+    val createdAt: Long = System.currentTimeMillis()
 )
 
 @Serializable
 enum class AttachmentType {
-    IMAGE, DOCUMENT, CODE
+    IMAGE,       // Картинки (PNG, JPG, WEBP)
+    TEXT_FILE,   // Текстовые файлы (Code, TXT, MD, JSON)
+    DOCUMENT,    // Документы (PDF, DOCX) - требуют извлечения текста
+    CODE         // Исходный код
 }
+
+/**
+ * Расширение для ChatMessage для проверки мультимодальности.
+ */
+fun ChatMessage.isMultimodal(): Boolean = attachments.isNotEmpty()
+
+/**
+ * Расширение для получения текстовых вложений.
+ */
+fun ChatMessage.getTextAttachments(): List<MessageAttachment> =
+    attachments.filter { it.type == AttachmentType.TEXT_FILE || it.type == AttachmentType.CODE }
+
+/**
+ * Расширение для получения изображений.
+ */
+fun ChatMessage.getImageAttachments(): List<MessageAttachment> =
+    attachments.filter { it.type == AttachmentType.IMAGE }
 
 enum class ChatMessageRole {
     @SerialName("user")

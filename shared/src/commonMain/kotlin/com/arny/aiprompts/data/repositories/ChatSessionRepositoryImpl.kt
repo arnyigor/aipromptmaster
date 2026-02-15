@@ -4,10 +4,13 @@ import com.arny.aiprompts.data.db.daos.ChatMessageDao
 import com.arny.aiprompts.data.db.daos.ChatSessionDao
 import com.arny.aiprompts.data.db.entities.ChatMessageEntity
 import com.arny.aiprompts.data.db.entities.ChatSessionEntity
+import com.arny.aiprompts.data.db.entities.MessageAttachmentEntity
+import com.arny.aiprompts.data.model.AttachmentType
 import com.arny.aiprompts.data.model.ChatMessage
 import com.arny.aiprompts.data.model.ChatMessageRole
 import com.arny.aiprompts.data.model.ChatSession
 import com.arny.aiprompts.data.model.ChatSettings
+import com.arny.aiprompts.data.model.MessageAttachment
 import com.arny.aiprompts.data.model.MessageStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -93,6 +96,8 @@ class ChatSessionRepositoryImpl(
     // ==================== Сообщения ====================
 
     override fun getMessagesForSession(sessionId: String): Flow<List<ChatMessage>> {
+        // Note: Attachments are loaded separately via getRecentMessagesForContext for context building
+        // For UI display, you may need to extend this to load attachments per message
         return messageDao.getMessagesForSession(sessionId)
             .map { entities -> entities.map { it.toDomain() } }
     }
@@ -101,6 +106,12 @@ class ChatSessionRepositoryImpl(
         val maxOrder = messageDao.getMaxOrderIndex(sessionId) ?: -1
         val entity = message.toEntity(sessionId).copy(orderIndex = maxOrder + 1)
         messageDao.insertMessage(entity)
+        
+        // Save attachments if present
+        if (message.attachments.isNotEmpty()) {
+            val attachmentEntities = message.attachments.map { it.toEntity(message.id) }
+            messageDao.insertAttachments(attachmentEntities)
+        }
         
         // Обновляем время сессии
         sessionDao.updateTimestamp(sessionId)
@@ -113,6 +124,7 @@ class ChatSessionRepositoryImpl(
     }
 
     override suspend fun deleteMessage(messageId: String) {
+        // Attachments will be deleted automatically due to CASCADE
         messageDao.deleteMessageById(messageId)
     }
 
@@ -123,7 +135,10 @@ class ChatSessionRepositoryImpl(
 
     override suspend fun getRecentMessagesForContext(sessionId: String, limit: Int): List<ChatMessage> {
         return messageDao.getLastMessages(sessionId, limit)
-            .map { it.toDomain() }
+            .map { entity ->
+                val attachments = messageDao.getAttachmentsForMessage(entity.id)
+                entity.toDomain(attachments)
+            }
             .reversed() // Возвращаем в хронологическом порядке
     }
 
@@ -179,7 +194,7 @@ class ChatSessionRepositoryImpl(
         )
     }
 
-    private fun ChatMessageEntity.toDomain(): ChatMessage {
+    private fun ChatMessageEntity.toDomain(attachments: List<MessageAttachmentEntity> = emptyList()): ChatMessage {
         return ChatMessage(
             id = id,
             role = when (role) {
@@ -193,7 +208,20 @@ class ChatSessionRepositoryImpl(
             status = json.decodeFromString<MessageStatus>(status),
             editedAt = editedAt,
             modelId = modelId,
-            tokenCount = tokenCount
+            tokenCount = tokenCount,
+            attachments = attachments.map { it.toDomain() }
+        )
+    }
+
+    private fun MessageAttachmentEntity.toDomain(): MessageAttachment {
+        return MessageAttachment(
+            id = id,
+            type = try { AttachmentType.valueOf(type) } catch (e: Exception) { AttachmentType.DOCUMENT },
+            uri = filePath,
+            fileName = fileName,
+            mimeType = mimeType,
+            size = fileSize,
+            createdAt = createdAt
         )
     }
 
@@ -213,6 +241,19 @@ class ChatSessionRepositoryImpl(
             tokenCount = tokenCount,
             editedAt = editedAt,
             orderIndex = 0 // Устанавливается при вставке
+        )
+    }
+
+    private fun MessageAttachment.toEntity(messageId: String): MessageAttachmentEntity {
+        return MessageAttachmentEntity(
+            id = id,
+            messageId = messageId,
+            type = type.name,
+            fileName = fileName ?: "unknown",
+            mimeType = mimeType,
+            filePath = uri,
+            fileSize = size,
+            createdAt = createdAt
         )
     }
 }
