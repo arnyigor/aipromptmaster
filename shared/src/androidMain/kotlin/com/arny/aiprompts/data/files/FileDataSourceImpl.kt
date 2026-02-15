@@ -2,6 +2,7 @@ package com.arny.aiprompts.data.files
 
 import android.content.Context
 import com.arny.aiprompts.data.model.PlatformFile
+import com.arny.aiprompts.data.model.createPlatformFile
 import com.arny.aiprompts.data.model.PromptJson
 import com.arny.aiprompts.domain.interfaces.FileDataSource
 import kotlinx.serialization.json.Json
@@ -49,6 +50,6 @@ class FileDataSourceImpl(private val context: Context) : FileDataSource {
 
         val jsonFiles = promptsDir.walk().filter { it.isFile && it.extension == "json" }.toList()
 
-        return jsonFiles.map { PlatformFile(it) }
+        return jsonFiles.map { createPlatformFile(it.absolutePath) as PlatformFile }
     }
 }

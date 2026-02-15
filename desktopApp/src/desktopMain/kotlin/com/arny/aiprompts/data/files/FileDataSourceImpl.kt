@@ -2,6 +2,7 @@ package com.arny.aiprompts.data.files
 
 import com.arny.aiprompts.data.model.PlatformFile
 import com.arny.aiprompts.data.model.PromptJson
+import com.arny.aiprompts.data.model.createPlatformFile
 import com.arny.aiprompts.domain.interfaces.FileDataSource
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -82,7 +83,7 @@ class FileDataSourceImpl : FileDataSource {
 
         log("📊 [DEV] Найдено ${jsonFiles.size} JSON файлов")
 
-        return jsonFiles.map { PlatformFile(it) }
+        return jsonFiles.map { createPlatformFile(it.absolutePath) as PlatformFile }
     }
 
     // --- ИСПРАВЛЕНИЕ КОДИРОВКИ В ЛОГАХ ---

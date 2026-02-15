@@ -102,7 +102,9 @@ class DefaultLlmComponent(
         
         messagesJob = llmInteractor.getMessagesForSession(sessionId)
             .onEach { messages ->
-                _uiState.update { it.copy(messages = messages) }
+                // Гарантируем сортировку по времени (старые -> новые)
+                val sortedMessages = messages.sortedBy { it.timestamp }
+                _uiState.update { it.copy(messages = sortedMessages) }
             }
             .catch { e ->
                 Logger.e(e, "DefaultLlmComponent", "Error loading messages")
@@ -143,7 +145,13 @@ class DefaultLlmComponent(
     }
 
     override fun toggleModelDialog() {
-        _uiState.update { it.copy(showModelDialog = !it.showModelDialog) }
+        val show = !_uiState.value.showModelDialog
+        // При открытии диалога всегда обновляем список,
+        // чтобы подтянуть модели с текущего Base URL (если он поменялся)
+        if (show) {
+            refreshModels()
+        }
+        _uiState.update { it.copy(showModelDialog = show) }
     }
 
     // ==================== Сессии чата ====================

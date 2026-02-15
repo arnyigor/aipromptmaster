@@ -87,6 +87,9 @@ val commonDomainModule = module {
     // Parser UseCases
     singleOf(::ParseHtmlUseCase)
     singleOf(::ParseRawPostsUseCase)
+    // Scraping UseCases (also used by Android for DI graph)
+    singleOf(::ExtractPromptDataUseCase)
+    singleOf(::AutoCategorizeUseCase)
     singleOf(::ProcessScrapedPostsUseCase)
     singleOf(::SavePromptsAsFilesUseCase)
 
@@ -94,6 +97,8 @@ val commonDomainModule = module {
     singleOf(::ImportJsonUseCase)
     singleOf(::ImportFromFileUseCase)
     singleOf(::ExportPromptsUseCase)
+    // Import from scraper output (also used by Desktop)
+    singleOf(::ImportParsedPromptsUseCase)
 
     // NEW: Auto-tagging UseCase
     singleOf(::AutoTagPromptUseCase)

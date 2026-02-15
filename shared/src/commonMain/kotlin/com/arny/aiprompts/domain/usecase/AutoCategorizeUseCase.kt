@@ -141,20 +141,46 @@ class AutoCategorizeUseCase {
 
     private var classifier: PromptClassifier? = null
 
+    // Fallback данные, чтобы не падать если база не загружена
+    private val defaultReferences = listOf(
+        ReferencePrompt("1", "creative", "generate image, draw picture, art"),
+        ReferencePrompt("2", "technology", "write code, programming, python, kotlin"),
+        ReferencePrompt("3", "business", "marketing strategy, business plan, finance"),
+        ReferencePrompt("4", "education", "learn, study, teaching, explanation"),
+        ReferencePrompt("5", "general", "help, assistant, task")
+    )
+
     /**
      * Initialize classifier with reference data.
      * Should be called once before using categorize().
      */
     fun initialize(referencePrompts: List<ReferencePrompt>) {
-        classifier = PromptClassifier(referencePrompts)
+        if (referencePrompts.isNotEmpty()) {
+            classifier = PromptClassifier(referencePrompts)
+        } else {
+            // Use defaults if empty
+            classifier = PromptClassifier(defaultReferences)
+        }
+    }
+
+    /**
+     * Ensure classifier is initialized with defaults if not already.
+     */
+    private fun ensureInitialized() {
+        if (classifier == null) {
+            println("⚠️ AutoCategorizeUseCase: Classifier not initialized, using defaults.")
+            classifier = PromptClassifier(defaultReferences)
+        }
     }
 
     /**
      * Categorize prompt text and return appropriate category.
      */
     operator fun invoke(promptText: String): CategoryResult {
-        val currentClassifier = classifier
-            ?: throw IllegalStateException("Classifier not initialized. Call initialize() first.")
+        // Гарантируем инициализацию
+        ensureInitialized()
+        
+        val currentClassifier = classifier!! // Теперь безопасно
 
         if (promptText.isBlank()) {
             return CategoryResult(DEFAULT_CATEGORY, 0.0, false)

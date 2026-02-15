@@ -9,9 +9,8 @@ import com.arkivanov.decompose.router.stack.navigate
 import com.arkivanov.decompose.router.stack.pop
 import com.arkivanov.decompose.router.stack.push
 import com.arkivanov.decompose.value.Value
-import com.arny.aiprompts.BuildConfig
 import com.arny.aiprompts.data.model.Platform
-import com.arny.aiprompts.data.model.getPlatform
+import com.arny.aiprompts.getPlatform
 import com.arny.aiprompts.data.remote.GitHubSyncService
 import com.arny.aiprompts.data.repositories.ISettingsRepository
 import com.arny.aiprompts.domain.analysis.IAnalyzerPipeline
@@ -70,7 +69,9 @@ interface MainComponent {
     }
 
     companion object {
-        val IS_IMPORT_ENABLED: Boolean = getPlatform() == Platform.Desktop && BuildConfig.DEBUG
+        // Import feature enabled on Desktop by default
+        // On Android, this is controlled by BuildConfig (checked at call site)
+        val IS_IMPORT_ENABLED: Boolean = getPlatform() == Platform.Desktop
     }
 
     fun navigateToScraper()

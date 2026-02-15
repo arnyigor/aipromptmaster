@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -940,6 +941,7 @@ fun SectionCard(
 
 /**
  * Log console widget for displaying scraper logs.
+ * Wrapped in SelectionContainer to allow copying logs.
  */
 @Composable
 fun LogConsole(logs: List<String>) {
@@ -949,17 +951,19 @@ fun LogConsole(logs: List<String>) {
             .height(150.dp),
         colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.8f))
     ) {
-        LazyColumn(
-            modifier = Modifier.padding(8.dp),
-            reverseLayout = true // Newest logs at bottom
-        ) {
-            items(logs.reversed()) { log ->
-                Text(
-                    text = log,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = androidx.compose.ui.graphics.Color.Green,
-                    fontFamily = FontFamily.Monospace
-                )
+        SelectionContainer {
+            LazyColumn(
+                modifier = Modifier.padding(8.dp),
+                reverseLayout = true // Newest logs at bottom
+            ) {
+                items(logs.reversed()) { log ->
+                    Text(
+                        text = log,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = androidx.compose.ui.graphics.Color.Green,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
             }
         }
     }

@@ -94,16 +94,11 @@ val desktopLlmUiModule = module {
     singleOf(::DefaultLlmComponent) { bind<LlmComponent>() }
 }
 
-// --- MODULE FOR SCRAPING USE CASES ---
-val desktopScrapingUseCasesModule = module {
-    single { ExtractPromptDataUseCase() }
-    single { AutoCategorizeUseCase() }
-    single { ProcessScrapedPostsUseCase(get(), get()) }
-}
-
 // --- MODULE FOR IMPORT USE CASES ---
+// NOTE: ImportParsedPromptsUseCase is now registered in commonDomainModule (KoinModules.kt)
+// Keeping this module for backward compatibility, but the use case is loaded from common module
 val desktopImportUseCasesModule = module {
-    singleOf(::ImportParsedPromptsUseCase)
+    // singleOf(::ImportParsedPromptsUseCase) // Now in commonDomainModule
 }
 
 // --- MODULE FOR INDEX-BASED SCRAPING ---
@@ -133,7 +128,6 @@ val desktopModules =
         desktopLlmRepositoriesModule,
         desktopLlmUiModule,
         fileModule,
-        desktopScrapingUseCasesModule,
         desktopIndexScrapingModule,
         desktopAnalyzerModule,
         desktopImportUseCasesModule
