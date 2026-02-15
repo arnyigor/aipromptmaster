@@ -4,13 +4,11 @@ android-minSdk = "24"
 android-targetSdk = "36"
 kotlin = "2.1.0"
 compose-plugin = "1.10.0"
-# Use stable Compose BOM to align versions
-compose-bom = "2024.02.00"
-compose = "1.6.10"
-compose-material3 = "1.2.1"
+compose = "1.10.0"
+compose-material3 = "1.9.0"
 decompose ="3.3.0"
 lifecycle-coroutines ="2.5.0"
-icons = "1.6.10"
+icons = "1.7.2"
 agp = "8.9.1"
 markdownRender = "0.30.0"
 androidx-core = "1.17.0"
@@ -24,10 +22,10 @@ sqlite-bundled = "2.5.2"
 kotlinx-serialization = "1.7.3"
 kotlinx-coroutines = "1.9.0"
 kotlinx-datetime = "0.7.1"
-uiToolingPreview = "1.6.10"
+uiToolingPreview = "1.10.0"
 uuid = "0.8.4"
 logback = "1.4.14"
-koin = "3.5.0"
+koin = "4.0.4"
 junit = "5.10.2"
 truth = "1.1.4"
 mockk = "1.14.5"
@@ -43,7 +41,7 @@ okio = "3.9.0"
 nirmato-ollama = "0.2.0"
 kover = "0.8.3"
 buildconfig = "6.0.1"
-uiToolingPreviewDesktop = "1.6.10"
+uiToolingPreviewDesktop = "1.7.0"
 
 [libraries]
 # Ktor for networking
@@ -52,10 +50,9 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
 
 # Compose Multiplatform
-compose-bom = { module = "androidx.compose.compose-bom:compose-bom", version.ref = "compose-bom" }
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose" }
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose" }
-compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose" }
+compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-material3" }
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version = "compose" }
