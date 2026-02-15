@@ -21,4 +21,3 @@ dependencyResolutionManagement {
 rootProject.name = "aiprompts-kmp"
 include(":shared")
 include(":desktopApp")
-include(":androidApp")

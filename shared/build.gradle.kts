@@ -7,27 +7,16 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.compose)
-    alias(libs.plugins.androidLibrary)
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.room)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.kover)
     alias(libs.plugins.buildconfig)
 }
 
 kotlin {
-    // Android target
-    androidTarget {
-        compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
-    }
-
-    // Desktop target
+    // Desktop target only
     jvm("desktop") {
         compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
-    }
-
-    configurations.all {
-        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-android")
     }
 
     sourceSets {
@@ -73,10 +62,8 @@ kotlin {
             dependencies {
                 implementation(libs.ktor.client.cio)
                 implementation(libs.keytar.java)
-                // Платформенные реализации
-                implementation(libs.kotlinx.coroutines.swing) // ПРАВИЛЬНОЕ МЕСТО
+                implementation(libs.kotlinx.coroutines.swing)
                 implementation(compose.desktop.currentOs)
-                // Обязательно добавьте это для работы @Preview
                 implementation(libs.ui.tooling.preview)
             }
         }
@@ -90,18 +77,6 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.test)
                 implementation(libs.selenium.java)
                 implementation(libs.kotlinx.datetime)
-            }
-        }
-
-        val androidMain by getting {
-            dependencies {
-                implementation(libs.androidx.core.ktx)
-                implementation(libs.kotlinx.coroutines.android)
-                implementation(libs.koin.android)
-                implementation(libs.androidx.security.crypto)
-                implementation(libs.androidx.datastore.preferences)
-                implementation(libs.koin.androidx.compose) // Для viewModel()
-                implementation(libs.ktor.client.okhttp)
             }
         }
 
@@ -133,7 +108,6 @@ fun getProperty(key: String): String? {
     return localProperties.getProperty(key)
 }
 
-// 2. Используем (Lazy не обязателен, если чтение быстрое, но хорош для порядка)
 val isDebug = getProperty("DEBUG_MODE")?.toBoolean() ?: false
 
 buildConfig {
@@ -142,45 +116,10 @@ buildConfig {
     buildConfigField("Boolean", "DEBUG", isDebug.toString())
     buildConfigField("Boolean", "IS_IMPORT_ENABLED", isDebug.toString())
 
-    // Дополнительные поля
     buildConfigField("String", "VERSION", "\"${project.version}\"")
 }
 
 dependencies {
-    // Указываем, что room-compiler - это KSP процессор для каждой цели
     add("kspCommonMainMetadata", libs.androidx.room.compiler)
     add("kspDesktop", libs.androidx.room.compiler)
-    add("kspAndroid", libs.androidx.room.compiler)
-}
-
-android {
-    namespace = "com.arny.aiprompts.shared"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
-
-    defaultConfig {
-        minSdk = libs.versions.android.minSdk.get().toInt()
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    buildFeatures {
-        buildConfig = true
-    }
-}
-
-// Kover configuration
-kover {
-    reports {
-        total {
-            xml {
-                onCheck = true
-            }
-            html {
-                onCheck = true
-            }
-        }
-    }
 }
