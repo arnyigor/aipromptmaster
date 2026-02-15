@@ -8,6 +8,23 @@ import com.arny.aiprompts.results.DataResult
 import kotlinx.coroutines.flow.Flow
 
 /**
+ * Входные данные для отправки сообщения с вложениями.
+ */
+data class MessageInput(
+    val text: String,
+    val attachments: List<AttachmentInput> = emptyList()
+)
+
+/**
+ * Входные данные для вложения (файл, прикрепленный пользователем).
+ */
+data class AttachmentInput(
+    val uri: String,
+    val fileName: String,
+    val mimeType: String?
+)
+
+/**
  * Интерфейс интерактора для работы с LLM.
  * Объединяет работу с моделями, сессиями чата и генерацией ответов.
  */
@@ -89,13 +106,23 @@ interface ILLMInteractor {
     // ==================== Сообщения ====================
 
     /**
-     * Отправляет сообщение в сессию и получает потоковый ответ от модели.
+     * Отправляет текстовое сообщение в сессию и получает потоковый ответ от модели.
      *
      * @param sessionId ID сессии
      * @param content Текст сообщения
      * @return Поток с частями ответа
      */
     fun sendMessage(sessionId: String, content: String): Flow<DataResult<ChatMessage>>
+
+    /**
+     * Отправляет сообщение с вложениями в сессию и получает потоковый ответ от модели.
+     * Поддерживает изображения и текстовые файлы.
+     *
+     * @param sessionId ID сессии
+     * @param input Входные данные (текст + вложения)
+     * @return Поток с частями ответа
+     */
+    fun sendMessageWithAttachments(sessionId: String, input: MessageInput): Flow<DataResult<ChatMessage>>
 
     /**
      * Получает поток сообщений для сессии.
