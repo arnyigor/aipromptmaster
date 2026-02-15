@@ -9,6 +9,7 @@ import com.arny.aiprompts.data.db.daos.ChatSessionDao
 import com.arny.aiprompts.data.db.daos.PromptDao
 import com.arny.aiprompts.data.db.entities.ChatMessageEntity
 import com.arny.aiprompts.data.db.entities.ChatSessionEntity
+import com.arny.aiprompts.data.db.entities.MessageAttachmentEntity
 import com.arny.aiprompts.data.db.entities.PromptEntity
 
 // The Room compiler generates the `actual` implementations.
@@ -35,9 +36,10 @@ expect fun getAppDatabase(): AppDatabase
     entities = [
         PromptEntity::class,
         ChatSessionEntity::class,
-        ChatMessageEntity::class
+        ChatMessageEntity::class,
+        MessageAttachmentEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 @ConstructedBy(AppDatabaseCtor::class)

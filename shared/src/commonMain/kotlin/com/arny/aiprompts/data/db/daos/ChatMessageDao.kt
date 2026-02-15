@@ -7,6 +7,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.arny.aiprompts.data.db.entities.ChatMessageEntity
+import com.arny.aiprompts.data.db.entities.MessageAttachmentEntity
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -123,4 +124,36 @@ interface ChatMessageDao {
      */
     @Query("SELECT * FROM chat_messages WHERE session_id = :sessionId ORDER BY order_index DESC LIMIT 1")
     suspend fun getLastMessage(sessionId: String): ChatMessageEntity?
+
+    // ======== Attachment Operations ========
+
+    /**
+     * Получает все вложения для указанного сообщения.
+     */
+    @Query("SELECT * FROM message_attachments WHERE message_id = :messageId")
+    suspend fun getAttachmentsForMessage(messageId: String): List<MessageAttachmentEntity>
+
+    /**
+     * Вставляет одно вложение.
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAttachment(attachment: MessageAttachmentEntity)
+
+    /**
+     * Вставляет несколько вложений за один запрос.
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAttachments(attachments: List<MessageAttachmentEntity>)
+
+    /**
+     * Удаляет все вложения для указанного сообщения.
+     */
+    @Query("DELETE FROM message_attachments WHERE message_id = :messageId")
+    suspend fun deleteAttachmentsForMessage(messageId: String)
+
+    /**
+     * Удаляет конкретное вложение по ID.
+     */
+    @Query("DELETE FROM message_attachments WHERE id = :attachmentId")
+    suspend fun deleteAttachmentById(attachmentId: String)
 }

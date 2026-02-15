@@ -91,6 +91,41 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
 }
 
 /**
+ * Миграция базы данных с версии 2 на версию 3.
+ * 
+ * Добавляет таблицу для хранения вложений сообщений чата:
+ * - message_attachments: хранит изображения, текстовые файлы и другие вложения
+ */
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(connection: SQLiteConnection) {
+        // Создаем таблицу вложений сообщений
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS message_attachments (
+                id TEXT PRIMARY KEY NOT NULL,
+                message_id TEXT NOT NULL,
+                type TEXT NOT NULL,
+                file_name TEXT NOT NULL,
+                mime_type TEXT,
+                file_path TEXT NOT NULL,
+                file_size INTEGER,
+                created_at INTEGER NOT NULL,
+                FOREIGN KEY(message_id) REFERENCES chat_messages(id) ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        
+        // Создаем индекс для быстрого поиска вложений сообщения
+        connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS index_message_attachments_message_id 
+            ON message_attachments(message_id)
+            """.trimIndent()
+        )
+    }
+}
+
+/**
  * Вспомогательная функция для выполнения SQL запросов
  */
 private fun SQLiteConnection.execute(sql: String) {
@@ -103,4 +138,4 @@ private fun SQLiteConnection.execute(sql: String) {
  * Список всех миграций для базы данных.
  * Используется при создании DatabaseBuilder.
  */
-val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2)
+val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
