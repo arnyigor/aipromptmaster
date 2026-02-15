@@ -12,6 +12,7 @@ import com.arkivanov.decompose.value.Value
 import com.arny.aiprompts.BuildConfig
 import com.arny.aiprompts.data.model.Platform
 import com.arny.aiprompts.data.model.getPlatform
+import com.arny.aiprompts.data.remote.GitHubSyncService
 import com.arny.aiprompts.data.repositories.ISettingsRepository
 import com.arny.aiprompts.domain.analysis.IAnalyzerPipeline
 import com.arny.aiprompts.domain.interfaces.IWebScraper
@@ -28,6 +29,7 @@ import com.arny.aiprompts.domain.usecase.GetAvailableTagsUseCase
 import com.arny.aiprompts.domain.usecase.GetPromptUseCase
 import com.arny.aiprompts.domain.usecase.GetPromptsUseCase
 import com.arny.aiprompts.domain.usecase.ImportJsonUseCase
+import com.arny.aiprompts.domain.usecase.ImportParsedPromptsUseCase
 import com.arny.aiprompts.domain.usecase.ParseRawPostsUseCase
 import com.arny.aiprompts.domain.usecase.ProcessScrapedPostsUseCase
 import com.arny.aiprompts.domain.usecase.SavePromptsAsFilesUseCase
@@ -106,7 +108,9 @@ class DefaultMainComponent(
     private val fileMetadataReader: FileMetadataReader,
     private val llmInteractor: ILLMInteractor,
     private val settingsRepository: ISettingsRepository,
+    private val gitHubSyncService: GitHubSyncService,
     private val analyzerPipeline: IAnalyzerPipeline,
+    private val importParsedPromptsUseCase: ImportParsedPromptsUseCase,
 ) : MainComponent, ComponentContext by componentContext {
 
     private val navigation = StackNavigation<MainConfig>()
@@ -185,6 +189,7 @@ class DefaultMainComponent(
                     parseRawPostsUseCase = parseRawPostsUseCase,
                     processScrapedPostsUseCase = processScrapedPostsUseCase,
                     analyzerPipeline = analyzerPipeline,
+                    importParsedPromptsUseCase = importParsedPromptsUseCase,
                     promptSynchronizer = promptSynchronizer,
                     promptsRepository = promptsRepository,
                     onNavigateToImporter = { files ->
@@ -217,6 +222,7 @@ class DefaultMainComponent(
                 DefaultSettingsComponent(
                     componentContext = context,
                     settingsRepository = settingsRepository,
+                    gitHubSyncService = gitHubSyncService,
                     onBack = { navigation.pop() }
                 )
             )

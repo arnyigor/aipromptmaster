@@ -24,6 +24,7 @@ data class PromptJson @OptIn(ExperimentalSerializationApi::class) constructor(
     @SerialName("variables") @EncodeDefault var variables: List<PromptVariable> = emptyList(),
     @SerialName("metadata") var metadata: PromptMetadata? = PromptMetadata(),
     @SerialName("rating") var rating: Rating? = Rating(),
+    @SerialName("prompt_variants") @EncodeDefault var promptVariants: List<PromptVariant> = emptyList(),
     @SerialName("created_at") var createdAt: String? = null,
     @SerialName("updated_at") var updatedAt: String? = null
 )

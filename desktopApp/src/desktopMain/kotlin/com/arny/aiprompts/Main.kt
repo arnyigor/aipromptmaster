@@ -71,7 +71,9 @@ fun main() {
                 webScraper = getKoin().get(),
                 processScrapedPostsUseCase = getKoin().get(),
                 settingsRepository = getKoin().get(),
+                gitHubSyncService = getKoin().get(),
                 analyzerPipeline = getKoin().get(),
+                importParsedPromptsUseCase = getKoin().get(),
             )
         }
 

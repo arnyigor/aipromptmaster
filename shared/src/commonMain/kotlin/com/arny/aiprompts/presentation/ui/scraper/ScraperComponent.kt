@@ -7,6 +7,7 @@ import com.arny.aiprompts.domain.analysis.IAnalyzerPipeline
 import com.arny.aiprompts.domain.interfaces.PreScrapeCheck
 import com.arny.aiprompts.domain.model.PromptData
 import com.arny.aiprompts.domain.repositories.SyncResult
+import com.arny.aiprompts.domain.usecase.ImportParsedPromptsUseCase
 import com.arny.aiprompts.domain.usecase.ProcessScrapedPostsUseCase
 import kotlinx.coroutines.flow.StateFlow
 
@@ -29,6 +30,21 @@ interface ScraperComponent {
     fun onOpenDirectoryClicked()
     fun onNavigateToImporterClicked()
     fun onBackClicked()
+
+    // --- Import events ---
+    fun onPreviewImportClicked()
+    fun onImportFileSelectionChanged(filePath: String, selected: Boolean)
+    fun onConfirmImportClicked()
+    fun onCancelImportClicked()
+    fun onDismissImportResults()
+
+    // --- Preview Mode Events ---
+    fun onPromptPreviewClicked(prompt: PromptData)
+    fun onAcceptPrompt()
+    fun onSkipPrompt()
+    fun onNextPrompt()
+    fun onPrevPrompt()
+    fun onClosePreview()
 
     // События от диалога
     fun onOverwriteConfirmed()
@@ -91,6 +107,12 @@ data class PipelineExecutionResult(
  * @property pipelineLogs Pipeline-specific logs for detailed progress display.
  * @property pipelineResult Result of the last pipeline execution.
  * @property categoryFiles List of exported category files with prompt counts.
+ *
+ * @property availableImportFiles List of available import files from parsed_prompts.
+ * @property selectedImportFiles Set of selected file paths for import.
+ * @property importProgress Current import progress (0-1).
+ * @property importResult Result of the last import operation.
+ * @property isImporting Flag indicating import operation is in progress.
  */
 data class ScraperState(
     // --- Input field state ---
@@ -116,10 +138,25 @@ data class ScraperState(
     val pipelineResult: PipelineExecutionResult? = null,
     val categoryFiles: List<CategoryFileInfo> = emptyList(),
 
+    // --- Import Panel state ---
+    val availableImportFiles: List<ImportParsedPromptsUseCase.ImportFileInfo> = emptyList(),
+    val selectedImportFiles: Set<String> = emptySet(),
+    val importProgress: Float = 0f,
+    val importResult: ImportParsedPromptsUseCase.ImportResult? = null,
+    val isImporting: Boolean = false,
+    val importError: String? = null,
+
     // --- Sync Statistics ---
     val lastSyncTime: String? = null,
     val localPromptsCount: Int = 0,
-    val syncedPromptsCount: Int = 0
+    val syncedPromptsCount: Int = 0,
+
+    // --- Preview Mode State ---
+    val isPreviewMode: Boolean = false,
+    val previewPrompts: List<PromptData> = emptyList(),
+    val currentPreviewIndex: Int = 0,
+    val acceptedCount: Int = 0,
+    val skippedCount: Int = 0
 )
 
 /**

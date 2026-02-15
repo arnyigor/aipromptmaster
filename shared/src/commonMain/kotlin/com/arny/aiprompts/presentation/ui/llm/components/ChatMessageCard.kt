@@ -2,7 +2,8 @@ package com.arny.aiprompts.presentation.ui.llm.components
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,11 +11,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -29,7 +31,7 @@ import kotlin.time.Instant
 
 /**
  * Карточка сообщения в чате.
- * Поддерживает Markdown, код, различные статусы.
+ * Поддерживает Markdown, код, различные статусы, и сворачиваемый Thinking блок.
  *
  * @param message Сообщение
  * @param isLast Флаг последнего сообщения (для автоскролла)
@@ -117,6 +119,36 @@ private fun AIAvatar(
     }
 }
 
+/**
+ * Разделяет контент на Thinking часть и основной текст.
+ * Поддерживает форматы:
+ * - <think>...</think>
+ * - <thinking>...</thinking>
+ * - Для моделей DeepSeek, Claude и др.
+ */
+private fun splitThinkingContent(content: String): Pair<String?, String> {
+    val thinkPatterns = listOf(
+        "<think>" to "</think>",
+        "<thinking>" to "</thinking>",
+        "[THINKING]" to "[/THINKING]",
+        "<reasoning>" to "</reasoning>"
+    )
+    
+    for ((startTag, endTag) in thinkPatterns) {
+        val startIndex = content.indexOf(startTag, ignoreCase = true)
+        val endIndex = content.indexOf(endTag, ignoreCase = true)
+        
+        if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
+            val thinking = content.substring(startIndex + startTag.length, endIndex).trim()
+            val mainContent = (content.substring(0, startIndex) + 
+                              content.substring(endIndex + endTag.length)).trim()
+            return thinking to mainContent
+        }
+    }
+    
+    return null to content
+}
+
 @Composable
 private fun MessageBubble(
     message: ChatMessage,
@@ -166,17 +198,90 @@ private fun MessageBubble(
                 )
             }
 
-            // Текст сообщения (Markdown)
-            MessageContent(
-                content = message.content,
-                isUser = isUser
-            )
+            // Контент сообщения с поддержкой Thinking блока
+            if (!isUser) {
+                val (thinking, mainContent) = remember(message.content) { 
+                    splitThinkingContent(message.content) 
+                }
+                
+                // Показываем Thinking блок если есть
+                thinking?.let {
+                    ThinkingBlock(content = it)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                
+                // Основной контент
+                MessageContent(content = mainContent, isUser = isUser)
+            } else {
+                MessageContent(content = message.content, isUser = isUser)
+            }
 
             // Индикатор статуса
             if (message.isStreaming()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 StreamingIndicator()
             }
+        }
+    }
+}
+
+/**
+ * Компонент для отображения Thinking/Reasoning процесса модели.
+ * Свернут по умолчанию, можно развернуть для просмотра.
+ */
+@Composable
+private fun ThinkingBlock(content: String) {
+    var isExpanded by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(8.dp)
+    ) {
+        // Заголовок с иконкой - кликабельный
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { isExpanded = !isExpanded },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Psychology,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = if (isExpanded) "Thinking Process" else "Thinking...",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.secondary,
+                fontStyle = FontStyle.Italic
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Icon(
+                imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+        
+        // Развернутый контент
+        if (isExpanded) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = content,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontFamily = FontFamily.Monospace
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

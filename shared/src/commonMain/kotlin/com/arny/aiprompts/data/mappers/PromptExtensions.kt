@@ -161,6 +161,6 @@ fun RawPostData.toPromptData(): PromptData {
         author = this.author,
         createdAt = this.date.toEpochMilliseconds(),
         updatedAt = this.date.toEpochMilliseconds(),
-        category = "imported"
+        category = "general" // Auto-categorized during import
     )
 }

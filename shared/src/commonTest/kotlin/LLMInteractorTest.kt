@@ -3,6 +3,7 @@ import com.arny.aiprompts.data.model.ChatMessage
 import com.arny.aiprompts.data.model.ChatMessageRole
 import com.arny.aiprompts.data.model.Choice
 import com.arny.aiprompts.data.repositories.IChatHistoryRepository
+import com.arny.aiprompts.data.repositories.IChatSessionRepository
 import com.arny.aiprompts.data.repositories.IOpenRouterRepository
 import com.arny.aiprompts.data.repositories.ISettingsRepository
 import com.arny.aiprompts.domain.interactors.LLMInteractor
@@ -22,8 +23,14 @@ class LLMInteractorTest {
 
     private val mockModelsRepository = mockk<IOpenRouterRepository>()
     private val mockSettingsRepository = mockk<ISettingsRepository>()
+    private val mockChatSessionRepository = mockk<IChatSessionRepository>()
     private val mockHistoryRepository = mockk<IChatHistoryRepository>()
-    private val interactor = LLMInteractor(mockModelsRepository, mockSettingsRepository, mockHistoryRepository)
+    private val interactor = LLMInteractor(
+        mockModelsRepository,
+        mockSettingsRepository,
+        mockChatSessionRepository,
+        mockHistoryRepository
+    )
 
 /*
     @Test
@@ -120,12 +127,12 @@ class LLMInteractorTest {
     }
 
     @Test
-    fun `clearChat calls repository clearHistory`() = runTest {
+    fun `clearChat with null sessionId calls repository clearHistory`() = runTest {
         // Given
         coEvery { mockHistoryRepository.clearHistory() } returns Unit
 
         // When
-        interactor.clearChat()
+        interactor.clearChat(null)
 
         // Then
         coVerify { mockHistoryRepository.clearHistory() }

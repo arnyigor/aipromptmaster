@@ -1,23 +1,29 @@
 package com.arny.aiprompts.presentation.ui.scraper
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.arny.aiprompts.domain.model.Author
 import com.arny.aiprompts.domain.model.PromptData
 import com.arny.aiprompts.domain.repositories.SyncResult
 import com.arny.aiprompts.domain.strings.StringHolder
+import com.arny.aiprompts.domain.usecase.ProcessScrapedPostsUseCase
 import com.benasher44.uuid.uuid4
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -98,7 +104,12 @@ private class FakeScraperComponent : ScraperComponent {
             ),
             lastSyncTime = "09.02.2024 15:30",
             localPromptsCount = 12,
-            syncedPromptsCount = 45
+            syncedPromptsCount = 45,
+            isPreviewMode = false,
+            previewPrompts = parsedPromptsPreview,
+            currentPreviewIndex = 0,
+            acceptedCount = 0,
+            skippedCount = 0
         )
     )
 
@@ -115,6 +126,18 @@ private class FakeScraperComponent : ScraperComponent {
     override fun onOverwriteConfirmed() {}
     override fun onContinueConfirmed() {}
     override fun onDialogDismissed() {}
+    override fun onPreviewImportClicked() {}
+    override fun onImportFileSelectionChanged(filePath: String, selected: Boolean) {}
+    override fun onConfirmImportClicked() {}
+    override fun onCancelImportClicked() {}
+    override fun onDismissImportResults() {}
+
+    override fun onPromptPreviewClicked(prompt: PromptData) {}
+    override fun onAcceptPrompt() {}
+    override fun onSkipPrompt() {}
+    override fun onNextPrompt() {}
+    override fun onPrevPrompt() {}
+    override fun onClosePreview() {}
 
     override suspend fun getPromptsStats(): PromptsStats {
         return PromptsStats(localCount = 12, syncedCount = 45)
@@ -246,9 +269,26 @@ fun ScraperScreen(
 
                 Button(
                     onClick = component::onParseAndSaveClicked,
-                    enabled = state.savedHtmlFiles.isNotEmpty() && !state.inProgress
+                    enabled = state.savedHtmlFiles.isNotEmpty() && !state.inProgress,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.tertiary
+                    )
                 ) {
-                    Text("Парсить и сохранить")
+                    if (state.inProgress) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Анализирую...")
+                    } else {
+                        Icon(Icons.Default.Analytics, contentDescription = null)
+                        Spacer(Modifier.width(4.dp))
+                        Text("Запустить Анализ")
+                    }
+                }
+
+                // --- Processing Stats Panel (after Parse button) ---
+                state.processingResult?.let { result ->
+                    Spacer(Modifier.height(8.dp))
+                    ProcessingStatsView(result = result)
                 }
 
                 // --- NEW: Analyzer Pipeline Button ---
@@ -313,6 +353,19 @@ fun ScraperScreen(
                 }
 
                 Spacer(Modifier.weight(1f))
+
+                // --- NEW: Preview Import Button ---
+                Button(
+                    onClick = component::onPreviewImportClicked,
+                    enabled = !state.inProgress && !isPipelineRunning,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Icon(Icons.Default.FolderOpen, contentDescription = null)
+                    Spacer(Modifier.width(4.dp))
+                    Text("Предпросмотр и импорт")
+                }
 
                 Button(
                     onClick = component::onNavigateToImporterClicked,
@@ -463,6 +516,202 @@ fun ScraperScreen(
                 }
             }
 
+            // --- IMPORT PANEL ---
+            AnimatedVisibility(
+                visible = state.availableImportFiles.isNotEmpty() ||
+                          state.isImporting ||
+                          state.importResult != null
+            ) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "Импорт в prompts/{category}/",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+
+                            if (state.isImporting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            }
+                        }
+
+                        // Import progress
+                        if (state.isImporting && state.importProgress > 0) {
+                            LinearProgressIndicator(
+                                progress = { state.importProgress },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+
+                        // Available files list
+                        if (state.availableImportFiles.isNotEmpty() && !state.isImporting) {
+                            LazyColumn(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 150.dp)
+                            ) {
+                                // Group by category
+                                state.availableImportFiles.groupBy { it.category }.forEach { (category, files) ->
+                                    item {
+                                        Text(
+                                            text = category,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            modifier = Modifier.padding(vertical = 4.dp)
+                                        )
+                                    }
+                                    items(files) { file ->
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.padding(start = 8.dp)
+                                        ) {
+                                            Checkbox(
+                                                checked = file.filePath in state.selectedImportFiles,
+                                                onCheckedChange = {
+                                                    component.onImportFileSelectionChanged(file.filePath, it)
+                                                }
+                                            )
+                                            Text(
+                                                text = "${file.fileName}: ${file.promptCount} промптов",
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Import result
+                        state.importResult?.let { result ->
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (result.success) {
+                                        MaterialTheme.colorScheme.tertiaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.errorContainer
+                                    }
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        if (result.success) {
+                                            Icon(
+                                                Icons.Default.CheckCircle,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                            Text("Импорт завершен успешно!", style = MaterialTheme.typography.labelMedium)
+                                        } else {
+                                            Text("Импорт завершен с ошибками", style = MaterialTheme.typography.labelMedium)
+                                        }
+                                    }
+
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                    ) {
+                                        Text(
+                                            text = "Импортировано: ${result.importedCount}",
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                        Text(
+                                            text = "Пропущено: ${result.skippedCount}",
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                        Text(
+                                            text = "Ошибок: ${result.errors.size}",
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+
+                                    if (result.categoryBreakdown.isNotEmpty()) {
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            modifier = Modifier.padding(top = 4.dp)
+                                        ) {
+                                            result.categoryBreakdown.forEach { (category, count) ->
+                                                AssistChip(
+                                                    onClick = { },
+                                                    label = { Text("$category: $count") },
+                                                    modifier = Modifier.height(24.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    if (result.errors.isNotEmpty()) {
+                                        LazyColumn(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .heightIn(max = 60.dp)
+                                        ) {
+                                            items(result.errors.take(5)) { error ->
+                                                Text(
+                                                    text = "• $error",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.error
+                                                )
+                                            }
+                                            if (result.errors.size > 5) {
+                                                item {
+                                                    Text(
+                                                        text = "... и еще ${result.errors.size - 5} ошибок",
+                                                        style = MaterialTheme.typography.bodySmall
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Import buttons
+                        if (!state.isImporting) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = component::onConfirmImportClicked,
+                                    enabled = state.selectedImportFiles.isNotEmpty()
+                                ) {
+                                    Text("Импортировать выбранные")
+                                }
+
+                                if (state.importResult != null) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            // Can't modify state directly from Compose
+                                            // The user can click Preview Import again to reset
+                                        }
+                                    ) {
+                                        Text("Скрыть результат")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // --- RESULTS PANELS ---
             Row(
                 Modifier.fillMaxSize(),
@@ -512,13 +761,43 @@ fun ScraperScreen(
                         )
                     }
                     items(state.parsedPrompts) { prompt ->
-                        Text(
-                            "• ${prompt.title}",
-                            style = MaterialTheme.typography.bodySmall
+                        ClickableText(
+                            text = AnnotatedString("• ${prompt.title}"),
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = if (state.parsedPrompts.indexOf(prompt) == state.currentPreviewIndex) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                }
+                            ),
+                            onClick = { component.onPromptPreviewClicked(prompt) },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
             }
+        }
+    }
+
+    // --- PROMPT PREVIEW DIALOG ---
+    if (state.isPreviewMode && state.previewPrompts.isNotEmpty()) {
+        val currentPrompt = state.previewPrompts.getOrNull(state.currentPreviewIndex)
+        if (currentPrompt != null) {
+            PromptPreviewDialog(
+                prompt = currentPrompt,
+                currentIndex = state.currentPreviewIndex,
+                totalCount = state.previewPrompts.size,
+                acceptedCount = state.acceptedCount,
+                skippedCount = state.skippedCount,
+                hasPrev = state.currentPreviewIndex > 0,
+                hasNext = state.currentPreviewIndex < state.previewPrompts.size - 1,
+                onAccept = component::onAcceptPrompt,
+                onSkip = component::onSkipPrompt,
+                onPrev = component::onPrevPrompt,
+                onNext = component::onNextPrompt,
+                onClose = component::onClosePreview
+            )
         }
     }
 
@@ -575,5 +854,113 @@ private fun StatItem(label: String, value: String) {
             text = label,
             style = MaterialTheme.typography.labelSmall
         )
+    }
+}
+
+/**
+ * Statistics view for ProcessScrapedPostsUseCase.ProcessingResult.
+ * Shows detailed breakdown: total, duplicates, low quality, errors, and new prompts.
+ */
+@Composable
+fun ProcessingStatsView(result: ProcessScrapedPostsUseCase.ProcessingResult) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+            .padding(12.dp)
+    ) {
+        Text(
+            text = "Результаты анализа:",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.height(8.dp))
+
+        StatRow("Всего обработано:", "${result.totalInput}", FontWeight.Normal)
+        StatRow("Пропущено (дубли):", "${result.alreadyExists}", FontWeight.Normal, MaterialTheme.colorScheme.secondary)
+        StatRow("Отсеяно (низкое качество):", "${result.lowQuality}", FontWeight.Normal, MaterialTheme.colorScheme.secondary)
+        StatRow("Ошибки парсинга:", "${result.parseErrors}", FontWeight.Normal, MaterialTheme.colorScheme.error)
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
+
+        StatRow(
+            "Готово к импорту:",
+            "+${result.success}",
+            FontWeight.Bold,
+            MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+@Composable
+private fun StatRow(
+    label: String,
+    value: String,
+    fontWeight: FontWeight = FontWeight.Normal,
+    color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, style = MaterialTheme.typography.bodySmall, fontWeight = fontWeight)
+        Text(
+            value,
+            style = MaterialTheme.typography.bodySmall,
+            color = color,
+            fontWeight = fontWeight
+        )
+    }
+}
+
+/**
+ * Section card for 3-stage workflow UI.
+ */
+@Composable
+fun SectionCard(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            content()
+        }
+    }
+}
+
+/**
+ * Log console widget for displaying scraper logs.
+ */
+@Composable
+fun LogConsole(logs: List<String>) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(150.dp),
+        colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.8f))
+    ) {
+        LazyColumn(
+            modifier = Modifier.padding(8.dp),
+            reverseLayout = true // Newest logs at bottom
+        ) {
+            items(logs.reversed()) { log ->
+                Text(
+                    text = log,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = androidx.compose.ui.graphics.Color.Green,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+        }
     }
 }

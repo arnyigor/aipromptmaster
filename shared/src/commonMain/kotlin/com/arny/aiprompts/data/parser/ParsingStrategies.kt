@@ -75,7 +75,7 @@ class StandardPromptParsingStrategy(
                 author = Author(id = authorId, name = authorName),
                 createdAt = dateInstant.toEpochMilliseconds(),
                 updatedAt = dateInstant.toEpochMilliseconds(),
-                category = "imported"
+                category = "general" // Will be auto-categorized later
             )
         } catch (e: Exception) {
             e.printStackTrace()

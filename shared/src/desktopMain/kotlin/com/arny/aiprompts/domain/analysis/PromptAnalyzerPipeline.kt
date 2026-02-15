@@ -40,7 +40,7 @@ class PromptAnalyzerPipeline(
     ),
     private val indexFile: File = File(
         System.getProperty("user.home"),
-        ".aiprompts/integration_test/index_export.json"
+        ".aiprompts/parsed_prompts/index.json"
     )
 ) : IAnalyzerPipeline {
 
@@ -424,6 +424,12 @@ class PromptAnalyzerPipeline(
         val id = generatePromptId(entry.postId)
         val timestamp = ISO_FORMAT.format(Instant.now())
 
+        // Map 4pda category to app category
+        val appCategory = CategoryTagMapper.mapToAppCategory(entry.category)
+        if (entry.category != appCategory) {
+            println("   📂 Category mapped: '${entry.category}' → '$appCategory'")
+        }
+
         // Get tags from category and auto-detect
         val tags = CategoryTagMapper.getTagsWithAutoDetect(
             entry.category,
@@ -442,7 +448,7 @@ class PromptAnalyzerPipeline(
             title = entry.title,
             content = parseResult.promptContent,
             description = description,
-            category = entry.category,
+            category = appCategory,
             tags = tags,
             sourceUrl = entry.url,
             sourcePage = extractPageNumber(file.name),

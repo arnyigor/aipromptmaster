@@ -80,7 +80,7 @@ val desktopLlmModule = module {
         }
     }
 
-    single<IOpenRouterRepository> { OpenRouterRepositoryImpl(get(), get(), get()) } // Передаем зависимости через get()
+    single<IOpenRouterRepository> { OpenRouterRepositoryImpl(get(), get(), get(), get()) } // httpClient, json, settingsRepository, filePromptProcessor
 }
 
 val desktopLlmRepositoriesModule = module {
@@ -99,6 +99,11 @@ val desktopScrapingUseCasesModule = module {
     single { ExtractPromptDataUseCase() }
     single { AutoCategorizeUseCase() }
     single { ProcessScrapedPostsUseCase(get(), get()) }
+}
+
+// --- MODULE FOR IMPORT USE CASES ---
+val desktopImportUseCasesModule = module {
+    singleOf(::ImportParsedPromptsUseCase)
 }
 
 // --- MODULE FOR INDEX-BASED SCRAPING ---
@@ -130,5 +135,6 @@ val desktopModules =
         fileModule,
         desktopScrapingUseCasesModule,
         desktopIndexScrapingModule,
-        desktopAnalyzerModule
+        desktopAnalyzerModule,
+        desktopImportUseCasesModule
     )
