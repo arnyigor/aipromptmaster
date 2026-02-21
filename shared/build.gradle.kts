@@ -28,13 +28,16 @@ kotlin {
                 api(libs.compose.material3)
                 api(libs.compose.ui)
                 api(libs.compose.material.icons.extended)
-                @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
                 api(libs.compose.components.resources)
                 api("com.arkivanov.decompose:decompose:${libs.versions.decompose.get()}")
                 api("com.arkivanov.decompose:extensions-compose:${libs.versions.decompose.get()}")
                 api("com.arkivanov.essenty:lifecycle-coroutines:${libs.versions.lifecycle.coroutines.get()}")
-                api("androidx.room:room-runtime:${libs.versions.room.get()}")
-                api(libs.androidx.room.ktx)
+                api("androidx.room:room-runtime:${libs.versions.room.get()}") {
+                    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-android")
+                }
+                api("androidx.room:room-ktx:${libs.versions.room.get()}") {
+                    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-android")
+                }
                 api("io.insert-koin:koin-compose:${libs.versions.koin.get()}")
                 api(libs.kotlinx.datetime)
                 api(libs.kotlinx.coroutines.core)

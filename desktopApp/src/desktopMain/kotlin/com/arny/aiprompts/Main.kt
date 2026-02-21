@@ -74,6 +74,7 @@ fun main() {
                 gitHubSyncService = getKoin().get(),
                 analyzerPipeline = getKoin().get(),
                 importParsedPromptsUseCase = getKoin().get(),
+                fileDataSource = getKoin().get(),
             )
         }
 

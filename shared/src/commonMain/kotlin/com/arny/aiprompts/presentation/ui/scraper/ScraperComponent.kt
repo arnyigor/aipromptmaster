@@ -4,6 +4,7 @@ import com.arny.aiprompts.domain.analysis.AnalyzerPipelineProgress
 import com.arny.aiprompts.domain.analysis.AnalyzerPipelineResult
 import com.arny.aiprompts.domain.analysis.AnalyzerStats
 import com.arny.aiprompts.domain.analysis.IAnalyzerPipeline
+import com.arny.aiprompts.domain.index.model.IndexLink
 import com.arny.aiprompts.domain.interfaces.PreScrapeCheck
 import com.arny.aiprompts.domain.model.PromptData
 import com.arny.aiprompts.domain.repositories.SyncResult
@@ -45,6 +46,9 @@ interface ScraperComponent {
     fun onNextPrompt()
     fun onPrevPrompt()
     fun onClosePreview()
+
+    // --- Toggle between parsed and original HTML content ---
+    fun onToggleHtmlView()
 
     // События от диалога
     fun onOverwriteConfirmed()
@@ -113,8 +117,12 @@ data class PipelineExecutionResult(
  * @property importProgress Current import progress (0-1).
  * @property importResult Result of the last import operation.
  * @property isImporting Flag indicating import operation is in progress.
+ *
+ * @property indexLinks Links parsed from first page spoilers (for filtering).
+ * @property showOriginalHtml In preview mode: show original HTML content vs parsed content.
+ * @property currentHtmlContent In preview mode: original HTML content from the post.
  */
-data class ScraperState(
+ data class ScraperState(
     // --- Input field state ---
     val pagesToScrape: String = "10",
 
@@ -156,7 +164,12 @@ data class ScraperState(
     val previewPrompts: List<PromptData> = emptyList(),
     val currentPreviewIndex: Int = 0,
     val acceptedCount: Int = 0,
-    val skippedCount: Int = 0
+    val skippedCount: Int = 0,
+
+    // --- Index-based filtering (new) ---
+    val indexLinks: List<IndexLink> = emptyList(),
+    val showOriginalHtml: Boolean = false,
+    val currentHtmlContent: String? = null
 )
 
 /**

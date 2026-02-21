@@ -38,10 +38,7 @@ compose.desktop {
         mainClass = "com.arny.aiprompts.MainKt"
         nativeDistributions {
             targetFormats(
-                TargetFormat.Dmg,    // macOS
-                TargetFormat.Msi,    // Windows MSI-установщик
                 TargetFormat.Exe,    // Windows EXE-установщик
-                TargetFormat.Deb     // Linux
             )
             packageName = "AIPrompts"
             packageVersion = "1.0.0"

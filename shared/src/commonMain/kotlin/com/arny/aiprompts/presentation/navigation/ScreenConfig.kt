@@ -40,6 +40,9 @@ sealed interface MainConfig {
     data object Scraper : MainConfig
 
     @Serializable
+    data object ScraperWizard : MainConfig
+
+    @Serializable
     data object Prompts : MainConfig
 
     @Serializable

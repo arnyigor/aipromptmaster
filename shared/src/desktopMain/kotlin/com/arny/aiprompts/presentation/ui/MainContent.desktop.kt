@@ -51,6 +51,7 @@ import com.arny.aiprompts.presentation.ui.importer.ImporterScreen
 import com.arny.aiprompts.presentation.ui.llm.LlmScreen
 import com.arny.aiprompts.presentation.ui.prompts.PromptsScreen
 import com.arny.aiprompts.presentation.ui.scraper.ScraperScreen
+import com.arny.aiprompts.presentation.ui.scraperwizard.ScraperWizardScreen
 import com.arny.aiprompts.presentation.ui.settings.SettingsScreen
 
 
@@ -64,6 +65,7 @@ private fun PreviewSidebarExpanded() {
         currentScreen = MainScreen.PROMPTS,
         sidebarCollapsed = false,
         onNavigateToScraper = {},
+        onNavigateToScraperWizard = {},
         onNavigateToPrompts = {},
         onNavigateToChat = {},
         onNavigateToImport = {},
@@ -80,6 +82,7 @@ private fun PreviewSidebarCollapsed() {
         currentScreen = MainScreen.PROMPTS,
         sidebarCollapsed = true,
         onNavigateToScraper = {},
+        onNavigateToScraperWizard = {},
         onNavigateToPrompts = {},
         onNavigateToChat = {},
         onNavigateToImport = {},
@@ -105,6 +108,7 @@ fun MainContentDesktopImpl(component: MainComponent) {
             currentScreen = state.currentScreen,
             sidebarCollapsed = state.sidebarCollapsed,
             onNavigateToScraper = component::navigateToScraper,
+            onNavigateToScraperWizard = component::navigateToScraperWizard,
             onNavigateToPrompts = component::navigateToPrompts,
             onNavigateToChat = component::navigateToChat,
             onNavigateToImport = { component.navigateToImport(emptyList()) },
@@ -127,18 +131,40 @@ fun MainContentDesktopImpl(component: MainComponent) {
                 animation = stackAnimation(fade())
             ) { child ->
                 when (val instance = child.instance) {
-                    is MainComponent.Child.Prompts -> PromptsScreen(component = instance.component)
-                    is MainComponent.Child.PromptDetails -> AdaptivePromptDetailLayout(component = instance.component)
-                    is MainComponent.Child.Chat -> LlmScreen(component = instance.component)
-                    is MainComponent.Child.Scraper -> if (MainComponent.IS_IMPORT_ENABLED) ScraperScreen(
-                        component = instance.component
-                    )
+                    is MainComponent.Child.Prompts -> {
+                        PromptsScreen(component = instance.component)
+                    }
 
-                    is MainComponent.Child.Import -> if (MainComponent.IS_IMPORT_ENABLED) ImporterScreen(
-                        component = instance.component
-                    ) else Text("Import not available", modifier = Modifier.fillMaxSize())
+                    is MainComponent.Child.PromptDetails -> {
+                        AdaptivePromptDetailLayout(component = instance.component)
+                    }
 
-                    is MainComponent.Child.Settings -> SettingsScreen(component = instance.component)
+                    is MainComponent.Child.Chat -> {
+                        LlmScreen(component = instance.component)
+                    }
+
+                    is MainComponent.Child.Scraper -> {
+                        if (MainComponent.IS_IMPORT_ENABLED) ScraperScreen(
+                            component = instance.component
+                        )
+                    }
+
+                    is MainComponent.Child.ScraperWizard -> {
+                        if (MainComponent.IS_IMPORT_ENABLED) ScraperWizardScreen(
+                            component = instance.component,
+                            onNavigateBack = { component.navigateToPrompts() }
+                        )
+                    }
+
+                    is MainComponent.Child.Import -> {
+                        if (MainComponent.IS_IMPORT_ENABLED) ImporterScreen(
+                            component = instance.component
+                        ) else Text("Import not available", modifier = Modifier.fillMaxSize())
+                    }
+
+                    is MainComponent.Child.Settings -> {
+                        SettingsScreen(component = instance.component)
+                    }
                 }
             }
             MainStatusBar(activeWorkspace = state.activeWorkspace)
@@ -159,6 +185,7 @@ private fun MainSidebar(
     currentScreen: MainScreen,
     sidebarCollapsed: Boolean,
     onNavigateToScraper: () -> Unit,
+    onNavigateToScraperWizard: () -> Unit,
     onNavigateToPrompts: () -> Unit,
     onNavigateToChat: () -> Unit,
     onNavigateToImport: () -> Unit,
@@ -215,11 +242,12 @@ private fun MainSidebar(
             )
 
             if (MainComponent.IS_IMPORT_ENABLED) {
+                // Scraper Wizard - основной инструмент импорта
                 NavigationItem(
                     icon = Icons.Default.Download,
                     label = "Scraper",
-                    selected = currentScreen == MainScreen.SCRAPER,
-                    onClick = onNavigateToScraper
+                    selected = currentScreen == MainScreen.SCRAPER_WIZARD,
+                    onClick = onNavigateToScraperWizard
                 )
             }
 
@@ -254,15 +282,17 @@ private fun MainSidebar(
             )
         } else {
             // Collapsed sidebar - just icons
-            IconButton(onClick = onNavigateToScraper) {
-                Icon(
-                    Icons.Default.Search,
-                    contentDescription = "Scraper",
-                    tint = if (currentScreen == MainScreen.SCRAPER)
-                        MaterialTheme.colorScheme.primary
-                    else
-                        MaterialTheme.colorScheme.onSurface
-                )
+            if (MainComponent.IS_IMPORT_ENABLED) {
+                IconButton(onClick = onNavigateToScraperWizard) {
+                    Icon(
+                        Icons.Default.Download,
+                        contentDescription = "Scraper",
+                        tint = if (currentScreen == MainScreen.SCRAPER_WIZARD)
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
 
             IconButton(onClick = onNavigateToPrompts) {
@@ -374,6 +404,7 @@ private fun MainTopBarDesktop(
                     is MainComponent.Child.PromptDetails -> "Детали промпта"
                     is MainComponent.Child.Chat -> "Чат"
                     is MainComponent.Child.Scraper -> "Скрапер"
+                    is MainComponent.Child.ScraperWizard -> "Мастер импорта"
                     is MainComponent.Child.Import -> "Импорт"
                     is MainComponent.Child.Settings -> "Настройки"
                 }
@@ -471,6 +502,10 @@ private fun MainPropertiesPanel(
 
             is MainComponent.Child.Import -> {
                 Text("Прогресс импорта будет показан здесь")
+            }
+
+            is MainComponent.Child.ScraperWizard -> {
+                Text("Настройки мастера импорта")
             }
 
             is MainComponent.Child.Settings -> {

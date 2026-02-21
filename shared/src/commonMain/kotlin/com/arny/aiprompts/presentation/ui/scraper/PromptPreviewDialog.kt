@@ -9,6 +9,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,6 +24,7 @@ import com.arny.aiprompts.domain.model.PromptData
 
 /**
  * Dialog for previewing and accepting/rejecting scraped prompts one-by-one.
+ * Supports toggling between parsed content and original HTML content.
  */
 @Composable
 fun PromptPreviewDialog(
@@ -32,10 +35,13 @@ fun PromptPreviewDialog(
     skippedCount: Int,
     hasPrev: Boolean,
     hasNext: Boolean,
+    showOriginalHtml: Boolean = false,
+    htmlContent: String? = null,
     onAccept: () -> Unit,
     onSkip: () -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit,
+    onToggleHtmlView: () -> Unit,
     onClose: () -> Unit
 ) {
     Dialog(
@@ -156,21 +162,67 @@ fun PromptPreviewDialog(
 
                     HorizontalDivider()
 
-                    // Content
-                    Text(
-                        text = "Содержимое:",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Surface(
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        shape = MaterialTheme.shapes.medium
+                    // Content with toggle button
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = prompt.variants.firstOrNull()?.content ?: "Нет содержимого",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(12.dp)
+                            text = if (showOriginalHtml) "Оригинальный HTML:" else "Спарсенное содержимое:",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        
+                        // Toggle button
+                        Button(
+                            onClick = onToggleHtmlView,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (showOriginalHtml) 
+                                    MaterialTheme.colorScheme.secondary 
+                                else 
+                                    MaterialTheme.colorScheme.tertiary
+                            ),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                        ) {
+                            Icon(
+                                if (showOriginalHtml) Icons.Default.TextFields else Icons.Default.Code,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                if (showOriginalHtml) "Парсинг" else "HTML",
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
+                    }
+                    
+                    Spacer(Modifier.height(8.dp))
+                    
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (showOriginalHtml && htmlContent != null) {
+                            // Show original HTML content
+                            Text(
+                                text = htmlContent,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier
+                                    .padding(12.dp)
+                                    .heightIn(min = 100.dp, max = 300.dp)
+                                    .verticalScroll(rememberScrollState())
+                            )
+                        } else {
+                            // Show parsed content
+                            Text(
+                                text = prompt.variants.firstOrNull()?.content ?: "Нет содержимого",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(12.dp)
+                            )
+                        }
                     }
 
                     // Author if available

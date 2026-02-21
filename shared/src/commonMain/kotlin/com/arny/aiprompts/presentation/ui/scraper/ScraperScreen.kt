@@ -110,7 +110,10 @@ private class FakeScraperComponent : ScraperComponent {
             previewPrompts = parsedPromptsPreview,
             currentPreviewIndex = 0,
             acceptedCount = 0,
-            skippedCount = 0
+            skippedCount = 0,
+            indexLinks = emptyList(),
+            showOriginalHtml = false,
+            currentHtmlContent = null
         )
     )
 
@@ -139,6 +142,7 @@ private class FakeScraperComponent : ScraperComponent {
     override fun onNextPrompt() {}
     override fun onPrevPrompt() {}
     override fun onClosePreview() {}
+    override fun onToggleHtmlView() {}
 
     override suspend fun getPromptsStats(): PromptsStats {
         return PromptsStats(localCount = 12, syncedCount = 45)
@@ -793,10 +797,13 @@ fun ScraperScreen(
                 skippedCount = state.skippedCount,
                 hasPrev = state.currentPreviewIndex > 0,
                 hasNext = state.currentPreviewIndex < state.previewPrompts.size - 1,
+                showOriginalHtml = state.showOriginalHtml,
+                htmlContent = state.currentHtmlContent,
                 onAccept = component::onAcceptPrompt,
                 onSkip = component::onSkipPrompt,
                 onPrev = component::onPrevPrompt,
                 onNext = component::onNextPrompt,
+                onToggleHtmlView = component::onToggleHtmlView,
                 onClose = component::onClosePreview
             )
         }

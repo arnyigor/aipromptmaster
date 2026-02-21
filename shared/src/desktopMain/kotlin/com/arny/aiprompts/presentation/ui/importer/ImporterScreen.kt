@@ -96,7 +96,6 @@ import com.arny.aiprompts.data.parser.PostStructureParser
 import com.arny.aiprompts.domain.model.FileAttachment
 import com.arny.aiprompts.domain.model.FileType
 import com.arny.aiprompts.domain.model.RawPostData
-import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
@@ -272,7 +271,10 @@ private fun PostListWithFiltersPanel(
 @Composable
 private fun FilterPanel(state: ImporterState, component: ImporterComponent) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Text("Фильтры", style = MaterialTheme.typography.titleSmall)
 
             // Поиск
@@ -468,9 +470,24 @@ private fun PostListItem(
                                 postId = post.postId,
                                 downloadedFiles = state.downloadedFiles,
                                 expandedFileIds = state.expandedFileIds,
-                                onDownloadFile = { url, filename -> component.onDownloadFile(url, filename) },
-                                onPreviewFile = { url, filename -> component.onPreviewFile(url, filename) },
-                                onOpenFileInSystem = { url, filename -> component.onOpenFileInSystem(url, filename) },
+                                onDownloadFile = { url, filename ->
+                                    component.onDownloadFile(
+                                        url,
+                                        filename
+                                    )
+                                },
+                                onPreviewFile = { url, filename ->
+                                    component.onPreviewFile(
+                                        url,
+                                        filename
+                                    )
+                                },
+                                onOpenFileInSystem = { url, filename ->
+                                    component.onOpenFileInSystem(
+                                        url,
+                                        filename
+                                    )
+                                },
                                 onToggleExpansion = { postId, attachmentUrl ->
                                     component.onToggleFileExpansion(
                                         postId,
@@ -502,7 +519,10 @@ private fun PostListItem(
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(Modifier.width(8.dp))
-                        Text("Открыть оригинальный пост", style = MaterialTheme.typography.labelMedium)
+                        Text(
+                            "Открыть оригинальный пост",
+                            style = MaterialTheme.typography.labelMedium
+                        )
                     }
                 }
             }
@@ -958,7 +978,11 @@ private fun DownloadStatusIndicator(
 
 // --- ОСНОВНАЯ ВКЛАДКА РЕДАКТОРА ---
 @Composable
-private fun BasicEditorTab(state: ImporterState, editedData: EditedPostData, component: ImporterComponent) {
+private fun BasicEditorTab(
+    state: ImporterState,
+    editedData: EditedPostData,
+    component: ImporterComponent
+) {
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -1021,7 +1045,10 @@ private fun BasicEditorTab(state: ImporterState, editedData: EditedPostData, com
         if (selectedPost != null) {
             Spacer(Modifier.height(16.dp))
             Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Text("Информация о посте", style = MaterialTheme.typography.titleSmall)
 
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -1035,7 +1062,10 @@ private fun BasicEditorTab(state: ImporterState, editedData: EditedPostData, com
 
                         selectedPost.updatedDate?.let { updatedDate ->
                             Column {
-                                Text("Дата обновления", style = MaterialTheme.typography.labelMedium)
+                                Text(
+                                    "Дата обновления",
+                                    style = MaterialTheme.typography.labelMedium
+                                )
                                 Text(
                                     formatDate(updatedDate),
                                     style = MaterialTheme.typography.bodyMedium
@@ -1099,7 +1129,11 @@ private fun StructureEditorTab(state: ImporterState, component: ImporterComponen
 
 // --- ВКЛАДКА ПРЕВЬЮ ---
 @Composable
-private fun PreviewTab(editedData: EditedPostData, state: ImporterState, component: ImporterComponent) {
+private fun PreviewTab(
+    editedData: EditedPostData,
+    state: ImporterState,
+    component: ImporterComponent
+) {
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -1141,7 +1175,10 @@ private fun PreviewTab(editedData: EditedPostData, state: ImporterState, compone
         }
 
         Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 // Стабильный ключ для remember - используем postId для предотвращения потери состояния
                 val previewKey = state.selectedPostId ?: "no-selection"
 
@@ -1188,7 +1225,10 @@ private fun PreviewTab(editedData: EditedPostData, state: ImporterState, compone
 private fun InteractiveTextBlock(text: String, component: ImporterComponent) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Text("Текст", style = MaterialTheme.typography.labelMedium)
                 ActionButtonsRow(text, component)
             }
@@ -1270,7 +1310,10 @@ private fun InteractiveQuoteBlock(text: String, component: ImporterComponent) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Text("Цитата", style = MaterialTheme.typography.labelMedium)
                 ActionButtonsRow(text, component)
             }
@@ -1286,12 +1329,19 @@ private fun InteractiveQuoteBlock(text: String, component: ImporterComponent) {
 }
 
 @Composable
-private fun InteractiveAttachmentBlock(block: ParsedPostBlock, state: ImporterState, component: ImporterComponent) {
+private fun InteractiveAttachmentBlock(
+    block: ParsedPostBlock,
+    state: ImporterState,
+    component: ImporterComponent
+) {
     val attachment = block.attachment ?: return
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Text("Вложение", style = MaterialTheme.typography.labelMedium)
                 FileTypeIcon(attachment.fileType)
                 Text(
@@ -1318,7 +1368,12 @@ private fun InteractiveAttachmentBlock(block: ParsedPostBlock, state: ImporterSt
                 downloadedFile = state.downloadedFiles[attachment.url],
                 onDownload = { component.onDownloadFile(attachment.url, attachment.filename) },
                 onPreview = { component.onPreviewFile(attachment.url, attachment.filename) },
-                onOpenInSystem = { component.onOpenFileInSystem(attachment.url, attachment.filename) }
+                onOpenInSystem = {
+                    component.onOpenFileInSystem(
+                        attachment.url,
+                        attachment.filename
+                    )
+                }
             )
         }
     }
@@ -1413,7 +1468,10 @@ private fun SidePanel(
 @Composable
 private fun StatisticsCard(state: ImporterState) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Text("Статистика", style = MaterialTheme.typography.titleSmall)
 
             StatisticRow("Всего постов", state.rawPosts.size.toString())
@@ -1421,7 +1479,8 @@ private fun StatisticsCard(state: ImporterState) {
             StatisticRow("Готово к импорту", state.readyToImportCount.toString())
 
             if (state.postsToImport.isNotEmpty()) {
-                val completionPercentage = (state.postsToImport.size.toFloat() / state.filteredPosts.size * 100).toInt()
+                val completionPercentage =
+                    (state.postsToImport.size.toFloat() / state.filteredPosts.size * 100).toInt()
                 LinearProgressIndicator(
                     progress = { completionPercentage / 100f },
                     modifier = Modifier.fillMaxWidth()
@@ -1440,7 +1499,11 @@ private fun StatisticRow(label: String, value: String) {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(label, style = MaterialTheme.typography.bodyMedium)
-        Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
     }
 }
 
@@ -1448,12 +1511,18 @@ private fun StatisticRow(label: String, value: String) {
 @Composable
 private fun ActionsCard(state: ImporterState, component: ImporterComponent) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             Text("Действия", style = MaterialTheme.typography.titleSmall)
 
             // Кнопки управления постом
             if (state.selectedPostId != null) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Button(
                         onClick = component::onSaveAndSelectNextClicked,
                         modifier = Modifier.weight(1f),
@@ -1512,7 +1581,10 @@ private fun ValidationErrorsCard(state: ImporterState) {
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Text("Ошибки валидации", style = MaterialTheme.typography.titleSmall)
 
             if (state.validationErrors.isEmpty()) {

@@ -17,6 +17,7 @@ import com.arny.aiprompts.domain.analysis.IAnalyzerPipeline
 import com.arny.aiprompts.domain.interfaces.IWebScraper
 import com.arny.aiprompts.domain.interfaces.IPromptsRepository
 import com.arny.aiprompts.domain.files.FileMetadataReader
+import com.arny.aiprompts.domain.interfaces.FileDataSource
 import com.arny.aiprompts.domain.interactors.ILLMInteractor
 import com.arny.aiprompts.domain.interfaces.IHybridParser
 import com.arny.aiprompts.domain.repositories.IPromptSynchronizer
@@ -49,6 +50,8 @@ import com.arny.aiprompts.presentation.ui.importer.DefaultImporterComponent
 import com.arny.aiprompts.presentation.ui.importer.ImporterComponent
 import com.arny.aiprompts.presentation.ui.scraper.DefaultScraperComponent
 import com.arny.aiprompts.presentation.ui.scraper.ScraperComponent
+import com.arny.aiprompts.presentation.ui.scraperwizard.DefaultScraperWizardComponent
+import com.arny.aiprompts.presentation.ui.scraperwizard.ScraperWizardComponent
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -61,6 +64,7 @@ interface MainComponent {
 
     sealed interface Child {
         data class Scraper(val component: ScraperComponent) : Child
+        data class ScraperWizard(val component: ScraperWizardComponent) : Child
         data class Prompts(val component: PromptListComponent) : Child
         data class PromptDetails(val component: PromptDetailComponent) : Child
         data class Chat(val component: LlmComponent) : Child
@@ -75,6 +79,7 @@ interface MainComponent {
     }
 
     fun navigateToScraper()
+    fun navigateToScraperWizard()
     fun navigateToPrompts()
     fun navigateToPromptDetails(promptId: String)
     fun navigateToChat()
@@ -112,6 +117,7 @@ class DefaultMainComponent(
     private val gitHubSyncService: GitHubSyncService,
     private val analyzerPipeline: IAnalyzerPipeline,
     private val importParsedPromptsUseCase: ImportParsedPromptsUseCase,
+    private val fileDataSource: FileDataSource,
 ) : MainComponent, ComponentContext by componentContext {
 
     private val navigation = StackNavigation<MainConfig>()
@@ -193,11 +199,24 @@ class DefaultMainComponent(
                     importParsedPromptsUseCase = importParsedPromptsUseCase,
                     promptSynchronizer = promptSynchronizer,
                     promptsRepository = promptsRepository,
-                    onNavigateToImporter = { files ->
+                    onNavigateToImporter = { files: List<String> ->
                         if (files.isNotEmpty()) {
+                            importFiles = files.map { java.io.File(it) }
                             navigation.push(MainConfig.Import)
                         }
                     },
+                    onBack = { navigation.pop() }
+                )
+            )
+
+            is MainConfig.ScraperWizard -> Child.ScraperWizard(
+                DefaultScraperWizardComponent(
+                    componentContext = context,
+                    scrapeUseCase = scrapeUseCase,
+                    webScraper = webScraper,
+                    promptSynchronizer = promptSynchronizer,
+                    promptsRepository = promptsRepository,
+                    fileDataSource = fileDataSource,
                     onBack = { navigation.pop() }
                 )
             )
@@ -214,7 +233,7 @@ class DefaultMainComponent(
                     fileMetadataReader = fileMetadataReader,
                     onBack = {
                         navigation.pop()
-                        _state.value = _state.value.copy(currentScreen = MainScreen.SCRAPER)
+                        _state.value = _state.value.copy(currentScreen = MainScreen.SCRAPER_WIZARD)
                     }
                 )
             )
@@ -231,8 +250,13 @@ class DefaultMainComponent(
     }
 
     override fun navigateToScraper() {
-        navigation.navigate { listOf(MainConfig.Scraper) }
-        _state.value = _state.value.copy(currentScreen = MainScreen.SCRAPER)
+        // Redirect to ScraperWizard (single scraper entry point)
+        navigateToScraperWizard()
+    }
+
+    override fun navigateToScraperWizard() {
+        navigation.navigate { listOf(MainConfig.ScraperWizard) }
+        _state.value = _state.value.copy(currentScreen = MainScreen.SCRAPER_WIZARD)
     }
 
     override fun navigateToPrompts() {
@@ -300,7 +324,7 @@ data class MainState(
 )
 
 enum class MainScreen {
-    SCRAPER,
+    SCRAPER_WIZARD,
     PROMPTS,
     CHAT,
     IMPORT,

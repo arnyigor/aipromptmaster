@@ -1,5 +1,6 @@
 package com.arny.aiprompts.domain.interfaces
 
+import com.arny.aiprompts.domain.index.model.IndexLink
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -35,6 +36,18 @@ interface IWebScraper {
         baseUrl: String,
         pagesToScrape: List<Int>
     ): Flow<ScraperProgress>
+
+    /**
+     * Parse index from the first page (page_1.html) to extract links from spoilers.
+     * Returns list of IndexLink with postId, title, category from the first page.
+     */
+    fun parseIndexFromFirstPage(): List<IndexLink>
+
+    /**
+     * Get original prompt content from saved HTML file by postId.
+     * Returns HTML content of the post or null if not found.
+     */
+    fun getPromptContentFromHtml(postId: String): String?
 }
 
 data class PreScrapeCheck(

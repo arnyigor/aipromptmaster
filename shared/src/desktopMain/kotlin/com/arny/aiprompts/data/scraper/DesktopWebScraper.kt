@@ -1,10 +1,14 @@
 package com.arny.aiprompts.data.scraper
 
+import com.arny.aiprompts.domain.index.IndexParser
+import com.arny.aiprompts.domain.index.model.IndexLink
+import com.arny.aiprompts.domain.index.model.IndexParseResult
 import com.arny.aiprompts.domain.interfaces.IWebScraper
 import com.arny.aiprompts.domain.interfaces.PreScrapeCheck
 import com.arny.aiprompts.domain.interfaces.ScraperProgress
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import org.jsoup.Jsoup
 import org.openqa.selenium.By
 import org.openqa.selenium.WebDriverException
 import org.openqa.selenium.chrome.ChromeDriver
@@ -192,5 +196,80 @@ class DesktopWebScraper : IWebScraper {
         } else {
             null
         }
+    }
+
+    /**
+     * Parse index from the first page (page_1.html) to extract links from spoilers.
+     * Returns list of IndexLink with postId, title, category from the first page.
+     */
+    override fun parseIndexFromFirstPage(): List<IndexLink> {
+        val firstPageFile = File(getSaveDirectory(), "page_1.html")
+        if (!firstPageFile.exists()) {
+            println("[DesktopWebScraper] First page not found: ${firstPageFile.absolutePath}")
+            return emptyList()
+        }
+
+        return try {
+            val htmlContent = firstPageFile.readText(StandardCharsets.UTF_8)
+            val parser = IndexParser()
+            val topicUrl = "https://4pda.to/forum/index.php?showtopic=1109539"
+            
+            // Parse using the synchronous parseIndex method
+            val result = runBlocking {
+                parser.parseIndex(htmlContent, topicUrl)
+            }
+
+            when (result) {
+                is IndexParseResult.Success -> {
+                    println("[DesktopWebScraper] Parsed ${result.index.links.size} links from index")
+                    result.index.links
+                }
+                is IndexParseResult.Error -> {
+                    println("[DesktopWebScraper] Error parsing index: ${result.message}")
+                    emptyList()
+                }
+                is IndexParseResult.Cached -> {
+                    println("[DesktopWebScraper] Using cached index with ${result.index.links.size} links")
+                    result.index.links
+                }
+            }
+        } catch (e: Exception) {
+            println("[DesktopWebScraper] Error reading first page: ${e.message}")
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    /**
+     * Get original prompt content from saved HTML file by postId.
+     * Returns HTML content of the post or null if not found.
+     */
+    override fun getPromptContentFromHtml(postId: String): String? {
+        val saveDir = File(getSaveDirectory())
+        
+        // Search through all HTML files for the post
+        val htmlFiles = saveDir.listFiles { f -> 
+            f.isFile && f.name.startsWith("page_") && f.name.endsWith(".html")
+        } ?: return null
+
+        for (htmlFile in htmlFiles) {
+            try {
+                val htmlContent = htmlFile.readText(StandardCharsets.UTF_8)
+                val document = Jsoup.parse(htmlContent)
+                
+                // Find the post by data-post attribute
+                val postElement = document.selectFirst("div.post[data-post='$postId']")
+                if (postElement != null) {
+                    val contentElement = postElement.selectFirst("div.postcolor")
+                    if (contentElement != null) {
+                        return contentElement.html()
+                    }
+                }
+            } catch (e: Exception) {
+                // Continue to next file
+            }
+        }
+
+        return null
     }
 }

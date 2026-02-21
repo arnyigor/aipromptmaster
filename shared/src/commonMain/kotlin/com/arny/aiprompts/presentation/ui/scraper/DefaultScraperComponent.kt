@@ -100,6 +100,7 @@ class DefaultScraperComponent(
      * Updated parsing with new pipeline and idempotency:
      * HTML → RawPostData → ExtractPromptDataUseCase → AutoCategorizeUseCase → PromptData
      * Now skips posts that already exist in the database.
+     * NEW: Filters to only include prompts from index links (first page spoilers).
      */
     override fun onParseAndSaveClicked() {
         scope.launch {
@@ -119,6 +120,12 @@ class DefaultScraperComponent(
                 addLog("Нет файлов для парсинга.")
                 _state.update { it.copy(inProgress = false) }
                 return@launch
+            }
+
+            // Get index links for filtering (from first page spoilers)
+            val indexPostIds = currentState.indexLinks.map { it.postId }.toSet()
+            if (indexPostIds.isNotEmpty()) {
+                addLog("Фильтрация по списку из первой страницы: ${indexPostIds.size} промптов")
             }
 
             // Step 1: Get existing source IDs from database for idempotency
@@ -144,14 +151,24 @@ class DefaultScraperComponent(
             }
 
             val allRawPosts = parsingResults.flatMap { it.getOrElse { emptyList() } }
-            addLog("Найдено ${allRawPosts.size} постов (включая дубли и мусор)")
+            
+            // NEW: Filter by index postIds if available
+            val filteredRawPosts = if (indexPostIds.isNotEmpty()) {
+                val filtered = allRawPosts.filter { it.postId in indexPostIds }
+                addLog("После фильтрации по индексу: ${filtered.size} постов (из ${allRawPosts.size})")
+                filtered
+            } else {
+                allRawPosts
+            }
+            
+            addLog("Найдено ${filteredRawPosts.size} постов для обработки (включая дубли и мусор)")
 
             // Step 3: Process through new pipeline (extraction + categorization + deduplication)
             addLog("Шаг 3: Извлечение данных, категоризация и дедупликация...")
 
-            // NEW: Pass existingSourceIds for idempotency
+            // NEW: Pass indexPostIds for filtering
             val result = processScrapedPostsUseCase(
-                rawPosts = allRawPosts,
+                rawPosts = filteredRawPosts,
                 existingSourceIds = totalIgnoreSet
             )
 
@@ -365,6 +382,22 @@ class DefaultScraperComponent(
             _state.update { it.copy(inProgress = true) }
             addLog("Запуск скрапинга для ${pages.size} страниц...")
 
+            // First, try to parse index from first page (if page 1 is included)
+            if (pages.contains(1)) {
+                addLog("Парсинг индекса из первой страницы...")
+                val indexLinks = withContext(Dispatchers.IO) {
+                    webScraper.parseIndexFromFirstPage()
+                }
+                if (indexLinks.isNotEmpty()) {
+                    val categories = indexLinks.groupBy { it.category }.keys
+                    addLog("Найдено ${indexLinks.size} ссылок из спойлеров. Категории: ${categories.joinToString()}")
+                    _state.update { it.copy(indexLinks = indexLinks) }
+                } else {
+                    addLog("Внимание: не удалось получить ссылки из спойлеров первой страницы")
+                    _state.update { it.copy(indexLinks = emptyList()) }
+                }
+            }
+
             scrapeUseCase("https://4pda.to/forum/index.php?showtopic=1109539", pages)
                 .onEach { result ->
                     when (result) {
@@ -375,6 +408,17 @@ class DefaultScraperComponent(
                             }
                             _state.update { it.copy(savedHtmlFiles = updatedFiles) }
                             addLog("--- Скрапинг ЗАВЕРШЕН ---")
+                            
+                            // Re-parse index if needed after scraping
+                            if (_state.value.indexLinks.isEmpty()) {
+                                val freshIndexLinks = withContext(Dispatchers.IO) {
+                                    webScraper.parseIndexFromFirstPage()
+                                }
+                                if (freshIndexLinks.isNotEmpty()) {
+                                    _state.update { it.copy(indexLinks = freshIndexLinks) }
+                                    addLog("Обновлен индекс: ${freshIndexLinks.size} ссылок")
+                                }
+                            }
                         }
                         is ScraperResult.Error -> addLog("--- ОШИБКА: ${result.errorMessage} ---")
                     }
@@ -522,8 +566,8 @@ class DefaultScraperComponent(
             addLog("--- ИМПОРТ ВЫБРАННЫХ ФАЙЛОВ ---")
             addLog("Файлов для импорта: ${selectedFiles.size}")
 
-            var importedCount = 0
-            var skippedCount = 0
+            var totalImported = 0
+            var totalSkipped = 0
             val errors = mutableListOf<String>()
             val categoryBreakdown = mutableMapOf<String, Int>()
 
@@ -536,21 +580,17 @@ class DefaultScraperComponent(
                 }
 
                 try {
-                    // Collect the flow and get the final result
-                    var fileImportedCount = 0
-                    var fileSkippedCount = 0
-                    val fileErrors = mutableListOf<String>()
-                    val fileCategoryBreakdown = mutableMapOf<String, Int>()
-
                     importParsedPromptsUseCase.importFiles(listOf(filePath)).collect { progress ->
                         if (progress.currentPrompts > 0) {
                             addLog("  ${file.name}: ${progress.currentPrompts} промптов")
+                            totalImported += progress.currentPrompts
                         }
                     }
-
-                    // We can't get the result from the flow directly
-                    // The result is handled internally in the use case
                     addLog("  ${file.name}: обработка завершена")
+
+                    // Count category
+                    val category = file.nameWithoutExtension
+                    categoryBreakdown[category] = categoryBreakdown.getOrDefault(category, 0) + 1
 
                 } catch (e: Exception) {
                     errors.add("Ошибка импорта файла ${file.name}: ${e.message}")
@@ -558,28 +598,33 @@ class DefaultScraperComponent(
                 }
             }
 
-            // Since we can't easily get the result from the flow,
-            // we'll show a success message based on the files processed
+            // Refresh repository after import to pick up new prompts
+            promptsRepository.invalidateSortDataCache()
+            updateSyncStats()
+
             val importResult = ImportParsedPromptsUseCase.ImportResult(
                 success = errors.isEmpty(),
                 totalFiles = selectedFiles.size,
-                totalPrompts = selectedFiles.size,
-                importedCount = selectedFiles.size,
-                skippedCount = 0,
+                totalPrompts = totalImported + totalSkipped,
+                importedCount = totalImported,
+                skippedCount = totalSkipped,
                 errors = errors,
-                categoryBreakdown = mapOf("imported" to selectedFiles.size)
+                categoryBreakdown = categoryBreakdown
             )
 
             _state.update {
                 it.copy(
                     isImporting = false,
                     importProgress = 1f,
-                    importResult = importResult
+                    importResult = importResult,
+                    // Clear selections after successful import
+                    selectedImportFiles = emptySet()
                 )
             }
 
             addLog("--- РЕЗУЛЬТАТЫ ИМПОРТА ---")
-            addLog("Файлов импортировано: ${selectedFiles.size}")
+            addLog("Импортировано: $totalImported промптов")
+            addLog("Пропущено: $totalSkipped")
             addLog("Ошибок: ${errors.size}")
 
             if (errors.isNotEmpty()) {
@@ -588,8 +633,10 @@ class DefaultScraperComponent(
                 }
             }
 
-            addLog("Файлы сохранены в prompts/{category}/")
-            addLog("Их можно проверить и запушить в репозиторий.")
+            if (totalImported > 0) {
+                addLog("Файлы сохранены в prompts/{category}/")
+                addLog("Обновлено в базе данных.")
+            }
         }
     }
 
@@ -711,8 +758,49 @@ class DefaultScraperComponent(
                 previewPrompts = emptyList(),
                 currentPreviewIndex = 0,
                 acceptedCount = 0,
-                skippedCount = 0
+                skippedCount = 0,
+                showOriginalHtml = false,
+                currentHtmlContent = null
             )
+        }
+    }
+
+    /**
+     * Toggle between parsed content and original HTML content.
+     */
+    override fun onToggleHtmlView() {
+        scope.launch {
+            val state = _state.value
+            val currentPrompt = state.previewPrompts.getOrNull(state.currentPreviewIndex) ?: return@launch
+            
+            val newShowOriginal = !state.showOriginalHtml
+            
+            if (newShowOriginal) {
+                // Load original HTML content
+                addLog("Загрузка оригинального HTML контента...")
+                val htmlContent = withContext(Dispatchers.IO) {
+                    webScraper.getPromptContentFromHtml(currentPrompt.sourceId)
+                }
+                _state.update {
+                    it.copy(
+                        showOriginalHtml = true,
+                        currentHtmlContent = htmlContent
+                    )
+                }
+                if (htmlContent != null) {
+                    addLog("Загружен HTML контент (${htmlContent.length} символов)")
+                } else {
+                    addLog("Не удалось загрузить HTML контент")
+                }
+            } else {
+                _state.update {
+                    it.copy(
+                        showOriginalHtml = false,
+                        currentHtmlContent = null
+                    )
+                }
+                addLog("Показан спарсенный контент")
+            }
         }
     }
 
