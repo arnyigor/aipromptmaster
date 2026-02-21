@@ -226,19 +226,19 @@ data class ModelsResponseDTO(
 
 @Serializable
 data class ModelDTO(
-    @SerialName("id") val id: String,
-    @SerialName("name") val name: String,
-    @Contextual @SerialName("context_length") val contextLength: Int,
-    @SerialName("description") val description: String,
-    @SerialName("created") val created: Long,
-    @SerialName("architecture") val architecture: ModelArchitecture,
-    @SerialName("pricing") val pricing: ModelPricing,
+    @SerialName("id") val id: String = "",
+    @SerialName("name") val name: String = "",
+    @Contextual @SerialName("context_length") val contextLength: Int = 0,
+    @SerialName("description") val description: String = "",
+    @SerialName("created") val created: Long = 0L,
+    @SerialName("architecture") val architecture: ModelArchitecture = ModelArchitecture(),
+    @SerialName("pricing") val pricing: ModelPricing = ModelPricing(),
 )
 
 fun ModelDTO.toDomain(): LlmModel = LlmModel(
-    id = id,
-    name = name,
-    description = description,
+    id = id.ifBlank { "unknown" },
+    name = name.ifBlank { "Unknown Model" },
+    description = description.ifBlank { "No description available" },
     created = created,
     contextLength = contextLength.toLong(),
     pricingPrompt = pricing.prompt.toBigDecimalOrNull(),

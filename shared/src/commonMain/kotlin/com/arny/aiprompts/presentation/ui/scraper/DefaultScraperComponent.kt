@@ -80,17 +80,22 @@ class DefaultScraperComponent(
 
     override fun onStartScrapingClicked() {
         val pagesToScrape = PageStringParser.parse(_state.value.pagesToScrape)
+        addLog("Pages to scrape: $pagesToScrape")
 
         if (pagesToScrape.isEmpty()) {
+            addLog("ERROR: No pages specified!")
             return
         }
 
         scope.launch {
             val checkResult = webScraper.checkExistingFiles(pagesToScrape)
+            addLog("Check result: existing=${checkResult.existingFileCount}, missing=${checkResult.missingPages}")
 
             if (checkResult.existingFileCount > 0 && checkResult.missingPages.isNotEmpty()) {
+                addLog("Showing dialog - some files exist, some missing")
                 _state.update { it.copy(preScrapeCheckResult = checkResult) }
             } else {
+                addLog("Starting scraping for pages: ${checkResult.missingPages}")
                 startScraping(checkResult.missingPages)
             }
         }
@@ -380,23 +385,7 @@ class DefaultScraperComponent(
     private fun startScraping(pages: List<Int>) {
         scope.launch {
             _state.update { it.copy(inProgress = true) }
-            addLog("Запуск скрапинга для ${pages.size} страниц...")
-
-            // First, try to parse index from first page (if page 1 is included)
-            if (pages.contains(1)) {
-                addLog("Парсинг индекса из первой страницы...")
-                val indexLinks = withContext(Dispatchers.IO) {
-                    webScraper.parseIndexFromFirstPage()
-                }
-                if (indexLinks.isNotEmpty()) {
-                    val categories = indexLinks.groupBy { it.category }.keys
-                    addLog("Найдено ${indexLinks.size} ссылок из спойлеров. Категории: ${categories.joinToString()}")
-                    _state.update { it.copy(indexLinks = indexLinks) }
-                } else {
-                    addLog("Внимание: не удалось получить ссылки из спойлеров первой страницы")
-                    _state.update { it.copy(indexLinks = emptyList()) }
-                }
-            }
+            addLog("Запуск скрапинга для ${pages.size} страниц: ${pages.joinToString()}")
 
             scrapeUseCase("https://4pda.to/forum/index.php?showtopic=1109539", pages)
                 .onEach { result ->
@@ -409,18 +398,20 @@ class DefaultScraperComponent(
                             _state.update { it.copy(savedHtmlFiles = updatedFiles) }
                             addLog("--- Скрапинг ЗАВЕРШЕН ---")
                             
-                            // Re-parse index if needed after scraping
-                            if (_state.value.indexLinks.isEmpty()) {
-                                val freshIndexLinks = withContext(Dispatchers.IO) {
+                            // Parse index from first page after scraping
+                            if (pages.contains(1)) {
+                                addLog("Parsing index from first page...")
+                                val indexLinks = withContext(Dispatchers.IO) {
                                     webScraper.parseIndexFromFirstPage()
                                 }
-                                if (freshIndexLinks.isNotEmpty()) {
-                                    _state.update { it.copy(indexLinks = freshIndexLinks) }
-                                    addLog("Обновлен индекс: ${freshIndexLinks.size} ссылок")
+                                if (indexLinks.isNotEmpty()) {
+                                    val categories = indexLinks.groupBy { it.category }.keys
+                                    addLog("Found ${indexLinks.size} links from spoilers. Categories: ${categories.joinToString()}")
+                                    _state.update { it.copy(indexLinks = indexLinks) }
                                 }
                             }
                         }
-                        is ScraperResult.Error -> addLog("--- ОШИБКА: ${result.errorMessage} ---")
+                        is ScraperResult.Error -> addLog("--- ERROR: ${result.errorMessage} ---")
                     }
                 }
                 .onCompletion { _state.update { it.copy(inProgress = false) } }

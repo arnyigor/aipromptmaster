@@ -29,7 +29,7 @@ class DesktopWebScraper : IWebScraper {
     companion object {
         private const val MAX_RETRIES = 3
         private const val INITIAL_RETRY_DELAY_MS = 1000L
-        private const val PAGE_LOAD_TIMEOUT_SECONDS = 15L
+        private const val PAGE_LOAD_TIMEOUT_SECONDS = 30L
         private const val MIN_DELAY_MS = 1500L
         private const val MAX_DELAY_MS = 3000L
     }
@@ -103,7 +103,11 @@ class DesktopWebScraper : IWebScraper {
             addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
         }
 
+        send(ScraperProgress.InProgress("Starting Chrome..."))
+        
         val driver = ChromeDriver(options)
+        send(ScraperProgress.InProgress("Chrome started successfully"))
+        
         val savedFiles = mutableListOf<String>()
 
         try {
@@ -149,6 +153,7 @@ class DesktopWebScraper : IWebScraper {
                 delay(sleepTime)
             }
 
+            send(ScraperProgress.InProgress("Download complete. Files: ${savedFiles.size}"))
             send(ScraperProgress.Success(savedFiles))
         } catch (e: Exception) {
             send(ScraperProgress.Error("КРИТИЧЕСКАЯ ОШИБКА: ${e.message}"))
@@ -177,7 +182,7 @@ class DesktopWebScraper : IWebScraper {
         driver.get(pageUrl)
 
         val wait = WebDriverWait(driver, Duration.ofSeconds(PAGE_LOAD_TIMEOUT_SECONDS))
-        
+
         // Wait for content to load
         try {
             wait.until { driver.findElement(By.className("block-title")).isDisplayed }
@@ -194,6 +199,7 @@ class DesktopWebScraper : IWebScraper {
             println("Сохранено: ${targetFile.name} (${targetFile.length() / 1024} KB)")
             targetFile.absolutePath
         } else {
+            println("ERROR: File not created or empty")
             null
         }
     }
