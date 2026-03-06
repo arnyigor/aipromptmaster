@@ -2,7 +2,6 @@ package com.arny.aiprompts
 
 import com.arny.aiprompts.domain.index.IndexCacheManager
 import com.arny.aiprompts.domain.index.IndexParser
-import com.arny.aiprompts.domain.index.SmartScraper
 import com.arny.aiprompts.domain.index.model.IndexParseResult
 import com.arny.aiprompts.domain.index.model.ParsedIndex
 import com.arny.aiprompts.domain.index.model.PostLocation
@@ -258,9 +257,9 @@ class IndexBasedScrapingTest {
                     Thread.sleep(2000)
                     
                     val finalUrl = driver.currentUrl
-                    val pageOffset = extractPageOffset(finalUrl) ?: 0
+                    val pageOffset = extractPageOffset(finalUrl.orEmpty()) ?: 0
                     
-                    locations.add(PostLocation(link.postId, pageOffset, finalUrl))
+                    locations.add(PostLocation(link.postId, pageOffset, finalUrl.orEmpty()))
                     println("    -> st=$pageOffset")
                     
                     Thread.sleep(1000) // Delay between requests

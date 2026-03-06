@@ -49,6 +49,12 @@ interface ScraperComponent {
 
     // --- Toggle between parsed and original HTML content ---
     fun onToggleHtmlView()
+    
+    // --- Edit content in preview mode ---
+    fun onStartEditContent()
+    fun onCancelEditContent()
+    fun onSaveEditedContent()
+    fun onEditedContentChanged(newContent: String)
 
     // События от диалога
     fun onOverwriteConfirmed()
@@ -169,7 +175,11 @@ data class PipelineExecutionResult(
     // --- Index-based filtering (new) ---
     val indexLinks: List<IndexLink> = emptyList(),
     val showOriginalHtml: Boolean = false,
-    val currentHtmlContent: String? = null
+    val currentHtmlContent: String? = null,
+    
+    // --- Editing in preview mode ---
+    val isEditingContent: Boolean = false,
+    val editedContent: String = ""
 )
 
 /**

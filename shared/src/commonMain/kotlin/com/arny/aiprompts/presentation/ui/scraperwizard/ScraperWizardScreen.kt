@@ -1,26 +1,30 @@
 package com.arny.aiprompts.presentation.ui.scraperwizard
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Label
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.text.selection.SelectionContainer
 import com.arny.aiprompts.domain.model.PromptData
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,6 +80,7 @@ fun ScraperWizardScreen(
                         state = state,
                         onPromptClick = { previewPrompt = it }
                     )
+
                     WizardStep.IMPORT -> ImportStep(
                         component = component,
                         state = state,
@@ -136,7 +141,11 @@ private fun StepIndicator(currentStep: WizardStep) {
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         if (index < currentIndex) {
-                            Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
                         } else {
                             Text(
                                 (index + 1).toString(),
@@ -170,12 +179,18 @@ private fun PageInputStep(component: ScraperWizardComponent, state: ScraperWizar
                     Text("Первая страница: загружена", style = MaterialTheme.typography.titleMedium)
                     state.pageCheckResult?.let { check ->
                         if (check.existingFileCount > 0) {
-                            Text("Всего скачано страниц: ${check.existingFileCount}", style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                "Всего скачано страниц: ${check.existingFileCount}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
                         }
                     }
                 } else {
                     Text("Первая страница: не найдена", style = MaterialTheme.typography.titleMedium)
-                    Text("Необходимо скачать первую страницу для получения индекса промптов", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        "Необходимо скачать первую страницу для получения индекса промптов",
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
             }
         }
@@ -332,7 +347,10 @@ private fun AnalysisStep(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("${state.analysisProgress.processed} / ${state.analysisProgress.totalPrompts}")
-                    Text("Найдено новых: ${state.analysisProgress.newPrompts}", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        "Найдено новых: ${state.analysisProgress.newPrompts}",
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
             }
         }
@@ -422,7 +440,11 @@ private fun PromptPreviewItem(prompt: PromptData, onClick: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(prompt.category, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                Text(
+                    prompt.category,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
                 if (prompt.tags.isNotEmpty()) {
                     Text(
                         prompt.tags.take(3).joinToString(),
@@ -480,7 +502,11 @@ private fun ImportStep(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        Text(prompt.category, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                        Text(
+                            prompt.category,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
                     Icon(
                         Icons.Default.Visibility,
@@ -577,6 +603,46 @@ private fun NavigationButtons(
 
 // ========== Диалог полного предпросмотра промпта ==========
 
+/**
+ * Clean HTML content for display purposes.
+ */
+private fun cleanContentForDisplay(html: String): String {
+    if (html.isBlank()) return html
+
+    // Step 1: Replace common block elements with newlines first
+    var text = html
+        .replace(Regex("""(?i)<br\s*/?>"""), "\n")
+        .replace(Regex("""(?i)</p>"""), "\n\n")
+        .replace(Regex("""(?i)</div>"""), "\n")
+        .replace(Regex("""(?i)</li>"""), "\n")
+        .replace(Regex("""(?i)</tr>"""), "\n")
+
+    // Step 2: Remove all remaining HTML tags
+    text = text.replace(Regex("""<[^>]+>"""), "")
+
+    // Step 3: Clean up HTML entities
+    text = text
+        .replace("&nbsp;", " ")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
+        .replace("&rsquo;", "'")
+        .replace("&lsquo;", "'")
+        .replace("&ndash;", "-")
+        .replace("&mdash;", "-")
+
+    // Step 4: Clean up whitespace
+    text = text
+        .replace(Regex("""\n\s+\n"""), "\n\n")
+        .replace(Regex("""[ \t]+"""), " ")
+        .replace(Regex("""\n{3,}"""), "\n\n")
+        .trim()
+
+    return text
+}
+
 @Composable
 private fun PromptPreviewDialog(
     prompt: PromptData,
@@ -598,14 +664,24 @@ private fun PromptPreviewDialog(
             ) {
                 // Мета-информация
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Category, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        Icons.Default.Category,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Категория: ${prompt.category}", style = MaterialTheme.typography.bodyMedium)
                 }
 
                 if (prompt.tags.isNotEmpty()) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.AutoMirrored.Filled.Label, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.secondary)
+                        Icon(
+                            Icons.AutoMirrored.Filled.Label,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.secondary
+                        )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Теги: ${prompt.tags.joinToString()}", style = MaterialTheme.typography.bodySmall)
                     }
@@ -613,14 +689,15 @@ private fun PromptPreviewDialog(
 
                 HorizontalDivider()
 
-                // Полный текст промпта
+                // Полный текст промпта (очищенный от HTML)
                 Text("Текст промпта:", style = MaterialTheme.typography.labelMedium)
 
-                val promptContent = prompt.variants.firstOrNull()?.content
-                if (!promptContent.isNullOrBlank()) {
+                val rawContent = prompt.variants.firstOrNull()?.content
+                if (!rawContent.isNullOrBlank()) {
+                    val cleanedContent = cleanContentForDisplay(rawContent)
                     SelectionContainer {
                         Text(
-                            promptContent,
+                            cleanedContent,
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -632,11 +709,11 @@ private fun PromptPreviewDialog(
                     )
                 }
 
-                // Описание (если отличается от контента)
-                if (!prompt.description.isNullOrBlank() && prompt.description != promptContent?.take(300)) {
+                // Описание (если отличается от контента, очищенное от HTML)
+                if (!prompt.description.isNullOrBlank() && prompt.description != rawContent?.take(300)) {
                     HorizontalDivider()
                     Text("Описание:", style = MaterialTheme.typography.labelMedium)
-                    Text(prompt.description, style = MaterialTheme.typography.bodySmall)
+                    Text(cleanContentForDisplay(prompt.description), style = MaterialTheme.typography.bodySmall)
                 }
 
                 // Источник
@@ -663,18 +740,66 @@ private fun PromptPreviewDialog(
 
 // ========== Вспомогательные компоненты ==========
 
+
 @Composable
 private fun LogsPanel(logs: List<String>) {
     if (logs.isNotEmpty()) {
+        val clipboardManager = LocalClipboardManager.current
+
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(150.dp),
+                // Эластичная высота: от 150dp минимум, до 350dp максимум
+                .heightIn(min = 150.dp, max = 350.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
         ) {
-            LazyColumn(modifier = Modifier.padding(8.dp)) {
-                items(logs.takeLast(50)) { log ->
-                    Text(log, style = MaterialTheme.typography.bodySmall)
+            Column {
+                // Шапка логгера с кнопкой "Копировать все"
+                Row(
+                    modifier = Modifier.fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Системный журнал:",
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                    IconButton(
+                        onClick = {
+                            val fullLog = logs.joinToString("\n")
+                            clipboardManager.setText(AnnotatedString(fullLog))
+                        },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(Icons.Default.ContentCopy, "Копировать лог", modifier = Modifier.size(16.dp))
+                    }
+                }
+
+                HorizontalDivider()
+
+                // Обертка для выделения текста мышью
+                SelectionContainer {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(8.dp)
+                            // Добавляем горизонтальный скролл для длинных StackTrace
+                            .horizontalScroll(rememberScrollState())
+                    ) {
+                        items(logs.takeLast(100)) { log ->
+                            Text(
+                                text = log,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontFamily = FontFamily.Monospace // Моноширинный шрифт для логов
+                                ),
+                                // Запрещаем перенос слов, чтобы не ломать логи
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                    }
                 }
             }
         }

@@ -21,7 +21,6 @@ import com.arny.aiprompts.domain.analysis.IAnalyzerPipeline
 import com.arny.aiprompts.domain.analysis.PromptAnalyzerPipeline
 import com.arny.aiprompts.domain.index.IndexCacheManager
 import com.arny.aiprompts.domain.index.IndexParser
-import com.arny.aiprompts.domain.index.SmartScraper
 import com.arny.aiprompts.domain.interfaces.IWebScraper
 import com.arny.aiprompts.domain.usecase.*
 import com.arny.aiprompts.presentation.features.llm.DefaultLlmComponent
@@ -105,7 +104,6 @@ val desktopImportUseCasesModule = module {
 val desktopIndexScrapingModule = module {
     single { IndexCacheManager() }
     single { IndexParser() }
-    single { SmartScraper(get(), get()) }
 }
 
 // --- MODULE FOR ANALYZER PIPELINE ---

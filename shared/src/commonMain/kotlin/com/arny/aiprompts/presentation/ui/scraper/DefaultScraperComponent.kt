@@ -680,7 +680,7 @@ class DefaultScraperComponent(
     }
 
     /**
-     * Accept current prompt and save to prompts/{category}/.
+     * Accept current prompt, save it and remove from list.
      */
     override fun onAcceptPrompt() {
         val state = _state.value
@@ -692,6 +692,15 @@ class DefaultScraperComponent(
                 if (saved) {
                     addLog("✅ Принят: ${prompt.title}")
                     _state.update { it.copy(acceptedCount = it.acceptedCount + 1) }
+                    
+                    // Remove from parsedPrompts so it won't be imported again
+                    _state.update { currentState ->
+                        currentState.copy(
+                            parsedPrompts = currentState.parsedPrompts.filter { it.sourceId != prompt.sourceId },
+                            previewPrompts = currentState.previewPrompts.filter { it.sourceId != prompt.sourceId }
+                        )
+                    }
+                    
                     // Move to next
                     moveToNextPrompt()
                 } else {
@@ -704,12 +713,21 @@ class DefaultScraperComponent(
     }
 
     /**
-     * Skip current prompt without saving.
+     * Skip current prompt without saving and remove from list.
      */
     override fun onSkipPrompt() {
         val prompt = _state.value.previewPrompts.getOrNull(_state.value.currentPreviewIndex) ?: return
         addLog("⏭ Пропущен: ${prompt.title}")
-        _state.update { it.copy(skippedCount = it.skippedCount + 1) }
+        
+        // Remove from parsedPrompts so it won't be imported again
+        _state.update { currentState ->
+            currentState.copy(
+                skippedCount = currentState.skippedCount + 1,
+                parsedPrompts = currentState.parsedPrompts.filter { it.sourceId != prompt.sourceId },
+                previewPrompts = currentState.previewPrompts.filter { it.sourceId != prompt.sourceId }
+            )
+        }
+        
         moveToNextPrompt()
     }
 
@@ -729,15 +747,20 @@ class DefaultScraperComponent(
     }
 
     /**
-     * Close preview mode.
+     * Close preview mode. Remaining prompts in parsedPrompts will NOT be imported.
      */
     override fun onClosePreview() {
         val state = _state.value
+        val remainingCount = state.previewPrompts.size
         val summary = buildString {
             if (state.acceptedCount > 0) append("Принято: ${state.acceptedCount}")
             if (state.skippedCount > 0) {
                 if (isNotEmpty()) append(", ")
                 append("Пропущено: ${state.skippedCount}")
+            }
+            if (remainingCount > 0) {
+                if (isNotEmpty()) append(", ")
+                append("Осталось: $remainingCount (не будут импортированы)")
             }
         }
         if (summary.isNotEmpty()) {
@@ -796,14 +819,144 @@ class DefaultScraperComponent(
     }
 
     /**
+     * Start editing the content of current prompt.
+     */
+    override fun onStartEditContent() {
+        val state = _state.value
+        val currentPrompt = state.previewPrompts.getOrNull(state.currentPreviewIndex) ?: return
+        val originalContent = currentPrompt.variants.firstOrNull()?.content ?: ""
+        
+        // Clean HTML tags from content for editing
+        val cleanedContent = cleanHtmlTags(originalContent)
+        
+        _state.update {
+            it.copy(
+                isEditingContent = true,
+                editedContent = cleanedContent
+            )
+        }
+        addLog("Начало редактирования контента")
+    }
+
+    /**
+     * Cancel editing and discard changes.
+     */
+    override fun onCancelEditContent() {
+        _state.update {
+            it.copy(
+                isEditingContent = false,
+                editedContent = ""
+            )
+        }
+        addLog("Редактирование отменено")
+    }
+
+    /**
+     * Save edited content and update the prompt.
+     */
+    override fun onSaveEditedContent() {
+        val state = _state.value
+        val currentPrompt = state.previewPrompts.getOrNull(state.currentPreviewIndex) ?: return
+        val newContent = state.editedContent
+        
+        // Update the prompt in both lists
+        _state.update { currentState ->
+            val updatedPreviewPrompts = currentState.previewPrompts.map { prompt ->
+                if (prompt.sourceId == currentPrompt.sourceId) {
+                    // Create updated prompt with new content
+                    val updatedVariants = prompt.variants.map { variant ->
+                        variant.copy(content = newContent)
+                    }
+                    prompt.copy(variants = updatedVariants)
+                } else {
+                    prompt
+                }
+            }
+            
+            val updatedParsedPrompts = currentState.parsedPrompts.map { prompt ->
+                if (prompt.sourceId == currentPrompt.sourceId) {
+                    val updatedVariants = prompt.variants.map { variant ->
+                        variant.copy(content = newContent)
+                    }
+                    prompt.copy(variants = updatedVariants)
+                } else {
+                    prompt
+                }
+            }
+            
+            currentState.copy(
+                isEditingContent = false,
+                editedContent = "",
+                previewPrompts = updatedPreviewPrompts,
+                parsedPrompts = updatedParsedPrompts
+            )
+        }
+        addLog("Контент обновлен: ${newContent.take(50)}...")
+    }
+
+    /**
+     * Update the edited content as user types.
+     */
+    override fun onEditedContentChanged(newContent: String) {
+        _state.update { it.copy(editedContent = newContent) }
+    }
+
+    /**
+     * Clean HTML tags from text content.
+     */
+    private fun cleanHtmlTags(html: String): String {
+        if (html.isBlank()) return ""
+        
+        // Step 1: Replace common block elements with newlines first
+        var text = html
+            .replace(Regex("""(?i)<br\s*/?>"""), "\n")  // <br> tags
+            .replace(Regex("""(?i)</p>"""), "\n\n")     // </p> tags  
+            .replace(Regex("""(?i)</div>"""), "\n")      // </div> tags
+            .replace(Regex("""(?i)</li>"""), "\n")      // </li> tags
+            .replace(Regex("""(?i)</tr>"""), "\n")      // </tr> tags
+        
+        // Step 2: Remove all remaining HTML tags
+        text = text.replace(Regex("""<[^>]+>"""), "")
+        
+        // Step 3: Clean up HTML entities
+        text = text
+            .replace("&nbsp;", " ")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&amp;", "&")
+            .replace("&quot;", "\"")
+            .replace("&#39;", "'")
+            .replace("&rsquo;", "'")
+            .replace("&lsquo;", "'")
+            .replace("&ndash;", "-")
+            .replace("&mdash;", "-")
+        
+        // Step 4: Clean up whitespace
+        text = text
+            .replace(Regex("""\n\s+\n"""), "\n\n")  // Empty lines
+            .replace(Regex("""[ \t]+"""), " ")       // Multiple spaces
+            .replace(Regex("""\n{3,}"""), "\n\n")     // Multiple newlines
+            .trim()
+        
+        return text
+    }
+
+    /**
      * Move to next prompt or close preview mode if at end.
      */
     private fun moveToNextPrompt() {
         val state = _state.value
-        val nextIndex = state.currentPreviewIndex + 1
-        if (nextIndex >= state.previewPrompts.size) {
+        
+        // Check if preview list is empty or we've reached the end
+        if (state.previewPrompts.isEmpty() || state.currentPreviewIndex >= state.previewPrompts.size) {
             // End of list - show summary and close
-            val summary = "Готово! Принято: ${state.acceptedCount}, Пропущено: ${state.skippedCount}"
+            val remainingCount = state.parsedPrompts.size
+            val summary = buildString {
+                append("Готово! Принято: ${state.acceptedCount}, Пропущено: ${state.skippedCount}")
+                if (remainingCount > 0) {
+                    append(". Осталось: $remainingCount (не будут импортированы)")
+                }
+            }
             addLog(summary)
             _state.update {
                 it.copy(
@@ -813,6 +966,7 @@ class DefaultScraperComponent(
                 )
             }
         } else {
+            val nextIndex = state.currentPreviewIndex + 1
             _state.update { it.copy(currentPreviewIndex = nextIndex) }
         }
     }

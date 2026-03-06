@@ -1,10 +1,12 @@
 package com.arny.aiprompts.integration
 
+import com.arny.aiprompts.data.scraper.ChromeDriverFactory
 import com.arny.aiprompts.domain.index.IndexParser
 import com.arny.aiprompts.domain.index.model.IndexParseResult
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
+import org.openqa.selenium.chrome.ChromeDriver
 import java.io.File
 import java.nio.charset.StandardCharsets
 
@@ -68,21 +70,7 @@ class Real4pdaIntegrationTests {
     fun testDownloadRealPageWithSelenium() = runBlocking {
         // This test uses Selenium to bypass Cloudflare
         try {
-            val chromeOptions = org.openqa.selenium.chrome.ChromeOptions().apply {
-                addArguments("--headless=new")
-                addArguments("--disable-gpu")
-                addArguments("--no-sandbox")
-                addArguments("--disable-dev-shm-usage")
-                addArguments("--window-size=1920,1080")
-                // Anti-detection
-                addArguments("--disable-blink-features=AutomationControlled")
-                addArguments("--disable-features=IsolateOrigins,site-per-process")
-                // User agent to look like regular browser
-                addArguments("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-            }
-            
-            val driver = org.openqa.selenium.chrome.ChromeDriver(chromeOptions)
-            
+            val driver = ChromeDriverFactory.create()
             try {
                 // Clear cookies and cache
                 driver.manage().deleteAllCookies()

@@ -6,8 +6,13 @@ import com.arny.aiprompts.domain.index.model.IndexParseResult
 import com.arny.aiprompts.domain.interfaces.IWebScraper
 import com.arny.aiprompts.domain.interfaces.PreScrapeCheck
 import com.arny.aiprompts.domain.interfaces.ScraperProgress
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import org.openqa.selenium.By
 import org.openqa.selenium.WebDriverException
@@ -23,6 +28,8 @@ import kotlin.random.Random
 /**
  * Desktop implementation of WebScraper using Selenium.
  * Located in desktopMain - JVM only.
+ * 
+ * Provides functionality to scrape 4PDA forum pages and parse index.
  */
 class DesktopWebScraper : IWebScraper {
 
@@ -51,8 +58,8 @@ class DesktopWebScraper : IWebScraper {
 
     override fun getExistingScrapedFiles(): List<String> {
         return File(getSaveDirectory())
-            .listFiles { file -> 
-                file.isFile && file.name.startsWith("page_") && file.name.endsWith(".html") 
+            .listFiles { file ->
+                file.isFile && file.name.startsWith("page_") && file.name.endsWith(".html")
             }
             ?.sortedBy { file ->
                 file.name.substringAfter("_").substringBefore(".").toIntOrNull() ?: 0
@@ -87,27 +94,25 @@ class DesktopWebScraper : IWebScraper {
             return@channelFlow
         }
 
-        send(ScraperProgress.InProgress(
-            "Запускаю скачивание для ${pagesToScrape.size} страниц: ${pagesToScrape.map { it }}"
-        ))
+        send(
+            ScraperProgress.InProgress(
+                "Запускаю скачивание для ${pagesToScrape.size} страниц: ${pagesToScrape.map { it }}"
+            )
+        )
 
         val saveDir = File(getSaveDirectory())
         send(ScraperProgress.InProgress("Сохранение в директорию: ${saveDir.absolutePath}"))
+        send(ScraperProgress.InProgress("Запуск Chrome (через встроенный Selenium Manager)..."))
 
-        val options = ChromeOptions().apply {
-            addArguments("--headless")
-            addArguments("--disable-gpu")
-            addArguments("--window-size=1920,1080")
-            addArguments("--no-sandbox")
-            addArguments("--disable-dev-shm-usage")
-            addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+        val driver: ChromeDriver = try {
+            ChromeDriverFactory.create()
+        } catch (e: Exception) {
+            send(ScraperProgress.Error("Не удалось запустить Chrome: ${e.message}"))
+            return@channelFlow
         }
 
-        send(ScraperProgress.InProgress("Starting Chrome..."))
-        
-        val driver = ChromeDriver(options)
         send(ScraperProgress.InProgress("Chrome started successfully"))
-        
+
         val savedFiles = mutableListOf<String>()
 
         try {
@@ -115,41 +120,32 @@ class DesktopWebScraper : IWebScraper {
                 var success = false
                 var lastError: Exception? = null
 
-                // Retry logic with exponential backoff
+                // Логика повторных попыток (без изменений)
                 for (attempt in 1..MAX_RETRIES) {
                     try {
                         val result = scrapePage(driver, baseUrl, pageNum, saveDir)
                         if (result != null) {
                             savedFiles.add(result)
-                            send(ScraperProgress.InProgress(
-                                "Успешно сохранено: ${File(result).name}"
-                            ))
+                            send(ScraperProgress.InProgress("Успешно сохранено: ${File(result).name}"))
                             success = true
                             break
                         }
                     } catch (e: Exception) {
                         lastError = e
-                        send(ScraperProgress.InProgress(
-                            "Попытка $attempt/$MAX_RETRIES не удалась для страницы $pageNum: ${e.message}"
-                        ))
+                        send(ScraperProgress.InProgress("Попытка $attempt/$MAX_RETRIES не удалась: ${e.message}"))
                         if (attempt < MAX_RETRIES) {
                             val delayMs = INITIAL_RETRY_DELAY_MS * attempt
-                            send(ScraperProgress.InProgress("Повторная попытка через ${delayMs}ms..."))
                             delay(delayMs)
                         }
                     }
                 }
 
                 if (!success) {
-                    send(ScraperProgress.InProgress(
-                        "Ошибка: не удалось сохранить страницу $pageNum после $MAX_RETRIES попыток"
-                    ))
+                    send(ScraperProgress.InProgress("Ошибка: не удалось сохранить страницу $pageNum"))
                     lastError?.printStackTrace()
                 }
 
-                // Random delay between requests (non-blocking)
                 val sleepTime = Random.nextLong(MIN_DELAY_MS, MAX_DELAY_MS)
-                send(ScraperProgress.InProgress("Пауза на ${sleepTime / 1000.0} секунд..."))
                 delay(sleepTime)
             }
 
@@ -161,9 +157,8 @@ class DesktopWebScraper : IWebScraper {
         } finally {
             send(ScraperProgress.InProgress("Закрываю браузер."))
             try {
-                driver.quit()
+                ChromeDriverFactory.quit(driver)
             } catch (e: Exception) {
-                // Ignore cleanup errors
             }
         }
     }.flowOn(Dispatchers.IO)
@@ -193,7 +188,7 @@ class DesktopWebScraper : IWebScraper {
 
         println("Контент загружен.")
         val htmlContent = driver.pageSource
-        targetFile.writeText(htmlContent, StandardCharsets.UTF_8)
+        targetFile.writeText(htmlContent.orEmpty(), StandardCharsets.UTF_8)
 
         if (targetFile.exists() && targetFile.length() > 0) {
             println("Сохранено: ${targetFile.name} (${targetFile.length() / 1024} KB)")
@@ -219,7 +214,7 @@ class DesktopWebScraper : IWebScraper {
             val htmlContent = firstPageFile.readText(StandardCharsets.UTF_8)
             val parser = IndexParser()
             val topicUrl = "https://4pda.to/forum/index.php?showtopic=1109539"
-            
+
             // Parse using the synchronous parseIndex method
             val result = runBlocking {
                 parser.parseIndex(htmlContent, topicUrl)
@@ -230,10 +225,12 @@ class DesktopWebScraper : IWebScraper {
                     println("[DesktopWebScraper] Parsed ${result.index.links.size} links from index")
                     result.index.links
                 }
+
                 is IndexParseResult.Error -> {
                     println("[DesktopWebScraper] Error parsing index: ${result.message}")
                     emptyList()
                 }
+
                 is IndexParseResult.Cached -> {
                     println("[DesktopWebScraper] Using cached index with ${result.index.links.size} links")
                     result.index.links
@@ -252,9 +249,9 @@ class DesktopWebScraper : IWebScraper {
      */
     override fun getPromptContentFromHtml(postId: String): String? {
         val saveDir = File(getSaveDirectory())
-        
+
         // Search through all HTML files for the post
-        val htmlFiles = saveDir.listFiles { f -> 
+        val htmlFiles = saveDir.listFiles { f ->
             f.isFile && f.name.startsWith("page_") && f.name.endsWith(".html")
         } ?: return null
 
@@ -262,7 +259,7 @@ class DesktopWebScraper : IWebScraper {
             try {
                 val htmlContent = htmlFile.readText(StandardCharsets.UTF_8)
                 val document = Jsoup.parse(htmlContent)
-                
+
                 // Find the post by data-post attribute
                 val postElement = document.selectFirst("div.post[data-post='$postId']")
                 if (postElement != null) {

@@ -37,7 +37,7 @@ class MainComponentTest {
         assertEquals(5, screens.size)
 
         val expectedScreens = setOf(
-            MainScreen.SCRAPER,
+            MainScreen.SCRAPER_WIZARD,
             MainScreen.PROMPTS,
             MainScreen.CHAT,
             MainScreen.IMPORT,
@@ -53,7 +53,7 @@ class MainComponentTest {
     fun testNavigationFlow() {
         // Test that navigation between screens works as expected
         val screens = listOf(
-            MainScreen.SCRAPER,
+            MainScreen.SCRAPER_WIZARD,
             MainScreen.PROMPTS,
             MainScreen.CHAT,
             MainScreen.IMPORT,
@@ -66,7 +66,7 @@ class MainComponentTest {
         }
 
         // Test that all expected screens are present
-        assertTrue(MainScreen.SCRAPER in screens)
+        assertTrue(MainScreen.SCRAPER_WIZARD in screens)
         assertTrue(MainScreen.PROMPTS in screens)
         assertTrue(MainScreen.CHAT in screens)
         assertTrue(MainScreen.IMPORT in screens)

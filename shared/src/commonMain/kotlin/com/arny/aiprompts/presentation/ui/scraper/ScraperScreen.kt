@@ -9,12 +9,15 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -113,7 +116,9 @@ private class FakeScraperComponent : ScraperComponent {
             skippedCount = 0,
             indexLinks = emptyList(),
             showOriginalHtml = false,
-            currentHtmlContent = null
+            currentHtmlContent = null,
+            isEditingContent = false,
+            editedContent = ""
         )
     )
 
@@ -143,6 +148,10 @@ private class FakeScraperComponent : ScraperComponent {
     override fun onPrevPrompt() {}
     override fun onClosePreview() {}
     override fun onToggleHtmlView() {}
+    override fun onStartEditContent() {}
+    override fun onCancelEditContent() {}
+    override fun onSaveEditedContent() {}
+    override fun onEditedContentChanged(newContent: String) {}
 
     override suspend fun getPromptsStats(): PromptsStats {
         return PromptsStats(localCount = 12, syncedCount = 45)
@@ -799,11 +808,17 @@ fun ScraperScreen(
                 hasNext = state.currentPreviewIndex < state.previewPrompts.size - 1,
                 showOriginalHtml = state.showOriginalHtml,
                 htmlContent = state.currentHtmlContent,
+                isEditingContent = state.isEditingContent,
+                editedContent = state.editedContent,
                 onAccept = component::onAcceptPrompt,
                 onSkip = component::onSkipPrompt,
                 onPrev = component::onPrevPrompt,
                 onNext = component::onNextPrompt,
                 onToggleHtmlView = component::onToggleHtmlView,
+                onStartEdit = component::onStartEditContent,
+                onCancelEdit = component::onCancelEditContent,
+                onSaveEdit = component::onSaveEditedContent,
+                onEditedContentChanged = component::onEditedContentChanged,
                 onClose = component::onClosePreview
             )
         }
@@ -956,18 +971,20 @@ fun LogConsole(logs: List<String>) {
         modifier = Modifier
             .fillMaxWidth()
             .height(150.dp),
-        colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.8f))
+        colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.8f))
     ) {
         SelectionContainer {
-            LazyColumn(
-                modifier = Modifier.padding(8.dp),
-                reverseLayout = true // Newest logs at bottom
+            Column(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
-                items(logs.reversed()) { log ->
+                // Show logs from oldest to newest (first in list = oldest)
+                logs.forEach { log ->
                     Text(
                         text = log,
                         style = MaterialTheme.typography.labelSmall,
-                        color = androidx.compose.ui.graphics.Color.Green,
+                        color = Color.Green,
                         fontFamily = FontFamily.Monospace
                     )
                 }

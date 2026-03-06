@@ -42,7 +42,13 @@ compose.desktop {
             )
             packageName = "AIPrompts"
             packageVersion = "1.0.0"
-            modules("jdk.accessibility")
+            modules(
+                "jdk.accessibility",
+                "java.net.http",     // Исправляет ошибку WebSocket$Listener
+                "java.naming",       // Требуется для DNS-резолвинга в Selenium
+                "jdk.crypto.ec",     // Требуется для HTTPS/SSL (иначе может упасть скачивание)
+                "java.management"
+            )
         }
     }
 }

@@ -6,13 +6,19 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -21,6 +27,46 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.arny.aiprompts.domain.model.PromptData
+
+/**
+ * Clean HTML content for display purposes.
+ */
+private fun cleanContentForDisplay(html: String): String {
+    if (html.isBlank()) return html
+    
+    // Step 1: Replace common block elements with newlines first
+    var text = html
+        .replace(Regex("""(?i)<br\s*/?>"""), "\n")
+        .replace(Regex("""(?i)</p>"""), "\n\n")
+        .replace(Regex("""(?i)</div>"""), "\n")
+        .replace(Regex("""(?i)</li>"""), "\n")
+        .replace(Regex("""(?i)</tr>"""), "\n")
+    
+    // Step 2: Remove all remaining HTML tags
+    text = text.replace(Regex("""<[^>]+>"""), "")
+    
+    // Step 3: Clean up HTML entities
+    text = text
+        .replace("&nbsp;", " ")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
+        .replace("&rsquo;", "'")
+        .replace("&lsquo;", "'")
+        .replace("&ndash;", "-")
+        .replace("&mdash;", "-")
+    
+    // Step 4: Clean up whitespace
+    text = text
+        .replace(Regex("""\n\s+\n"""), "\n\n")
+        .replace(Regex("""[ \t]+"""), " ")
+        .replace(Regex("""\n{3,}"""), "\n\n")
+        .trim()
+    
+    return text
+}
 
 /**
  * Dialog for previewing and accepting/rejecting scraped prompts one-by-one.
@@ -37,11 +83,17 @@ fun PromptPreviewDialog(
     hasNext: Boolean,
     showOriginalHtml: Boolean = false,
     htmlContent: String? = null,
+    isEditingContent: Boolean = false,
+    editedContent: String = "",
     onAccept: () -> Unit,
     onSkip: () -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit,
     onToggleHtmlView: () -> Unit,
+    onStartEdit: () -> Unit,
+    onCancelEdit: () -> Unit,
+    onSaveEdit: () -> Unit,
+    onEditedContentChanged: (String) -> Unit,
     onClose: () -> Unit
 ) {
     Dialog(
@@ -174,16 +226,30 @@ fun PromptPreviewDialog(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         
-                        // Toggle button
-                        Button(
-                            onClick = onToggleHtmlView,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (showOriginalHtml) 
-                                    MaterialTheme.colorScheme.secondary 
-                                else 
-                                    MaterialTheme.colorScheme.tertiary
-                            ),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            // Edit button
+                            Button(
+                                onClick = onStartEdit,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                ),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                            ) {
+                                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Редактировать", style = MaterialTheme.typography.labelSmall)
+                            }
+                            
+                            // Toggle button
+                            Button(
+                                onClick = onToggleHtmlView,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (showOriginalHtml) 
+                                        MaterialTheme.colorScheme.secondary 
+                                    else 
+                                        MaterialTheme.colorScheme.tertiary
+                                ),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                         ) {
                             Icon(
                                 if (showOriginalHtml) Icons.Default.TextFields else Icons.Default.Code,
@@ -196,16 +262,46 @@ fun PromptPreviewDialog(
                                 style = MaterialTheme.typography.labelSmall
                             )
                         }
+                        }
                     }
                     
                     Spacer(Modifier.height(8.dp))
                     
+                    // Content area - show editable field when editing, otherwise show text
                     Surface(
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         shape = MaterialTheme.shapes.medium,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        if (showOriginalHtml && htmlContent != null) {
+                        if (isEditingContent) {
+                            // Editable text field
+                            Column(modifier = Modifier.padding(8.dp)) {
+                                OutlinedTextField(
+                                    value = editedContent,
+                                    onValueChange = onEditedContentChanged,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = 150.dp, max = 300.dp),
+                                    label = { Text("Редактирование контента") },
+                                    placeholder = { Text("Введите текст промпта...") }
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Row(
+                                    horizontalArrangement = Arrangement.End,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    OutlinedButton(onClick = onCancelEdit) {
+                                        Text("Отмена")
+                                    }
+                                    Spacer(Modifier.width(8.dp))
+                                    Button(onClick = onSaveEdit) {
+                                        Icon(Icons.Default.Save, contentDescription = null)
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("Сохранить")
+                                    }
+                                }
+                            }
+                        } else if (showOriginalHtml && htmlContent != null) {
                             // Show original HTML content
                             Text(
                                 text = htmlContent,
@@ -216,9 +312,11 @@ fun PromptPreviewDialog(
                                     .verticalScroll(rememberScrollState())
                             )
                         } else {
-                            // Show parsed content
+                            // Show parsed content - cleaned from HTML
+                            val rawContent = prompt.variants.firstOrNull()?.content ?: "Нет содержимого"
+                            val cleanedContent = cleanContentForDisplay(rawContent)
                             Text(
-                                text = prompt.variants.firstOrNull()?.content ?: "Нет содержимого",
+                                text = cleanedContent,
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.padding(12.dp)
                             )

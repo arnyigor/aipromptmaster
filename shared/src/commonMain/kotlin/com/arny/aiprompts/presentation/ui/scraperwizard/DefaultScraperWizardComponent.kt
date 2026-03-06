@@ -111,6 +111,7 @@ class DefaultScraperWizardComponent(
     }
 
     override fun onCheckPagesClicked() {
+        addLog("Button clicked: onCheckPagesClicked")
         // Здесь: скачиваем первую страницу если её нет
         scope.launch(Dispatchers.IO) {
             val saveDir = webScraper.getSaveDirectory()
@@ -610,16 +611,23 @@ class DefaultScraperWizardComponent(
     }
 
     private suspend fun downloadPagesAndWait(pages: List<Int>) {
+        addLog("=== DOWNLOAD START ===")
+        addLog("Pages: $pages")
+        
         try {
             scrapeUseCase(topicUrl, pages).collect { result ->
+                addLog(">>> $result")
                 when (result) {
                     is ScraperResult.InProgress -> addLog(result.message)
                     is ScraperResult.Success -> addLog("Загружено ${result.files.size} страниц")
-                    is ScraperResult.Error -> addLog("Ошибка загрузки: ${result.errorMessage}")
+                    is ScraperResult.Error -> addLog("Ошибка: ${result.errorMessage}")
                 }
             }
+            addLog("=== DOWNLOAD DONE ===")
         } catch (e: Exception) {
-            addLog("Ошибка загрузки страниц: ${e.message}")
+            addLog("EXCEPTION: ${e.message}")
+            addLog("Type: ${e.javaClass.name}")
+            e.printStackTrace()
         }
     }
 

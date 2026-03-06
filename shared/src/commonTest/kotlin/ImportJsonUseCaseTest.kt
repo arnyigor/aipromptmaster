@@ -102,8 +102,8 @@ class ImportJsonUseCaseTest {
 
     private fun createMockFile(name: String, content: String): PlatformFile {
         val mockFile = mockk<PlatformFile>()
-        every { mockFile.name } returns name
-        every { mockFile.isFile() } returns true
+        coEvery { mockFile.name } returns name
+        coEvery { mockFile.exists() } returns true
         coEvery { mockFile.readText() } returns content
         return mockFile
     }

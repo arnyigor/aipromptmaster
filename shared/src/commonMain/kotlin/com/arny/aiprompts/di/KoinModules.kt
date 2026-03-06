@@ -8,7 +8,6 @@ import com.arny.aiprompts.data.llm.NoOpLLMService
 import com.arny.aiprompts.data.remote.GitHubSyncService
 import com.arny.aiprompts.data.repositories.*
 import com.arny.aiprompts.data.repository.PromptsRepositoryImpl
-import com.arny.aiprompts.domain.interfaces.IWebScraper
 import com.arny.aiprompts.domain.files.FileMetadataReader
 import com.arny.aiprompts.domain.files.FilePromptProcessor
 import com.arny.aiprompts.domain.files.PlatformFileHandler
@@ -22,7 +21,10 @@ import com.arny.aiprompts.domain.system.ActualSystemInteraction
 import com.arny.aiprompts.domain.system.SystemInteraction
 import com.arny.aiprompts.domain.usecase.*
 import io.ktor.client.*
+import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.request.*
+import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.Json
@@ -105,10 +107,10 @@ val commonDomainModule = module {
 
     // File utilities
     singleOf(::FileMetadataReader)
-    
+
     // NEW: Platform File Handler (expect/actual)
     single<PlatformFileHandler> { PlatformFileHandlerFactory.create() }
-    
+
     // NEW: File Prompt Processor for multimodal support
     singleOf(::FilePromptProcessor)
 
@@ -125,6 +127,7 @@ val commonDomainModule = module {
  */
 val llmModule = module {
     // HTTP Client
+// Внутри val llmModule = module { ... }
     single {
         HttpClient {
             install(ContentNegotiation) {
@@ -132,6 +135,24 @@ val llmModule = module {
                     ignoreUnknownKeys = true
                     isLenient = true
                 })
+            }
+
+            // 1. Маскировка под реальный браузер (обход базовой защиты)
+            install(UserAgent) {
+                agent =
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+            }
+
+            // 2. Установка обязательных заголовков
+            defaultRequest {
+                header(HttpHeaders.Accept, "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+                header(HttpHeaders.AcceptLanguage, "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
+
+                // ВАЖНО: Для скачивания вложений 4PDA требуется авторизация!
+                // Вам нужно получить свои куки из браузера (member_id и pass_hash)
+                // и подставить их сюда, иначе 4PDA не отдаст файл.
+                // Пример:
+                // header(HttpHeaders.Cookie, "member_id=ВАШ_ID; pass_hash=ВАШ_ХЭШ")
             }
         }
     }

@@ -32,7 +32,8 @@ mockk = "1.14.5"
 kotlinx-coroutines-test = "1.7.3"
 security-crypto = "1.1.0"
 datastore-preferences = "1.1.7"
-selenium = "4.12.0"
+selenium = "4.27.0"
+webdrivermanager = "5.6.2"
 jsoup = "1.17.2"
 kermit = "2.0.4"
 keytarJava = "1.0.0"
@@ -95,6 +96,7 @@ kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.
 uuid = { module = "com.benasher44:uuid", version.ref = "uuid" }
 
 selenium-java = { module = "org.seleniumhq.selenium:selenium-java", version.ref = "selenium" }
+webdrivermanager = { module = "io.github.bonigarcia:webdrivermanager", version.ref = "webdrivermanager" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 
 compose-markdown-render = { module = "com.mikepenz:multiplatform-markdown-renderer-m3", version.ref = "markdownRender" }

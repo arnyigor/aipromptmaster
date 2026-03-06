@@ -68,6 +68,7 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.swing)
                 implementation(compose.desktop.currentOs)
                 implementation(libs.ui.tooling.preview)
+                implementation(libs.webdrivermanager)
             }
         }
 
