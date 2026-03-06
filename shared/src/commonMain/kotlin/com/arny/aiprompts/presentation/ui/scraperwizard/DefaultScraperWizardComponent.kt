@@ -650,4 +650,16 @@ class DefaultScraperWizardComponent(
             addError(WizardStep.PAGE_INPUT, "Не удалось скопировать в буфер обмена", e.message)
         }
     }
+
+
+    override fun onPromptEdited(updatedPrompt: PromptData) {
+        _state.update { state ->
+            // Находим и заменяем промпт в основном списке
+            val updatedPrompts = state.indexPrompts.map {
+                if (it.id == updatedPrompt.id) updatedPrompt else it
+            }
+            state.copy(indexPrompts = updatedPrompts)
+        }
+        addLog("✏️ Промпт отредактирован: ${updatedPrompt.title}")
+    }
 }

@@ -9,10 +9,20 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.SaveAlt
+import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,8 +31,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import com.arny.aiprompts.domain.model.PromptData
 import kotlinx.coroutines.launch
 
@@ -110,6 +122,10 @@ fun ScraperWizardScreen(
     previewPrompt?.let { prompt ->
         PromptPreviewDialog(
             prompt = prompt,
+            onSave = { updatedPrompt ->
+                component.onPromptEdited(updatedPrompt)
+                previewPrompt = updatedPrompt // Обновляем стейт превью, чтобы увидеть изменения
+            },
             onDismiss = { previewPrompt = null }
         )
     }
@@ -646,100 +662,183 @@ private fun cleanContentForDisplay(html: String): String {
 @Composable
 private fun PromptPreviewDialog(
     prompt: PromptData,
+    onSave: (PromptData) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var isEditing by remember { mutableStateOf(false) }
+    var draft by remember(prompt) { mutableStateOf(prompt) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier
+            .fillMaxSize()          // теперь диалог может растянуться до 100%
+            .padding(32.dp),        // собственные отступы, если нужны
+        properties = DialogProperties(usePlatformDefaultWidth = false),
         title = {
-            Text(
-                text = prompt.title,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (isEditing) "Редактирование промпта" else "Предпросмотр промпта",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                if (!isEditing) {
+                    Button(
+                        onClick = { isEditing = true },
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Изменить")
+                    }
+                }
+            }
         },
         text = {
             Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Мета-информация
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.Category,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary
+                if (isEditing) {
+                    // ==========================================
+                    // РЕЖИМ РЕДАКТИРОВАНИЯ
+                    // ==========================================
+                    OutlinedTextField(
+                        value = draft.title,
+                        onValueChange = { draft = draft.copy(title = it) },
+                        label = { Text("Заголовок") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Категория: ${prompt.category}", style = MaterialTheme.typography.bodyMedium)
-                }
 
-                if (prompt.tags.isNotEmpty()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Label,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.secondary
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = draft.category,
+                            onValueChange = { draft = draft.copy(category = it) },
+                            label = { Text("Категория") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Теги: ${prompt.tags.joinToString()}", style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-
-                HorizontalDivider()
-
-                // Полный текст промпта (очищенный от HTML)
-                Text("Текст промпта:", style = MaterialTheme.typography.labelMedium)
-
-                val rawContent = prompt.variants.firstOrNull()?.content
-                if (!rawContent.isNullOrBlank()) {
-                    val cleanedContent = cleanContentForDisplay(rawContent)
-                    SelectionContainer {
-                        Text(
-                            cleanedContent,
-                            style = MaterialTheme.typography.bodySmall
+                        OutlinedTextField(
+                            value = draft.tags.joinToString(", "),
+                            onValueChange = { tagsStr ->
+                                val tagsList = tagsStr.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                                draft = draft.copy(tags = tagsList)
+                            },
+                            label = { Text("Теги (через запятую)") },
+                            modifier = Modifier.weight(2f),
+                            singleLine = true
                         )
                     }
+
+                    OutlinedTextField(
+                        value = draft.description,
+                        onValueChange = { draft = draft.copy(description = it) },
+                        label = { Text("Описание") },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp),
+                        maxLines = 3
+                    )
+
+                    OutlinedTextField(
+                        value = draft.variants.firstOrNull()?.content ?: "",
+                        onValueChange = { newContent ->
+                            val updatedVariants = if (draft.variants.isNotEmpty()) {
+                                draft.variants.mapIndexed { index, variant ->
+                                    if (index == 0) variant.copy(content = newContent) else variant
+                                }
+                            } else {
+                                listOf(com.arny.aiprompts.domain.model.PromptVariant(content = newContent))
+                            }
+                            draft = draft.copy(variants = updatedVariants)
+                        },
+                        label = { Text("Текст промпта (контент)") },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp),
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                    )
+
                 } else {
-                    Text(
-                        "Текст промпта не найден",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
+                    // ==========================================
+                    // РЕЖИМ ПРОСМОТРА
+                    // ==========================================
 
-                // Описание (если отличается от контента, очищенное от HTML)
-                if (!prompt.description.isNullOrBlank() && prompt.description != rawContent?.take(300)) {
-                    HorizontalDivider()
-                    Text("Описание:", style = MaterialTheme.typography.labelMedium)
-                    Text(cleanContentForDisplay(prompt.description), style = MaterialTheme.typography.bodySmall)
-                }
+                    // Мета-информация
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Category, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Категория: ${prompt.category}", style = MaterialTheme.typography.bodyMedium)
+                    }
 
-                // Источник
-                if (prompt.source.isNotBlank()) {
+                    if (prompt.tags.isNotEmpty()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.AutoMirrored.Filled.Label, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.secondary)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Теги: ${prompt.tags.joinToString()}", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+
                     HorizontalDivider()
-                    Text("Источник:", style = MaterialTheme.typography.labelMedium)
-                    Text(
-                        prompt.source,
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+
+                    Text("Текст промпта:", style = MaterialTheme.typography.labelMedium)
+
+                    val rawContent = prompt.variants.firstOrNull()?.content
+                    if (!rawContent.isNullOrBlank()) {
+                        SelectionContainer {
+                            Text(
+                                cleanContentForDisplay(rawContent),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)).padding(12.dp).fillMaxWidth()
+                            )
+                        }
+                    } else {
+                        Text(
+                            "Текст промпта не найден",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+
+                    if (prompt.description.isNotBlank() && prompt.description != rawContent?.take(300)) {
+                        HorizontalDivider()
+                        Text("Описание:", style = MaterialTheme.typography.labelMedium)
+                        Text(cleanContentForDisplay(prompt.description), style = MaterialTheme.typography.bodySmall)
+                    }
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Закрыть")
+            if (isEditing) {
+                Button(onClick = {
+                    onSave(draft)
+                    isEditing = false
+                }) {
+                    Icon(Icons.Default.Save, contentDescription = null)
+                    Spacer(Modifier.width(4.dp))
+                    Text("Сохранить изменения")
+                }
+            }
+        },
+        dismissButton = {
+            if (isEditing) {
+                OutlinedButton(onClick = {
+                    draft = prompt // сброс черновика
+                    isEditing = false
+                }) {
+                    Text("Отмена")
+                }
+            } else {
+                TextButton(onClick = onDismiss) {
+                    Text("Закрыть")
+                }
             }
         }
     )
 }
-
 // ========== Вспомогательные компоненты ==========
-
 
 @Composable
 private fun LogsPanel(logs: List<String>) {

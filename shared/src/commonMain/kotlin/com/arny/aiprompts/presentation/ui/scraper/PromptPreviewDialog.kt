@@ -105,9 +105,7 @@ fun PromptPreviewDialog(
         )
     ) {
         Card(
-            modifier = Modifier
-                .fillMaxWidth(0.95f)
-                .fillMaxHeight(0.9f),
+            modifier = Modifier,
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface
             )

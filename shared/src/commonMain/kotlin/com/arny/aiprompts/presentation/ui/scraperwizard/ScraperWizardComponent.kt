@@ -83,7 +83,10 @@ data class ScraperWizardState(
     val importResult: ImportParsedPromptsUseCase.ImportResult? = null,
 
     val errorMessages: List<ScraperError> = emptyList(),
-    val logs: List<String> = emptyList()
+    val logs: List<String> = emptyList(),
+
+    val isEditingPrompt: Boolean = false,
+    val draftPrompt: PromptData? = null
 )
 
 /**
@@ -118,4 +121,5 @@ interface ScraperWizardComponent {
     // ========== Error Handling ==========
     fun onCopyErrorsToClipboard()
     fun onDismissError(error: ScraperError)
+    fun onPromptEdited(updatedPrompt: PromptData)
 }

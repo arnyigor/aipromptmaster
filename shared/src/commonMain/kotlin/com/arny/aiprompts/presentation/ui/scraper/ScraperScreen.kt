@@ -8,9 +8,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
-import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -19,7 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -289,7 +285,10 @@ fun ScraperScreen(
                     )
                 ) {
                     if (state.inProgress) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary)
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
                         Spacer(Modifier.width(8.dp))
                         Text("Анализирую...")
                     } else {
@@ -334,9 +333,11 @@ fun ScraperScreen(
                                         }
                                         snackbarHostState.showSnackbar(message)
                                     }
+
                                     is com.arny.aiprompts.domain.repositories.SyncResult.Error -> {
                                         snackbarHostState.showSnackbar("Ошибка: ${result.message.toPlainString()}")
                                     }
+
                                     com.arny.aiprompts.domain.repositories.SyncResult.TooSoon -> {
                                         snackbarHostState.showSnackbar("Синхронизация возможна только раз в 10 минут")
                                     }
@@ -533,8 +534,8 @@ fun ScraperScreen(
             // --- IMPORT PANEL ---
             AnimatedVisibility(
                 visible = state.availableImportFiles.isNotEmpty() ||
-                          state.isImporting ||
-                          state.importResult != null
+                        state.isImporting ||
+                        state.importResult != null
             ) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -633,9 +634,15 @@ fun ScraperScreen(
                                                 contentDescription = null,
                                                 tint = MaterialTheme.colorScheme.primary
                                             )
-                                            Text("Импорт завершен успешно!", style = MaterialTheme.typography.labelMedium)
+                                            Text(
+                                                "Импорт завершен успешно!",
+                                                style = MaterialTheme.typography.labelMedium
+                                            )
                                         } else {
-                                            Text("Импорт завершен с ошибками", style = MaterialTheme.typography.labelMedium)
+                                            Text(
+                                                "Импорт завершен с ошибками",
+                                                style = MaterialTheme.typography.labelMedium
+                                            )
                                         }
                                     }
 
@@ -901,7 +908,12 @@ fun ProcessingStatsView(result: ProcessScrapedPostsUseCase.ProcessingResult) {
 
         StatRow("Всего обработано:", "${result.totalInput}", FontWeight.Normal)
         StatRow("Пропущено (дубли):", "${result.alreadyExists}", FontWeight.Normal, MaterialTheme.colorScheme.secondary)
-        StatRow("Отсеяно (низкое качество):", "${result.lowQuality}", FontWeight.Normal, MaterialTheme.colorScheme.secondary)
+        StatRow(
+            "Отсеяно (низкое качество):",
+            "${result.lowQuality}",
+            FontWeight.Normal,
+            MaterialTheme.colorScheme.secondary
+        )
         StatRow("Ошибки парсинга:", "${result.parseErrors}", FontWeight.Normal, MaterialTheme.colorScheme.error)
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
@@ -920,7 +932,7 @@ private fun StatRow(
     label: String,
     value: String,
     fontWeight: FontWeight = FontWeight.Normal,
-    color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface
+    color: Color = MaterialTheme.colorScheme.onSurface
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -933,62 +945,5 @@ private fun StatRow(
             color = color,
             fontWeight = fontWeight
         )
-    }
-}
-
-/**
- * Section card for 3-stage workflow UI.
- */
-@Composable
-fun SectionCard(
-    title: String,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(2.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            content()
-        }
-    }
-}
-
-/**
- * Log console widget for displaying scraper logs.
- * Wrapped in SelectionContainer to allow copying logs.
- */
-@Composable
-fun LogConsole(logs: List<String>) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(150.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.8f))
-    ) {
-        SelectionContainer {
-            Column(
-                modifier = Modifier
-                    .padding(8.dp)
-                    .verticalScroll(rememberScrollState())
-            ) {
-                // Show logs from oldest to newest (first in list = oldest)
-                logs.forEach { log ->
-                    Text(
-                        text = log,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.Green,
-                        fontFamily = FontFamily.Monospace
-                    )
-                }
-            }
-        }
     }
 }
