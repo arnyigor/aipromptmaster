@@ -401,6 +401,8 @@ class DefaultScraperWizardComponent(
                 val parseResult = pageParser.parsePage(htmlFile, link.postId)
                 if (!parseResult.success) {
                     errors++
+                    // ДОБАВИТЬ ЭТО ЛОГИРОВАНИЕ:
+                    addLog("❌ Ошибка парсинга ID ${link.postId}: ${parseResult.error ?: "Неизвестная ошибка"}")
                     processed++
                     updateAnalysisProgress(processed, prompts.size, errors)
                     continue

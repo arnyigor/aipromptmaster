@@ -1,37 +1,13 @@
 package com.arny.aiprompts.presentation.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.MenuOpen
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Work
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -50,7 +26,6 @@ import com.arny.aiprompts.presentation.ui.detail.AdaptivePromptDetailLayout
 import com.arny.aiprompts.presentation.ui.importer.ImporterScreen
 import com.arny.aiprompts.presentation.ui.llm.LlmScreen
 import com.arny.aiprompts.presentation.ui.prompts.PromptsScreen
-import com.arny.aiprompts.presentation.ui.scraper.ScraperScreen
 import com.arny.aiprompts.presentation.ui.scraperwizard.ScraperWizardScreen
 import com.arny.aiprompts.presentation.ui.settings.SettingsScreen
 
@@ -142,6 +117,7 @@ fun MainContentDesktopImpl(component: MainComponent) {
                     is MainComponent.Child.Chat -> {
                         LlmScreen(component = instance.component)
                     }
+
                     is MainComponent.Child.ScraperWizard -> {
                         if (MainComponent.IS_IMPORT_ENABLED) ScraperWizardScreen(
                             component = instance.component,
@@ -476,10 +452,6 @@ private fun MainPropertiesPanel(
         )
 
         when (activeChild) {
-            is MainComponent.Child.Scraper -> {
-                Text("Настройки скрапера будут показаны здесь")
-            }
-
             is MainComponent.Child.Prompts -> {
                 Text("Свойства промптов будут показаны здесь")
             }

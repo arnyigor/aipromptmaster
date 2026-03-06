@@ -118,34 +118,32 @@ class PromptPageParser {
         withContext(Dispatchers.Default) {
             try {
                 val document = Jsoup.parse(html)
-                
-                // Find the target post by data-post attribute
-                val targetPost = document.selectFirst("div.post[data-post=\"$targetPostId\"]")
-                    ?: document.selectFirst("table.ipbtable[data-post=\"$targetPostId\"]")
-                    ?: return@withContext ParseResult(
-                        success = false,
-                        postId = targetPostId,
-                        promptTitle = null,
-                        promptContent = null,
-                        cleanContent = null,
-                        attachments = emptyList(),
-                        error = "Post $targetPostId not found in HTML"
-                    )
+
+                // 1. Ищем таблицу поста
+                val table = document.selectFirst("table.ipbtable[data-post=\"$targetPostId\"]")
+                    ?: document.selectFirst("div.post[data-post=\"$targetPostId\"]")
+                    ?: return@withContext ParseResult(false, targetPostId, null, null, null, emptyList(), "Post $targetPostId not found")
+
+                // 2. Ищем КОНКРЕТНУЮ ячейку с контентом (ID обычно post-main-XXXXXX)
+                // Если нет ID, ищем ячейку с классом post1 или post2
+                val targetPost = table.selectFirst("td[id^=post-main-]")
+                    ?: table.selectFirst(".post1, .post2")
+                    ?: table.selectFirst("div.postcolor") // Fallback
+
+                if (targetPost == null) {
+                    return@withContext ParseResult(false, targetPostId, null, null, null, emptyList(), "Content cell not found")
+                }
 
                 // Find prompt blocks within the post
-                val promptBlock = findPromptBlock(targetPost, targetPostId)
-                
-                if (promptBlock == null) {
-                    return@withContext ParseResult(
-                        success = false,
-                        postId = targetPostId,
-                        promptTitle = null,
-                        promptContent = null,
-                        cleanContent = null,
-                        attachments = emptyList(),
-                        error = "Prompt block not found in post $targetPostId"
-                    )
-                }
+                val promptBlock = findPromptBlock(targetPost, targetPostId) ?: return@withContext ParseResult(
+                    success = false,
+                    postId = targetPostId,
+                    promptTitle = null,
+                    promptContent = null,
+                    cleanContent = null,
+                    attachments = emptyList(),
+                    error = "Prompt block not found in post $targetPostId"
+                )
 
                 // Extract data
                 val title = extractTitle(promptBlock, targetPostId)
@@ -181,25 +179,23 @@ class PromptPageParser {
      * Looks for div.post-block.spoil containing ПРОМПТ
      */
     private fun findPromptBlock(post: Element, postId: String): Element? {
-        // Try to find spoiler blocks with ПРОМПТ
-        val spoilers = post.select("div.post-block.spoil, div.spoiler")
-        
-        for (spoiler in spoilers) {
-            val blockTitle = spoiler.selectFirst(".block-title, .block-title")?.text() ?: ""
-            if (blockTitle.contains("ПРОМПТ", ignoreCase = true)) {
-                return spoiler
-            }
+        val postColor = post.selectFirst(".postcolor") ?: return null
+
+        // 1. Пытаемся найти спойлер, даже если заголовок пустой или не содержит "ПРОМПТ"
+        // Иногда промпт спрятан просто в спойлере без спец. заголовка
+        val spoilers = postColor.select("div.post-block.spoil")
+
+        // Если есть спойлеры, берем первый (обычно там контент)
+        if (spoilers.isNotEmpty()) {
+            return spoilers.first()
         }
-        
-        // If no spoiler found, try to find any block with ПРОМПТ
-        val postColor = post.selectFirst(".postcolor, #post-$postId") ?: return null
-        val promptText = postColor.text()
-        
-        if (promptText.contains("ПРОМПТ", ignoreCase = true)) {
-            // Return the postcolor div as fallback
+
+        // 2. Если спойлеров нет, проверяем, содержит ли пост ключевые слова (ПРОМПТ, PROMPT)
+        val text = postColor.text()
+        if (text.contains("ПРОМПТ", ignoreCase = true) || text.contains("PROMPT", ignoreCase = true)) {
             return postColor
         }
-        
+//        println("DEBUG: Failed to find content in post $postId. HTML: ${post.html().take(300)}")
         return null
     }
 
@@ -240,6 +236,15 @@ class PromptPageParser {
      * Extract prompt content from block body.
      */
     private fun extractContent(block: Element): String {
+        // Если это спойлер, берем его тело
+        if (block.hasClass("post-block")) {
+            val body = block.selectFirst(".block-body")
+            if (body != null) {
+                return body.html()
+                    .replace(Regex("""<br\s*/?>""", RegexOption.IGNORE_CASE), "\n")
+                    .trim()
+            }
+        }
         val blockBody = block.selectFirst(".block-body, .block-content, .content") 
             ?: block
         
