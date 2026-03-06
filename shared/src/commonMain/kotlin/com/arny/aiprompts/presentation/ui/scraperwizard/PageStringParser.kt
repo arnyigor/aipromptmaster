@@ -1,4 +1,4 @@
-package com.arny.aiprompts.presentation.ui.scraper
+package com.arny.aiprompts.presentation.ui.scraperwizard
 
 /**
  * Утилитарный объект для парсинга строки с номерами страниц.

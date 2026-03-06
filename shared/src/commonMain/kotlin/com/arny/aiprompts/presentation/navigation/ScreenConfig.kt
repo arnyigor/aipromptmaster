@@ -37,9 +37,6 @@ sealed interface ScreenConfig {
 @Serializable
 sealed interface MainConfig {
     @Serializable
-    data object Scraper : MainConfig
-
-    @Serializable
     data object ScraperWizard : MainConfig
 
     @Serializable

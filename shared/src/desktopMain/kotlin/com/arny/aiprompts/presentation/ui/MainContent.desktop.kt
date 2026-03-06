@@ -142,13 +142,6 @@ fun MainContentDesktopImpl(component: MainComponent) {
                     is MainComponent.Child.Chat -> {
                         LlmScreen(component = instance.component)
                     }
-
-                    is MainComponent.Child.Scraper -> {
-                        if (MainComponent.IS_IMPORT_ENABLED) ScraperScreen(
-                            component = instance.component
-                        )
-                    }
-
                     is MainComponent.Child.ScraperWizard -> {
                         if (MainComponent.IS_IMPORT_ENABLED) ScraperWizardScreen(
                             component = instance.component,
@@ -403,7 +396,6 @@ private fun MainTopBarDesktop(
                     is MainComponent.Child.Prompts -> "Промпты"
                     is MainComponent.Child.PromptDetails -> "Детали промпта"
                     is MainComponent.Child.Chat -> "Чат"
-                    is MainComponent.Child.Scraper -> "Скрапер"
                     is MainComponent.Child.ScraperWizard -> "Мастер импорта"
                     is MainComponent.Child.Import -> "Импорт"
                     is MainComponent.Child.Settings -> "Настройки"

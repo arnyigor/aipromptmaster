@@ -1,4 +1,4 @@
-import com.arny.aiprompts.presentation.ui.scraper.PageStringParser
+import com.arny.aiprompts.presentation.ui.scraperwizard.PageStringParser
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

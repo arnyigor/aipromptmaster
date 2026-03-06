@@ -18,7 +18,7 @@ import com.arny.aiprompts.domain.usecase.ImportParsedPromptsUseCase
 import com.arny.aiprompts.domain.usecase.SavePromptsAsFilesUseCase
 import com.arny.aiprompts.domain.usecase.ScrapeWebsiteUseCase
 import com.arny.aiprompts.domain.usecase.ScraperResult
-import com.arny.aiprompts.presentation.ui.scraper.PageStringParser
+import com.arny.aiprompts.presentation.ui.scraperwizard.PageStringParser
 import com.benasher44.uuid.uuid4
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

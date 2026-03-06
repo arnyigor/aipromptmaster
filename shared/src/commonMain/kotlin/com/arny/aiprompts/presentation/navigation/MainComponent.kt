@@ -48,8 +48,6 @@ import com.arny.aiprompts.presentation.screens.PromptListComponent
 import com.arny.aiprompts.presentation.screens.SettingsComponent
 import com.arny.aiprompts.presentation.ui.importer.DefaultImporterComponent
 import com.arny.aiprompts.presentation.ui.importer.ImporterComponent
-import com.arny.aiprompts.presentation.ui.scraper.DefaultScraperComponent
-import com.arny.aiprompts.presentation.ui.scraper.ScraperComponent
 import com.arny.aiprompts.presentation.ui.scraperwizard.DefaultScraperWizardComponent
 import com.arny.aiprompts.presentation.ui.scraperwizard.ScraperWizardComponent
 import io.ktor.client.HttpClient
@@ -63,7 +61,6 @@ interface MainComponent {
     val childStack: Value<ChildStack<*, Child>>
 
     sealed interface Child {
-        data class Scraper(val component: ScraperComponent) : Child
         data class ScraperWizard(val component: ScraperWizardComponent) : Child
         data class Prompts(val component: PromptListComponent) : Child
         data class PromptDetails(val component: PromptDetailComponent) : Child
@@ -184,27 +181,6 @@ class DefaultMainComponent(
                 DefaultLlmComponent(
                     componentContext = context,
                     llmInteractor = llmInteractor,
-                    onBack = { navigation.pop() }
-                )
-            )
-
-            is MainConfig.Scraper -> Child.Scraper(
-                DefaultScraperComponent(
-                    componentContext = context,
-                    scrapeUseCase = scrapeUseCase,
-                    webScraper = webScraper,
-                    parseRawPostsUseCase = parseRawPostsUseCase,
-                    processScrapedPostsUseCase = processScrapedPostsUseCase,
-                    analyzerPipeline = analyzerPipeline,
-                    importParsedPromptsUseCase = importParsedPromptsUseCase,
-                    promptSynchronizer = promptSynchronizer,
-                    promptsRepository = promptsRepository,
-                    onNavigateToImporter = { files: List<String> ->
-                        if (files.isNotEmpty()) {
-                            importFiles = files.map { java.io.File(it) }
-                            navigation.push(MainConfig.Import)
-                        }
-                    },
                     onBack = { navigation.pop() }
                 )
             )
