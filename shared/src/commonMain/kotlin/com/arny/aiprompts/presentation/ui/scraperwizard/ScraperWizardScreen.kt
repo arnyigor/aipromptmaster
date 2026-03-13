@@ -9,21 +9,8 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Label
-import androidx.compose.material.icons.filled.Category
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.SaveAlt
-import androidx.compose.material.icons.filled.TextFields
-import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,6 +23,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.arny.aiprompts.domain.model.PromptData
+import com.arny.aiprompts.domain.model.PromptVariant
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -175,6 +163,30 @@ private fun StepIndicator(currentStep: WizardStep) {
             }
         }
     }
+}
+
+// Вспомогательные функции для безопасной работы с вариантами (с поддержкой legacy типа "prompt")
+private fun getVariantContent(variants: List<PromptVariant>, lang: String): String {
+    return variants.find { it.type == lang }?.content
+        ?: if (lang == "ru") variants.find { it.type == "prompt" }?.content.orEmpty() else ""
+}
+
+private fun updateVariantContent(
+    variants: List<PromptVariant>,
+    lang: String,
+    newContent: String
+): List<PromptVariant> {
+    val mutableList = variants.toMutableList()
+
+    // Ищем существующий вариант (или legacy "prompt" если редактируем RU)
+    val existingIndex = mutableList.indexOfFirst { it.type == lang || (lang == "ru" && it.type == "prompt") }
+
+    if (existingIndex != -1) {
+        mutableList[existingIndex] = mutableList[existingIndex].copy(type = lang, content = newContent)
+    } else {
+        mutableList.add(PromptVariant(type = lang, content = newContent))
+    }
+    return mutableList
 }
 
 // ========== Шаг 1: Загрузка стр.1 + ввод диапазона ==========
@@ -668,11 +680,16 @@ private fun PromptPreviewDialog(
     var isEditing by remember { mutableStateOf(false) }
     var draft by remember(prompt) { mutableStateOf(prompt) }
 
+    // Состояние для вкладок RU / EN
+    var selectedTabIndex by remember { mutableStateOf(0) }
+    val tabs = listOf("RU", "EN")
+    val currentLangCode = tabs[selectedTabIndex].lowercase()
+
     AlertDialog(
         onDismissRequest = onDismiss,
         modifier = Modifier
-            .fillMaxSize()          // теперь диалог может растянуться до 100%
-            .padding(32.dp),        // собственные отступы, если нужны
+            .fillMaxSize()
+            .padding(16.dp),
         properties = DialogProperties(usePlatformDefaultWidth = false),
         title = {
             Row(
@@ -681,7 +698,7 @@ private fun PromptPreviewDialog(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (isEditing) "Редактирование промпта" else "Предпросмотр промпта",
+                    text = if (isEditing) "Редактирование" else "Предпросмотр",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -744,38 +761,52 @@ private fun PromptPreviewDialog(
                         maxLines = 3
                     )
 
+                    // Вкладки выбора языка контента
+                    TabRow(selectedTabIndex = selectedTabIndex) {
+                        tabs.forEachIndexed { index, title ->
+                            Tab(
+                                selected = selectedTabIndex == index,
+                                onClick = { selectedTabIndex = index },
+                                text = { Text(title) }
+                            )
+                        }
+                    }
+
+                    // Поле контента зависит от выбранной вкладки
                     OutlinedTextField(
-                        value = draft.variants.firstOrNull()?.content ?: "",
+                        value = getVariantContent(draft.variants, currentLangCode),
                         onValueChange = { newContent ->
-                            val updatedVariants = if (draft.variants.isNotEmpty()) {
-                                draft.variants.mapIndexed { index, variant ->
-                                    if (index == 0) variant.copy(content = newContent) else variant
-                                }
-                            } else {
-                                listOf(com.arny.aiprompts.domain.model.PromptVariant(content = newContent))
-                            }
+                            val updatedVariants = updateVariantContent(draft.variants, currentLangCode, newContent)
                             draft = draft.copy(variants = updatedVariants)
                         },
-                        label = { Text("Текст промпта (контент)") },
+                        label = { Text("Текст промпта (${tabs[selectedTabIndex]})") },
                         modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp),
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace)
                     )
 
                 } else {
                     // ==========================================
                     // РЕЖИМ ПРОСМОТРА
                     // ==========================================
-
-                    // Мета-информация
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Category, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                        Icon(
+                            Icons.Default.Category,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Категория: ${prompt.category}", style = MaterialTheme.typography.bodyMedium)
                     }
 
                     if (prompt.tags.isNotEmpty()) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.AutoMirrored.Filled.Label, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.secondary)
+                            Icon(
+                                Icons.AutoMirrored.Filled.Label,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.secondary
+                            )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Теги: ${prompt.tags.joinToString()}", style = MaterialTheme.typography.bodySmall)
                         }
@@ -783,26 +814,42 @@ private fun PromptPreviewDialog(
 
                     HorizontalDivider()
 
-                    Text("Текст промпта:", style = MaterialTheme.typography.labelMedium)
+                    // Вкладки просмотра контента
+                    TabRow(selectedTabIndex = selectedTabIndex) {
+                        tabs.forEachIndexed { index, title ->
+                            Tab(
+                                selected = selectedTabIndex == index,
+                                onClick = { selectedTabIndex = index },
+                                text = { Text(title) }
+                            )
+                        }
+                    }
 
-                    val rawContent = prompt.variants.firstOrNull()?.content
-                    if (!rawContent.isNullOrBlank()) {
+                    val rawContent = getVariantContent(prompt.variants, currentLangCode)
+
+                    if (rawContent.isNotBlank()) {
                         SelectionContainer {
                             Text(
-                                cleanContentForDisplay(rawContent),
+                                text = cleanContentForDisplay(rawContent),
                                 style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)).padding(12.dp).fillMaxWidth()
+                                modifier = Modifier
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                                    .padding(12.dp)
+                                    .fillMaxWidth()
                             )
                         }
                     } else {
                         Text(
-                            "Текст промпта не найден",
+                            text = "Текст промпта для языка ${tabs[selectedTabIndex]} не задан",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(12.dp)
                         )
                     }
 
-                    if (prompt.description.isNotBlank() && prompt.description != rawContent?.take(300)) {
+                    // Проверяем, чтобы описание не дублировало полностью контент (защита от мусора)
+                    val ruRawContent = getVariantContent(prompt.variants, "ru")
+                    if (prompt.description.isNotBlank() && prompt.description != ruRawContent.take(300)) {
                         HorizontalDivider()
                         Text("Описание:", style = MaterialTheme.typography.labelMedium)
                         Text(cleanContentForDisplay(prompt.description), style = MaterialTheme.typography.bodySmall)
@@ -818,7 +865,7 @@ private fun PromptPreviewDialog(
                 }) {
                     Icon(Icons.Default.Save, contentDescription = null)
                     Spacer(Modifier.width(4.dp))
-                    Text("Сохранить изменения")
+                    Text("Сохранить")
                 }
             }
         },

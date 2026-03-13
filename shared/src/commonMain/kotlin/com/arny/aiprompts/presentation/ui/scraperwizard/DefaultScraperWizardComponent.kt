@@ -5,6 +5,7 @@ import com.arkivanov.essenty.lifecycle.coroutines.coroutineScope
 import com.arny.aiprompts.domain.analysis.CategoryTagMapper
 import com.arny.aiprompts.domain.analysis.PromptPageParser
 import com.arny.aiprompts.domain.index.IndexParser
+import com.arny.aiprompts.domain.index.model.IndexLink
 import com.arny.aiprompts.domain.index.model.IndexParseResult
 import com.arny.aiprompts.domain.index.model.PostLocation
 import com.arny.aiprompts.domain.interfaces.FileDataSource
@@ -28,6 +29,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.awt.Toolkit
+import java.awt.datatransfer.StringSelection
 import java.io.File
 
 /**
@@ -455,26 +458,34 @@ class DefaultScraperWizardComponent(
     /**
      * Название берётся из индекса (spoilerTitle), контент — из парсера.
      */
+
     private fun convertToPromptData(
-        link: com.arny.aiprompts.domain.index.model.IndexLink,
+        link: IndexLink,
         parseResult: PromptPageParser.ParseResult
     ): PromptData {
-        val category = CategoryTagMapper.mapToAppCategory(link.category ?: "")
-        val tags = CategoryTagMapper.getTagsWithAutoDetect(link.category ?: "", parseResult.cleanContent ?: "")
+        val category = CategoryTagMapper.mapToAppCategory(link.category.orEmpty())
+        val tags = CategoryTagMapper.getTagsWithAutoDetect(
+            categoryName = link.category.orEmpty(),
+            promptText = parseResult.cleanContent.orEmpty()
+        )
 
-        // Название: приоритет — из индекса (spoilerTitle), затем из парсера, затем fallback
         val title = link.spoilerTitle?.takeIf { it.isNotBlank() }
             ?: parseResult.promptTitle
             ?: "Prompt #${link.postId}"
 
         val timestamp = System.currentTimeMillis()
+        val parsedContent = parseResult.promptContent.orEmpty()
 
         return PromptData(
             id = uuid4().toString(),
             sourceId = link.postId,
             title = title,
-            description = parseResult.cleanContent?.take(300) ?: "",
-            variants = listOf(PromptVariant(content = parseResult.promptContent ?: "")),
+            description = parseResult.cleanContent?.take(300).orEmpty(),
+            // Инициализируем сразу два варианта: RU (с контентом) и EN (пустой)
+            variants = listOf(
+                PromptVariant(type = "ru", content = parsedContent),
+                PromptVariant(type = "en", content = "")
+            ),
             author = Author(name = "4pda User", id = ""),
             createdAt = timestamp,
             updatedAt = timestamp,
@@ -551,13 +562,9 @@ class DefaultScraperWizardComponent(
         }
     }
 
-    // ========== Preview ==========
-
     override fun onPromptPreviewClicked(prompt: PromptData) {
         addLog("Предпросмотр: ${prompt.title}")
     }
-
-    // ========== Navigation ==========
 
     override fun onBackToPreviousStep() {
         _state.update { state ->
@@ -598,8 +605,6 @@ class DefaultScraperWizardComponent(
     override fun onFinish() {
         onBack()
     }
-
-    // ========== Error & Utils ==========
 
     override fun onCopyErrorsToClipboard() {
         val errorsText = _state.value.errorMessages.joinToString("\n") {
@@ -645,14 +650,13 @@ class DefaultScraperWizardComponent(
 
     private fun copyToClipboard(text: String) {
         try {
-            val selection = java.awt.datatransfer.StringSelection(text)
-            val clipboard = java.awt.Toolkit.getDefaultToolkit().systemClipboard
+            val selection = StringSelection(text)
+            val clipboard = Toolkit.getDefaultToolkit().systemClipboard
             clipboard.setContents(selection, selection)
         } catch (e: Exception) {
             addError(WizardStep.PAGE_INPUT, "Не удалось скопировать в буфер обмена", e.message)
         }
     }
-
 
     override fun onPromptEdited(updatedPrompt: PromptData) {
         _state.update { state ->
