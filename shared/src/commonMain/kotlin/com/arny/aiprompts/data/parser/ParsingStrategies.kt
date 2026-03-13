@@ -1,14 +1,15 @@
 package com.arny.aiprompts.data.parser
 
 import com.arny.aiprompts.domain.model.*
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import org.jsoup.nodes.Element
 import com.arny.aiprompts.domain.model.ParserConfig
 import com.benasher44.uuid.uuid4
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 sealed interface ParsingStrategy {
     fun parse(postElement: Element): PromptData? // Принимает Element
@@ -18,6 +19,7 @@ sealed interface ParsingStrategy {
 class StandardPromptParsingStrategy(
     private val config: ParserConfig
 ) : ParsingStrategy {
+    @OptIn(ExperimentalTime::class)
     override fun parse(postElement: Element): PromptData? {
         val extractor = ConfigurableExtractor(config.selectors)
         try {
@@ -73,7 +75,7 @@ class StandardPromptParsingStrategy(
                 author = Author(id = authorId, name = authorName),
                 createdAt = dateInstant.toEpochMilliseconds(),
                 updatedAt = dateInstant.toEpochMilliseconds(),
-                category = "imported"
+                category = "general" // Will be auto-categorized later
             )
         } catch (e: Exception) {
             e.printStackTrace()
@@ -82,6 +84,7 @@ class StandardPromptParsingStrategy(
     }
 }
 
+@OptIn(ExperimentalTime::class)
 fun parseDate(text: String?): Instant {
     val defaultInstant = Clock.System.now()
     if (text == null) return defaultInstant

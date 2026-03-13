@@ -6,6 +6,7 @@ pluginManagement {
         gradlePluginPortal()
         mavenCentral()
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
+        maven("https://maven.google.com/")
     }
 }
 dependencyResolutionManagement {
@@ -20,4 +21,3 @@ dependencyResolutionManagement {
 rootProject.name = "aiprompts-kmp"
 include(":shared")
 include(":desktopApp")
-include(":androidApp")

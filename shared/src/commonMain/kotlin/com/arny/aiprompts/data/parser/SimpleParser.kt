@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalTime::class)
+
 package com.arny.aiprompts.data.parser
 
 import com.arny.aiprompts.domain.interfaces.IFileParser
@@ -5,8 +7,13 @@ import com.arny.aiprompts.domain.model.Author
 import com.arny.aiprompts.domain.model.FileAttachment
 import com.arny.aiprompts.domain.model.FileType
 import com.arny.aiprompts.domain.model.RawPostData
-import kotlinx.datetime.*
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 import org.jsoup.Jsoup
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 /**
  * Простой и надежный парсер, который реализует интерфейс IFileParser.
@@ -45,70 +52,81 @@ class SimpleParser : IFileParser {
     override fun parse(htmlContent: String): List<RawPostData> {
         val document = Jsoup.parse(htmlContent)
         // Находим все контейнеры постов на странице
-        return document.select("table[data-post]").mapNotNull { postElement ->
-            try {
-                // Извлекаем только 100% надежные данные. Если чего-то нет, пропускаем пост.
-                val postId = postElement.attr("data-post").ifBlank { return@mapNotNull null }
-                val authorName = postElement.selectFirst("span.normalname a")?.text() ?: "Unknown"
-                val authorId =
-                    postElement.selectFirst("span.normalname a")?.attr("href")?.substringAfter("showuser=") ?: ""
+        // Поддерживаем оба формата: div.post[data-post] (новый) и table[data-post] (старый)
+        val posts = document.select("div.post[data-post]")
+        return if (posts.isEmpty()) {
+            document.select("table[data-post]").mapNotNull { parsePost(it) }
+        } else {
+            posts.mapNotNull { parsePost(it) }
+        }
+    }
 
-                // Ищем дату редактирования, если ее нет - ищем дату создания.
-                val editDateStr = postElement.selectFirst("span.edit")?.text()
-                val createDateStr = postElement.selectFirst("td.row2[width='99%']")?.text()
-                val date = parseDate(editDateStr ?: createDateStr)
-                val updatedDate = if (editDateStr != null) parseDate(editDateStr) else null
+    /**
+     * Parse a single post element (shared logic for both div and table formats)
+     */
+    private fun parsePost(postElement: org.jsoup.nodes.Element): RawPostData? {
+        try {
+            // Извлекаем только 100% надежные данные. Если чего-то нет, пропускаем пост.
+            val postId = postElement.attr("data-post").ifBlank { return null }
+            val authorName = postElement.selectFirst("span.normalname a")?.text() ?: "Unknown"
+            val authorId =
+                postElement.selectFirst("span.normalname a")?.attr("href")?.substringAfter("showuser=") ?: ""
 
-                // Получаем весь HTML-контент тела поста для предпросмотра
-                val contentElement = postElement.selectFirst("div.postcolor") ?: return@mapNotNull null
-                val contentHtml = contentElement.html()
+            // Ищем дату редактирования, если ее нет - ищем дату создания.
+            val editDateStr = postElement.selectFirst("span.edit")?.text()
+            val createDateStr = postElement.selectFirst("td.row2[width='99%']")?.text()
+            val date = parseDate(editDateStr ?: createDateStr)
+            val updatedDate = if (editDateStr != null) parseDate(editDateStr) else null
 
-                // --- Извлекаем ссылку на пост ---
-                val postUrl = postElement.selectFirst("a[href*='showtopic']")?.absUrl("href")
-                    ?: postElement.selectFirst("a[href*='index.php?showtopic']")?.absUrl("href")
+            // Получаем весь HTML-контент тела поста для предпросмотра
+            val contentElement = postElement.selectFirst("div.postcolor") ?: return null
+            val contentHtml = contentElement.html()
 
-                // --- Извлекаем все вложения ---
-                val attachments = postElement.select("a.attach-file").mapNotNull { link ->
-                    val href = link.absUrl("href")
-                    val filename = link.text().trim()
-                    if (href.isNotBlank() && filename.isNotBlank()) {
-                        FileAttachment(
-                            url = href,
-                            filename = filename,
-                            fileSize = extractFileSize(link.text()),
-                            fileType = determineFileType(filename)
-                        )
-                    } else null
-                }
+            // --- Извлекаем ссылку на пост ---
+            val postUrl = postElement.selectFirst("a[href*='showtopic']")?.absUrl("href")
+                ?: postElement.selectFirst("a[href*='index.php?showtopic']")?.absUrl("href")
 
-                // --- Простой "детектор промптов" (эвристика) ---
-                val lowercasedHtml = contentHtml.lowercase()
-                val hasTxtAttachment = attachments.any { it.fileType == FileType.TEXT }
-                val isLikelyPrompt = lowercasedHtml.contains("промпт")
-                        || lowercasedHtml.contains("prompt")
-                        || hasTxtAttachment
-
-                // Для обратной совместимости сохраняем первый .txt файл
-                val firstTxtAttachment = attachments.firstOrNull { it.fileType == FileType.TEXT }
-
-                // Собираем и возвращаем модель с "сырыми" данными
-                RawPostData(
-                    postId = postId,
-                    author = Author(id = authorId, name = authorName),
-                    date = date,
-                    updatedDate = updatedDate,
-                    fullHtmlContent = contentHtml,
-                    isLikelyPrompt = isLikelyPrompt,
-                    fileAttachmentUrl = firstTxtAttachment?.url, // Для обратной совместимости
-                    attachments = attachments,
-                    postUrl = postUrl
-                )
-            } catch (e: Exception) {
-                // Если при парсинге одного конкретного поста произошла ошибка,
-                // мы логируем ее и просто пропускаем этот пост, не прерывая весь процесс.
-                e.printStackTrace()
-                null
+            // --- Извлекаем все вложения ---
+            val attachments = postElement.select("a.attach-file").mapNotNull { link ->
+                val href = link.absUrl("href")
+                val filename = link.text().trim()
+                if (href.isNotBlank() && filename.isNotBlank()) {
+                    FileAttachment(
+                        url = href,
+                        filename = filename,
+                        fileSize = extractFileSize(link.text()),
+                        fileType = determineFileType(filename)
+                    )
+                } else null
             }
+
+            // --- Простой "детектор промптов" (эвристика) ---
+            val lowercasedHtml = contentHtml.lowercase()
+            val hasTxtAttachment = attachments.any { it.fileType == FileType.TEXT }
+            val isLikelyPrompt = lowercasedHtml.contains("промпт")
+                    || lowercasedHtml.contains("prompt")
+                    || hasTxtAttachment
+
+            // Для обратной совместимости сохраняем первый .txt файл
+            val firstTxtAttachment = attachments.firstOrNull { it.fileType == FileType.TEXT }
+
+            // Собираем и возвращаем модель с "сырыми" данными
+            return RawPostData(
+                postId = postId,
+                author = Author(id = authorId, name = authorName),
+                date = date,
+                updatedDate = updatedDate,
+                fullHtmlContent = contentHtml,
+                isLikelyPrompt = isLikelyPrompt,
+                fileAttachmentUrl = firstTxtAttachment?.url, // Для обратной совместимости
+                attachments = attachments,
+                postUrl = postUrl
+            )
+        } catch (e: Exception) {
+            // Если при парсинге одного конкретного поста произошла ошибка,
+            // мы логируем ее и просто пропускаем этот пост, не прерывая весь процесс.
+            e.printStackTrace()
+            return null
         }
     }
 

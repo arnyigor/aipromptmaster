@@ -1,5 +1,4 @@
 // shared/build.gradle.kts
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.io.FileInputStream
 import java.util.*
@@ -8,47 +7,37 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.compose)
-    alias(libs.plugins.androidLibrary)
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.room)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.kover)
+    alias(libs.plugins.buildconfig)
 }
 
 kotlin {
-    // Android target
-    androidTarget {
-        compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
-    }
-
-    // Desktop target
+    // Desktop target only
     jvm("desktop") {
         compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
-//        testRuns["test"].executionTask.configure {
-//            useJUnitPlatform()
-//        }
-    }
-
-    configurations.all {
-        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-android")
     }
 
     sourceSets {
         val commonMain by getting {
             dependencies {
                 // Compose
-                api(compose.runtime)
-                api(compose.foundation)
-                api(compose.material3)
-                api(compose.ui)
+                api(libs.compose.runtime)
+                api(libs.compose.foundation)
+                api(libs.compose.material3)
+                api(libs.compose.ui)
                 api(libs.compose.material.icons.extended)
-                @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
-                api(compose.components.resources)
+                api(libs.compose.components.resources)
                 api("com.arkivanov.decompose:decompose:${libs.versions.decompose.get()}")
                 api("com.arkivanov.decompose:extensions-compose:${libs.versions.decompose.get()}")
                 api("com.arkivanov.essenty:lifecycle-coroutines:${libs.versions.lifecycle.coroutines.get()}")
-                api("androidx.room:room-runtime:${libs.versions.room.get()}")
-                api(libs.androidx.room.ktx)
+                api("androidx.room:room-runtime:${libs.versions.room.get()}") {
+                    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-android")
+                }
+                api("androidx.room:room-ktx:${libs.versions.room.get()}") {
+                    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-android")
+                }
                 api("io.insert-koin:koin-compose:${libs.versions.koin.get()}")
                 api(libs.kotlinx.datetime)
                 api(libs.kotlinx.coroutines.core)
@@ -63,10 +52,12 @@ kotlin {
                 api(libs.uuid)
                 api(libs.jsoup)
                 implementation(libs.selenium.java)
-                implementation(libs.compose.markdown)
-                implementation(libs.richeditor.compose)
+                implementation(libs.compose.markdown.render)
+                implementation(libs.compose.markdown.render.coil)
                 implementation(libs.russhwolf.settings)
                 implementation(libs.russhwolf.settings.datastore)
+                implementation(libs.russhwolf.settings.coroutines)
+                implementation(libs.ui.tooling.preview)
             }
         }
 
@@ -74,33 +65,30 @@ kotlin {
             dependencies {
                 implementation(libs.ktor.client.cio)
                 implementation(libs.keytar.java)
-                // Платформенные реализации
-                implementation(libs.kotlinx.coroutines.swing) // ПРАВИЛЬНОЕ МЕСТО
+                implementation(libs.kotlinx.coroutines.swing)
+                implementation(compose.desktop.currentOs)
+                implementation(libs.ui.tooling.preview)
+                implementation(libs.webdrivermanager)
             }
         }
 
         val desktopTest by getting {
             dependencies {
-                // Убираем все test зависимости временно
-            }
-        }
-
-        val androidMain by getting {
-            dependencies {
-                implementation(libs.androidx.core.ktx)
-                implementation(libs.kotlinx.coroutines.android) // ПРАВИЛЬНОЕ МЕСТО
-                implementation(libs.koin.android)
-                implementation(libs.androidx.security.crypto)
-                implementation(libs.androidx.datastore.preferences)
-                implementation(libs.koin.androidx.compose) // Для viewModel()
-                implementation(libs.ktor.client.okhttp)
+                implementation(kotlin("test"))
+                implementation(libs.junit.jupiter)
+                implementation(libs.junit.jupiter.params)
+                implementation(libs.truth)
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.selenium.java)
+                implementation(libs.kotlinx.datetime)
             }
         }
 
         val commonTest by getting {
             dependencies {
                 implementation(kotlin("test"))
-                implementation(libs.junit)
+                implementation(libs.junit.jupiter)
+                implementation(libs.junit.jupiter.params)
                 implementation(libs.truth)
                 implementation(libs.mockk.common)
                 implementation(libs.kotlinx.coroutines.test)
@@ -120,89 +108,22 @@ if (localPropertiesFile.exists()) {
     localProperties.load(FileInputStream(localPropertiesFile))
 }
 
-// Получаем значения из local.properties
-val isDebug = localProperties.getProperty("app.debug", "false").toBoolean()
-
-val generateDesktopBuildConfig by tasks.registering {
-    val outputFile = file("src/desktopMain/kotlin/com/arny/aiprompts/BuildConfig.kt")
-
-    inputs.property("debug", isDebug)
-    outputs.file(outputFile)
-
-    doLast {
-        outputFile.parentFile?.mkdirs()
-        outputFile.writeText("""
-            package com.arny.aiprompts
-            
-            object BuildConfig {
-                const val DEBUG = ${inputs.properties["debug"]}
-            }
-        """.trimIndent())
-    }
+fun getProperty(key: String): String? {
+    return localProperties.getProperty(key)
 }
 
-// Только основная зависимость компиляции
-tasks.named("compileKotlinDesktop") {
-    dependsOn(generateDesktopBuildConfig)
-}
+val isDebug = getProperty("DEBUG_MODE")?.toBoolean() ?: false
 
-// Находим все KSP задачи динамически
-afterEvaluate {
-    tasks.names.filter { it.startsWith("ksp") }.forEach { taskName ->
-        tasks.named(taskName) {
-            dependsOn(generateDesktopBuildConfig)
-        }
-    }
-}
+buildConfig {
+    packageName("com.arny.aiprompts")
 
-compose.desktop {
-    application {
-        mainClass = "com.arny.aiprompts.MainKt"
-        nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "aiprompts"
-            packageVersion = "1.0.0"
-        }
-    }
-}
+    buildConfigField("Boolean", "DEBUG", isDebug.toString())
+    buildConfigField("Boolean", "IS_IMPORT_ENABLED", isDebug.toString())
 
+    buildConfigField("String", "VERSION", "\"${project.version}\"")
+}
 
 dependencies {
-    // Указываем, что room-compiler - это KSP процессор для каждой цели
     add("kspCommonMainMetadata", libs.androidx.room.compiler)
     add("kspDesktop", libs.androidx.room.compiler)
-    add("kspAndroid", libs.androidx.room.compiler)
-}
-
-
-android {
-    namespace = "com.arny.aiprompts.shared"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
-
-    defaultConfig {
-        minSdk = libs.versions.android.minSdk.get().toInt()
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    buildFeatures{
-        buildConfig = true
-    }
-}
-
-// Kover configuration
-kover {
-    reports {
-        total {
-            xml {
-                onCheck = true
-            }
-            html {
-                onCheck = true
-            }
-        }
-    }
 }

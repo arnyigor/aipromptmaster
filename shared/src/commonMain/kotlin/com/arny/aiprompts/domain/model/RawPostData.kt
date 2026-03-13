@@ -1,6 +1,10 @@
+@file:OptIn(ExperimentalTime::class)
+
 package com.arny.aiprompts.domain.model
 
-import kotlinx.datetime.Instant
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
+
 
 /**
  * Data-класс для хранения "сырых", минимально обработанных данных,

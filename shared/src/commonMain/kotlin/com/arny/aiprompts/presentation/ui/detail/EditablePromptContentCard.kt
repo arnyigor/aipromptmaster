@@ -72,8 +72,7 @@ fun EditablePromptContentCard(
                 var showMarkdown by remember { mutableStateOf(true) }
 
                 if (showMarkdown) {
-                    // Отображение с markdown форматированием
-                    RichMarkdownDisplay(
+                    MarkdownDisplay(
                         content = viewText,
                         modifier = Modifier
                             .fillMaxWidth()

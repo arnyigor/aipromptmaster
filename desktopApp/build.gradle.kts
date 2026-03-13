@@ -25,7 +25,6 @@ kotlin {
             dependencies {
                 implementation(project(":shared"))
                 implementation(compose.desktop.currentOs)
-                implementation(libs.ktor.client.okhttp)
                 implementation(libs.ktor.client.cio)
                 implementation(libs.logback.classic)
                 implementation(libs.kotlinx.coroutines.swing)
@@ -39,12 +38,17 @@ compose.desktop {
         mainClass = "com.arny.aiprompts.MainKt"
         nativeDistributions {
             targetFormats(
-                TargetFormat.Dmg,
-                TargetFormat.Msi,
-                TargetFormat.Deb
+                TargetFormat.Exe,    // Windows EXE-установщик
             )
-            packageName = "CodeMerger"
+            packageName = "AIPrompts"
             packageVersion = "1.0.0"
+            modules(
+                "jdk.accessibility",
+                "java.net.http",     // Исправляет ошибку WebSocket$Listener
+                "java.naming",       // Требуется для DNS-резолвинга в Selenium
+                "jdk.crypto.ec",     // Требуется для HTTPS/SSL (иначе может упасть скачивание)
+                "java.management"
+            )
         }
     }
 }

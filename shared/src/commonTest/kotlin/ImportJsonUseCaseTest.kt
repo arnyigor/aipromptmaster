@@ -10,7 +10,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
+import kotlin.time.ExperimentalTime
 
+@OptIn(ExperimentalTime::class)
 class ImportJsonUseCaseTest {
 
     private val mockRepository = mockk<IPromptsRepository>()
@@ -100,8 +102,8 @@ class ImportJsonUseCaseTest {
 
     private fun createMockFile(name: String, content: String): PlatformFile {
         val mockFile = mockk<PlatformFile>()
-        every { mockFile.name } returns name
-        every { mockFile.isFile() } returns true
+        coEvery { mockFile.name } returns name
+        coEvery { mockFile.exists() } returns true
         coEvery { mockFile.readText() } returns content
         return mockFile
     }

@@ -33,6 +33,28 @@ sealed interface ScreenConfig {
     data object LLM : ScreenConfig
 }
 
+// MainComponent navigation configuration
+@Serializable
+sealed interface MainConfig {
+    @Serializable
+    data object ScraperWizard : MainConfig
+
+    @Serializable
+    data object Prompts : MainConfig
+
+    @Serializable
+    data class PromptDetails(val promptId: String) : MainConfig
+
+    @Serializable
+    data object Chat : MainConfig
+
+    @Serializable
+    data object Import : MainConfig
+
+    @Serializable
+    data object Settings : MainConfig
+}
+
 /**
  * Кастомный сериализатор для List<File>, который преобразует
  * список файлов в список их путей (строк) и обратно.

@@ -40,4 +40,43 @@ class ToggleFavoriteUseCaseTest {
         // Verify the call was made
         coVerify { mockRepository.toggleFavoriteStatus(promptId) }
     }
+
+    @Test
+    fun `invoke handles empty prompt id gracefully`() = runTest {
+        // Given
+        val promptId = ""
+        coEvery { mockRepository.toggleFavoriteStatus(promptId) } returns Unit
+
+        // When
+        useCase(promptId)
+
+        // Then
+        coVerify { mockRepository.toggleFavoriteStatus("") }
+    }
+
+    @Test
+    fun `invoke handles special characters in prompt id`() = runTest {
+        // Given
+        val promptId = "test-prompt-id@#$%^&*()"
+        coEvery { mockRepository.toggleFavoriteStatus(promptId) } returns Unit
+
+        // When
+        useCase(promptId)
+
+        // Then
+        coVerify { mockRepository.toggleFavoriteStatus(promptId) }
+    }
+
+    @Test
+    fun `invoke handles long prompt id`() = runTest {
+        // Given
+        val promptId = "a".repeat(1000)
+        coEvery { mockRepository.toggleFavoriteStatus(promptId) } returns Unit
+
+        // When
+        useCase(promptId)
+
+        // Then
+        coVerify { mockRepository.toggleFavoriteStatus(promptId) }
+    }
 }

@@ -1,31 +1,30 @@
 package com.arny.aiprompts.domain.usecase
 
-import com.arny.aiprompts.data.scraper.WebScraper
-import kotlinx.coroutines.Dispatchers
+import com.arny.aiprompts.domain.interfaces.IWebScraper
+import com.arny.aiprompts.domain.interfaces.ScraperProgress
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.channelFlow
-import kotlinx.coroutines.withContext
-import java.io.File
+import kotlinx.coroutines.flow.map
 
-class ScrapeWebsiteUseCase(private val webScraper: WebScraper) {
-    operator fun invoke(baseUrl: String, pagesToScrape: List<Int>): Flow<ScraperResult> = channelFlow {
-        send(ScraperResult.InProgress("Начинаю процесс..."))
-        try {
-            val files = withContext(Dispatchers.IO) {
-                webScraper.scrapeAndSave(baseUrl, pagesToScrape) { progressMessage ->
-                    trySend(ScraperResult.InProgress(progressMessage))
+/**
+ * UseCase for scraping website pages using IWebScraper.
+ * Wraps platform-specific scraper implementation.
+ */
+class ScrapeWebsiteUseCase(private val webScraper: IWebScraper) {
+
+    operator fun invoke(baseUrl: String, pagesToScrape: List<Int>): Flow<ScraperResult> {
+        return webScraper.scrapeAndSave(baseUrl, pagesToScrape)
+            .map { progress ->
+                when (progress) {
+                    is ScraperProgress.InProgress -> ScraperResult.InProgress(progress.message)
+                    is ScraperProgress.Success -> ScraperResult.Success(progress.files)
+                    is ScraperProgress.Error -> ScraperResult.Error(progress.errorMessage)
                 }
             }
-            send(ScraperResult.Success(files))
-        } catch (e: Exception) {
-            // ...
-        }
     }
 }
 
-// Обновляем ScraperResult, чтобы он работал с File
 sealed interface ScraperResult {
     data class InProgress(val message: String) : ScraperResult
-    data class Success(val files: List<File>) : ScraperResult
+    data class Success(val files: List<String>) : ScraperResult
     data class Error(val errorMessage: String) : ScraperResult
 }

@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalTime::class)
+
 package com.arny.aiprompts.data.mappers
 
 import com.arny.aiprompts.data.db.entities.PromptEntity
@@ -6,11 +8,12 @@ import com.arny.aiprompts.data.model.PromptMetadata
 import com.arny.aiprompts.data.model.Rating
 import com.arny.aiprompts.domain.model.*
 import com.benasher44.uuid.uuid4
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import org.jsoup.Jsoup
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 // Domain -> Entity
 fun Prompt.toEntity(): PromptEntity = PromptEntity(
@@ -18,7 +21,7 @@ fun Prompt.toEntity(): PromptEntity = PromptEntity(
     title = title,
     contentRu = content?.ru.orEmpty(),
     contentEn = content?.en.orEmpty(),
-    description = description,
+    description = description.orEmpty(),
     category = category,
     status = status,
     tags = tags.joinToString(","),
@@ -69,18 +72,19 @@ fun PromptEntity.toDomain(): Prompt = Prompt(
 fun PromptJson.toDomain(): Prompt {
     fun parseDate(dateString: String?): Instant? {
         if (dateString.isNullOrBlank()) return null
+
         return try {
-            // Сначала парсим как LocalDateTime, так как нет информации о зоне
-            LocalDateTime.parse(dateString)
-                // Затем считаем, что это время в UTC
-                .toInstant(TimeZone.UTC)
+            // Parse as LocalDateTime first (no timezone in JSON)
+            val localDateTime = LocalDateTime.parse(dateString)
+            // Convert to Instant using UTC timezone
+            localDateTime.toInstant(TimeZone.UTC)
         } catch (e: Exception) {
-            // Если парсинг не удался, возвращаем null
+            println("⚠️ [DateParse] Failed to parse date string: '$dateString' - ${e.message}")
             null
         }
     }
+
     return Prompt(
-        // Если id нет в JSON, генерируем новый кросс-платформенный UUID
         id = id ?: uuid4().toString(),
         title = title.orEmpty(),
         description = description,
@@ -106,11 +110,11 @@ fun PromptJson.toDomain(): Prompt {
             notes = metadata?.notes.orEmpty()
         ),
         version = version.orEmpty(),
-        // Безопасно парсим строку из JSON в Instant?
         createdAt = parseDate(createdAt),
         modifiedAt = parseDate(updatedAt)
     )
 }
+
 
 // Маппер из PromptData (результат парсинга) в PromptJson (DTO для файла)
 fun PromptData.toPromptJson(): PromptJson {
@@ -157,6 +161,6 @@ fun RawPostData.toPromptData(): PromptData {
         author = this.author,
         createdAt = this.date.toEpochMilliseconds(),
         updatedAt = this.date.toEpochMilliseconds(),
-        category = "imported"
+        category = "general" // Auto-categorized during import
     )
 }

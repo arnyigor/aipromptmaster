@@ -1,8 +1,24 @@
+@file:OptIn(ExperimentalTime::class)
+
 package com.arny.aiprompts.presentation.ui.importer
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -10,10 +26,67 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.Attachment
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.TaskAlt
+import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PlainTooltip
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberTooltipState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -23,9 +96,11 @@ import com.arny.aiprompts.data.parser.PostStructureParser
 import com.arny.aiprompts.domain.model.FileAttachment
 import com.arny.aiprompts.domain.model.FileType
 import com.arny.aiprompts.domain.model.RawPostData
-import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -196,7 +271,10 @@ private fun PostListWithFiltersPanel(
 @Composable
 private fun FilterPanel(state: ImporterState, component: ImporterComponent) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Text("Фильтры", style = MaterialTheme.typography.titleSmall)
 
             // Поиск
@@ -392,9 +470,24 @@ private fun PostListItem(
                                 postId = post.postId,
                                 downloadedFiles = state.downloadedFiles,
                                 expandedFileIds = state.expandedFileIds,
-                                onDownloadFile = { url, filename -> component.onDownloadFile(url, filename) },
-                                onPreviewFile = { url, filename -> component.onPreviewFile(url, filename) },
-                                onOpenFileInSystem = { url, filename -> component.onOpenFileInSystem(url, filename) },
+                                onDownloadFile = { url, filename ->
+                                    component.onDownloadFile(
+                                        url,
+                                        filename
+                                    )
+                                },
+                                onPreviewFile = { url, filename ->
+                                    component.onPreviewFile(
+                                        url,
+                                        filename
+                                    )
+                                },
+                                onOpenFileInSystem = { url, filename ->
+                                    component.onOpenFileInSystem(
+                                        url,
+                                        filename
+                                    )
+                                },
                                 onToggleExpansion = { postId, attachmentUrl ->
                                     component.onToggleFileExpansion(
                                         postId,
@@ -421,12 +514,15 @@ private fun PostListItem(
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                     ) {
                         Icon(
-                            Icons.Default.OpenInNew,
+                            Icons.AutoMirrored.Filled.OpenInNew,
                             "Открыть пост в браузере",
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(Modifier.width(8.dp))
-                        Text("Открыть оригинальный пост", style = MaterialTheme.typography.labelMedium)
+                        Text(
+                            "Открыть оригинальный пост",
+                            style = MaterialTheme.typography.labelMedium
+                        )
                     }
                 }
             }
@@ -619,7 +715,7 @@ private fun AttachmentItem(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                     ) {
                         Text(
-                            downloadedFile.content!!,
+                            downloadedFile.content,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(12.dp)
                         )
@@ -631,19 +727,15 @@ private fun AttachmentItem(
 }
 
 // --- НОРМАЛИЗАЦИЯ ТЕКСТА ---
-private fun normalizeText(text: String): String {
-    return text
-        // Обрабатываем экранированные переводы строк
-        .replace("\\n", "\n")
-        .replace("\\r", "")
-        // Нормализуем множественные переводы строк (заменяем 3+ на 2)
-        .replace(Regex("\\n{3,}"), "\n\n")
-        // Убираем лишние пробелы в начале и конце строк, но сохраняем пустые строки
-        .lines()
-        .map { it.trimEnd() }
-        .joinToString("\n")
-        .trim()
-}
+private fun normalizeText(text: String): String = text
+    // Обрабатываем экранированные переводы строк
+    .replace("\\n", "\n")
+    .replace("\\r", "")
+    // Нормализуем множественные переводы строк (заменяем 3+ на 2)
+    .replace(Regex("\\n{3,}"), "\n\n")
+    // Убираем лишние пробелы в начале и конце строк, но сохраняем пустые строки
+    .lines().joinToString("\n") { it.trimEnd() }
+    .trim()
 
 // --- ФОРМАТИРОВАНИЕ ТЕКСТА С МАРКДАУН ---
 private fun formatTextWithMarkdown(text: String): String {
@@ -723,7 +815,7 @@ private fun CategoryDropdown(
             trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
             },
-            modifier = Modifier.menuAnchor()
+            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable, true)
         )
 
         ExposedDropdownMenu(
@@ -750,9 +842,9 @@ private fun FileTypeIcon(fileType: FileType) {
     val icon = when (fileType) {
         FileType.TEXT -> Icons.Default.Description
         FileType.IMAGE -> Icons.Default.Image
-        FileType.DOCUMENT -> Icons.Default.Article
+        FileType.DOCUMENT -> Icons.AutoMirrored.Filled.Article
         FileType.ARCHIVE -> Icons.Default.Archive
-        FileType.OTHER -> Icons.Default.InsertDriveFile
+        FileType.OTHER -> Icons.AutoMirrored.Filled.InsertDriveFile
     }
 
     val color = when (fileType) {
@@ -838,7 +930,7 @@ private fun DownloadStatusIndicator(
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Icon(
-                        Icons.Default.OpenInNew,
+                        Icons.AutoMirrored.Filled.OpenInNew,
                         "Открыть в системе",
                         modifier = Modifier.size(14.dp)
                     )
@@ -886,7 +978,11 @@ private fun DownloadStatusIndicator(
 
 // --- ОСНОВНАЯ ВКЛАДКА РЕДАКТОРА ---
 @Composable
-private fun BasicEditorTab(state: ImporterState, editedData: EditedPostData, component: ImporterComponent) {
+private fun BasicEditorTab(
+    state: ImporterState,
+    editedData: EditedPostData,
+    component: ImporterComponent
+) {
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -908,12 +1004,12 @@ private fun BasicEditorTab(state: ImporterState, editedData: EditedPostData, com
         fun formatDate(instant: Instant): String {
             return try {
                 val localDateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
-                "${localDateTime.dayOfMonth.toString().padStart(2, '0')}.${
-                    localDateTime.monthNumber.toString().padStart(2, '0')
+                "${localDateTime.day.toString().padStart(2, '0')}.${
+                    localDateTime.month.number.toString().padStart(2, '0')
                 }.${localDateTime.year} ${localDateTime.hour.toString().padStart(2, '0')}:${
                     localDateTime.minute.toString().padStart(2, '0')
                 }"
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 instant.toString().substringBefore('T')
             }
         }
@@ -949,7 +1045,10 @@ private fun BasicEditorTab(state: ImporterState, editedData: EditedPostData, com
         if (selectedPost != null) {
             Spacer(Modifier.height(16.dp))
             Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Text("Информация о посте", style = MaterialTheme.typography.titleSmall)
 
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -963,7 +1062,10 @@ private fun BasicEditorTab(state: ImporterState, editedData: EditedPostData, com
 
                         selectedPost.updatedDate?.let { updatedDate ->
                             Column {
-                                Text("Дата обновления", style = MaterialTheme.typography.labelMedium)
+                                Text(
+                                    "Дата обновления",
+                                    style = MaterialTheme.typography.labelMedium
+                                )
                                 Text(
                                     formatDate(updatedDate),
                                     style = MaterialTheme.typography.bodyMedium
@@ -1027,7 +1129,11 @@ private fun StructureEditorTab(state: ImporterState, component: ImporterComponen
 
 // --- ВКЛАДКА ПРЕВЬЮ ---
 @Composable
-private fun PreviewTab(editedData: EditedPostData, state: ImporterState, component: ImporterComponent) {
+private fun PreviewTab(
+    editedData: EditedPostData,
+    state: ImporterState,
+    component: ImporterComponent
+) {
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -1059,7 +1165,7 @@ private fun PreviewTab(editedData: EditedPostData, state: ImporterState, compone
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 Icon(
-                    Icons.Default.OpenInNew,
+                    Icons.AutoMirrored.Filled.OpenInNew,
                     "Открыть пост в браузере",
                     modifier = Modifier.size(16.dp)
                 )
@@ -1069,7 +1175,10 @@ private fun PreviewTab(editedData: EditedPostData, state: ImporterState, compone
         }
 
         Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 // Стабильный ключ для remember - используем postId для предотвращения потери состояния
                 val previewKey = state.selectedPostId ?: "no-selection"
 
@@ -1116,7 +1225,10 @@ private fun PreviewTab(editedData: EditedPostData, state: ImporterState, compone
 private fun InteractiveTextBlock(text: String, component: ImporterComponent) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Text("Текст", style = MaterialTheme.typography.labelMedium)
                 ActionButtonsRow(text, component)
             }
@@ -1198,7 +1310,10 @@ private fun InteractiveQuoteBlock(text: String, component: ImporterComponent) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Text("Цитата", style = MaterialTheme.typography.labelMedium)
                 ActionButtonsRow(text, component)
             }
@@ -1214,12 +1329,19 @@ private fun InteractiveQuoteBlock(text: String, component: ImporterComponent) {
 }
 
 @Composable
-private fun InteractiveAttachmentBlock(block: ParsedPostBlock, state: ImporterState, component: ImporterComponent) {
+private fun InteractiveAttachmentBlock(
+    block: ParsedPostBlock,
+    state: ImporterState,
+    component: ImporterComponent
+) {
     val attachment = block.attachment ?: return
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Text("Вложение", style = MaterialTheme.typography.labelMedium)
                 FileTypeIcon(attachment.fileType)
                 Text(
@@ -1246,7 +1368,12 @@ private fun InteractiveAttachmentBlock(block: ParsedPostBlock, state: ImporterSt
                 downloadedFile = state.downloadedFiles[attachment.url],
                 onDownload = { component.onDownloadFile(attachment.url, attachment.filename) },
                 onPreview = { component.onPreviewFile(attachment.url, attachment.filename) },
-                onOpenInSystem = { component.onOpenFileInSystem(attachment.url, attachment.filename) }
+                onOpenInSystem = {
+                    component.onOpenFileInSystem(
+                        attachment.url,
+                        attachment.filename
+                    )
+                }
             )
         }
     }
@@ -1341,7 +1468,10 @@ private fun SidePanel(
 @Composable
 private fun StatisticsCard(state: ImporterState) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Text("Статистика", style = MaterialTheme.typography.titleSmall)
 
             StatisticRow("Всего постов", state.rawPosts.size.toString())
@@ -1349,7 +1479,8 @@ private fun StatisticsCard(state: ImporterState) {
             StatisticRow("Готово к импорту", state.readyToImportCount.toString())
 
             if (state.postsToImport.isNotEmpty()) {
-                val completionPercentage = (state.postsToImport.size.toFloat() / state.filteredPosts.size * 100).toInt()
+                val completionPercentage =
+                    (state.postsToImport.size.toFloat() / state.filteredPosts.size * 100).toInt()
                 LinearProgressIndicator(
                     progress = { completionPercentage / 100f },
                     modifier = Modifier.fillMaxWidth()
@@ -1368,7 +1499,11 @@ private fun StatisticRow(label: String, value: String) {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(label, style = MaterialTheme.typography.bodyMedium)
-        Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
     }
 }
 
@@ -1376,12 +1511,18 @@ private fun StatisticRow(label: String, value: String) {
 @Composable
 private fun ActionsCard(state: ImporterState, component: ImporterComponent) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             Text("Действия", style = MaterialTheme.typography.titleSmall)
 
             // Кнопки управления постом
             if (state.selectedPostId != null) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Button(
                         onClick = component::onSaveAndSelectNextClicked,
                         modifier = Modifier.weight(1f),
@@ -1404,7 +1545,7 @@ private fun ActionsCard(state: ImporterState, component: ImporterComponent) {
                 }
             }
 
-            Divider()
+            HorizontalDivider(Modifier)
 
             // Финальные действия
             Button(
@@ -1440,7 +1581,10 @@ private fun ValidationErrorsCard(state: ImporterState) {
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Text("Ошибки валидации", style = MaterialTheme.typography.titleSmall)
 
             if (state.validationErrors.isEmpty()) {

@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalTime::class)
+
 package com.arny.aiprompts.data.repository
 
 import com.arny.aiprompts.data.db.daos.PromptDao
@@ -9,6 +11,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import kotlin.time.ExperimentalTime
 
 class PromptsRepositoryImpl(
     private val promptDao: PromptDao,
@@ -45,35 +48,43 @@ class PromptsRepositoryImpl(
         promptDao.deletePromptsByIds(promptIds)
     }
 
+    override suspend fun deleteAllPrompts() = withContext(dispatcher) {
+        promptDao.deleteAllPrompts()
+    }
+
     override suspend fun toggleFavoriteStatus(promptId: String) = withContext(dispatcher) {
         promptDao.toggleFavoriteStatus(promptId)
     }
 
     override suspend fun savePrompts(prompts: List<Prompt>) = withContext(dispatcher) {
-        // 1. Получаем все локальные промпты из базы ОДНИМ запросом.
-        val localPrompts = promptDao.getAllPrompts().associateBy { it.id }
+        // 1. Получаем все существующие промпты из базы ОДНИМ запросом.
+        val existingEntities = promptDao.getAllPrompts().associateBy { it.id }
 
-        // 2. Создаем "слитый" список.
+        // 2. Создаем "слитый" список с защитой локальных промптов.
         val mergedPrompts = prompts.map { remotePrompt ->
-            // Ищем соответствующий локальный промпт.
-            val localPrompt = localPrompts[remotePrompt.id]
+            val existingEntity = existingEntities[remotePrompt.id]
 
-            // Если локальный промпт существует и он избранный,
-            // то мы создаем копию удаленного промпта, но с флагом isFavorite = true.
-            if (localPrompt != null && localPrompt.isFavorite) {
-                remotePrompt.copy(isFavorite = true)
-            } else {
-                // Иначе просто берем промпт с сервера как есть.
-                remotePrompt
+            when {
+                // Если промпт уже существует и является локальным - НЕ перезаписываем, берем локальную версию
+                existingEntity != null && existingEntity.isLocal -> {
+                    existingEntity.toDomain()
+                }
+                // Если промпт существует и избранный - сохраняем избранность
+                existingEntity != null && existingEntity.isFavorite -> {
+                    remotePrompt.copy(isFavorite = true)
+                }
+                // Если промпт существует (non-local) - обновляем, но сохраняем избранность если она была
+                existingEntity != null -> {
+                    remotePrompt.copy(isFavorite = existingEntity.isFavorite)
+                }
+                // Новый промпт - добавляем как есть
+                else -> remotePrompt
             }
         }
 
-        // 3. Сохраняем "слитый" список в базу.
-        // OnConflictStrategy.REPLACE теперь работает правильно: он заменяет данные,
-        // но флаг isFavorite мы уже сохранили.
-        val entitiesToSave = mergedPrompts.map { it.toEntity() }
-        entitiesToSave.forEach { entity ->
-            promptDao.insertPrompt(entity)
+        // 3. Сохраняем все mergedPrompts
+        mergedPrompts.forEach { prompt ->
+            promptDao.insertPrompt(prompt.toEntity())
         }
     }
 
@@ -85,9 +96,7 @@ class PromptsRepositoryImpl(
         offset: Int,
         limit: Int
     ): List<Prompt> = withContext(dispatcher) {
-
         val prompts = if (tags.isEmpty()) {
-            // Если фильтра по тегам нет, используем простой и быстрый запрос
             promptDao.getPromptsWithoutTags(
                 searchQuery = search,
                 category = category,
@@ -96,39 +105,34 @@ class PromptsRepositoryImpl(
                 offset = offset
             )
         } else {
-            // Если есть теги, строим строку с условиями
-            // Пример: " (',' || tags || ',' LIKE '%,general,%') AND (',' || tags || ',' LIKE '%,ai,%') "
-            val tagCondition = tags.joinToString(separator = " AND ") { tag ->
-                // Оборачиваем в запятые, чтобы избежать частичных совпадений (например, "ai" в "train")
-                " (',' || tags || ',' LIKE '%,' || :tag_${tag} || ',%') "
+            // Build tag condition string for SQL
+            val tagCondition = tags.joinToString(" AND ") { tag ->
+                "tags LIKE '%$tag%'"
             }
-
-            // К сожалению, Room не позволяет напрямую подставлять такую строку в @Query.
-            // Это ограничение.
-            // Значит, нам придется фильтровать теги уже после получения данных из БД.
-
-            // ПОЭТОМУ, САМЫЙ РЕАЛИСТИЧНЫЙ ВАРИАНТ БЕЗ ИЗМЕНЕНИЯ СХЕМЫ:
-
-            // 1. Получаем из БД все, что подходит под другие фильтры
-            val allMatchingPrompts = promptDao.getPromptsWithoutTags(
+            promptDao.getPromptsWithTagCondition(
                 searchQuery = search,
                 category = category,
                 status = status,
-                limit = Int.MAX_VALUE, // Загружаем все, чтобы отфильтровать в памяти
-                offset = 0
+                tagCondition = tagCondition,
+                limit = limit,
+                offset = offset
             )
+        }.map { it.toDomain() }
 
-            // 2. Фильтруем по тегам в коде
-            val filteredByTags = allMatchingPrompts.filter { entity ->
-                val entityTags = entity.tags.split(',').map { it.trim() }.toSet()
-                // Проверяем, что все теги из фильтра содержатся в тегах сущности
-                tags.all { filterTag -> entityTags.contains(filterTag) }
+        prompts
+    }
+
+    override suspend fun getAllUniqueTags(): List<String> = withContext(dispatcher) {
+        promptDao.getAllPrompts().flatMap { entity ->
+            if (entity.tags.isNotBlank()) {
+                entity.tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
+            } else {
+                emptyList()
             }
+        }.distinct().sorted()
+    }
 
-            // 3. Применяем пагинацию (limit/offset) вручную
-            filteredByTags.drop(offset).take(limit)
-        }
-
-        prompts.map { it.toDomain() }
+    override suspend fun invalidateSortDataCache() = withContext(dispatcher) {
+        // TODO: Implement cache invalidation if needed
     }
 }

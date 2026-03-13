@@ -10,7 +10,9 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Instant
 import java.io.File
+import kotlin.time.ExperimentalTime
 
+@OptIn(ExperimentalTime::class)
 class ParseRawPostsUseCaseTest {
 
     private val mockParser = mockk<IFileParser>()
