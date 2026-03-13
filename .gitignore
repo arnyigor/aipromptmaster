@@ -1,20 +1,22 @@
+
+### Android template
 # Gradle files
 .gradle/
 build/
-
+.idea/
+*.iml
 # Local configuration file (sdk path, etc)
 local.properties
-
+.env
 # Log/OS Files
 *.log
-
+.continue
 # Android Studio generated files and folders
 captures/
 .externalNativeBuild/
 .cxx/
 *.apk
 output.json
-release/
 
 # IntelliJ
 *.iml
@@ -23,8 +25,6 @@ misc.xml
 deploymentTargetDropDown.xml
 render.experimental.xml
 
-# Secrets
-.env
 # Keystore files
 *.jks
 *.keystore
@@ -34,15 +34,6 @@ google-services.json
 
 # Android Profiling
 *.hprof
-.DS_Store
-/app/release/output-metadata.json
-schemas
 
-# Node.js / npm
-/node_modules
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnp/
-.pnp.js
-.kotlin
+/system-analysis/ai-prompt-master-compose.report.md
+/build_errors.txt

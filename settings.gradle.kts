@@ -1,5 +1,3 @@
-import java.net.URI
-
 pluginManagement {
     repositories {
         google {
@@ -18,10 +16,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven { url = URI("https://jitpack.io") }
     }
 }
 
 rootProject.name = "AI Prompt Master"
-include(":app", ":core", ":domain", ":data", ":presentation")
- 
+include(":app")
