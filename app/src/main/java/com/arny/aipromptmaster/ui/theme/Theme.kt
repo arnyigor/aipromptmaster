@@ -22,12 +22,22 @@ object MarkdownColorPalette {
     val CodeBackground: Color
         @Composable get() = MaterialTheme.colorScheme.surfaceVariant
 
+    val CodeBackgroundInvert: Color
+        @Composable get() = MaterialTheme.colorScheme.secondary
+
     /**
      * Текст внутри блока кода – всегда контрастный с CodeBackground.
      */
     val CodeText: Color
         @Composable get() =
             contentColorFor(MaterialTheme.colorScheme.surfaceVariant)
+
+    /**
+     * Цвет текста внутри блока кода для пользовательских сообщений.
+     * Используется dark‑on‑light контраст, чтобы текст был читаемым на светлом фоне.
+     */
+    val CodeUserText: Color
+        @Composable get() = MaterialTheme.colorScheme.onPrimary
 
     /**
      * Цвет ссылок (h1‑h6, inline‑ссылки и т.п.).

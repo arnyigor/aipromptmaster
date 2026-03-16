@@ -104,6 +104,7 @@ import com.arny.aipromptmaster.ui.navigation.LocalTopBarManager
 import com.arny.aipromptmaster.ui.theme.AIPromptMasterComposeTheme
 import com.arny.aipromptmaster.ui.theme.MarkdownColorPalette
 import com.arny.aipromptmaster.ui.utils.asString
+import com.arny.aipromptmaster.ui.utils.truncateWithEllipsis
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownTypography
 import com.mikepenz.markdown.model.DefaultMarkdownColors
@@ -119,13 +120,17 @@ import java.util.UUID
 // ---------------------------------------------------------------------------
 // Helper factories – вынесены, чтобы не повторять код в preview‑ах
 // ---------------------------------------------------------------------------
-private fun createDummyState(): ChatUiState {
-    val markdownHeading = """
-        # Welcome to the AI Prompt Master
+private fun getMarkDownMessage() = """
+        ### Welcome to the AI Prompt Master
         `code`
         ```bash
         git clone
         ```
+        [FastAPI Docs](https://fastapi.tiangolo.com/)
+        ## Область экспертизы
+        | Категория | Специализация |
+        |-----------|---------------|
+        | **Архитектура** | Microservices, EDA, CQRS/Event Sourcing, Modular Monolith |
         
         This is a **bold** statement, and this is *italic*.
         
@@ -135,6 +140,7 @@ private fun createDummyState(): ChatUiState {
         - File attachments
     """.trimIndent()
 
+private fun createDummyState(): ChatUiState {
     val markdownList = """
         ### Things you can do:
         1. Ask questions
@@ -155,21 +161,24 @@ private fun createDummyState(): ChatUiState {
         isSending = false,
         isStreamingResponse = true,
         messages = listOf(
-            ChatMessage(role = ChatRole.SYSTEM, content = "You are the coder!"),
-            ChatMessage(role = ChatRole.ASSISTANT, content = markdownHeading),
+            ChatMessage(
+                role = ChatRole.SYSTEM,
+                content = getMarkDownMessage()
+            ),
             ChatMessage(
                 role = ChatRole.USER,
-                content = "Can you show me a table?",
+                content = getMarkDownMessage(),
                 fileAttachment = FileAttachmentMetadata(
                     fileId = UUID.randomUUID().toString(),
                     fileName = "example.md",
                     fileExtension = ".md",
                     fileSize = 1234,
                     mimeType = "text/markdown",
-                    preview = markdownHeading.take(150) + "...",
+                    preview = getMarkDownMessage().take(150) + "...",
                     uploadTimestamp = System.currentTimeMillis()
                 )
             ),
+            ChatMessage(role = ChatRole.ASSISTANT, content = getMarkDownMessage()),
             ChatMessage(role = ChatRole.ASSISTANT, content = bigMarkdownTable),
             ChatMessage(role = ChatRole.ASSISTANT, content = markdownList)
         )
@@ -718,7 +727,7 @@ fun MessageBubble(
     onDelete: () -> Unit,
     onEditUser: (String, String) -> Unit?
 ) {
-    // ✅ Кэшируем все производные значения
+    val isSystem by remember(message.role) { derivedStateOf { message.role == ChatRole.SYSTEM } }
     val isUser by remember(message.role) { derivedStateOf { message.role == ChatRole.USER } }
     val content by remember(message.content) { derivedStateOf { message.content } }
     val isSending by remember(message.state) { derivedStateOf { message.state == MessageState.SENDING } }
@@ -773,6 +782,7 @@ fun MessageBubble(
                         MessageContent(
                             content = content,
                             isUser = isUser,
+                            isSystem = isSystem,
                             isStreaming = isStreaming && isLast
                         )
                     }
@@ -802,12 +812,14 @@ fun MessageBubble(
                     )
                 } else {
                     // Footer для AI-сообщений: Copy, Retry, Share, Delete
-                    MessageFooterActions(
-                        onCopy = { onCopy(content) },
-                        onRetry = onRetry,
-                        onShare = onShare,
-                        onDelete = onDelete
-                    )
+                    if (!isSystem) {
+                        MessageFooterActions(
+                            onCopy = { onCopy(content) },
+                            onRetry = onRetry,
+                            onShare = onShare,
+                            onDelete = onDelete
+                        )
+                    }
                 }
             }
         }
@@ -824,6 +836,7 @@ fun MessageBubble(
 private fun MessageContent(
     content: String,
     isUser: Boolean,
+    isSystem: Boolean,
     isStreaming: Boolean
 ) {
     val markdownColors = markdownColorsContent(isUser)
@@ -832,7 +845,6 @@ private fun MessageContent(
         Box(modifier = Modifier.wrapContentWidth()) {
             if (content.isNotBlank()) {
                 if (isStreaming) {
-                    // ✅ При стриминге показываем обычный Text (нет мигания!)
                     Text(
                         text = content,
                         style = MaterialTheme.typography.bodyLarge,
@@ -843,17 +855,23 @@ private fun MessageContent(
                         }
                     )
                 } else {
-                    // ✅ После завершения показываем Markdown
-                    Markdown(
-                        content = content,
-                        colors = markdownColors,
-                        typography = markdownTypography(),
-                        modifier = Modifier.wrapContentWidth()
-                    )
+                    if (isSystem) {
+                        Text(
+                            text = content.truncateWithEllipsis(50),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    } else {
+                        Markdown(
+                            content = content,
+                            colors = markdownColors,
+                            typography = markdownTypography(),
+                            modifier = Modifier.wrapContentWidth()
+                        )
+                    }
                 }
             }
 
-            // ✅ Курсор стриминга - отдельный компонент
             if (isStreaming) {
                 BlinkingCursor(
                     modifier = Modifier.align(if (isUser) Alignment.BottomEnd else Alignment.BottomStart)
@@ -890,15 +908,27 @@ private fun BlinkingCursor(modifier: Modifier = Modifier) {
 
 @Composable
 private fun markdownColorsContent(isUser: Boolean): MarkdownColors {
+    val codeTextColor = if (isUser) {
+        MarkdownColorPalette.CodeUserText
+    } else {
+        MarkdownColorPalette.CodeText
+    }
+
+    val codeBackgroundColor = if (isUser) {
+        MarkdownColorPalette.CodeBackgroundInvert
+    } else {
+        MarkdownColorPalette.CodeBackground
+    }
+
     return RichMarkdownColors(
         base = DefaultMarkdownColors(
             text = if (isUser) MarkdownColorPalette.MarkdownTextInvert else MarkdownColorPalette.MarkdownText,
-            codeBackground = MarkdownColorPalette.CodeBackground,
-            inlineCodeBackground = MarkdownColorPalette.CodeBackground,
+            codeBackground = codeBackgroundColor,
+            inlineCodeBackground = codeBackgroundColor,
             dividerColor = MarkdownColorPalette.DividerColor,
-            tableBackground = Color.Transparent
+            tableBackground = codeBackgroundColor
         ),
-        codeText = MarkdownColorPalette.CodeText,
+        codeText = codeTextColor,
         linkText = MarkdownColorPalette.LinkText
     )
 }

@@ -61,6 +61,13 @@ import kotlin.math.roundToInt
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
+fun String.truncateWithEllipsis(maxLength: Int = 30): String {
+    val text = this
+    if (text.length <= maxLength) return text
+    if (maxLength <= 3) return ".".repeat(maxLength)
+    return text.substring(0, maxLength - 3) + "..."
+}
+
 fun StringHolder.asString(context: Context): String = when (this) {
     is StringHolder.Text -> this.value.orEmpty()
     is StringHolder.Resource -> context.getString(this.id)

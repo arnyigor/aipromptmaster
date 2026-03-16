@@ -31,7 +31,9 @@ class ChatHistoryRepositoryImpl(
     }
 
     override suspend fun deleteMessage(messageId: String) {
-        chatDao.deleteMessageAndRefreshConversation(messageId)
+        if (chatDao.getMessageById(messageId) != null) {
+            chatDao.deleteMessageAndRefreshConversation(messageId)
+        }
     }
 
     // В реализации репозитория истории

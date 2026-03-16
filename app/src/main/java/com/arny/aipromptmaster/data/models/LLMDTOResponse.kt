@@ -191,7 +191,8 @@ fun ApiError.fullReport(json: Json = DEFAULT_JSON): String =
 
         // 2. Основная ошибка OpenRouter
         appendLine("code   : $code")
-        appendLine("message: $message")
+        val errorMessage = metadata?.raw ?: message
+        appendLine("message: $errorMessage")
 
         // 3. Внутренний ответ провайдера (если есть)
         innerProviderError(json)?.let { err ->

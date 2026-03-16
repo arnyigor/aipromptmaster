@@ -271,13 +271,14 @@ class LLMInteractor(
             val history = historyRepository.getFullHistory(chatId)
             try {
                 // Получаем стрим от репозитория/API с прикрепленными файлами и моделью
-                val streamFlow: Flow<DataResult<StreamResult>> = routerRepository.getChatCompletionStream(
-                    model = requestedModelId,
-                    messages = history,
-                    apiKey = apiKey,
-                    attachedFiles = attachedFiles,
-                    llmModel = selectedModel
-                )
+                val streamFlow: Flow<DataResult<StreamResult>> =
+                    routerRepository.getChatCompletionStream(
+                        model = requestedModelId,
+                        messages = history,
+                        apiKey = apiKey,
+                        attachedFiles = attachedFiles,
+                        llmModel = selectedModel
+                    )
 
                 // Переменная для хранения актуальной модели из ответа
                 var actualModelId: String? = null
@@ -296,6 +297,7 @@ class LLMInteractor(
                             }
                             result.data
                         }
+
                         is DataResult.Error -> throw result.error // Прервет collectWithThrottling
                         DataResult.Loading -> StreamResult(content = "")
                     }
@@ -312,11 +314,12 @@ class LLMInteractor(
                         // Эта лямбда вызывается раз в 300мс
                         // Тримим контент перед сохранением чтобы убрать ведущие/ trailing пробелы
                         val content = fullContentBuilder.toString().trim()
-                        val displayContent = if (content == THINKING_PLACEHOLDER || content.isBlank()) {
-                            ""
-                        } else {
-                            content
-                        }
+                        val displayContent =
+                            if (content == THINKING_PLACEHOLDER || content.isBlank()) {
+                                ""
+                            } else {
+                                content
+                            }
                         historyRepository.updateMessageContent(
                             messageId = assistantMsgId,
                             newContent = displayContent
@@ -392,48 +395,6 @@ class LLMInteractor(
         }
     }
 
-    private suspend fun buildMessagesForApi(
-        conversationId: String,
-        conversationSystemPrompt: String?
-    ): ApiRequestPayload {
-        // 1️⃣ Получаем историю с ограничением токенов
-        val historyEntities = getHistoryWithTokenLimit(conversationId)
-
-        val messagesForApi = mutableListOf<ApiMessage>()
-        val filesToAttach = mutableListOf<FileAttachment>()
-
-        // 2️⃣ Проверяем наличие SYSTEM‑сообщения
-        val hasSystemMessage = historyEntities.any { it.role == ChatRole.SYSTEM }
-
-        if (!hasSystemMessage && !conversationSystemPrompt.isNullOrBlank()) {
-            messagesForApi.add(
-                ApiMessage(role = "system", content = conversationSystemPrompt)
-            )
-        }
-
-        // 3️⃣ Добавляем остальные сообщения (пользователь/ассистент)
-        historyEntities.forEach { entity ->
-            val content = if (entity.fileAttachment != null) {
-                // Оставляем только пользовательский текст
-                entity.content.trim()
-            } else {
-                entity.content
-            }
-            messagesForApi.add(
-                ApiMessage(role = entity.role.toApiRole(), content = content)
-            )
-        }
-
-        // 4️⃣ Сбор файлов из истории (если нужны)
-        historyEntities.mapNotNull { it.fileAttachment }.forEach { attachment ->
-            fileRepository.getTemporaryFile(attachment.fileId)?.let { filesToAttach.add(it) }
-        }
-        return ApiRequestPayload(
-            messages = messagesForApi,
-            attachedFiles = filesToAttach
-        )
-    }
-
     /**
      * Общий метод обработки потоков чата.
      *
@@ -470,7 +431,9 @@ class LLMInteractor(
                     firstDomainError != null -> throw firstDomainError!!
 
                     // Любая другая причина завершения – считаем ошибкой сервера.
-                    cause != null -> throw DomainError.Generic(cause.localizedMessage ?: "Unknown error")
+                    cause != null -> throw DomainError.Generic(
+                        cause.localizedMessage ?: "Unknown error"
+                    )
 
                     // Поток завершился без ошибок:
                     // если fullContent пустой, это действительно "пустой ответ" от модели,
@@ -500,7 +463,8 @@ class LLMInteractor(
                         if (firstDomainError == null) firstDomainError = result.error
                     }
 
-                    DataResult.Loading -> { /* игнорируем – поток уже загружает данные */ }
+                    DataResult.Loading -> { /* игнорируем – поток уже загружает данные */
+                    }
                 }
             }
 
@@ -512,35 +476,6 @@ class LLMInteractor(
             return
         }
         historyRepository.updateMessageContent(messageId, trimmedContent)
-    }
-
-
-    /**
-     * Wrapper around [runStreaming] for requests that include files.
-     */
-    private suspend fun runStreamingWithFiles(
-        model: String,
-        payload: ApiRequestPayload,
-        apiKey: String,
-        messageId: String
-    ) {
-        val requestWithFiles = ApiRequestWithFiles(
-            model = model,
-            messages = payload.messages,
-            files = payload.attachedFiles.map { file ->
-                FileReference(
-                    id = file.id,
-                    name = file.fileName,
-                    content = file.originalContent,
-                    mimeType = file.mimeType
-                )
-            }
-        )
-
-        val streamFlow =
-            routerRepository.getChatCompletionStreamWithFiles(requestWithFiles, apiKey)
-
-        runStreaming(streamFlow, messageId)
     }
 
     /**
@@ -582,24 +517,6 @@ class LLMInteractor(
         }
     }
 
-    suspend fun getHistoryWithTokenLimit(conversationId: String): List<ChatMessage> {
-        val allMessages = historyRepository.getHistoryFlow(conversationId).first()
-
-        var usedTokens = 0
-        val selected = mutableListOf<ChatMessage>()
-
-        for (msg in allMessages.reversed()) {          // от новых к старым
-            val tokenCount = ceil(msg.content.length / TOKEN_RATIO).toInt()
-            if (usedTokens + tokenCount > MAX_HISTORY_TOKENS) break
-
-            usedTokens += tokenCount
-            selected.add(0, msg)                       // вставляем в начало → правильный порядок
-        }
-        return selected
-    }
-
-    /* ---------- Оценка токенов текущего ввода ---------- */
-
     override suspend fun estimateTokens(
         inputText: String,
         attachedFiles: List<FileAttachment>,
@@ -632,7 +549,4 @@ class LLMInteractor(
 
         return total
     }
-
-
-
 }
