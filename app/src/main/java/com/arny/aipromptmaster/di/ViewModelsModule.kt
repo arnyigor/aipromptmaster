@@ -38,7 +38,7 @@ val viewModelModule = module {
         )
     }
     viewModel { ChatHistoryViewModel(interactor = get()) }
-    viewModel { ModelsViewModel(repository = get()) }
+    viewModel { ModelsViewModel(repository = get(), settingsRepository = get()) }
     viewModel { SettingsViewModel(interactor = get()) }
     viewModel { (promptId: String?) ->
         PromptEditViewModel(

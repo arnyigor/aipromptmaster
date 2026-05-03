@@ -20,6 +20,13 @@ data class ModelEntity(
     val isFree: Boolean = false,
     val isSelected: Boolean = false,
     val sortPriority: Int = 0,
+    val isAvailable: Boolean? = null, // null = не проверена, true = доступна, false = недоступна
+    /** Время отклика в миллисекундах при проверке доступности */
+    val availabilityResponseTimeMs: Long? = null,
+    /** Рейтинг модели (0-100), рассчитывается после проверки */
+    val rating: Float? = null,
+    /** Время последней проверки доступности */
+    val lastAvailabilityCheck: Long? = null,
     /** При последнем синхронизировании. 0 – никогда не синхронизировалось */
     val lastUpdated: Long = 0L
 )

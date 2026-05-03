@@ -15,23 +15,38 @@ interface ModelDao {
 
     @Query(
         """
-        SELECT * FROM models 
+        SELECT * FROM models
         WHERE (:searchQuery = '' OR LOWER(name) LIKE '%' || :searchQuery || '%'
                OR LOWER(id)   LIKE '%' || :searchQuery || '%')
-          AND (:onlyFree = 0 OR pricingPrompt = '0')
+          AND (:onlyFree = 0 OR pricingPrompt = '0' OR pricingPrompt = '0.0' OR pricingPrompt = 'Free')
           AND (:onlyFavorites = 0 OR isFavorite = 1)
-        ORDER BY 
+          AND (:onlyAvailable = 0 OR isAvailable = 1)
+        ORDER BY
             isSelected DESC,
             isFavorite DESC,
-            CASE WHEN :sortBy = 'NAME'      THEN name END ASC,
-            CASE WHEN :sortBy = 'CONTEXT'   THEN contextLength END DESC,
-            CASE WHEN :sortBy = 'PRICE'     THEN CAST(pricingPrompt AS REAL) END ASC
+            CASE WHEN :sortBy = 'RATING' THEN
+                CASE WHEN rating IS NULL THEN 1 ELSE 0 END
+            ELSE 0 END DESC,
+            CASE WHEN :sortBy = 'RATING' THEN COALESCE(rating, -1) ELSE 0 END DESC,
+            CASE WHEN :sortBy = 'NAME' THEN name ELSE '' END ASC,
+            CASE WHEN :sortBy = 'CONTEXT' THEN contextLength ELSE 0 END DESC,
+            CASE WHEN :sortBy = 'PRICE' THEN CAST(pricingPrompt AS REAL) ELSE 999999 END ASC,
+            CASE WHEN :sortBy = 'AVAILABILITY' THEN
+                CASE WHEN isAvailable = 1 THEN 0 WHEN isAvailable = 0 THEN 2 ELSE 1 END
+            ELSE 0 END ASC,
+            CASE WHEN :sortBy = 'CHECKED' THEN
+                CASE WHEN isAvailable IS NULL THEN 1 ELSE 0 END
+            ELSE 0 END ASC,
+            CASE WHEN :sortBy = 'AVAILABLE_FIRST' THEN
+                CASE WHEN isAvailable = 1 THEN 0 WHEN isAvailable = 0 THEN 2 ELSE 1 END
+            ELSE 0 END ASC
         """
     )
     fun getModels(
         searchQuery: String,
         onlyFree: Boolean,
         onlyFavorites: Boolean,
+        onlyAvailable: Boolean,
         sortBy: String
     ): Flow<List<ModelEntity>>
 
@@ -96,4 +111,35 @@ interface ModelDao {
      */
     @Query("SELECT * FROM models WHERE id = :modelId LIMIT 1")
     suspend fun getModelById(modelId: String): ModelEntity?
+
+    /**
+     * Возвращает все free модели.
+     */
+    @Query("SELECT * FROM models WHERE pricingPrompt = '0' OR pricingPrompt = '0.0' OR pricingPrompt = 'Free'")
+    suspend fun getFreeModels(): List<ModelEntity>
+
+    /**
+     * Обновляет статус доступности модели.
+     */
+    @Query("UPDATE models SET isAvailable = :isAvailable WHERE id = :modelId")
+    suspend fun updateModelAvailability(modelId: String, isAvailable: Boolean): Int
+
+    /**
+     * Обновляет статус доступности, время отклика и рейтинг модели.
+     */
+    @Query("""
+        UPDATE models SET 
+            isAvailable = :isAvailable,
+            availabilityResponseTimeMs = :responseTimeMs,
+            rating = :rating,
+            lastAvailabilityCheck = :checkTime
+        WHERE id = :modelId
+    """)
+    suspend fun updateModelRating(
+        modelId: String,
+        isAvailable: Boolean,
+        responseTimeMs: Long,
+        rating: Float,
+        checkTime: Long
+    ): Int
 }

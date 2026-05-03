@@ -12,4 +12,17 @@ interface ModelRepository {
     suspend fun selectModel(modelId: String)
     fun getSelectedModelFlow(): Flow<DataResult<LlmModel>>
     suspend fun getSelectedModel(): LlmModel?
+    /**
+     * Проверяет доступность модели, отправляя тестовый запрос.
+     * @return true если модель доступна, false если недоступна
+     */
+    suspend fun checkModelAvailability(modelId: String): Boolean
+/**
+     * Проверяет доступность всех free моделей.
+     * @param onProgress callback для отслеживания прогресса (текущая модель, количество проверенных, всего)
+     * @return Flow<Pair<modelId, isAvailable>>
+     */
+    suspend fun checkFreeModelsAvailability(
+        onProgress: ((modelId: String, checked: Int, total: Int) -> Unit)? = null
+    ): Flow<Pair<String, Boolean>>
 }

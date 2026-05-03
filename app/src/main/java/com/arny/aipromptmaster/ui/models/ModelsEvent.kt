@@ -31,6 +31,11 @@ sealed interface ModelsEvent {
     data object ToggleFavoritesOnly : ModelsEvent
 
     /**
+     * Переключение фильтра «Только доступные».
+     */
+    data object ToggleAvailableOnly : ModelsEvent
+
+    /**
      * Событие изменения порядка сортировки моделей.
      *
      * @property type Новый тип сортировки, определённый перечислением
@@ -64,4 +69,21 @@ sealed interface ModelsEvent {
      * @property id Идентификатор выбранной модели.
      */
     data class SelectModel(val id: String) : ModelsEvent
+
+    /**
+     * Проверка доступности всех free моделей.
+     */
+    data object CheckFreeModelsAvailability : ModelsEvent
+
+    /**
+     * Проверка доступности конкретной модели.
+     *
+     * @property id Идентификатор модели.
+     */
+    data class CheckModelAvailability(val id: String) : ModelsEvent
+
+    /**
+     * Отмена проверки доступности моделей.
+     */
+    data object CancelAvailabilityCheck : ModelsEvent
 }

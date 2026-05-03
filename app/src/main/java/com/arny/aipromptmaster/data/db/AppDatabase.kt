@@ -19,7 +19,7 @@ import com.arny.aipromptmaster.data.db.entities.PromptEntity
         MessageEntity::class,
         ModelEntity::class,
     ],
-    version = 6,
+    version = 8,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -83,6 +83,23 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // Добавляем колонку model_id в таблицу messages
                 db.execSQL("ALTER TABLE messages ADD COLUMN model_id TEXT")
+            }
+        }
+
+
+val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Добавляем колонку isAvailable в таблицу models
+                db.execSQL("ALTER TABLE models ADD COLUMN isAvailable INTEGER")
+            }
+        }
+
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Добавляем колонки для рейтинга и времени отклика
+                db.execSQL("ALTER TABLE models ADD COLUMN availabilityResponseTimeMs INTEGER")
+                db.execSQL("ALTER TABLE models ADD COLUMN rating REAL")
+                db.execSQL("ALTER TABLE models ADD COLUMN lastAvailabilityCheck INTEGER")
             }
         }
     }

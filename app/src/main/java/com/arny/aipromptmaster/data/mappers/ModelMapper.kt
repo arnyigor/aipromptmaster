@@ -27,8 +27,8 @@ private fun String.toBigDecimalOrNull(): BigDecimal? =
         null
     }
 
-// формат “X / 1M” (или “Free”, «N/A»)
-// Вынесено в отдельное расширение – так удобно использовать из любой части кода
+// формат "X / 1M" (или "Free", «N/A»)
+// Вынесено в отдельное расширение - так удобно использовать из любой части кода
 private fun BigDecimal?.formatPricePerMillion(): String = when {
     this == null -> "N/A"
     this == BigDecimal.ZERO -> "Free"
@@ -73,7 +73,7 @@ fun ModelDTO.toEntity(): ModelEntity {
         name = dto.name,
         description = dto.description,
         contextLength = dto.contextLength,
-        // Храним цены как строку – SQLite не потеряет точность
+        // Храним цены как строку - SQLite не потеряет точность
         pricingPrompt = dto.pricing.prompt,
         pricingCompletion = dto.pricing.completion,
         isMultimodal = isMultimodal,
@@ -102,21 +102,20 @@ fun ModelEntity.toDomain(): LlmModel = with(this) {
         id = id,
         name = name,
         description = description,
-
-        // Храним timestamp как «created»
         created = lastUpdated,
-
-        // Показываем размер контекста в виде “128k”
         contextLength = contextLength.displayContextSize(),
-
-        // Форматируем цены
         pricingPrompt = pricingPrompt.toBigDecimal().formatPricePerMillion(),
         pricingCompletion = pricingCompletion.toBigDecimal().formatPricePerMillion(),
         pricingImage = pricingImage?.toBigDecimalOrNull()?.formatPricePerMillion(),
         inputModalities = getList(inputModalities),
         outputModalities = getList(outputModalities),
         isSelected = isSelected,
-        isFavorite = isFavorite
+        isFavorite = isFavorite,
+        isFree = isFree,
+        isAvailable = isAvailable,
+        rating = rating,
+        availabilityResponseTimeMs = availabilityResponseTimeMs,
+        lastAvailabilityCheck = lastAvailabilityCheck
     )
 }
 
@@ -129,7 +128,7 @@ fun ModelEntity.toDomain(): LlmModel = with(this) {
  * 1. Размер контекста теперь форматируется сразу как строка «128k».
  * 2. Цены конвертируются из `String` → `BigDecimal` и затем
  *    приводятся к пользовательскому формату (Free / $X.YY).
- * 3. Добавлена безопасная обработка возможных `null`‑значений.
+ * 3. Добавлена безопасная обработка возможных `null`-значений.
  */
 fun ModelDTO.toDomain(): LlmModel = with(this) {
     // ---------- Цены ----------
@@ -149,7 +148,7 @@ fun ModelDTO.toDomain(): LlmModel = with(this) {
         outputModalities = architecture.outputModalities,
         pricingPrompt = promptPrice.formatPricePerMillion(),
         pricingCompletion = completionPrice.formatPricePerMillion(),
-        // image‑цена может быть null → “N/A”
+        // image-цена может быть null → "N/A"
         pricingImage = imagePrice?.formatPricePerMillion()
     )
 }

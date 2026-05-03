@@ -131,7 +131,12 @@ data class LlmModel(
     val inputModalities: List<String>,
     val outputModalities: List<String>,
     val isSelected: Boolean,
-    val isFavorite: Boolean = false
+    val isFavorite: Boolean = false,
+    val isFree: Boolean = false,
+    val isAvailable: Boolean? = null, // null = не проверена, true = доступна, false = недоступна
+    val rating: Float? = null, // Рейтинг 0-100, рассчитывается после проверки
+    val availabilityResponseTimeMs: Long? = null, // Время отклика в мс
+    val lastAvailabilityCheck: Long? = null // Время последней проверки
 )
 
 /**

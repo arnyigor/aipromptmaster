@@ -38,7 +38,7 @@ import org.koin.dsl.module
 val dataModule = module {
     // ---------- Database ----------
     single {
-        Room.databaseBuilder(
+Room.databaseBuilder(
             get(),
             AppDatabase::class.java,
             AppDatabase.DBNAME
@@ -47,6 +47,8 @@ val dataModule = module {
             .addMigrations(AppDatabase.MIGRATION_2_3)
             .addMigrations(AppDatabase.MIGRATION_3_4)
             .addMigrations(AppDatabase.MIGRATION_5_6)
+            .addMigrations(AppDatabase.MIGRATION_6_7)
+            .addMigrations(AppDatabase.MIGRATION_7_8)
             .fallbackToDestructiveMigration()
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
@@ -79,6 +81,8 @@ val dataModule = module {
     singleOf(::OpenRouterRepositoryImpl) { bind<IOpenRouterRepository>() }
     singleOf(::SettingsRepositoryImpl) { bind<ISettingsRepository>() }
     singleOf(::ChatHistoryRepositoryImpl) { bind<IChatHistoryRepository>() }
+    // ModelRepositoryImpl depends on ISettingsRepository
+    single { ModelRepositoryImpl(get(), get(), get(), get()) } // api, dao, syncMetadata, settingsRepository
     singleOf(::ModelRepositoryImpl) { bind<ModelRepository>() }
     singleOf(::ShareServiceImpl) { bind<ShareService>() }
     // ---------- Диспатчер ----------
