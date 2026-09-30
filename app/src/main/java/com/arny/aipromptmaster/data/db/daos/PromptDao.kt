@@ -113,11 +113,13 @@ interface PromptDao {
             val local = existing[incoming.id]
             when {
                 local?.isLocal == true -> local
-                local != null -> incoming.copy(isFavorite = local.isFavorite)
+                local != null -> incoming.copy(isFavorite = local.isFavorite, notes = local.notes)
                 else -> incoming
             }
         }
-        val deletable = ids.filter { existing[it]?.isLocal == false }
+        val deletable = ids.filter { id ->
+            existing[id]?.let { !it.isLocal && !it.isFavorite && it.notes.isBlank() } == true
+        }
         if (deletable.isNotEmpty()) deletePromptsByIds(deletable)
         insertPrompts(merged)
     }

@@ -26,6 +26,7 @@ fun Prompt.toEntity(): PromptEntity = PromptEntity(
     contentRu = content.ru,
     contentEn = content.en,
     description = description,
+    variablesJson = com.arny.promptcontract.PromptStorage.encode(variables, wireDocument),
     category = category,
     status = status,
     tags = tags.joinToString(","),
@@ -45,6 +46,8 @@ fun Prompt.toEntity(): PromptEntity = PromptEntity(
 )
 
 fun PromptEntity.toDomain(): Prompt = Prompt(
+    variables = com.arny.promptcontract.PromptStorage.decode(variablesJson).variables,
+    wireDocument = com.arny.promptcontract.PromptStorage.decode(variablesJson).document,
     id = id,
     title = title,
     content = PromptContent(
@@ -80,6 +83,7 @@ fun PromptJson.toDomain(): Prompt {
     val domainVariants = promptVariants.map { it.toDomain() }
 
     return Prompt(
+        wireDocument = this,
         id = id ?: UUID.randomUUID().toString(),
         title = title.orEmpty(),
         description = description,
@@ -112,7 +116,7 @@ fun PromptVariantJson.toDomain(): DomainPromptVariant = DomainPromptVariant(
     variantId = DomainVariantId(
         type = this.variantId?.type.orEmpty(),
         id = this.variantId?.id.orEmpty(),
-        priority = this.variantId?.priority ?: 0
+        priority = this.priority ?: this.variantId?.priority ?: 0
     ),
     content = PromptContent.fromMap(this.content)
 )

@@ -1,12 +1,7 @@
 package com.arny.aiprompts.domain.usecase
 
-import com.arny.aiprompts.data.model.PromptContentMap
 import com.arny.aiprompts.data.model.PromptJson
-import com.arny.aiprompts.data.model.PromptMetadata
-import com.arny.aiprompts.data.model.PromptVariant
 import com.arny.aiprompts.data.model.Rating
-import com.arny.aiprompts.data.model.VariantId
-import com.arny.aiprompts.domain.model.Author
 import com.benasher44.uuid.uuid4
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -16,7 +11,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.time.Instant
-import java.time.ZoneOffset
 
 /**
  * UseCase for importing parsed prompts from scraper output files.
@@ -31,7 +25,7 @@ class ImportParsedPromptsUseCase(
 ) {
     companion object {
         private const val PARSED_PROMPTS_DIR = ".aiprompts/parsed_prompts"
-        private const val PROJECT_ROOT_DIR = "prompts"
+        private val PROJECT_ROOT_DIR: String get() = File(System.getProperty("user.home"), ".aiprompts/personal_prompts").absolutePath
     }
 
     /**
@@ -194,7 +188,7 @@ class ImportParsedPromptsUseCase(
         // Process each prompt
         for (exportedPrompt in exportData.prompts) {
             try {
-                val category = exportedPrompt.category ?: "general"
+                val category = exportedPrompt.category?.takeIf { it.matches(Regex("[a-z0-9_-]+")) } ?: "general"
                 val categoryDir = File(promptsRoot, category)
                 if (!categoryDir.exists()) {
                     categoryDir.mkdirs()
@@ -202,7 +196,7 @@ class ImportParsedPromptsUseCase(
 
                 // Generate new UUID for the prompt
                 val newPromptId = uuid4().toString()
-                val timestamp = Instant.now().atZone(ZoneOffset.UTC).toString()
+                val timestamp = Instant.now().toString()
 
                 // Create PromptJson with prompt_variants
                 val promptJson = createPromptJson(exportedPrompt, newPromptId, timestamp)
@@ -256,8 +250,8 @@ class ImportParsedPromptsUseCase(
             category = exported.category ?: "general",
             tags = exported.tags,
             variables = emptyList(),
-            metadata = PromptMetadata(
-                author = Author(
+            metadata = com.arny.promptcontract.MetadataJson(
+                author = com.arny.promptcontract.AuthorJson(
                     id = "",
                     name = "4pda User"
                 ),
@@ -266,16 +260,12 @@ class ImportParsedPromptsUseCase(
             ),
             rating = Rating(),
             promptVariants = listOf(
-                PromptVariant(
-                    variantId = VariantId(
+                com.arny.promptcontract.PromptVariantJson(
+                    variantId = com.arny.promptcontract.VariantIdJson(
                         type = "prompt",
                         id = variantId
                     ),
-                    content = PromptContentMap(
-                        ru = exported.content ?: "",
-                        en = ""
-                    ),
-                    priority = 1
+                    content = mapOf("ru" to (exported.content ?: ""), "en" to "")
                 )
             ),
             createdAt = timestamp,

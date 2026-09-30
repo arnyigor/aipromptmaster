@@ -57,35 +57,12 @@ class PromptsRepositoryImpl(
     }
 
     override suspend fun savePrompts(prompts: List<Prompt>) = withContext(dispatcher) {
-        // 1. Получаем все существующие промпты из базы ОДНИМ запросом.
-        val existingEntities = promptDao.getAllPrompts().associateBy { it.id }
-
-        // 2. Создаем "слитый" список с защитой локальных промптов.
-        val mergedPrompts = prompts.map { remotePrompt ->
-            val existingEntity = existingEntities[remotePrompt.id]
-
-            when {
-                // Если промпт уже существует и является локальным - НЕ перезаписываем, берем локальную версию
-                existingEntity != null && existingEntity.isLocal -> {
-                    existingEntity.toDomain()
-                }
-                // Если промпт существует и избранный - сохраняем избранность
-                existingEntity != null && existingEntity.isFavorite -> {
-                    remotePrompt.copy(isFavorite = true)
-                }
-                // Если промпт существует (non-local) - обновляем, но сохраняем избранность если она была
-                existingEntity != null -> {
-                    remotePrompt.copy(isFavorite = existingEntity.isFavorite)
-                }
-                // Новый промпт - добавляем как есть
-                else -> remotePrompt
-            }
-        }
-
-        // 3. Сохраняем все mergedPrompts
-        promptDao.insertPrompts(mergedPrompts.map { it.toEntity() })
+        promptDao.syncCatalog(prompts.map { it.toEntity() }, emptyList())
     }
 
+    override suspend fun syncCatalog(prompts: List<Prompt>, deletedIds: List<String>) = withContext(dispatcher) {
+        promptDao.syncCatalog(prompts.map { it.toEntity() }, deletedIds)
+    }
     override suspend fun getPrompts(
         search: String,
         category: String?,
@@ -103,18 +80,13 @@ class PromptsRepositoryImpl(
                 offset = offset
             )
         } else {
-            // Build tag condition string for SQL
-            val tagCondition = tags.joinToString(" AND ") { tag ->
-                "tags LIKE '%$tag%'"
-            }
-            promptDao.getPromptsWithTagCondition(
-                searchQuery = search,
-                category = category,
-                status = status,
-                tagCondition = tagCondition,
-                limit = limit,
-                offset = offset
-            )
+            promptDao.getPromptsWithoutTags(
+                searchQuery = search, category = category, status = status,
+                limit = Int.MAX_VALUE, offset = 0
+            ).filter { entity ->
+                val storedTags = entity.tags.split(",").map { it.trim() }.toSet()
+                tags.all { it in storedTags }
+            }.drop(offset).take(limit)
         }.map { it.toDomain() }
 
         prompts

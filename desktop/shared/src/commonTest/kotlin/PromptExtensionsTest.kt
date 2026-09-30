@@ -165,8 +165,8 @@ class PromptExtensionsTest {
             isFavorite = false,
             rating = Rating(score = 4.5f, votes = 10),
             status = "Active",
-            metadata = PromptMetadata(
-                author = Author(id = "author-id", name = "Test Author"),
+            metadata = com.arny.promptcontract.MetadataJson(
+                author = com.arny.promptcontract.AuthorJson(id = "author-id", name = "Test Author"),
                 source = "test-source",
                 notes = "Test notes"
             ),

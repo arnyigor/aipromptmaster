@@ -46,6 +46,7 @@ class PromptSynchronizerImpl(
 ) : IPromptSynchronizer {
     /** Предотвращает одновременные sync‑ы. */
     private val syncMutex = Mutex()
+    private var manifestDeletedIds: List<String> = emptyList()
     private val json = Json {
         ignoreUnknownKeys = true
         coerceInputValues = true
@@ -103,7 +104,7 @@ class PromptSynchronizerImpl(
 
                     // 4️⃣ Сохраняем в одной транзакции
                     // Legacy ZIP has no completeness manifest: missing IDs do not imply deletion.
-                    promptsRepository.syncPrompts(remotePrompts, emptyList())
+                    promptsRepository.syncPrompts(remotePrompts, manifestDeletedIds)
 
                     setLastSyncTime(now)
                     promptsRepository.invalidateSortDataCache()
@@ -161,6 +162,16 @@ class PromptSynchronizerImpl(
                 Timber.d("Archive extracted to: ${tempDir.absolutePath}")
 
                 // 2️⃣ Читаем все JSON‑файлы
+                manifestDeletedIds = emptyList()
+                val manifestFile = File(tempDir, com.arny.promptcontract.CatalogManifest.FILE_NAME)
+                if (manifestFile.exists()) {
+                    val files = tempDir.walkTopDown().filter {
+                        it.isFile && it.extension == "json" && it != manifestFile
+                    }.associate { it.relativeTo(tempDir).invariantSeparatorsPath to it.readBytes() }
+                    manifestDeletedIds = com.arny.promptcontract.CatalogManifest.verify(manifestFile.readText(), files) {
+                        java.security.MessageDigest.getInstance("SHA-256").digest(it).joinToString("") { byte -> "%02x".format(byte) }
+                    }.deletedIds
+                }
                 val jsonFiles = ZipUtils.readJsonFilesFromDirectory(tempDir)
 
                 Timber.d("Found ${jsonFiles.size} JSON files")

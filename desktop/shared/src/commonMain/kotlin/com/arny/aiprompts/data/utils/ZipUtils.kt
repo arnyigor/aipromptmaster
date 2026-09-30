@@ -19,7 +19,7 @@ object ZipUtils {
                         val filePath = File(destinationDir, entry.name)
 
                         // Защита от Zip Slip атаки
-                        if (!filePath.canonicalPath.startsWith(destinationDir.canonicalPath)) {
+                        if (!filePath.canonicalPath.startsWith(destinationDir.canonicalPath + File.separator)) {
                             throw SecurityException("Zip entry is outside target directory: ${entry.name}")
                         }
 
@@ -55,6 +55,7 @@ object ZipUtils {
         dir.walkTopDown()
             .filter { file ->
                 file.isFile &&
+                        file.name != com.arny.promptcontract.CatalogManifest.FILE_NAME &&
                         file.extension.equals("json", ignoreCase = true) &&
                         !file.name.startsWith(".") // Пропускаем скрытые файлы
             }

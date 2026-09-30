@@ -29,6 +29,7 @@ class PromptSynchronizerImpl(
     private val settingsRepository: ISettingsRepository,
 ) : IPromptSynchronizer {
     private val syncMutex = Mutex()
+    private var manifestDeletedIds: List<String> = emptyList()
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -78,7 +79,8 @@ class PromptSynchronizerImpl(
 
                 // Legacy ZIP has no completeness manifest. Upsert all IDs without
                 // inferring deletions from missing records or matching titles.
-                promptsRepository.savePrompts(remotePrompts)
+                if (manifestDeletedIds.isEmpty()) promptsRepository.savePrompts(remotePrompts)
+                else promptsRepository.syncCatalog(remotePrompts, manifestDeletedIds)
                 setLastSyncTime(System.currentTimeMillis())
                 promptsRepository.invalidateSortDataCache()
 
@@ -104,6 +106,16 @@ class PromptSynchronizerImpl(
                 val extractResult = ZipUtils.extractZip(responseBody, tempDir)
                 extractResult.getOrThrow()
 
+                manifestDeletedIds = emptyList()
+                val manifestFile = File(tempDir, com.arny.promptcontract.CatalogManifest.FILE_NAME)
+                if (manifestFile.exists()) {
+                    val files = tempDir.walkTopDown().filter {
+                        it.isFile && it.extension == "json" && it != manifestFile
+                    }.associate { it.relativeTo(tempDir).invariantSeparatorsPath to it.readBytes() }
+                    manifestDeletedIds = com.arny.promptcontract.CatalogManifest.verify(manifestFile.readText(), files) {
+                        java.security.MessageDigest.getInstance("SHA-256").digest(it).joinToString("") { byte -> "%02x".format(byte) }
+                    }.deletedIds
+                }
                 val jsonFiles = ZipUtils.readJsonFilesFromDirectory(tempDir)
                 println("✅ [PromptSync] readJsonFilesFromDirectory returned ${jsonFiles.size} files")
 
@@ -124,7 +136,7 @@ class PromptSynchronizerImpl(
                             promptJson.category = category
                         }
 
-                        prompts.add(promptJson.toDomain())
+                        prompts.add(promptJson.toDomain().copy(isLocal = false, isFavorite = false))
                         successCount++
                     } catch (e: Exception) {
                         if (e is CancellationException) throw e
@@ -185,13 +197,7 @@ class PromptSynchronizerImpl(
      * Загружает все JSON файлы промптов из локальной папки prompts/
      */
     private suspend fun loadPromptsFromLocalDirectory(): List<Prompt> = withContext(Dispatchers.IO) {
-        val rootDir = findProjectRootDir()
-        if (rootDir == null) {
-            println("⚠️ [PromptSync] Не удалось найти корневую директорию проекта")
-            return@withContext emptyList()
-        }
-
-        val promptsDir = File(rootDir, "prompts")
+        val promptsDir = File(System.getProperty("user.home"), ".aiprompts/personal_prompts")
         if (!promptsDir.exists() || !promptsDir.isDirectory) {
             println("⚠️ [PromptSync] Папка prompts/ не найдена: ${promptsDir.absolutePath}")
             return@withContext emptyList()
@@ -218,23 +224,6 @@ class PromptSynchronizerImpl(
 
         println("✅ [PromptSync] Просканировано: $successCount файлов, ошибок: $errorCount")
         prompts
-    }
-
-    /**
-     * Находит корневую директорию проекта (где лежит .git)
-     */
-    private fun findProjectRootDir(): File? {
-        var currentDir = File(System.getProperty("user.dir"))
-        repeat(10) {
-            if (File(currentDir, ".git").exists()) {
-                return currentDir
-            }
-            if (currentDir.parentFile == null) {
-                return null
-            }
-            currentDir = currentDir.parentFile
-        }
-        return null
     }
 
     /**

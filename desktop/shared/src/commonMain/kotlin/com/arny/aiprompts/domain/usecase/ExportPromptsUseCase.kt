@@ -4,6 +4,7 @@ package com.arny.aiprompts.domain.usecase
 
 import com.arny.aiprompts.domain.interfaces.IPromptsRepository
 import com.arny.aiprompts.domain.model.Prompt
+import com.arny.aiprompts.data.mappers.toExportJson
 import kotlinx.serialization.json.Json
 import kotlin.time.ExperimentalTime
 
@@ -42,41 +43,8 @@ class ExportPromptsUseCase(
         }
     }
 
-    private fun exportAsJson(prompts: List<Prompt>): String {
-        val promptJsons = prompts.map { prompt ->
-            mapOf(
-                "id" to prompt.id,
-                "title" to prompt.title,
-                "description" to prompt.description,
-                "category" to prompt.category,
-                "status" to prompt.status,
-                "isLocal" to prompt.isLocal,
-                "isFavorite" to prompt.isFavorite,
-                "tags" to prompt.tags,
-                "compatibleModels" to prompt.compatibleModels,
-                "content" to mapOf(
-                    "ru" to (prompt.content?.ru ?: ""),
-                    "en" to (prompt.content?.en ?: "")
-                ),
-                "metadata" to mapOf(
-                    "author" to mapOf(
-                        "id" to (prompt.metadata.author?.id ?: ""),
-                        "name" to (prompt.metadata.author?.name ?: "")
-                    ),
-                    "source" to prompt.metadata.source,
-                    "notes" to prompt.metadata.notes
-                ),
-                "rating" to mapOf(
-                    "score" to prompt.rating,
-                    "votes" to prompt.ratingVotes
-                ),
-                "version" to prompt.version,
-                "createdAt" to prompt.createdAt?.toString(),
-                "modifiedAt" to prompt.modifiedAt?.toString()
-            )
-        }
-        return json.encodeToString(promptJsons)
-    }
+    private fun exportAsJson(prompts: List<Prompt>): String =
+        json.encodeToString(prompts.map { it.toExportJson() })
 
     private fun exportAsCsv(prompts: List<Prompt>): String {
         if (prompts.isEmpty()) return ""

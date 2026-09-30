@@ -34,7 +34,7 @@ class UpdatePromptUseCase(
                     ru = contentRu ?: existingPrompt.content?.ru.orEmpty(),
                     en = contentEn ?: existingPrompt.content?.en.orEmpty()
                 ),
-                isLocal = existingPrompt.isLocal,
+                isLocal = true,
                 description = description ?: existingPrompt.description,
                 category = category ?: existingPrompt.category,
                 tags = tags ?: existingPrompt.tags,

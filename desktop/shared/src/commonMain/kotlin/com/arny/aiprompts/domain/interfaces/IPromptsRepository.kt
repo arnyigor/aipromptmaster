@@ -10,6 +10,10 @@ interface IPromptsRepository {
     suspend fun updatePrompt(prompt: Prompt)
     suspend fun deletePrompt(promptId: String)
     suspend fun savePrompts(prompts: List<Prompt>)
+    suspend fun syncCatalog(prompts: List<Prompt>, deletedIds: List<String>) {
+        require(deletedIds.isEmpty()) { "Repository does not support catalog tombstones" }
+        savePrompts(prompts)
+    }
     fun getAllPrompts(): Flow<List<Prompt>>
     suspend fun toggleFavoriteStatus(promptId: String)
     suspend fun getPrompts(

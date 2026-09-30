@@ -50,7 +50,7 @@ object ZipUtils {
         val jsonFiles = mutableListOf<Pair<String, String>>()
 
         directory.walkTopDown()
-            .filter { it.isFile && it.extension == "json" }
+            .filter { it.isFile && it.extension == "json" && it.name != com.arny.promptcontract.CatalogManifest.FILE_NAME }
             .forEach { file ->
                 val category = file.parentFile?.name ?: "uncategorized"
                 val content = file.readText()

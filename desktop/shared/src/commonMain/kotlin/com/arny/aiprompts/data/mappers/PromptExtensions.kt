@@ -22,6 +22,7 @@ fun Prompt.toEntity(): PromptEntity = PromptEntity(
     contentRu = content?.ru.orEmpty(),
     contentEn = content?.en.orEmpty(),
     description = description.orEmpty(),
+    variablesJson = com.arny.promptcontract.PromptStorage.encode(variables, wireDocument),
     category = category,
     status = status,
     tags = tags.joinToString(","),
@@ -42,6 +43,8 @@ fun Prompt.toEntity(): PromptEntity = PromptEntity(
 
 // Entity -> Domain
 fun PromptEntity.toDomain(): Prompt = Prompt(
+    variables = com.arny.promptcontract.PromptStorage.decode(variablesJson).variables,
+    wireDocument = com.arny.promptcontract.PromptStorage.decode(variablesJson).document,
     id = id,
     title = title,
     content = PromptContent(
@@ -74,6 +77,7 @@ fun PromptJson.toDomain(): Prompt {
         if (dateString.isNullOrBlank()) return null
 
         return try {
+            runCatching { Instant.parse(dateString) }.getOrNull()?.let { return it }
             // Parse as LocalDateTime first (no timezone in JSON)
             val localDateTime = LocalDateTime.parse(dateString)
             // Convert to Instant using UTC timezone
@@ -85,6 +89,7 @@ fun PromptJson.toDomain(): Prompt {
     }
 
     return Prompt(
+        wireDocument = this,
         id = id ?: uuid4().toString(),
         title = title.orEmpty(),
         description = description,
@@ -92,7 +97,7 @@ fun PromptJson.toDomain(): Prompt {
             ru = content["ru"].orEmpty(),
             en = content["en"].orEmpty()
         ),
-        variables = variables.associate { it.name to it.type },
+        variables = variables.associate { it.name to it.defaultValue.orEmpty() },
         compatibleModels = compatibleModels,
         category = category.orEmpty().lowercase(),
         tags = tags,
@@ -103,7 +108,7 @@ fun PromptJson.toDomain(): Prompt {
         status = status.orEmpty().lowercase(),
         metadata = PromptMetadata(
             author = Author(
-                id = metadata?.author?.name.orEmpty(),
+                id = metadata?.author?.id.orEmpty(),
                 name = metadata?.author?.name.orEmpty()
             ),
             source = metadata?.source.orEmpty(),
@@ -135,8 +140,8 @@ fun PromptData.toPromptJson(): PromptJson {
         category = this.category,
         tags = this.tags,
         variables = emptyList(), // Пока пустой список
-        metadata = PromptMetadata(
-            author = Author(id = this.author.id, name = this.author.name),
+        metadata = com.arny.promptcontract.MetadataJson(
+            author = com.arny.promptcontract.AuthorJson(id = this.author.id, name = this.author.name),
             source = this.source,
             notes = "Импортировано из поста ${this.sourceId}"
         ),

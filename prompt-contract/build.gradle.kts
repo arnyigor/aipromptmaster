@@ -1,5 +1,6 @@
 plugins {
     id("org.jetbrains.kotlin.multiplatform")
+    id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 // Both Gradle roots include this source module; keep their compiler outputs separate.
@@ -15,5 +16,12 @@ kotlin {
         commonTest.dependencies {
             implementation(kotlin("test"))
         }
+    }
+}
+
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    providers.environmentVariable("PROMPT_CATALOG_ARCHIVE").orNull?.let { archive ->
+        inputs.file(archive)
+        environment("PROMPT_CATALOG_ARCHIVE", archive)
     }
 }

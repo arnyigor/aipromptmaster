@@ -39,7 +39,7 @@ jobs:
           java-version: '17'
           cache: gradle
       - name: Compile all tests and run offline catalog checks
-        run: ./gradlew.bat :prompt-contract:jvmTest :shared:desktopTest --tests '*UseCaseTest' --tests '*PromptSynchronizerTest' --tests '*LegacyCatalogSafetyTest' :desktopApp:createDistributable --console=plain
+        run: ./gradlew.bat :prompt-contract:jvmTest :shared:desktopTest --tests '*UseCaseTest' --tests '*PromptSynchronizerTest' --tests '*LegacyCatalogSafetyTest' --tests '*PromptExtensionsTest' --tests '*CatalogDatabaseSafetyTest' --tests '*PromptWireRoundTripTest' :desktopApp:createDistributable --console=plain
       - uses: actions/upload-artifact@v4
         with:
           name: desktop-windows-portable

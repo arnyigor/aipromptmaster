@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.time.ExperimentalTime::class)
+
 package com.arny.aiprompts.domain.usecase
 
 import com.arny.aiprompts.data.mappers.toDomain
@@ -22,7 +24,7 @@ class ImportJsonUseCase(
                 try {
                     val content = file.readText()
                     val promptJson = jsonParser.decodeFromString<PromptJson>(content)
-                    promptJson.toDomain()
+                    promptJson.toDomain().copy(isLocal = true)
                 } catch (e: Exception) {
                     // Логируем ошибку для конкретного файла и продолжаем
                     println("Ошибка парсинга файла ${file.name}: ${e.message}")

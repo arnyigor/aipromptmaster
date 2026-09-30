@@ -6,6 +6,23 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PromptDao {
+    @Transaction
+    suspend fun syncCatalog(prompts: List<PromptEntity>, deletedIds: List<String>) {
+        val existing = getAllPrompts().associateBy { it.id }
+        val merged = prompts.map { incoming ->
+            val stored = existing[incoming.id]
+            when {
+                stored?.isLocal == true -> stored
+                stored != null -> incoming.copy(isFavorite = stored.isFavorite, notes = stored.notes)
+                else -> incoming
+            }
+        }
+        val deletable = deletedIds.filter { id ->
+            existing[id]?.let { !it.isLocal && !it.isFavorite && it.notes.isBlank() } == true
+        }
+        if (deletable.isNotEmpty()) deletePromptsByIds(deletable)
+        insertPrompts(merged)
+    }
     @Query(
         """
         SELECT * FROM prompts 

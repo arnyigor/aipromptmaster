@@ -19,15 +19,15 @@ class FileDataSourceImpl : FileDataSource {
     }
 
     override suspend fun savePromptJson(promptJson: PromptJson): File {
-        val rootDir = findProjectRootDir()
-            ?: throw Exception("Не удалось найти корневую директорию проекта")
+        val rootDir = File(System.getProperty("user.home"), ".aiprompts")
 
-        val promptsDir = File(rootDir, "prompts")
+        val promptsDir = File(rootDir, "personal_prompts")
         if (!promptsDir.exists()) {
             promptsDir.mkdirs()
         }
 
-        val category = promptJson.category?.takeIf { it.isNotBlank() } ?: "general"
+        val category = promptJson.category?.takeIf { it.matches(Regex("[a-z0-9_-]+")) } ?: "general"
+        require(promptJson.id?.matches(Regex("[A-Za-z0-9_-]+")) == true) { "Invalid prompt ID" }
         val categoryDir = File(promptsDir, category)
 
         if (!categoryDir.exists()) {
@@ -35,40 +35,20 @@ class FileDataSourceImpl : FileDataSource {
         }
 
         val targetFile = File(categoryDir, "${promptJson.id}.json")
-        val jsonString = json.encodeToString(promptJson)
+        val jsonString = json.encodeToString(promptJson.copy(isLocal = true))
         targetFile.writeText(jsonString, StandardCharsets.UTF_8)
 
         return targetFile
     }
 
-    private fun findProjectRootDir(): File? {
-        // Начинаем с текущей рабочей директории
-        var currentDir = File(System.getProperty("user.dir"))
-        // Ищем корень проекта (где лежит папка .git), поднимаясь вверх по дереву
-        // Ограничиваем поиск 10 уровнями, чтобы избежать бесконечного цикла
-        repeat(10) {
-            // Если нашли .git, значит, это корень репозитория
-            if (File(currentDir, ".git").exists()) {
-                return currentDir
-            }
-            // Если дошли до корня диска, останавливаемся
-            if (currentDir.parentFile == null) {
-                return null
-            }
-            // Поднимаемся на уровень выше
-            currentDir = currentDir.parentFile
-        }
-        return null
-    }
-
     override suspend fun getPromptFiles(): List<PlatformFile> {
-        val rootDir = findProjectRootDir()
+        val rootDir = File(System.getProperty("user.home"), ".aiprompts")
         if (rootDir == null) {
             log("❌ Не удалось найти корневую директорию проекта (.git)")
             return emptyList()
         }
 
-        val promptsDir = File(rootDir, "prompts")
+        val promptsDir = File(rootDir, "personal_prompts")
 
         if (!promptsDir.exists() || !promptsDir.isDirectory) {
             log("⚠️ Папка 'prompts' не найдена: ${promptsDir.absolutePath}")

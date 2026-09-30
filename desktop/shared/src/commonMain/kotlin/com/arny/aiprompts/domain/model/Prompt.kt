@@ -23,5 +23,6 @@ data class Prompt(
     val metadata: PromptMetadata = PromptMetadata(),
     val version: String = "1.0.0",
     val createdAt: Instant?,
-    val modifiedAt: Instant?
+    val modifiedAt: Instant?,
+    val wireDocument: com.arny.promptcontract.PromptJson? = null
 )

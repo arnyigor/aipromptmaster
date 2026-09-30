@@ -162,19 +162,22 @@ class PromptEditViewModel(
             _saveResult.value = SaveResult.Loading
             try {
                 val state = _uiState.value
+                val previous = state.id?.let { interactor.getPrompt(it) }
                 val prompt = Prompt(
                     id = state.id ?: UUID.randomUUID().toString(),
                     title = state.title.trim(),
                     description = state.description,
                     content = PromptContent(state.contentRu, state.contentEn),
-                    variables = emptyMap(),
+                    variables = previous?.variables.orEmpty(),
+                    wireDocument = previous?.wireDocument,
                     promptVariants = state.variants,
                     compatibleModels = state.compatibleModels,
                     category = state.category,
                     tags = state.tags,
                     isLocal = true,
-                    rating = 0f,
-                    ratingVotes = 0,
+                    isFavorite = previous?.isFavorite ?: false,
+                    rating = previous?.rating ?: 0f,
+                    ratingVotes = previous?.ratingVotes ?: 0,
                     metadata = state.metadata,
                     createdAt = if (state.isNew) {
                         Date()
