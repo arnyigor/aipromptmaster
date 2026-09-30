@@ -1,6 +1,7 @@
 package com.arny.aipromptmaster.data.sync
 
 import android.content.Context
+import com.arny.promptcontract.CatalogContract
 import com.arny.aipromptmaster.R
 import com.arny.aipromptmaster.data.api.GitHubService
 import com.arny.aipromptmaster.data.mappers.toDomain
@@ -167,6 +168,7 @@ class PromptSynchronizerImpl(
                 // 3️⃣ Десериализуем каждый файл
                 val prompts = mutableListOf<Prompt>()
                 for ((category, content) in jsonFiles) {
+                    CatalogContract.parse(content)
                     val promptJson = json.decodeFromString<PromptJson>(content)
                     require(!promptJson.id.isNullOrBlank() && !promptJson.title.isNullOrBlank()) {
                         "Catalog record has no identity or title"
@@ -174,8 +176,7 @@ class PromptSynchronizerImpl(
                     if (promptJson.category.isNullOrBlank()) promptJson.category = category
                     prompts.add(promptJson.toDomain().copy(isLocal = false, isFavorite = false))
                 }
-                require(prompts.isNotEmpty()) { "Empty catalog snapshot" }
-                require(prompts.map { it.id }.distinct().size == prompts.size) { "Duplicate catalog IDs" }
+                CatalogContract.validateSnapshot(prompts.map { it.id to it.title })
                 prompts
             } finally {
                 tempDir.deleteRecursively()

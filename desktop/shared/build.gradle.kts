@@ -22,6 +22,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
+                implementation(project(":prompt-contract"))
                 // Compose
                 api(libs.compose.runtime)
                 api(libs.compose.foundation)

@@ -21,3 +21,5 @@ dependencyResolutionManagement {
 rootProject.name = "aiprompts-kmp"
 include(":shared")
 include(":desktopApp")
+include(":prompt-contract")
+project(":prompt-contract").projectDir = file("../prompt-contract")

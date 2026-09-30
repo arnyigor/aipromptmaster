@@ -3,6 +3,7 @@
 package com.arny.aiprompts.data.repositories
 
 import com.arny.aiprompts.data.api.GitHubService
+import com.arny.promptcontract.CatalogContract
 import com.arny.aiprompts.data.mappers.toDomain
 import com.arny.aiprompts.data.model.PromptJson
 import com.arny.aiprompts.data.utils.ZipUtils
@@ -64,9 +65,7 @@ class PromptSynchronizerImpl(
 
         return runCatching {
             downloadAndProcessArchive(archiveUrl).also { prompts ->
-                require(prompts.isNotEmpty()) { "Empty catalog snapshot" }
-                require(prompts.all { it.id.isNotBlank() && it.title.isNotBlank() }) { "Invalid catalog identity" }
-                require(prompts.map { it.id }.distinct().size == prompts.size) { "Duplicate catalog IDs" }
+                CatalogContract.validateSnapshot(prompts.map { it.id to it.title })
             }
         }.fold(
             onSuccess = { remotePrompts ->
@@ -115,6 +114,7 @@ class PromptSynchronizerImpl(
                 // ✅ ТЕПЕРЬ uniqueKey = "category/filename"
                 jsonFiles.forEach { (uniqueKey, jsonContent) ->
                     try {
+                        CatalogContract.parse(jsonContent)
                         val promptJson = json.decodeFromString<PromptJson>(jsonContent)
                         require(!promptJson.id.isNullOrBlank()) { "Missing prompt ID" }
 

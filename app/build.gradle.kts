@@ -155,6 +155,7 @@ room {
 }
 
 dependencies {
+    implementation(project(":prompt-contract"))
 
     // Koin core + Android support
     implementation(libs.koin.android)

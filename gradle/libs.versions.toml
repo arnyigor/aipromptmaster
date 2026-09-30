@@ -82,6 +82,7 @@ androidx-compose-animation = { group = "androidx.compose.animation", name = "ani
 timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
 
 [plugins]
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
