@@ -116,12 +116,14 @@ class OpenRouterRepositoryImpl(
     override suspend fun getChatCompletion(
         model: String,
         messages: List<ChatMessage>,
-        apiKey: String?
+        apiKey: String?,
+        temperature: Double,
+        maxTokens: Int
     ): Result<ChatCompletionResponse> {
         return try {
             val keyToUse = apiKey ?: settingsRepository.getOpenRouterApiKey()
 
-            if (keyToUse.isNullOrBlank()) {
+            if (keyToUse.isNullOrBlank() && settingsRepository.getBaseUrl().isNullOrBlank()) {
                 return Result.failure(ApiException.MissingApiKey())
             }
 
@@ -137,19 +139,21 @@ class OpenRouterRepositoryImpl(
                 val request = OpenAiChatRequest(
                     model = model,
                     messages = apiMessages,
-                    stream = false
+                    stream = false,
+                    temperature = temperature,
+                    maxTokens = maxTokens
                 )
                 httpClient.post(url) {
-                    header("Authorization", "Bearer $keyToUse")
+                    if (!keyToUse.isNullOrBlank()) header("Authorization", "Bearer $keyToUse")
                     contentType(ContentType.Application.Json)
                     setBody(request)
                 }.body()
             } else {
                 // Обычный текстовый формат
                 httpClient.post(url) {
-                    header("Authorization", "Bearer $keyToUse")
+                    if (!keyToUse.isNullOrBlank()) header("Authorization", "Bearer $keyToUse")
                     contentType(ContentType.Application.Json)
-                    setBody(ChatCompletionRequest(model = model, messages = messages))
+                    setBody(ChatCompletionRequest(model = model, messages = messages, temperature = temperature, maxTokens = maxTokens))
                 }.body()
             }
 
@@ -173,11 +177,13 @@ class OpenRouterRepositoryImpl(
     override fun getStreamingChatCompletion(
         model: String,
         messages: List<ChatMessage>,
-        apiKey: String?
+        apiKey: String?,
+        temperature: Double,
+        maxTokens: Int
     ): Flow<Result<StreamingChatChunk>> = flow {
         val keyToUse = apiKey ?: settingsRepository.getOpenRouterApiKey()
 
-        if (keyToUse.isNullOrBlank()) {
+        if (keyToUse.isNullOrBlank() && settingsRepository.getBaseUrl().isNullOrBlank()) {
             emit(Result.failure(ApiException.MissingApiKey()))
             return@flow
         }
@@ -195,21 +201,21 @@ class OpenRouterRepositoryImpl(
                     model = model,
                     messages = apiMessages,
                     stream = true,
-                    maxTokens = 4096,
-                    temperature = 0.7
+                    maxTokens = maxTokens,
+                    temperature = temperature
                 )
             } else {
                 ChatCompletionRequest(
                     model = model,
                     messages = messages,
                     stream = true,
-                    maxTokens = 4096,
-                    temperature = 0.7
+                    maxTokens = maxTokens,
+                    temperature = temperature
                 )
             }
             
             val response = httpClient.preparePost(url) {
-                header(HttpHeaders.Authorization, "Bearer $keyToUse")
+                if (!keyToUse.isNullOrBlank()) header(HttpHeaders.Authorization, "Bearer $keyToUse")
                 header(HttpHeaders.Accept, "text/event-stream")
                 header(HttpHeaders.CacheControl, "no-cache")
                 contentType(ContentType.Application.Json)
@@ -342,6 +348,7 @@ class OpenRouterRepositoryImpl(
                 val jsonData = line.substring(SSE_DATA_PREFIX.length).trim()
                 if (jsonData == SSE_DONE_MARKER) {
                     Logger.d("OpenRouterRepo", "Stream completed with DONE marker")
+                    emit(StreamingChatChunk(content = "", isComplete = true))
                     break
                 }
                 try {

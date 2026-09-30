@@ -115,6 +115,7 @@ class DefaultMainComponent(
     private val analyzerPipeline: IAnalyzerPipeline,
     private val importParsedPromptsUseCase: ImportParsedPromptsUseCase,
     private val fileDataSource: FileDataSource,
+    private val improvePromptUseCase: com.arny.aiprompts.domain.usecase.ImprovePromptUseCase,
 ) : MainComponent, ComponentContext by componentContext {
 
     private val navigation = StackNavigation<MainConfig>()
@@ -173,6 +174,7 @@ class DefaultMainComponent(
                     toggleFavoriteUseCase = toggleFavoriteUseCase,
                     getAvailableTagsUseCase = getAvailableTagsUseCase,
                     promptId = config.promptId,
+                    improvePromptUseCase = improvePromptUseCase,
                     onNavigateBack = { navigation.pop() }
                 )
             )

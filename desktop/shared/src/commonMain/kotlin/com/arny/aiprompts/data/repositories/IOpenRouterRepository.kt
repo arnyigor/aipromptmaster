@@ -27,6 +27,8 @@ interface IOpenRouterRepository {
         model: String,
         messages: List<ChatMessage>,
         apiKey: String? = null,
+        temperature: Double = 0.7,
+        maxTokens: Int = 4096,
     ): Result<ChatCompletionResponse>
 
     /**
@@ -37,5 +39,7 @@ interface IOpenRouterRepository {
         model: String,
         messages: List<ChatMessage>,
         apiKey: String? = null,
+        temperature: Double = 0.7,
+        maxTokens: Int = 4096,
     ): Flow<Result<StreamingChatChunk>>
 }

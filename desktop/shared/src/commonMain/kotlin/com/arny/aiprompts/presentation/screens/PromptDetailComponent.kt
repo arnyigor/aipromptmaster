@@ -24,6 +24,8 @@ import kotlin.time.ExperimentalTime
 
 // Добавим события для управления редактированием
 sealed interface PromptDetailEvent {
+    data object OpenImprovement : PromptDetailEvent
+    data class Improvement(val action: com.arny.aiprompts.presentation.ui.detail.PromptImprovementAction) : PromptDetailEvent
     object BackClicked : PromptDetailEvent
     object FavoriteClicked : PromptDetailEvent
     object Refresh : PromptDetailEvent
@@ -55,6 +57,7 @@ class DefaultPromptDetailComponent(
     private val getAvailableTagsUseCase: GetAvailableTagsUseCase,
     private val promptId: String,
     private val onNavigateBack: () -> Unit,
+    improvePromptUseCase: com.arny.aiprompts.domain.usecase.ImprovePromptUseCase? = null,
 ) : PromptDetailComponent, ComponentContext by componentContext {
 
     private var currentPromptId = promptId
@@ -63,8 +66,21 @@ class DefaultPromptDetailComponent(
     override val state: StateFlow<PromptDetailState> = _state.asStateFlow()
 
     private val scope = coroutineScope()
+    private val improvementController = improvePromptUseCase?.let { useCase ->
+        com.arny.aiprompts.presentation.ui.detail.PromptImprovementController(useCase, scope) { language, text ->
+            _state.update { current ->
+                val base = current.draftPrompt ?: current.prompt
+                val content = base?.content ?: PromptContent()
+                val improved = if (language == PromptLanguage.RU) content.copy(ru = text) else content.copy(en = text)
+                current.copy(isEditing = true, draftPrompt = base?.copy(content = improved, isLocal = true))
+            }
+        }
+    }
 
     init {
+        improvementController?.let { controller ->
+            scope.launch { controller.state.collect { state -> _state.update { it.copy(improvement = state) } } }
+        }
         scope.launch {
             // Проверяем, существует ли промпт с таким ID
             getPromptUseCase.getPromptFlow(currentPromptId)
@@ -108,6 +124,10 @@ class DefaultPromptDetailComponent(
 
     override fun onEvent(event: PromptDetailEvent) {
         when (event) {
+            PromptDetailEvent.OpenImprovement -> {
+                (_state.value.draftPrompt ?: _state.value.prompt)?.let { improvementController?.open(it) }
+            }
+            is PromptDetailEvent.Improvement -> improvementController?.onAction(event.action)
 
             PromptDetailEvent.EditClicked -> {
                 _state.update {

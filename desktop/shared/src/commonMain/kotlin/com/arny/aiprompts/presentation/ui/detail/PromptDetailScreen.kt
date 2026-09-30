@@ -97,6 +97,9 @@ fun ErrorState(
 @Composable
 fun AdaptivePromptDetailLayout(component: PromptDetailComponent) {
     val state by component.state.collectAsState()
+    if (state.improvement.visible) {
+        PromptImprovementDialog(state.improvement) { component.onEvent(PromptDetailEvent.Improvement(it)) }
+    }
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val clipboardManager = LocalClipboardManager.current
         if (maxWidth > 800.dp) {
@@ -137,6 +140,7 @@ private fun DesktopPromptDetailLayout(
                     }
                 },
                 actions = {
+                    TextButton(onClick = { component.onEvent(PromptDetailEvent.OpenImprovement) }, enabled = promptToDisplay != null) { Text("Улучшить") }
                     if (state.isEditing) {
                         TextButton(onClick = { component.onEvent(PromptDetailEvent.CancelClicked) }) {
                             Text("ОТМЕНА")
@@ -581,6 +585,7 @@ private fun MobilePromptDetailLayout(
                     }
                 },
                 actions = {
+                    TextButton(onClick = { component.onEvent(PromptDetailEvent.OpenImprovement) }, enabled = promptToDisplay != null) { Text("Улучшить") }
                     if (state.isEditing) {
                         TextButton(onClick = { component.onEvent(PromptDetailEvent.CancelClicked) }) {
                             Text("ОТМЕНА")

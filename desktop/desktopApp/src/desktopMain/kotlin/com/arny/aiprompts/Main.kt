@@ -75,6 +75,7 @@ fun main() {
                 analyzerPipeline = getKoin().get(),
                 importParsedPromptsUseCase = getKoin().get(),
                 fileDataSource = getKoin().get(),
+                improvePromptUseCase = getKoin().get(),
             )
         }
 
