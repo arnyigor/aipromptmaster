@@ -26,6 +26,10 @@ Do not develop both copies independently. The new copy is the migration target.
 No remote branches or releases have been changed. Retain the source history
 branch and backup bundle until the local integration branch is published.
 
+The local integration branch is `codex/unify-android-desktop`. Its history merge
+retains the filtered Desktop commits as ancestors, while keeping the integrated
+application tree. The original master branch is unchanged.
+
 Baseline: Android compilation/tests/lint/APK passed. Original Desktop main JAR
 built, but test compilation failed on nullable Selenium return values. The new
 copy explicitly checks those values before use. Test execution, desktop launch
