@@ -247,8 +247,8 @@ class LLMInteractor(
         }
 
         // Получаем API ключ и модель ДО создания сообщения
-        val apiKey = settingsRepository.getApiKey().takeIf { !it.isNullOrBlank() }
-            ?: throw DomainError.local(R.string.api_key_not_found)
+        val apiKey = settingsRepository.getApiKey().orEmpty()
+        if (apiKey.isBlank() && settingsRepository.loadProviders().active.requiresKey) throw DomainError.local(R.string.api_key_not_found)
 
         // Получаем полный объект модели для проверки multimodal возможностей
         val selectedModel = modelRepository.getSelectedModel()

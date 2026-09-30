@@ -12,6 +12,7 @@ import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 val viewModelModule = module {
+    viewModel { com.arny.aipromptmaster.ui.providers.ProvidersViewModel(get(), get()) }
     viewModel { (navScreen: String) ->
         PromptListViewModel(
             navScreen = navScreen,
@@ -43,7 +44,8 @@ val viewModelModule = module {
     viewModel { (promptId: String?) ->
         PromptEditViewModel(
             promptId = promptId,        // 1. Приходит из parametersOf
-            interactor = get()          // 3. Обычная зависимость
+            interactor = get(),
+            improvePrompt = get()
         )
     }
 }

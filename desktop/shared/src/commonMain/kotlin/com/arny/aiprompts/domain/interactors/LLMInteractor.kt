@@ -176,7 +176,7 @@ class LLMInteractor(
 
         // Получаем API ключ
         val apiKey = settingsRepository.getOpenRouterApiKey()?.trim()
-        if (apiKey.isNullOrEmpty()) {
+        if (apiKey.isNullOrEmpty() && settingsRepository.loadProviders().active.requiresKey) {
             emit(DataResult.Error(ApiException.MissingApiKey()))
             return@flow
         }
@@ -222,7 +222,7 @@ class LLMInteractor(
 
         // 4. Стримим ответ
         val accumulatedContent = StringBuilder()
-        modelsRepository.getStreamingChatCompletion(modelId, context, apiKey)
+        modelsRepository.getStreamingChatCompletion(modelId, context)
             .collect { result ->
                 result.fold(
                     onSuccess = { chunk ->
@@ -266,7 +266,7 @@ class LLMInteractor(
 
         // Получаем API ключ
         val apiKey = settingsRepository.getOpenRouterApiKey()?.trim()
-        if (apiKey.isNullOrEmpty()) {
+        if (apiKey.isNullOrEmpty() && settingsRepository.loadProviders().active.requiresKey) {
             emit(DataResult.Error(ApiException.MissingApiKey()))
             return@flow
         }
@@ -358,7 +358,7 @@ class LLMInteractor(
 
         // 6. Стримим ответ
         val accumulatedContent = StringBuilder()
-        modelsRepository.getStreamingChatCompletion(modelId, context, apiKey)
+        modelsRepository.getStreamingChatCompletion(modelId, context)
             .collect { result ->
                 result.fold(
                     onSuccess = { chunk ->

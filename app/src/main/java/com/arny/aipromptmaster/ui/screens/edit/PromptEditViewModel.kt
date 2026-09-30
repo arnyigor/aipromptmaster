@@ -24,6 +24,7 @@ import kotlin.coroutines.cancellation.CancellationException
 class PromptEditViewModel(
     promptId: String?,
     private val interactor: IPromptsInteractor,
+    improvePrompt: com.arny.aipromptmaster.domain.ImprovePromptUseCase? = null,
 ) : ViewModel() {
 
     /* ---------------------------------------------------------------------*
@@ -34,6 +35,14 @@ class PromptEditViewModel(
     private val _saveResult = MutableStateFlow<SaveResult>(SaveResult.Idle)
     /** Holds the list of categories loaded from DB */
     private val _categories = MutableStateFlow<List<String>>(emptyList())
+    private val improvementController = improvePrompt?.let { useCase ->
+        PromptImprovementController(useCase, viewModelScope) { language, result ->
+            if (language == PromptLanguage.RU) updateContentRu(result) else updateContentEn(result)
+        }
+    }
+    val improvement: StateFlow<PromptImprovementState> = improvementController?.state ?: MutableStateFlow(PromptImprovementState())
+    fun openImprovement() { if (!_uiState.value.isLoading) improvementController?.open(_uiState.value.contentRu, _uiState.value.contentEn) }
+    fun onImprovementAction(action: PromptImprovementAction) { improvementController?.onAction(action) }
 
     /* ---------------------------------------------------------------------*
      *  Public state flows
@@ -156,6 +165,7 @@ class PromptEditViewModel(
      *  Save logic
      * ---------------------------------------------------------------------*/
     fun onSaveClicked() {
+        if (_saveResult.value is SaveResult.Loading) return
         viewModelScope.launch {
             if (!validate()) return@launch
 
@@ -195,6 +205,8 @@ class PromptEditViewModel(
                 } else {
                     SaveResult.Error("Не удалось сохранить промпт")
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _saveResult.value = SaveResult.Error(e.localizedMessage ?: "Ошибка при сохранении")
             }

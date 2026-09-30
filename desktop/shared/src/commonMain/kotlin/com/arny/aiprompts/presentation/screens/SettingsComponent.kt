@@ -59,6 +59,8 @@ enum class SettingsSection {
  * Интерфейс компонента настроек.
  */
 interface SettingsComponent {
+    val providers: StateFlow<com.arny.promptcontract.ProviderManagerState>
+    fun onProviderAction(action: com.arny.promptcontract.ProviderAction)
     val state: StateFlow<SettingsState>
 
     // Navigation
@@ -91,6 +93,7 @@ class DefaultSettingsComponent(
     componentContext: ComponentContext,
     private val settingsRepository: ISettingsRepository,
     private val gitHubSyncService: GitHubSyncService,
+    probe: com.arny.promptcontract.ProviderProbe,
     private val onBack: () -> Unit
 ) : SettingsComponent, ComponentContext by componentContext {
 
@@ -98,6 +101,9 @@ class DefaultSettingsComponent(
     override val state: StateFlow<SettingsState> = _state.asStateFlow()
 
     private val scope = coroutineScope()
+    private val providerManager = com.arny.promptcontract.ProviderManager(settingsRepository, probe, scope)
+    override val providers = providerManager.state
+    override fun onProviderAction(action: com.arny.promptcontract.ProviderAction) = providerManager.onAction(action)
 
     init {
         loadCurrentSettings()

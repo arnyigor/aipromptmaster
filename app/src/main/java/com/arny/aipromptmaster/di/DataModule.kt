@@ -82,8 +82,7 @@ Room.databaseBuilder(
     singleOf(::SettingsRepositoryImpl) { bind<ISettingsRepository>() }
     singleOf(::ChatHistoryRepositoryImpl) { bind<IChatHistoryRepository>() }
     // ModelRepositoryImpl depends on ISettingsRepository
-    single { ModelRepositoryImpl(get(), get(), get(), get()) } // api, dao, syncMetadata, settingsRepository
-    singleOf(::ModelRepositoryImpl) { bind<ModelRepository>() }
+    single<ModelRepository> { ModelRepositoryImpl(get(), get(), get(), get(), get()) }
     singleOf(::ShareServiceImpl) { bind<ShareService>() }
     // ---------- Диспатчер ----------
     single<CoroutineDispatcher> { Dispatchers.IO }   // можно вынести в отдельный модуль

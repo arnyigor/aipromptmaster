@@ -47,9 +47,17 @@ val dataModule = module {
     // Repositories
     singleOf(::PromptsRepositoryImpl) { bind<IPromptsRepository>() }
     singleOf(::SettingsRepositoryImpl) { bind<ISettingsRepository>() }
+    single(org.koin.core.qualifier.named("ProviderHttp")) {
+        HttpClient {
+            followRedirects = false
+            install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+            install(HttpTimeout) { connectTimeoutMillis = 15_000; requestTimeoutMillis = 60_000; socketTimeoutMillis = 60_000 }
+        }
+    }
+    single<com.arny.promptcontract.ProviderProbe> { ProviderHttpProbe(get(org.koin.core.qualifier.named("ProviderHttp"))) }
     singleOf(::ChatSessionRepositoryImpl) { bind<IChatSessionRepository>() }
     singleOf(::ChatHistoryRepositoryImpl) { bind<IChatHistoryRepository>() }
-    singleOf(::OpenRouterRepositoryImpl) { bind<IOpenRouterRepository>() }
+    single<IOpenRouterRepository> { OpenRouterRepositoryImpl(get(org.koin.core.qualifier.named("ProviderHttp")), get(), get(), get()) }
 
     // NEW: GitHub Sync Service
     singleOf(::GitHubSyncService)

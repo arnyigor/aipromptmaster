@@ -1,0 +1,16 @@
+<resources>
+    <string name="improve_title">Улучшить промпт</string>
+    <string name="improve_close">Закрыть</string>
+    <string name="improve_apply">Применить к черновику</string>
+    <string name="improve_draft_hint">Результат изменит только выбранный язык. Сохраните промпт отдельно после применения.</string>
+    <string name="improve_preview">Предпросмотр результата</string>
+    <string name="improve_generate">Улучшить</string>
+    <string name="improve_stop">Остановить</string>
+    <string name="improve_model">ID модели</string>
+    <string name="improve_provider_hint">Используется выбранный профиль из настроек провайдеров.</string>
+    <string name="improve_source">Исходный промпт</string>
+    <string name="improve_instructions">Что улучшить (необязательно)</string>
+    <string name="improve_temperature">Температура: %1$s</string>
+    <string name="improve_tokens">Лимит токенов (1–16384)</string>
+    <string name="improve_stream">Показывать ответ постепенно</string>
+</resources>

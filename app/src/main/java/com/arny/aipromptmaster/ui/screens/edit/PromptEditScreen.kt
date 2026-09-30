@@ -85,6 +85,8 @@ fun PromptEditScreen(
     val validationState by viewModel.validation.collectAsStateWithLifecycle()
     val saveResult by viewModel.saveResult.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val improvement by viewModel.improvement.collectAsStateWithLifecycle()
+    if (improvement.visible) PromptImprovementScreen(improvement, viewModel::onImprovementAction)
 
     val snackbarHostState = remember { SnackbarHostState() }
     val focusManager = LocalFocusManager.current
@@ -101,6 +103,12 @@ fun PromptEditScreen(
     }
 
     Scaffold(
+        topBar = {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                TextButton(onClick = onBack) { Text("Назад") }
+                TextButton(onClick = viewModel::openImprovement, enabled = !uiState.isLoading && saveResult !is PromptEditViewModel.SaveResult.Loading) { Text(androidx.compose.ui.res.stringResource(com.arny.aipromptmaster.R.string.improve_title)) }
+            }
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (!uiState.isLoading) {

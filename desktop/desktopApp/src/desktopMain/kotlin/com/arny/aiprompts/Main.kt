@@ -76,6 +76,7 @@ fun main() {
                 importParsedPromptsUseCase = getKoin().get(),
                 fileDataSource = getKoin().get(),
                 improvePromptUseCase = getKoin().get(),
+                providerProbe = getKoin().get(),
             )
         }
 

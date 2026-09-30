@@ -116,6 +116,7 @@ class DefaultMainComponent(
     private val importParsedPromptsUseCase: ImportParsedPromptsUseCase,
     private val fileDataSource: FileDataSource,
     private val improvePromptUseCase: com.arny.aiprompts.domain.usecase.ImprovePromptUseCase,
+    private val providerProbe: com.arny.promptcontract.ProviderProbe,
 ) : MainComponent, ComponentContext by componentContext {
 
     private val navigation = StackNavigation<MainConfig>()
@@ -221,6 +222,7 @@ class DefaultMainComponent(
                     componentContext = context,
                     settingsRepository = settingsRepository,
                     gitHubSyncService = gitHubSyncService,
+                    probe = providerProbe,
                     onBack = { navigation.pop() }
                 )
             )

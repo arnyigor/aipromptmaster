@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -77,10 +80,12 @@ fun SettingsContentPreview() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel = koinViewModel()
+    viewModel: SettingsViewModel = koinViewModel(),
+    providers: com.arny.aipromptmaster.ui.providers.ProvidersViewModel = koinViewModel()
 ) {
     // 1. Собираем состояние ViewModel
     val uiState by viewModel.state.collectAsState()
+    val providerState by providers.manager.state.collectAsStateWithLifecycle()
 
     // 2. Snackbar‑хост – хранится в stateful‑компоненте, чтобы не пересоздавался при каждом рендере
     val snackbarHostState = remember { SnackbarHostState() }
@@ -103,6 +108,8 @@ fun SettingsScreen(
                 onSaveClicked = viewModel::saveApiKey,
                 onSendFeedback = viewModel::sendFeedback,
                 onFeedbackChanged = viewModel::onFeedbackChanged,
+                providerState = providerState,
+                onProviderAction = providers.manager::onAction,
             )
         }
     )
@@ -115,7 +122,9 @@ fun SettingsContent(
     onApiKeyChanged: (String) -> Unit,
     onSaveClicked: () -> Unit,
     onFeedbackChanged: (String) -> Unit,
-    onSendFeedback: () -> Unit
+    onSendFeedback: () -> Unit,
+    providerState: com.arny.promptcontract.ProviderManagerState? = null,
+    onProviderAction: (com.arny.promptcontract.ProviderAction) -> Unit = {}
 ) {
     val context = LocalContext.current
     // Сохраняем видимость пароля, чтобы при пересоздании UI состояние не терялось.
@@ -124,11 +133,14 @@ fun SettingsContent(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
 
         /* ---------- 1. Поле ввода API‑ключа ---------- */
+        if (providerState != null) com.arny.aipromptmaster.ui.providers.ProviderManagementCard(providerState, onProviderAction)
+        else {
         OutlinedTextField(
             value = uiState.apiKey,
             onValueChange = onApiKeyChanged,
@@ -194,6 +206,7 @@ fun SettingsContent(
             }
         }
 
+        }
         /* ---------- 5. Пояснительная карточка ---------- */
         Card(
             shape = RoundedCornerShape(8.dp),

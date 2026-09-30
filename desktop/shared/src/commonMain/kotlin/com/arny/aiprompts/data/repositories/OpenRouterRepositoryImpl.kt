@@ -75,6 +75,7 @@ class OpenRouterRepositoryImpl(
 
     /** Состояние списка моделей в виде `MutableStateFlow`. */
     private val _modelsFlow = MutableStateFlow<List<LlmModel>>(emptyList())
+    private var modelsProvider: com.arny.promptcontract.ProviderProfile? = null
 
     /**
      * Определяет Base URL динамически на основе настроек.
@@ -95,14 +96,22 @@ class OpenRouterRepositoryImpl(
     private val modelsUrl: String
         get() = "$baseUrl/models"
 
-    override fun getModelsFlow(): Flow<List<LlmModel>> = _modelsFlow.asStateFlow()
+    override fun getModelsFlow(): Flow<List<LlmModel>> = kotlinx.coroutines.flow.combine(_modelsFlow, settingsRepository.observeProviders()) { models, config ->
+        if (modelsProvider?.id == config.activeId && modelsProvider?.baseUrl == config.active.baseUrl) models else emptyList()
+    }
 
     override suspend fun refreshModels(): Result<Unit> = try {
-        val url = modelsUrl
+        val provider = settingsRepository.loadProviders().active
+        val url = "${provider.baseUrl.trimEnd('/')}/models"
         Logger.d("OpenRouterRepo", "Refreshing models from: $url")
         
-        val response: ModelsResponseDTO = httpClient.get(url).body()
-        _modelsFlow.value = response.models.map { dto -> dto.toDomain() }
+        val response: ModelsResponseDTO = httpClient.get(url) {
+            if (provider.apiKey.isNotBlank()) header("Authorization", "Bearer ${provider.apiKey}")
+        }.body()
+        if (settingsRepository.loadProviders().activeId == provider.id) {
+            modelsProvider = provider
+            _modelsFlow.value = response.models.map { dto -> dto.toDomain() }
+        }
         Logger.d("OpenRouterRepo", "Models refreshed successfully: ${response.models.size} models")
         Result.success(Unit)
     } catch (e: CancellationException) {

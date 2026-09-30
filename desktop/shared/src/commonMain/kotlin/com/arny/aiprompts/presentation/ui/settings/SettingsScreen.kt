@@ -26,6 +26,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val state by component.state.collectAsState()
+    val providers by component.providers.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Показываем сообщение в Snackbar при изменении saveMessage
@@ -71,7 +72,7 @@ fun SettingsScreen(
 
             // Content based on active section
             when (state.activeSection) {
-                SettingsSection.API -> ApiSettingsSection(state, component)
+                SettingsSection.API -> ProviderManagementCard(providers, component::onProviderAction, mobile = false)
                 SettingsSection.GITHUB -> GitHubSettingsSection(state, component)
                 SettingsSection.PERSONALIZATION -> PersonalizationSection(state, component)
             }
@@ -148,134 +149,6 @@ private fun TabButton(
         Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
         Spacer(modifier = Modifier.width(4.dp))
         Text(label, style = MaterialTheme.typography.labelSmall)
-    }
-}
-
-// ==================== API Settings Section ====================
-
-@Composable
-private fun ApiSettingsSection(
-    state: SettingsState,
-    component: SettingsComponent
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = "Настройки API",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            // OpenRouter API Key
-            OutlinedTextField(
-                value = state.openRouterApiKey,
-                onValueChange = component::onOpenRouterApiKeyChanged,
-                label = { Text("OpenRouter API ключ") },
-                placeholder = { Text("sk-or-v1-...") },
-                modifier = Modifier.fillMaxWidth(),
-                visualTransformation = if (state.isApiKeyVisible) {
-                    VisualTransformation.None
-                } else {
-                    PasswordVisualTransformation()
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                trailingIcon = {
-                    IconButton(onClick = component::onToggleApiKeyVisibility) {
-                        Icon(
-                            imageVector = if (state.isApiKeyVisible) {
-                                Icons.Filled.Visibility
-                            } else {
-                                Icons.Filled.VisibilityOff
-                            },
-                            contentDescription = if (state.isApiKeyVisible) "Скрыть" else "Показать"
-                        )
-                    }
-                },
-                singleLine = true
-            )
-
-            Button(
-                onClick = component::onSaveOpenRouterApiKey,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !state.isLoading && state.openRouterApiKey.isNotBlank()
-            ) {
-                if (state.isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                Text("Сохранить API ключ")
-            }
-
-            Divider()
-
-            // Base URL
-            Text(
-                text = "Кастомный сервер (опционально)",
-                style = MaterialTheme.typography.titleSmall
-            )
-            
-            OutlinedTextField(
-                value = state.baseUrl,
-                onValueChange = component::onBaseUrlChanged,
-                label = { Text("Base URL") },
-                placeholder = { Text("http://localhost:1234/v1/") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                supportingText = { 
-                    Text("Для LMStudio, Ollama и др. Оставьте пустым для OpenRouter") 
-                }
-            )
-
-            Button(
-                onClick = component::onSaveBaseUrl,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !state.isLoading
-            ) {
-                Text("Сохранить URL")
-            }
-
-            // Security Info
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = "🔒 Безопасность",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "• API ключи хранятся в зашифрованном виде",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Text(
-                        text = "• На десктопе используются системные хранилища",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Text(
-                        text = "• На Android используется Android Keystore",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
-        }
     }
 }
 
