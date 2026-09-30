@@ -25,16 +25,6 @@ fun PromptImprovementDialog(state: PromptImprovementState, onAction: (PromptImpr
                     }
                     Text("Выбран: ${state.language.name}")
                 }
-                OutlinedTextField(state.model, { onAction(PromptImprovementAction.Model(it)) }, label = { Text("ID модели") }, enabled = !state.running, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(state.instructions, { onAction(PromptImprovementAction.Instructions(it)) }, label = { Text("Что улучшить (необязательно)") }, enabled = !state.running, modifier = Modifier.fillMaxWidth())
-                Text("Температура: ${state.temperature}")
-                Slider(state.temperature, { onAction(PromptImprovementAction.Temperature(it)) }, valueRange = 0f..2f, enabled = !state.running)
-                OutlinedTextField(state.maxTokens, { onAction(PromptImprovementAction.MaxTokens(it)) }, label = { Text("Лимит токенов (1–16384)") }, enabled = !state.running, singleLine = true)
-                Row {
-                    Checkbox(state.stream, { onAction(PromptImprovementAction.Stream(it)) }, enabled = !state.running)
-                    Text("Показывать ответ постепенно")
-                }
-                OutlinedTextField(state.source, { onAction(PromptImprovementAction.Source(it)) }, label = { Text("Исходный промпт") }, enabled = !state.running, minLines = 3, maxLines = 8, modifier = Modifier.fillMaxWidth())
                 if (state.running) LinearProgressIndicator(Modifier.fillMaxWidth())
                 OutlinedTextField(state.result, { onAction(PromptImprovementAction.Result(it)) }, label = { Text("Предпросмотр результата") }, readOnly = state.running, minLines = 3, maxLines = 10, modifier = Modifier.fillMaxWidth())
                 state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -45,6 +35,17 @@ fun PromptImprovementDialog(state: PromptImprovementState, onAction: (PromptImpr
                 } else {
                     Button(onClick = { onAction(PromptImprovementAction.Generate) }, enabled = state.source.isNotBlank() && state.model.isNotBlank()) { Text("Улучшить") }
                 }
+                OutlinedTextField(state.model, { onAction(PromptImprovementAction.Model(it)) }, label = { Text("ID модели") }, enabled = !state.running, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(state.instructions, { onAction(PromptImprovementAction.Instructions(it)) }, label = { Text("Что улучшить (необязательно)") }, enabled = !state.running, modifier = Modifier.fillMaxWidth())
+                Text("Температура: ${state.temperature}")
+                Slider(state.temperature, { onAction(PromptImprovementAction.Temperature(it)) }, valueRange = 0f..2f, enabled = !state.running)
+                OutlinedTextField(state.maxTokens, { onAction(PromptImprovementAction.MaxTokens(it)) }, label = { Text("Лимит токенов (1–16384)") }, enabled = !state.running, singleLine = true)
+                Row {
+                    Checkbox(state.stream, { onAction(PromptImprovementAction.Stream(it)) }, enabled = !state.running)
+                    Text("Показывать ответ постепенно")
+                }
+                OutlinedTextField(state.source, { onAction(PromptImprovementAction.Source(it)) }, label = { Text("Исходный промпт") }, enabled = !state.running, minLines = 3, maxLines = 8, modifier = Modifier.fillMaxWidth())
+
             }
         },
         confirmButton = { Button(onClick = { onAction(PromptImprovementAction.Apply) }, enabled = state.canApply) { Text("Применить к черновику") } },

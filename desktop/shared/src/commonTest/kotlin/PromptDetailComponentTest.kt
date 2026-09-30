@@ -271,6 +271,7 @@ class PromptDetailComponentTest {
 
     private fun createComponent(
         promptId: String,
+        improvement: ImprovePromptUseCase? = null,
         onNavigateBack: () -> Unit = {}
     ): DefaultPromptDetailComponent {
         lifecycle.resume()
@@ -283,7 +284,39 @@ class PromptDetailComponentTest {
             toggleFavoriteUseCase = mockToggleFavoriteUseCase,
             getAvailableTagsUseCase = mockGetAvailableTagsUseCase,
             promptId = promptId,
-            onNavigateBack = onNavigateBack
+            onNavigateBack = onNavigateBack,
+            improvePromptUseCase = improvement
         )
+    }
+
+    @Test
+    fun `improvement changes only selected draft language and saves explicitly`() = runTest {
+        val publicPrompt = testPrompt.copy(isLocal = false)
+        coEvery { mockGetPromptUseCase.getPromptFlow("test-id") } returns flowOf(Result.success(publicPrompt))
+        coEvery { mockGetAvailableTagsUseCase() } returns Result.success(emptyList())
+        val improvement = mockk<ImprovePromptUseCase>()
+        coEvery { improvement.selectedModel() } returns "test-model"
+        io.mockk.every { improvement(any()) } returns flowOf("Improved EN")
+        val component = createComponent("test-id", improvement = improvement)
+        advanceUntilIdle()
+        component.onEvent(PromptDetailEvent.OpenImprovement)
+        advanceUntilIdle()
+        component.onEvent(PromptDetailEvent.Improvement(com.arny.aiprompts.presentation.ui.detail.PromptImprovementAction.Language(com.arny.aiprompts.presentation.ui.detail.PromptLanguage.EN)))
+        component.onEvent(PromptDetailEvent.Improvement(com.arny.aiprompts.presentation.ui.detail.PromptImprovementAction.Generate))
+        advanceUntilIdle()
+        assertEquals(publicPrompt, component.state.value.prompt)
+        assertFalse(component.state.value.isEditing)
+        component.onEvent(PromptDetailEvent.Improvement(com.arny.aiprompts.presentation.ui.detail.PromptImprovementAction.Apply))
+        advanceUntilIdle()
+        assertEquals(publicPrompt, component.state.value.prompt)
+        assertEquals("Test content RU", component.state.value.draftPrompt?.content?.ru)
+        assertEquals("Improved EN", component.state.value.draftPrompt?.content?.en)
+        assertTrue(component.state.value.draftPrompt?.isLocal == true)
+        coVerify(exactly = 0) { mockUpdatePromptUseCase(any(), any(), any(), any(), any(), any(), any(), any()) }
+        coEvery { mockUpdatePromptUseCase(any(), any(), any(), any(), any(), any(), any(), any()) } returns Result.success(Unit)
+        component.onEvent(PromptDetailEvent.SaveClicked)
+        advanceUntilIdle()
+        coVerify(exactly = 1) { mockUpdatePromptUseCase(any(), any(), any(), any(), any(), any(), any(), any()) }
+        assertFalse(component.state.value.isEditing)
     }
 }

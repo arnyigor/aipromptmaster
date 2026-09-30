@@ -614,7 +614,7 @@ private fun MobilePromptDetailLayout(
             )
         },
         floatingActionButton = {
-            if (state.prompt != null && !state.isLoading && state.prompt.isLocal) {
+            if (!state.isLoading && (state.isEditing || state.prompt?.isLocal == true)) {
                 FloatingActionButton(
                     onClick = {
                         val event =

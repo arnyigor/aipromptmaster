@@ -168,6 +168,8 @@ class OpenRouterRepositoryImpl(
             }
 
             Result.success(response)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Logger.e(e, "OpenRouterRepo", "Chat completion failed")
             Result.failure(e)
@@ -351,8 +353,12 @@ class OpenRouterRepositoryImpl(
                     emit(StreamingChatChunk(content = "", isComplete = true))
                     break
                 }
-                try {
-                    val chunk = json.decodeFromString<StreamingChatResponse>(jsonData)
+                val chunk = try {
+                    json.decodeFromString<StreamingChatResponse>(jsonData)
+                } catch (e: Exception) {
+                    Logger.w("OpenRouterRepo", "Failed to parse SSE chunk")
+                    throw e
+                }
                     val choice = chunk.choices?.firstOrNull()
                     val delta = choice?.delta
 
@@ -369,10 +375,6 @@ class OpenRouterRepositoryImpl(
                             isComplete = choice.finishReason != null
                         )
                     )
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    Logger.w("OpenRouterRepo", "Failed to parse SSE chunk: $jsonData")
-                }
             }
         }
     }
