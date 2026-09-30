@@ -1,0 +1,39 @@
+{
+    "id": "73f47591-5e6d-47d4-a3e2-1bd20519eb44",
+    "source_id": "222",
+    "title": "Creative Prompt Two",
+    "version": "1.0.0",
+    "status": "active",
+    "is_local": true,
+    "description": "Second creative description",
+    "content": {
+        "ru": "Second creative content",
+        "en": ""
+    },
+    "category": "creative",
+    "tags": [
+        "creative",
+        "writing"
+    ],
+    "variables": [],
+    "metadata": {
+        "author": {
+            "name": "4pda User"
+        },
+        "source": "https://4pda.to",
+        "notes": "Imported from 4pda scraper"
+    },
+    "prompt_variants": [
+        {
+            "variantId": {
+                "id": "b9a7dd79-e3d7-4770-945b-8026c0c7f922"
+            },
+            "content": {
+                "ru": "Second creative content"
+            },
+            "priority": 1
+        }
+    ],
+    "created_at": "2026-09-30T17:05:23.697062900Z",
+    "updated_at": "2026-09-30T17:05:23.697062900Z"
+}
