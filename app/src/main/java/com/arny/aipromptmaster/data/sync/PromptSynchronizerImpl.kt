@@ -15,6 +15,7 @@ import com.arny.aipromptmaster.domain.repositories.IPromptSynchronizer
 import com.arny.aipromptmaster.domain.repositories.IPromptsRepository
 import com.arny.aipromptmaster.domain.repositories.SyncResult
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -99,17 +100,18 @@ class PromptSynchronizerImpl(
                     val remotePrompts = downloadAndProcessArchive()
                         .also { _status.value = SyncStatus.InProgress }
 
-                    val ids = handleDeletedPrompts(remotePrompts)
-                        .also { _status.value = SyncStatus.InProgress }
-
                     // 4️⃣ Сохраняем в одной транзакции
-                    promptsRepository.syncPrompts(remotePrompts, ids)
+                    // Legacy ZIP has no completeness manifest: missing IDs do not imply deletion.
+                    promptsRepository.syncPrompts(remotePrompts, emptyList())
 
                     setLastSyncTime(now)
                     promptsRepository.invalidateSortDataCache()
 
                     _status.value = SyncStatus.Success(updatedCount = remotePrompts.size)
                     SyncResult.Success(remotePrompts)
+                } catch (e: CancellationException) {
+                    _status.value = SyncStatus.None
+                    throw e
                 } catch (e: IOException) {
                     Timber.tag(TAG).e(e, "Network error during sync")
                     val err =
@@ -151,9 +153,9 @@ class PromptSynchronizerImpl(
             val tempDir = File(context.cacheDir, "temp_prompts_${System.currentTimeMillis()}")
 
             try {
-                // 1️⃣ Распаковываем ZIP
-                ZipUtils.extractZip(body.byteStream(), tempDir)
-                    .getOrThrow()
+                body.use {
+                    ZipUtils.extractZip(it.byteStream(), tempDir).getOrThrow()
+                }
 
                 Timber.d("Archive extracted to: ${tempDir.absolutePath}")
 
@@ -165,40 +167,21 @@ class PromptSynchronizerImpl(
                 // 3️⃣ Десериализуем каждый файл
                 val prompts = mutableListOf<Prompt>()
                 for ((category, content) in jsonFiles) {
-                    try {
-                        val promptJson = json.decodeFromString<PromptJson>(content)
-                        if (promptJson.category.isNullOrBlank()) {
-                            promptJson.category = category
-                        }
-                        prompts.add(promptJson.toDomain())
-                    } catch (e: Exception) {
-                        Timber.w("Failed to parse JSON from $category: ${e.message}")
+                    val promptJson = json.decodeFromString<PromptJson>(content)
+                    require(!promptJson.id.isNullOrBlank() && !promptJson.title.isNullOrBlank()) {
+                        "Catalog record has no identity or title"
                     }
+                    if (promptJson.category.isNullOrBlank()) promptJson.category = category
+                    prompts.add(promptJson.toDomain().copy(isLocal = false, isFavorite = false))
                 }
-
+                require(prompts.isNotEmpty()) { "Empty catalog snapshot" }
+                require(prompts.map { it.id }.distinct().size == prompts.size) { "Duplicate catalog IDs" }
                 prompts
             } finally {
                 tempDir.deleteRecursively()
                 Timber.d("Temporary directory cleaned up")
             }
         }
-
-    private suspend fun handleDeletedPrompts(prompts: List<Prompt>): List<String> {
-        val localPrompts = promptsRepository.observeAllPrompts().first()
-
-        val remoteIds = prompts.map { it.id }.toSet()
-
-        // Удаляем локальные подсказки, которых больше нет на удалённом сервере
-        val idsToDelete = localPrompts
-            .filter { !it.isLocal && it.id !in remoteIds }
-            .map { it.id }
-
-        if (idsToDelete.isNotEmpty()) {
-            Timber.i("Deleting ${idsToDelete.size} prompts that are no longer on remote.")
-            promptsRepository.deletePromptsByIds(idsToDelete)
-        }
-        return idsToDelete
-    }
 
     override suspend fun getLastSyncTime(): Long = withContext(Dispatchers.IO) {
         prefs.get<Long>(LAST_SYNC_KEY) ?: 0L

@@ -21,6 +21,9 @@ object ZipUtils {
 
                 while (entry != null) {
                     val file = File(extractDir, entry.name)
+                    require(file.canonicalPath.startsWith(extractDir.canonicalPath + File.separator)) {
+                        "ZIP entry escapes extraction directory"
+                    }
 
                     if (entry.isDirectory) {
                         file.mkdirs()

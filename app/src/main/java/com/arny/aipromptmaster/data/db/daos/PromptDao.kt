@@ -108,7 +108,17 @@ interface PromptDao {
 
     @Transaction
     suspend fun syncPrompts(prompts: List<PromptEntity>, ids: List<String>) {
-        deletePromptsByIds(ids)
-        insertPrompts(prompts)
+        val existing = getAllPrompts().associateBy { it.id }
+        val merged = prompts.map { incoming ->
+            val local = existing[incoming.id]
+            when {
+                local?.isLocal == true -> local
+                local != null -> incoming.copy(isFavorite = local.isFavorite)
+                else -> incoming
+            }
+        }
+        val deletable = ids.filter { existing[it]?.isLocal == false }
+        if (deletable.isNotEmpty()) deletePromptsByIds(deletable)
+        insertPrompts(merged)
     }
 }

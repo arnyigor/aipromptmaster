@@ -79,6 +79,11 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Exported schemas 4 and 5 are identical, including identityHash.
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) = Unit
+        }
+
         val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // Добавляем колонку model_id в таблицу messages
