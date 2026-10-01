@@ -67,11 +67,17 @@ fun MainContentDesktopImpl(component: MainComponent) {
         destinations = destinations,
         selectedId = state.currentScreen.name,
         onSelect = { id -> scope.launch { pager.animateScrollToPage(destinations.indexOfFirst { it.id == id }) } },
-        topBar = { TopAppBar(title = { Text(destinations.firstOrNull { it.id == state.currentScreen.name }?.title.orEmpty()) }) }
+        topBar = {
+            if (state.currentScreen != MainScreen.CHAT) {
+                TopAppBar(title = { Text(destinations.firstOrNull { it.id == state.currentScreen.name }?.title.orEmpty()) })
+            }
+        }
     ) { layout ->
         Row(Modifier.fillMaxSize()) {
             Column(Modifier.weight(1f)) {
                 com.arny.sharedui.TabPager(pager, swipeEnabled = childStack.backStack.isEmpty()) { page ->
+                // Components retain state independently; only the active page may own modal windows.
+                if (page == pager.currentPage) {
                 Children(stack = component.stackFor(MainScreen.valueOf(destinations[page].id)), animation = stackAnimation(fade())) { child ->
                     when (val instance = child.instance) {
                         is MainComponent.Child.Prompts -> PromptsScreen(instance.component)
@@ -81,6 +87,7 @@ fun MainContentDesktopImpl(component: MainComponent) {
                         is MainComponent.Child.Import -> ImporterScreen(instance.component)
                         is MainComponent.Child.Settings -> SettingsScreen(instance.component)
                     }
+                }
                 }
                 }
             }

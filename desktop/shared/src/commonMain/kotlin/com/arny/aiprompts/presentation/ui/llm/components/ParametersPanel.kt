@@ -39,7 +39,8 @@ fun ParametersPanel(
     selectedModel: LlmModel?,
     onSettingsChanged: (ChatSettings) -> Unit,
     onSystemPromptChanged: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onDismiss: (() -> Unit)? = null
 ) {
     val settings = session?.settings ?: ChatSettings()
     var systemPrompt by remember(session?.systemPrompt) { 
@@ -69,6 +70,12 @@ fun ParametersPanel(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
+            if (onDismiss != null) {
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Close, contentDescription = "Закрыть параметры")
+                }
+            }
         }
 
         Divider(modifier = Modifier.padding(vertical = 16.dp))

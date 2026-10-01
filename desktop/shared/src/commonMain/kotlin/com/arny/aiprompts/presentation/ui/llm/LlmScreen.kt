@@ -243,7 +243,7 @@ private fun MobileLayout(
 
         // Parameters bottom sheet
         if (showParams) {
-            val sheetState = rememberModalBottomSheetState()
+            val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
             ModalBottomSheet(
                 sheetState = sheetState,
                 onDismissRequest = { showParams = false }
@@ -253,9 +253,10 @@ private fun MobileLayout(
                     selectedModel = uiState.selectedModel,
                     onSettingsChanged = component::onChatSettingsChanged,
                     onSystemPromptChanged = component::onSystemPromptChanged,
+                    onDismiss = { showParams = false },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 500.dp)
+                        .fillMaxHeight(0.9f)
                 )
             }
         }
@@ -464,7 +465,7 @@ private fun ChatHeader(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "AI Chat",
+            text = "Чаты",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold
         )
@@ -504,7 +505,10 @@ private fun MobileHeader(
         }
 
         Text(
-            text = "AI Chat",
+            text = selectedModel ?: "Выберите модель",
+            modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold
         )
@@ -523,7 +527,7 @@ private fun MobileHeader(
 // ==================== Model Selection Dialog ====================
 
 @Composable
-private fun ModelSelectionDialog(
+internal fun ModelSelectionDialog(
     uiState: LlmUiState,
     onModelSelected: (String) -> Unit,
     onSearchQueryChanged: (String) -> Unit,
@@ -571,7 +575,7 @@ private fun ModelSelectionDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Filters
-                Row(
+                FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     ModelCategory.entries.forEach { category ->
@@ -586,17 +590,23 @@ private fun ModelSelectionDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Sort
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text("Сортировка:", style = MaterialTheme.typography.labelMedium)
-                    ModelSortOrder.entries.forEach { order ->
-                        FilterChip(
-                            selected = uiState.selectedSortOrder == order,
-                            onClick = { onSortOrderSelected(order) },
-                            label = { Text(order.displayName) }
-                        )
+                var sortMenuExpanded by remember { mutableStateOf(false) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Сортировка", style = MaterialTheme.typography.labelMedium)
+                    Spacer(Modifier.weight(1f))
+                    Box {
+                        TextButton(onClick = { sortMenuExpanded = true }) {
+                            Text(uiState.selectedSortOrder.displayName, maxLines = 1)
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                        }
+                        DropdownMenu(expanded = sortMenuExpanded, onDismissRequest = { sortMenuExpanded = false }) {
+                            ModelSortOrder.entries.forEach { order ->
+                                DropdownMenuItem(text = { Text(order.displayName) }, onClick = {
+                                    onSortOrderSelected(order)
+                                    sortMenuExpanded = false
+                                })
+                            }
+                        }
                     }
                 }
 
