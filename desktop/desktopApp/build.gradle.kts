@@ -1,0 +1,60 @@
+// desktopApp/build.gradle.kts
+import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+plugins {
+    alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.compose)
+    alias(libs.plugins.compose.compiler)
+}
+
+kotlin {
+    jvm("desktop") {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
+        compilations.all {
+            compilerOptions.configure {
+                freeCompilerArgs.add("-Xexpect-actual-classes")
+            }
+        }
+    }
+
+    sourceSets {
+        val desktopMain by getting {
+            dependencies {
+                implementation(project(":shared"))
+                implementation(compose.desktop.currentOs)
+                implementation(libs.ktor.client.cio)
+                implementation(libs.logback.classic)
+                implementation(libs.kotlinx.coroutines.swing)
+            }
+        }
+    }
+}
+
+compose.desktop {
+    application {
+        mainClass = "com.arny.aiprompts.MainKt"
+        nativeDistributions {
+            targetFormats(
+                TargetFormat.Exe,    // Windows EXE-установщик
+                TargetFormat.Msi,
+            )
+            packageName = "AIPrompts"
+            packageVersion = "1.0.0"
+            windows {
+                perUserInstall = true
+                dirChooser = true
+                upgradeUuid = "b6b9c07c-94d4-4a0f-b968-dfe5d41a4c6b"
+            }
+            modules(
+                "jdk.accessibility",
+                "java.net.http",     // Исправляет ошибку WebSocket$Listener
+                "java.naming",       // Требуется для DNS-резолвинга в Selenium
+                "jdk.crypto.ec",     // Требуется для HTTPS/SSL (иначе может упасть скачивание)
+                "java.management"
+            )
+        }
+    }
+}

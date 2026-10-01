@@ -758,22 +758,7 @@ fun MessageBubble(
                     modifier = Modifier.padding(start = 8.dp, bottom = 2.dp)
                 )
             }
-            Surface(
-                shape = if (isUser)
-                    RoundedCornerShape(20.dp, 20.dp, 4.dp, 20.dp)
-                else
-                    RoundedCornerShape(20.dp, 20.dp, 20.dp, 4.dp),
-                color = if (isUser)
-                    MaterialTheme.colorScheme.primary
-                else
-                    MaterialTheme.colorScheme.surfaceContainer,
-                contentColor = if (isUser)
-                    MaterialTheme.colorScheme.onPrimary
-                else
-                    MaterialTheme.colorScheme.onSurface,
-                tonalElevation = if (isUser) 4.dp else 1.dp,
-                shadowElevation = 1.dp
-            ) {
+            com.arny.sharedui.ChatBubbleSurface(isUser = isUser) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     if (showTypingIndicator) {
                         TypingIndicator()
@@ -1050,136 +1035,20 @@ fun ChatInputArea(
     tokenCount: Int,
     clearInput: () -> Unit = {}
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    val minLines = 1
-    val maxLines = 20
-    val shape = RoundedCornerShape(if (expanded) 12.dp else 24.dp)
-
-    Surface(
-        modifier = Modifier.padding(8.dp),
-        tonalElevation = 3.dp,
-        shadowElevation = 8.dp,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-    ) {
-        Column(modifier = Modifier.padding(8.dp)) {
-            AnimatedVisibility(visible = attachedFiles.isNotEmpty()) {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(bottom = 12.dp)
-                ) {
-                    items(
-                        items = attachedFiles,
-                        key = { it.id }
-                    ) { file ->
-                        InputChip(
-                            selected = true,
-                            onClick = {},
-                            label = { Text(file.fileName.take(20)) },
-                            trailingIcon = {
-                                Icon(
-                                    Icons.Default.Close,
-                                    contentDescription = "Remove",
-                                    modifier = Modifier
-                                        .size(16.dp)
-                                        .clickable { onRemoveFile(file.id) }
-                                )
-                            },
-                            colors = InputChipDefaults.inputChipColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer
-                            )
-                        )
-                    }
+com.arny.sharedui.ChatComposer(inputValue, onValueChange, onSendClick, onCancelClick,
+        generating = isLoading || isStreaming, canSend = inputValue.isNotBlank() || attachedFiles.isNotEmpty(),
+        onAttach = onAttachClick,
+        onClear = clearInput,
+        attachments = {
+            if (attachedFiles.isNotEmpty()) LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(attachedFiles, key = { it.id }) { file ->
+                    InputChip(selected = true, onClick = {}, label = { Text(file.fileName.take(20)) },
+                        trailingIcon = { IconButton(onClick = { onRemoveFile(file.id) }) { Icon(Icons.Default.Close, "Удалить вложение") } })
                 }
             }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = inputValue,
-                    onValueChange = onValueChange,
-                    modifier = Modifier
-                        .weight(1f)
-                        .align(Alignment.CenterVertically)
-                        .animateContentSize(),
-                    minLines = if (expanded) maxLines else minLines,
-                    maxLines = if (expanded) maxLines else minLines,
-                    placeholder = { Text("Message AI…") },
-                    shape = shape,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
-                            alpha = 0.5f
-                        )
-                    ),
-                    trailingIcon = {
-                        if (inputValue.isNotEmpty()) {
-                            IconButton(onClick = { clearInput() }) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Очистить поле",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    },
-                    supportingText = {
-                        if (tokenCount > 0) {
-                            Text(
-                                text = "$tokenCount tokens (~${tokenCount * 3.5} chars)",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (tokenCount > 10000) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                FloatingActionButton(
-                    onClick = { if (isLoading || isStreaming) onCancelClick() else onSendClick() },
-                    containerColor = if (isLoading || isStreaming) {
-                        MaterialTheme.colorScheme.errorContainer
-                    } else {
-                        MaterialTheme.colorScheme.primary
-                    },
-                    contentColor = if (isLoading || isStreaming) {
-                        MaterialTheme.colorScheme.onErrorContainer
-                    } else {
-                        MaterialTheme.colorScheme.onPrimary
-                    },
-                    elevation = FloatingActionButtonDefaults.elevation(0.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isLoading || isStreaming) Icons.Default.Stop else Icons.AutoMirrored.Filled.Send,
-                        contentDescription = if (isLoading || isStreaming) "Stop" else "Send"
-                    )
-                }
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Start,
-            ) {
-                IconButton(onClick = onAttachClick) {
-                    Icon(Icons.Default.AttachFile, contentDescription = "Attach")
-                }
-
-                IconButton(
-                    onClick = { expanded = !expanded },
-                    modifier = Modifier.size(40.dp),
-                ) {
-                    Icon(
-                        imageVector = if (expanded) Icons.Filled.CloseFullscreen else Icons.Default.Expand,
-                        contentDescription = if (expanded) "Collapse" else "Expand",
-                    )
-                }
-            }
-        }
-    }
+            if (tokenCount > 0) Text("Примерно $tokenCount токенов", style = MaterialTheme.typography.labelSmall)
+        },
+    )
 }
 
 // ------------- ⚙️ ERROR BANNER --------------------------------------------

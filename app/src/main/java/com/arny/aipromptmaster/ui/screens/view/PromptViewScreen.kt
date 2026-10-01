@@ -328,198 +328,35 @@ private fun PromptViewContent(
     onDelete: () -> Unit,
     navigateToEdit: (String?) -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Header Section
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
-        ) {
-            Text(
-                text = state.prompt.title,
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.weight(1f)
-            )
-            IconButton(onClick = onToggleFavorite) {
-                Icon(
-                    imageVector = if (state.prompt.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                    contentDescription = "Favorite",
-                    tint = if (state.prompt.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
+val prompt = state.prompt
+    com.arny.sharedui.PromptViewer(
+        state = com.arny.sharedui.PromptFormUi(prompt.title, prompt.description.orEmpty(), prompt.category, prompt.tags,
+            state.currentContent.ru, state.currentContent.en),
+        onCopy = { onCopyText(it, "Промпт скопирован") },
+        header = {
+            Row(verticalAlignment = Alignment.Top) {
+                Text(prompt.title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+                IconButton(onClick = onToggleFavorite) { Icon(if (prompt.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "Избранное") }
             }
-        }
-
-        // Tags Section
-        if (state.prompt.tags.isNotEmpty()) {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                state.prompt.tags.forEach { tag ->
-                    AssistChip(
-                        onClick = {},
-                        label = { Text(tag) },
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        ),
-                        border = null
-                    )
+            TextButton(onClick = { onCopyId(prompt.id) }) { Text("ID: ${prompt.id}") }
+        },
+        variants = {
+            if (state.availableVariants.isNotEmpty()) androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                item { FilterChip(selected = state.selectedVariantIndex == -1, onClick = { onVariantSelected(-1) }, label = { Text("Основной") }) }
+                items(state.availableVariants.size) { index ->
+                    FilterChip(selected = state.selectedVariantIndex == index, onClick = { onVariantSelected(index) }, label = { Text("Вариант ${index + 1}") })
                 }
             }
-        }
-
-        // Category Section
-        if (state.prompt.category.isNotEmpty()) {
-            Text(
-                text = state.prompt.category,
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
-        }
-
-        // ID Card
-        OutlinedCard(
-            onClick = { onCopyId(state.prompt.id) },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier
-                    .padding(12.dp)
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "ID",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = state.prompt.id,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontFamily = FontFamily.Monospace
-                    )
-                }
-                Icon(
-                    Icons.Default.ContentCopy,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+        },
+        metadata = {
+            if (prompt.compatibleModels.any(String::isNotBlank)) Text("Совместимые модели: ${prompt.compatibleModels.joinToString()}")
+            if (prompt.metadata.notes.isNotBlank()) Text(prompt.metadata.notes)
+            if (state.isLocal) {
+                OutlinedButton(onClick = onDelete, modifier = Modifier.fillMaxWidth()) { Text("Удалить промпт") }
+                OutlinedButton(onClick = { navigateToEdit(prompt.id) }, modifier = Modifier.fillMaxWidth()) { Text("Редактировать") }
             }
-        }
-
-        // Variants Selector
-        if (state.availableVariants.isNotEmpty()) {
-            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text(
-                        text = "Варианты", // stringResource(R.string.prompt_variants)
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    SecondaryScrollableTabRow(
-                        selectedTabIndex = state.selectedVariantIndex + 1,
-                        modifier = Modifier.fillMaxWidth(),
-                        containerColor = Color.Transparent,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                        edgePadding = 0.dp,
-                        indicator = {},
-                        divider = {},
-                    ) {
-                        // Main variant chip
-                        VariantTab(
-                            selected = state.selectedVariantIndex == -1,
-                            text = "Основной", // stringResource(R.string.main_variant)
-                            onClick = { onVariantSelected(-1) }
-                        )
-
-                        state.availableVariants.forEachIndexed { index, _ ->
-                            VariantTab(
-                                selected = state.selectedVariantIndex == index,
-                                text = "Вариант ${index + 1}", // Можно брать имя из variant.type
-                                onClick = { onVariantSelected(index) }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // Main Content Card
-        ElevatedCard(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
-        ) {
-            Column {
-                // RU Content
-                if (state.currentContent.ru.isNotEmpty()) {
-                    ExpandableSection(
-                        title = "🇷🇺 Русский",
-                        content = state.currentContent.ru,
-                        onCopy = { onCopyText(state.currentContent.ru, "Russian copied") }
-                    )
-                }
-
-                if (state.currentContent.ru.isNotEmpty() && state.currentContent.en.isNotEmpty()) {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-                }
-
-                // EN Content
-                if (state.currentContent.en.isNotEmpty()) {
-                    ExpandableSection(
-                        title = "🇬🇧 English",
-                        content = state.currentContent.en,
-                        onCopy = { onCopyText(state.currentContent.en, "English copied") }
-                    )
-                }
-            }
-        }
-
-        // Models Section
-        if (state.prompt.compatibleModels.any { it.isNotBlank() }) {
-            Text(
-                text = "Compatible Models",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                state.prompt.compatibleModels.forEach { model ->
-                    SuggestionChip(onClick = {}, label = { Text(model) })
-                }
-            }
-        }
-
-        // Delete Button (if local)
-        if (state.isLocal) {
-            OutlinedButton(
-                onClick = onDelete,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.Delete, null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Удалить промпт")
-            }
-            OutlinedButton(
-                onClick = { navigateToEdit(state.prompt.id) },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Редактировать")
-            }
-        }
-
-        // Отступ под FAB
-        Spacer(Modifier.height(72.dp))
-    }
+        },
+    )
 }
 
 @Composable

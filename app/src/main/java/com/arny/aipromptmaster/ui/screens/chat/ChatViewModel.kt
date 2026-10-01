@@ -71,7 +71,8 @@ class ChatViewModel(
     private val interactor: ILLMInteractor,
     private val fileRepository: IFileRepository,
     private val modelRepository: ModelRepository,
-    private val conversationId: String?
+    private val conversationId: String?,
+    private val savedState: androidx.lifecycle.SavedStateHandle = androidx.lifecycle.SavedStateHandle()
 ) : ViewModel() {
     private val sendMutex = Mutex()
 
@@ -84,7 +85,7 @@ class ChatViewModel(
     private val _estimatedTokens = MutableStateFlow(0)
     val estimatedTokens: StateFlow<Int> = _estimatedTokens
 
-    private val _currentInputText = MutableStateFlow("")
+    private val _currentInputText = MutableStateFlow(savedState.get<String>("chat-input").orEmpty())
     val currentInputText: StateFlow<String> = _currentInputText
 
     private val _attachedFiles = MutableStateFlow<List<FileAttachment>>(emptyList())
@@ -224,6 +225,7 @@ class ChatViewModel(
     }
 
     init {
+        viewModelScope.launch { _currentInputText.collect { savedState["chat-input"] = it } }
         viewModelScope.launch {
             if (_currentConversationId.value == null) {
                 _currentConversationId.value = interactor.createNewConversation("Новый чат")

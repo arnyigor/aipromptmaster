@@ -220,35 +220,24 @@ fun PromptListScreenContent(
     onIntent: (PromptListIntent) -> Unit,
     onNavigateToEdit: (String?) -> Unit,
 ) {
-    Scaffold(
-        topBar = {
-            Column {
-                SearchAndFilterHeader(
-                    state = uiState,
-                    onIntent = onIntent
-                )
-                SyncStatusIndicator(state = uiState)
-            }
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                text = { Text("Создать") },
-                icon = { Icon(Icons.Default.Add, null) },
-                onClick = { onNavigateToEdit(null) }
-            )
-        }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .padding(top = innerPadding.calculateTopPadding())
-                .fillMaxSize()
-        ) {
-            PromptListList(
-                prompts = uiState.prompts,
-                onIntent = onIntent,
-            )
-        }
-    }
+    val cards = remember(uiState.prompts) { uiState.prompts.map { prompt ->
+        com.arny.sharedui.PromptCardUi(prompt.id, prompt.title, prompt.description.orEmpty(), prompt.tags, prompt.isFavorite, canDelete = prompt.isLocal)
+    } }
+    com.arny.sharedui.PromptBrowser(
+        state = com.arny.sharedui.PromptBrowserUi(
+            prompts = cards, query = uiState.query, categories = uiState.availableCategories,
+            category = uiState.selectedCategory, tags = uiState.availableTags, selectedTags = uiState.selectedTags,
+        ),
+        onQuery = { onIntent(PromptListIntent.SearchQueryChanged(it)) },
+        onCategory = { onIntent(PromptListIntent.SelectCategory(it)) },
+        onTag = { onIntent(PromptListIntent.ToggleTag(it)) },
+        onOpen = { onIntent(PromptListIntent.OnPromptClick(it)) },
+        onFavorite = { id -> onIntent(PromptListIntent.ToggleFavorite(id, uiState.prompts.first { it.id == id }.isFavorite)) },
+        onCreate = { onNavigateToEdit(null) },
+        onCopy = { onIntent(PromptListIntent.CopyText(it)) },
+        onDelete = { onIntent(PromptListIntent.RemovePending(it)) },
+        status = { SyncStatusIndicator(state = uiState) },
+    )
 }
 
 

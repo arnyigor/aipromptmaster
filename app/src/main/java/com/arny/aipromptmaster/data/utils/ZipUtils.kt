@@ -21,6 +21,9 @@ object ZipUtils {
 
                 while (entry != null) {
                     val file = File(extractDir, entry.name)
+                    require(file.canonicalPath.startsWith(extractDir.canonicalPath + File.separator)) {
+                        "ZIP entry escapes extraction directory"
+                    }
 
                     if (entry.isDirectory) {
                         file.mkdirs()
@@ -47,7 +50,7 @@ object ZipUtils {
         val jsonFiles = mutableListOf<Pair<String, String>>()
 
         directory.walkTopDown()
-            .filter { it.isFile && it.extension == "json" }
+            .filter { it.isFile && it.extension == "json" && it.name != com.arny.promptcontract.CatalogManifest.FILE_NAME }
             .forEach { file ->
                 val category = file.parentFile?.name ?: "uncategorized"
                 val content = file.readText()

@@ -148,17 +148,6 @@ fun ModelsScreenContent(
     snackbarHostState: SnackbarHostState,
     onEvent: (ModelsEvent) -> Unit,
 ) {
-    val focusManager = LocalFocusManager.current
-    var expanded by rememberSaveable { mutableStateOf(false) }
-    var showSortMenu by remember { mutableStateOf(false) }
-    var localQuery by remember { mutableStateOf("") }
-
-    LaunchedEffect(state.filter.query) {
-        if (localQuery != state.filter.query) {
-            localQuery = state.filter.query
-        }
-    }
-
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -190,144 +179,27 @@ fun ModelsScreenContent(
                             }
                         }
                         
-                        // Сортировка
-                        Box {
-                            IconButton(onClick = { showSortMenu = true }) {
-                                Icon(
-                                    Icons.Default.SwapVert,
-                                    contentDescription = "Сортировка"
-                                )
-                            }
-                            DropdownMenu(
-                                expanded = showSortMenu,
-                                onDismissRequest = { showSortMenu = false }
-                            ) {
-                                SortType.entries.forEach { sortType ->
-                                    DropdownMenuItem(
-                                        text = { Text(getSortTypeName(sortType)) },
-                                        onClick = {
-                                            onEvent(ModelsEvent.ChangeSort(sortType))
-                                            showSortMenu = false
-                                        },
-                                        leadingIcon = {
-                                            if (state.filter.sortType == sortType) {
-                                                Icon(
-                                                    Icons.Default.CheckCircle,
-                                                    contentDescription = null,
-                                                    tint = MaterialTheme.colorScheme.primary
-                                                )
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-                        }
                     }
                 )
                 
-                // --- Поиск ---
-                SearchBar(
-                    windowInsets = WindowInsets(0, 0, 0, 0),
-                    expanded = expanded,
-                    onExpandedChange = { expanded = it },
+                com.arny.sharedui.ModelPickerControls(
+                    query = state.filter.query,
+                    filters = listOf(
+                        com.arny.sharedui.ModelFilterOption("favorites", "Избранные", state.filter.isFavoritesOnly),
+                        com.arny.sharedui.ModelFilterOption("free", "Бесплатные", state.filter.isFreeOnly),
+                        com.arny.sharedui.ModelFilterOption("available", "Доступные", state.filter.isAvailableOnly),
+                    ),
+                    sortOptions = SortType.entries.map { com.arny.sharedui.ModelSortOption(it.name, getSortTypeName(it)) },
+                    selectedSortId = state.filter.sortType.name,
+                    onQueryChange = { onEvent(ModelsEvent.Search(it)) },
+                    onFilterClick = { id -> onEvent(when (id) {
+                        "favorites" -> ModelsEvent.ToggleFavoritesOnly
+                        "free" -> ModelsEvent.ToggleFree
+                        else -> ModelsEvent.ToggleAvailableOnly
+                    }) },
+                    onSortClick = { onEvent(ModelsEvent.ChangeSort(SortType.valueOf(it))) },
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    inputField = {
-                        TextField(
-                            value = localQuery,
-                            onValueChange = { newValue ->
-                                localQuery = newValue
-                                onEvent(ModelsEvent.Search(newValue))
-                            },
-                            placeholder = { Text("Найти модель...") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
-                                disabledContainerColor = Color.Transparent,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent
-                            ),
-                            leadingIcon = {
-                                Icon(Icons.Default.Search, contentDescription = null)
-                            },
-                            trailingIcon = {
-                                if (localQuery.isNotEmpty()) {
-                                    IconButton(onClick = {
-                                        localQuery = ""
-                                        onEvent(ModelsEvent.Search(""))
-                                        focusManager.clearFocus()
-                                        expanded = false
-                                    }) {
-                                        Icon(Icons.Default.Close, contentDescription = "Очистить")
-                                    }
-                                }
-                            },
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            keyboardActions = KeyboardActions(
-                                onSearch = {
-                                    focusManager.clearFocus()
-                                    expanded = false
-                                }
-                            )
-                        )
-                    },
-                    content = {}
                 )
-
-                // --- Фильтры ---
-                Row(
-                    modifier = Modifier
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 4.dp)
-                ) {
-                    FilterChip(
-                        selected = state.filter.isFavoritesOnly,
-                        onClick = { onEvent(ModelsEvent.ToggleFavoritesOnly) },
-                        label = { Text("Избранные") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = if (state.filter.isFavoritesOnly)
-                                    Icons.Filled.Star
-                                else
-                                    Icons.Outlined.StarBorder,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    FilterChip(
-                        selected = state.filter.isFreeOnly,
-                        onClick = { onEvent(ModelsEvent.ToggleFree) },
-                        label = { Text("Бесплатные") },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    FilterChip(
-                        selected = state.filter.isAvailableOnly,
-                        onClick = { onEvent(ModelsEvent.ToggleAvailableOnly) },
-                        label = { Text("Доступные") },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    )
-                }
-                
                 // --- Прогресс проверки ---
                 AnimatedVisibility(
                     visible = state.isCheckingAvailability,
