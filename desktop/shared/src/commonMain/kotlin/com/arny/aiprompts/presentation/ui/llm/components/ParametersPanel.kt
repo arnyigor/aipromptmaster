@@ -13,6 +13,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -227,7 +229,7 @@ private fun SystemPromptSection(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "System Prompt",
+                    text = "Системный промпт",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -241,7 +243,7 @@ private fun SystemPromptSection(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            placeholder = { Text("Введите system prompt...") },
+            placeholder = { Text("Задайте роль и правила ответа…") },
             minLines = if (isExpanded) 8 else 3,
             maxLines = if (isExpanded) 12 else 3,
             modifier = Modifier.fillMaxWidth(),
@@ -277,19 +279,18 @@ private fun GenerationParameters(
 
         // Temperature
         ParameterSlider(
-            label = "Temperature",
+            label = "Температура",
             value = settings.temperature,
             onValueChange = { 
                 onSettingsChanged(settings.copy(temperature = it))
             },
             valueRange = 0.0f..2.0f,
-            steps = 39, // 0.05 шаг
             description = "Креативность ответа"
         )
 
         // Max Tokens
         ParameterIntField(
-            label = "Max Tokens",
+            label = "Лимит токенов",
             value = settings.maxTokens,
             onValueChange = { 
                 onSettingsChanged(settings.copy(maxTokens = it))
@@ -307,13 +308,12 @@ private fun GenerationParameters(
                 onSettingsChanged(settings.copy(topP = it))
             },
             valueRange = 0.0f..1.0f,
-            steps = 19,
-            description = " nucleus sampling"
+            description = "Разнообразие вероятных ответов"
         )
 
         // Context Window
         ParameterIntField(
-            label = "Context Window",
+            label = "Контекст",
             value = settings.contextWindow,
             onValueChange = { 
                 onSettingsChanged(settings.copy(contextWindow = it))
@@ -331,7 +331,6 @@ private fun ParameterSlider(
     value: Float,
     onValueChange: (Float) -> Unit,
     valueRange: ClosedFloatingPointRange<Float>,
-    steps: Int,
     description: String
 ) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
@@ -364,8 +363,7 @@ private fun ParameterSlider(
             value = value,
             onValueChange = onValueChange,
             valueRange = valueRange,
-            steps = steps,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().semantics { contentDescription = label }
         )
     }
 }
@@ -408,7 +406,7 @@ private fun ParameterIntField(
                     }
                 },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.width(80.dp),
+                modifier = Modifier.width(96.dp).semantics { contentDescription = label },
                 textStyle = MaterialTheme.typography.bodyMedium.copy(
                     textAlign = TextAlign.Center,
                     fontFamily = FontFamily.Monospace

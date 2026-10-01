@@ -67,11 +67,6 @@ fun MainContentDesktopImpl(component: MainComponent) {
         destinations = destinations,
         selectedId = state.currentScreen.name,
         onSelect = { id -> scope.launch { pager.animateScrollToPage(destinations.indexOfFirst { it.id == id }) } },
-        topBar = {
-            if (state.currentScreen != MainScreen.CHAT) {
-                TopAppBar(title = { Text(destinations.firstOrNull { it.id == state.currentScreen.name }?.title.orEmpty()) })
-            }
-        }
     ) { layout ->
         Row(Modifier.fillMaxSize()) {
             Column(Modifier.weight(1f)) {

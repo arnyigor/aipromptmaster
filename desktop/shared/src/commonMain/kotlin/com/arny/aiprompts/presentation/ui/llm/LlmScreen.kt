@@ -74,7 +74,8 @@ fun LlmScreen(component: LlmComponent) {
                 .padding(paddingValues)
                 .fillMaxSize()
         ) {
-            val isWideScreen = maxWidth > 900.dp
+            // Keep at least 360 dp for the conversation after both supporting panes.
+            val isWideScreen = maxWidth >= 1080.dp
 
             if (isWideScreen) {
                 // Desktop layout: Sidebar | Chat | Parameters
@@ -289,9 +290,9 @@ private fun ChatArea(
             value = uiState.prompt,
             onValueChange = component::onPromptChanged,
             onSend = component::onStreamingGenerateClicked,
+            onCancel = component::onCancelGenerating,
             isGenerating = uiState.isGenerating,
             canSend = uiState.canSendMessage,
-            selectedModel = uiState.selectedModel?.name,
             modifier = Modifier.fillMaxWidth()
         )
     }
@@ -364,9 +365,9 @@ private fun ChatInput(
     value: String,
     onValueChange: (String) -> Unit,
     onSend: () -> Unit,
+    onCancel: () -> Unit,
     isGenerating: Boolean,
     canSend: Boolean,
-    selectedModel: String?,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -374,21 +375,6 @@ private fun ChatInput(
             .background(MaterialTheme.colorScheme.inputPanelBackground())
             .padding(16.dp)
     ) {
-        // Индикатор модели
-        selectedModel?.let {
-            Surface(
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(4.dp),
-                modifier = Modifier.padding(bottom = 8.dp)
-            ) {
-                Text(
-                    text = "Модель: $it",
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                )
-            }
-        }
-
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Bottom
@@ -396,7 +382,7 @@ private fun ChatInput(
             OutlinedTextField(
                 value = value,
                 onValueChange = onValueChange,
-                placeholder = { Text("Введите сообщение... (Enter для отправки)") },
+                placeholder = { Text("Сообщение…") },
                 modifier = Modifier
                     .weight(1f)
                     .onKeyEvent { event ->
@@ -423,16 +409,12 @@ private fun ChatInput(
             if (isGenerating) {
                 // Кнопка отмены
                 FilledIconButton(
-                    onClick = { /* TODO: cancel */ },
+                    onClick = onCancel,
                     colors = IconButtonDefaults.filledIconButtonColors(
                         containerColor = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onError
-                    )
+                    Icon(Icons.Default.Stop, contentDescription = "Остановить генерацию")
                 }
             } else {
                 // Кнопка отправки
@@ -536,12 +518,13 @@ internal fun ModelSelectionDialog(
     onRefresh: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(onDismissRequest = onDismiss, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+        BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        val compact = maxWidth < 600.dp
         Surface(
-            modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .fillMaxHeight(0.8f),
-            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.widthIn(max = 640.dp).fillMaxWidth(if (compact) 1f else 0.9f)
+                .fillMaxHeight(if (compact) 1f else 0.9f),
+            shape = RoundedCornerShape(if (compact) 0.dp else 16.dp),
             shadowElevation = 8.dp
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -562,56 +545,16 @@ internal fun ModelSelectionDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Search
-                OutlinedTextField(
-                    value = uiState.searchQuery,
-                    onValueChange = onSearchQueryChanged,
-                    placeholder = { Text("Поиск моделей...") },
-                    leadingIcon = { Icon(Icons.Default.Search, null) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                com.arny.sharedui.ModelPickerControls(
+                    query = uiState.searchQuery,
+                    filters = ModelCategory.entries.map { com.arny.sharedui.ModelFilterOption(it.name, it.displayName, uiState.selectedCategory == it) },
+                    sortOptions = ModelSortOrder.entries.map { com.arny.sharedui.ModelSortOption(it.name, it.displayName) },
+                    selectedSortId = uiState.selectedSortOrder.name,
+                    onQueryChange = onSearchQueryChanged,
+                    onFilterClick = { onCategorySelected(ModelCategory.valueOf(it)) },
+                    onSortClick = { onSortOrderSelected(ModelSortOrder.valueOf(it)) },
                 )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Filters
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    ModelCategory.entries.forEach { category ->
-                        FilterChip(
-                            selected = uiState.selectedCategory == category,
-                            onClick = { onCategorySelected(category) },
-                            label = { Text(category.displayName) }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Sort
-                var sortMenuExpanded by remember { mutableStateOf(false) }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Сортировка", style = MaterialTheme.typography.labelMedium)
-                    Spacer(Modifier.weight(1f))
-                    Box {
-                        TextButton(onClick = { sortMenuExpanded = true }) {
-                            Text(uiState.selectedSortOrder.displayName, maxLines = 1)
-                            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-                        }
-                        DropdownMenu(expanded = sortMenuExpanded, onDismissRequest = { sortMenuExpanded = false }) {
-                            ModelSortOrder.entries.forEach { order ->
-                                DropdownMenuItem(text = { Text(order.displayName) }, onClick = {
-                                    onSortOrderSelected(order)
-                                    sortMenuExpanded = false
-                                })
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
+                Spacer(Modifier.height(16.dp))
                 // Models list
                 Box(modifier = Modifier.weight(1f)) {
                     when (val result = uiState.modelsResult) {
@@ -667,6 +610,7 @@ internal fun ModelSelectionDialog(
                     }
                 }
             }
+        }
         }
     }
 }

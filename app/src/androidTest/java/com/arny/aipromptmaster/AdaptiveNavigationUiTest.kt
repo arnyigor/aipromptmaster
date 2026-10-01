@@ -23,4 +23,15 @@ class AdaptiveNavigationUiTest {
         compose.activityRule.scenario.recreate()
         compose.onNodeWithText("Провайдеры LLM").assertExists()
     }
+
+    @Test fun sharedModelSearchCanBeClearedAndSorted() {
+        compose.onAllNodesWithText("Модели").onLast().performClick()
+        compose.onNodeWithText("Поиск моделей").performTextInput("fixture-model")
+        compose.onNodeWithText("fixture-model").assertExists()
+        compose.onNodeWithText("Очистить").performClick()
+        compose.onNodeWithText("fixture-model").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Выбрать сортировку").performClick()
+        compose.onNodeWithText("По контексту").performClick()
+        compose.onNodeWithText("По контексту").assertExists()
+    }
 }

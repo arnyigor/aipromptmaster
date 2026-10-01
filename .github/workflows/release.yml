@@ -89,7 +89,10 @@ jobs:
           apks=(app/build/outputs/apk/release/*.apk)
           [[ ${#apks[@]} -eq 1 ]] || { echo 'Expected one release APK'; exit 1; }
           build_tools=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)
-          "$build_tools/apksigner" verify --verbose --print-certs "${apks[0]}"
+          "$build_tools/apksigner" verify --verbose --print-certs "${apks[0]}" > signature-report.txt
+          cat signature-report.txt
+          # Certificate of the published 2.0.0 APK; preserve update compatibility.
+          grep -Fq 'Signer #1 certificate SHA-256 digest: f8485c5be4e36086dee1f3663dd3354189e395a9fd408378474a34f9474f26a8' signature-report.txt || { echo 'Signing certificate changed'; exit 1; }
           artifact="AiPromptMaster-v${RELEASE_VERSION:-verification}.apk"
           cp "${apks[0]}" "$artifact"
           sha256sum "$artifact" > checksums.txt
@@ -102,6 +105,7 @@ jobs:
             AiPromptMaster-v${{ steps.version.outputs.name }}.apk
             checksums.txt
             source-commit.txt
+            signature-report.txt
           fail_on_unmatched_files: true
       - uses: actions/upload-artifact@v4
         if: ${{ env.VERIFICATION_ONLY == 'true' }}
@@ -111,6 +115,7 @@ jobs:
             AiPromptMaster-vverification.apk
             checksums.txt
             source-commit.txt
+            signature-report.txt
           if-no-files-found: error
       - name: Clean signing file
         if: always()

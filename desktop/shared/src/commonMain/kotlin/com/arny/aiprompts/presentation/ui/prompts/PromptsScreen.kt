@@ -200,7 +200,10 @@ private fun PromptsTopAppBar(
             }
         },
         title = {
-            Text("Prompt Manager - Показано ${state.currentPrompts.size} из ${state.allPrompts.size}")
+            Column {
+                Text("Промпты", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("${state.currentPrompts.size} из ${state.allPrompts.size}", style = MaterialTheme.typography.labelMedium)
+            }
         },
         actions = {
             // Показываем меню "три точки" только на мобильной и планшетной версиях
