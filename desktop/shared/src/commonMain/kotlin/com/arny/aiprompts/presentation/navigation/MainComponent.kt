@@ -59,6 +59,7 @@ import java.io.File
 interface MainComponent {
     val state: StateFlow<MainState>
     val childStack: Value<ChildStack<*, Child>>
+    fun stackFor(screen: MainScreen): Value<ChildStack<*, Child>> = childStack
 
     sealed interface Child {
         data class ScraperWizard(val component: ScraperWizardComponent) : Child
@@ -120,7 +121,10 @@ class DefaultMainComponent(
 ) : MainComponent, ComponentContext by componentContext {
 
     private val tabNavigations = MainScreen.entries.associateWith { StackNavigation<MainConfig>() }
-    private val navigation: StackNavigation<MainConfig> get() = tabNavigations.getValue(_state.value.currentScreen)
+    private val navigation: StackNavigation<MainConfig> get() {
+        stackForScreen(_state.value.currentScreen)
+        return tabNavigations.getValue(_state.value.currentScreen)
+    }
     private var importFiles = emptyList<File>()
 
     private val _state = MutableStateFlow(
@@ -133,7 +137,8 @@ class DefaultMainComponent(
     )
     override val state: StateFlow<MainState> = _state.asStateFlow()
 
-    private val tabStacks = MainScreen.entries.associateWith { tab ->
+    private val tabStacks = mutableMapOf<MainScreen, Value<ChildStack<MainConfig, Child>>>()
+    private fun stackForScreen(tab: MainScreen): Value<ChildStack<MainConfig, Child>> = tabStacks.getOrPut(tab) {
         childStack(
             source = tabNavigations.getValue(tab),
             serializer = MainConfig.serializer(),
@@ -149,7 +154,8 @@ class DefaultMainComponent(
             childFactory = ::createChild
         )
     }
-    override val childStack: Value<ChildStack<*, Child>> get() = tabStacks.getValue(_state.value.currentScreen)
+    override val childStack: Value<ChildStack<*, Child>> get() = stackForScreen(_state.value.currentScreen)
+    override fun stackFor(screen: MainScreen): Value<ChildStack<*, Child>> = stackForScreen(screen)
 
     init { stateKeeper.register("selected-tab", kotlinx.serialization.serializer<String>()) { _state.value.currentScreen.name } }
 

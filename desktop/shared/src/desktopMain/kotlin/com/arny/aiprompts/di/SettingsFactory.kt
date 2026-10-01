@@ -20,7 +20,8 @@ actual class SettingsFactory(actual val context: Any? = null) {
     private val keyLock = Any()
 
     actual fun create(name: String): Settings {
-        val delegate = Preferences.userRoot().node(name)
+        val namespace = System.getProperty("aiprompts.settings.namespace", "")
+        val delegate = Preferences.userRoot().node(if (namespace.isBlank()) name else "$namespace/$name")
         val secretKey = getOrCreateSecretKey()
         return EncryptedJvmSettings(delegate, secretKey)
     }

@@ -9,6 +9,10 @@ import androidx.compose.material.icons.automirrored.filled.MenuOpen
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.pager.rememberPagerState
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -45,21 +49,30 @@ fun MainContentDesktopImpl(component: MainComponent) {
         }
         add(com.arny.sharedui.AppDestination("SETTINGS", "Настройки", Icons.Default.Settings))
     }
+    val scope = rememberCoroutineScope()
+    val pager = rememberPagerState(initialPage = destinations.indexOfFirst { it.id == state.currentScreen.name }.coerceAtLeast(0), pageCount = { destinations.size })
+    fun select(screen: MainScreen) = when (screen) {
+        MainScreen.PROMPTS -> component.navigateToPrompts()
+        MainScreen.CHAT -> component.navigateToChat()
+        MainScreen.SCRAPER_WIZARD -> component.navigateToScraperWizard()
+        MainScreen.IMPORT -> component.navigateToImport(emptyList())
+        MainScreen.SETTINGS -> component.navigateToSettings()
+    }
+    LaunchedEffect(pager.currentPage) { select(MainScreen.valueOf(destinations[pager.currentPage].id)) }
+    LaunchedEffect(state.currentScreen) {
+        val page = destinations.indexOfFirst { it.id == state.currentScreen.name }
+        if (page >= 0 && page != pager.currentPage) pager.scrollToPage(page)
+    }
     com.arny.sharedui.AdaptiveAppShell(
         destinations = destinations,
         selectedId = state.currentScreen.name,
-        onSelect = { id -> when (MainScreen.valueOf(id)) {
-            MainScreen.PROMPTS -> component.navigateToPrompts()
-            MainScreen.CHAT -> component.navigateToChat()
-            MainScreen.SCRAPER_WIZARD -> component.navigateToScraperWizard()
-            MainScreen.IMPORT -> component.navigateToImport(emptyList())
-            MainScreen.SETTINGS -> component.navigateToSettings()
-        } },
+        onSelect = { id -> scope.launch { pager.animateScrollToPage(destinations.indexOfFirst { it.id == id }) } },
         topBar = { TopAppBar(title = { Text(destinations.firstOrNull { it.id == state.currentScreen.name }?.title.orEmpty()) }) }
     ) { layout ->
         Row(Modifier.fillMaxSize()) {
             Column(Modifier.weight(1f)) {
-                Children(stack = component.childStack, animation = stackAnimation(fade())) { child ->
+                com.arny.sharedui.TabPager(pager, swipeEnabled = childStack.backStack.isEmpty()) { page ->
+                Children(stack = component.stackFor(MainScreen.valueOf(destinations[page].id)), animation = stackAnimation(fade())) { child ->
                     when (val instance = child.instance) {
                         is MainComponent.Child.Prompts -> PromptsScreen(instance.component)
                         is MainComponent.Child.PromptDetails -> AdaptivePromptDetailLayout(instance.component)
@@ -68,6 +81,7 @@ fun MainContentDesktopImpl(component: MainComponent) {
                         is MainComponent.Child.Import -> ImporterScreen(instance.component)
                         is MainComponent.Child.Settings -> SettingsScreen(instance.component)
                     }
+                }
                 }
             }
 

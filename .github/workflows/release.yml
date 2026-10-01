@@ -58,8 +58,8 @@ jobs:
           java-version: '17'
           cache: gradle
       - run: chmod +x gradlew
-      - name: Quality gate on tagged source
-        run: ./gradlew :prompt-contract:jvmTest :app:testDebugUnitTest :app:lintDebug --console=plain
+      - name: Quality gate on selected source
+        run: ./gradlew :prompt-contract:jvmTest :app:testDebugUnitTest :app:lintDebug :shared-ui:lintDebug --console=plain
       - name: Restore existing signing key
         env:
           KEYSTORE_BASE64: ${{ secrets.SIGNING_KEY_STORE_BASE64 }}

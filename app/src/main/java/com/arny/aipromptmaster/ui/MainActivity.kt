@@ -148,15 +148,12 @@ val entryProvider = rememberAppEntryProvider(
                 modifier = Modifier
                     .fillMaxSize()
             ) {
-                HorizontalPager(
+                com.arny.sharedui.TabPager(
                     state = pagerState,
-                    modifier = Modifier.fillMaxSize(),
                     // Отключаем предзагрузку соседних страниц для экономии памяти,
                     // или оставляем 1, но учитываем это в логике (здесь логика не зависит от этого)
-                    beyondViewportPageCount = 1,
-                    pageSpacing = 0.dp,
                     // Важно: запрещаем свайп, если мы не на главном экране таба (опционально)
-                    userScrollEnabled = layout == WindowLayout.Compact && !screenConfig.showBackButton
+                    swipeEnabled = !screenConfig.showBackButton
                 ) { page ->
                     val tabKey = when (page) {
                         0 -> PromptsKey()
