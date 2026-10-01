@@ -154,7 +154,7 @@ fun ActionPanel(
 ) {
     Card(modifier = modifier) {
         Column(
-            modifier = Modifier.fillMaxHeight().padding(16.dp),
+            modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) { Text("Добавить промпт") }
@@ -187,7 +187,6 @@ private fun PromptsTopAppBar(
     component: PromptListComponent
 ) {
     TopAppBar(
-        modifier = Modifier.clickable(onClick = component::onToggleFiltersExpanded),
         navigationIcon = {
             // Кнопка сворачивания/разворачивания фильтров слева
             if (screenSize == ScreenSize.DESKTOP) {
@@ -278,11 +277,9 @@ private fun MainContent(
 
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (state.isFiltersExpanded) {
-            FilterPanel(state = state, component = component)
-        }
+        FilterPanel(state = state, component = component)
 
         when {
             state.isLoading && state.currentPrompts.isEmpty() -> Box(
@@ -296,7 +293,7 @@ private fun MainContent(
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(state.currentPrompts, key = { it.id }) { prompt ->
                         PromptListItem(
@@ -337,13 +334,13 @@ fun PromptListItem(
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top
         ) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text = prompt.title,
                     style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
@@ -354,24 +351,24 @@ fun PromptListItem(
                     overflow = TextOverflow.Ellipsis
                 )
                 if (prompt.tags.isNotEmpty()) {
-                    FlowRow(
+                    Row(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        prompt.tags.forEach { tag ->
-                            SuggestionChip(
-                                onClick = { /* no-op */ },
-                                label = { Text(tag, style = MaterialTheme.typography.labelSmall) }
-                            )
+                        prompt.tags.take(2).forEach { tag ->
+                            Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp)) {
+                                Text(tag, modifier = Modifier.widthIn(max = 96.dp).padding(horizontal = 6.dp, vertical = 3.dp),
+                                    style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
                         }
+                        if (prompt.tags.size > 2) Text("+${prompt.tags.size - 2}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
             Spacer(Modifier.width(8.dp)) // Добавим небольшой отступ
-            IconButton(onClick = onFavoriteClick) {
+            IconToggleButton(checked = prompt.isFavorite, onCheckedChange = { onFavoriteClick() }) {
                 Icon(
                     imageVector = if (prompt.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                    contentDescription = "В избранное",
+                    contentDescription = if (prompt.isFavorite) "Удалить из избранного" else "Добавить в избранное",
                     tint = if (prompt.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

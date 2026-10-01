@@ -92,7 +92,8 @@ jobs:
           "$build_tools/apksigner" verify --verbose --print-certs "${apks[0]}" > signature-report.txt
           cat signature-report.txt
           # Certificate of the published 2.0.0 APK; preserve update compatibility.
-          grep -Fq 'Signer #1 certificate SHA-256 digest: f8485c5be4e36086dee1f3663dd3354189e395a9fd408378474a34f9474f26a8' signature-report.txt || { echo 'Signing certificate changed'; exit 1; }
+          grep -Eq '^Number of signers: 1$' signature-report.txt || { echo 'Expected one signer'; exit 1; }
+          grep -Eq 'certificate SHA-256 digest: f8485c5be4e36086dee1f3663dd3354189e395a9fd408378474a34f9474f26a8$' signature-report.txt || { echo 'Signing certificate changed'; exit 1; }
           artifact="AiPromptMaster-v${RELEASE_VERSION:-verification}.apk"
           cp "${apks[0]}" "$artifact"
           sha256sum "$artifact" > checksums.txt
