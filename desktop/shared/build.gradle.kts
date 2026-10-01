@@ -129,3 +129,12 @@ dependencies {
     add("kspCommonMainMetadata", libs.androidx.room.compiler)
     add("kspDesktop", libs.androidx.room.compiler)
 }
+
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    // Lets the crash regression launch a genuine second JVM without Gradle worker internals.
+    doFirst {
+        val classpathFile = File(temporaryDir, "fork-classpath.txt")
+        classpathFile.writeText(classpath.asPath)
+        systemProperty("aiprompts.test.classpathFile", classpathFile.absolutePath)
+    }
+}

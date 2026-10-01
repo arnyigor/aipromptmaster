@@ -15,6 +15,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 /** Separate client has no logging interceptor and never sends another provider's credentials. */
 class ProviderHttpSource(private val client: OkHttpClient, private val json: Json) : ProviderGateway {
     override suspend fun models(profile: ProviderProfile): List<String> {
+        if (profile.id == "openrouter") request(profile, "auth/key").single()
         val response = request(profile, "models").single()
         val data = json.parseToJsonElement(response).jsonObject["data"]
         require(data is JsonArray) { "Нет списка моделей" }

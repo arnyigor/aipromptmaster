@@ -99,7 +99,7 @@ class ChatSessionRepositoryImpl(
         // Note: Attachments are loaded separately via getRecentMessagesForContext for context building
         // For UI display, you may need to extend this to load attachments per message
         return messageDao.getMessagesForSession(sessionId)
-            .map { entities -> entities.map { it.toDomain() } }
+            .map { entities -> entities.map { it.toDomain(messageDao.getAttachmentsForMessage(it.id)) } }
     }
 
     override suspend fun addMessage(sessionId: String, message: ChatMessage) {
@@ -120,7 +120,7 @@ class ChatSessionRepositoryImpl(
     override suspend fun updateMessage(message: ChatMessage) {
         // Получаем существующее сообщение для сохранения sessionId
         val existing = messageDao.getMessageById(message.id) ?: return
-        messageDao.updateMessage(message.toEntity(existing.sessionId))
+        messageDao.updateMessage(message.toEntity(existing.sessionId).copy(orderIndex = existing.orderIndex))
     }
 
     override suspend fun deleteMessage(messageId: String) {

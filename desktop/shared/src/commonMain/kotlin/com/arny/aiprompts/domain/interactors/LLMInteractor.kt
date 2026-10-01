@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -168,6 +169,7 @@ class LLMInteractor(
     // ==================== Сообщения ====================
 
     override fun sendMessage(sessionId: String, content: String): Flow<DataResult<ChatMessage>> = flow {
+        check(currentStreamingJob?.isActive != true) { "Дождитесь завершения ответа" }
         // Валидация
         if (content.length < MIN_MESSAGE_LENGTH) {
             emit(DataResult.Error(IllegalArgumentException("Message too short")))
@@ -204,60 +206,14 @@ class LLMInteractor(
         )
         chatSessionRepository.addMessage(sessionId, userMsg)
 
-        // 2. Создаем заглушку для ответа модели
-        val modelMsgId = UUID.randomUUID().toString()
-        val modelMsg = ChatMessage(
-            id = modelMsgId,
-            role = ChatMessageRole.MODEL,
-            content = "",
-            timestamp = Clock.System.now().toEpochMilliseconds(),
-            status = MessageStatus.Streaming(isComplete = false),
-            modelId = modelId
-        )
-        chatSessionRepository.addMessage(sessionId, modelMsg)
-        emit(DataResult.Success(modelMsg))
-
-        // 3. Формируем контекст для API (с учетом User Context)
-        val context = buildApiContext(sessionId, session.systemPrompt)
-
-        // 4. Стримим ответ
-        val accumulatedContent = StringBuilder()
-        modelsRepository.getStreamingChatCompletion(modelId, context)
-            .collect { result ->
-                result.fold(
-                    onSuccess = { chunk ->
-                        if (chunk.content.isNotEmpty()) {
-                            accumulatedContent.append(chunk.content)
-                        }
-                        val updatedMsg = modelMsg.copy(
-                            content = accumulatedContent.toString(),
-                            status = if (chunk.isComplete) MessageStatus.Sent else MessageStatus.Streaming(false)
-                        )
-                        chatSessionRepository.updateMessage(updatedMsg)
-                        emit(DataResult.Success(updatedMsg))
-                    },
-                    onFailure = { error ->
-                        Logger.e(error, "LLMInteractor", "Streaming failed")
-                        val failedMsg = modelMsg.copy(
-                            content = accumulatedContent.toString(),
-                            status = MessageStatus.Failed(error.message ?: "Unknown error")
-                        )
-                        chatSessionRepository.updateMessage(failedMsg)
-                        emit(DataResult.Error(error))
-                    }
-                )
-            }
-
+        emitResponse(session, modelId)
     }.catch { e ->
-        if (e is CancellationException) {
-            Logger.d("LLMInteractor", "Streaming cancelled")
-            throw e
-        }
-        Logger.e(e, "LLMInteractor", "Unexpected error in sendMessage")
+        if (e is CancellationException) throw e
         emit(DataResult.Error(e))
     }
 
     override fun sendMessageWithAttachments(sessionId: String, input: MessageInput): Flow<DataResult<ChatMessage>> = flow {
+        check(currentStreamingJob?.isActive != true) { "Дождитесь завершения ответа" }
         // Валидация
         if (input.text.length < MIN_MESSAGE_LENGTH && input.attachments.isEmpty()) {
             emit(DataResult.Error(IllegalArgumentException("Message too short")))
@@ -304,7 +260,8 @@ class LLMInteractor(
                     )
                 )
             } catch (e: Exception) {
-                Logger.e(e, "LLMInteractor", "Failed to save attachment: ${attachment.fileName}")
+                if (e is CancellationException) throw e
+                throw IllegalStateException("Не удалось прочитать вложение: ${attachment.fileName}", e)
             }
         }
 
@@ -323,7 +280,8 @@ class LLMInteractor(
                     try {
                         append(fileHandler.readText(file.uri))
                     } catch (e: Exception) {
-                        append("[Error reading file]")
+                        if (e is CancellationException) throw e
+                        throw IllegalStateException("Не удалось прочитать текст: ${file.fileName}", e)
                     }
                     append("\n---")
                 }
@@ -340,57 +298,58 @@ class LLMInteractor(
         )
         chatSessionRepository.addMessage(sessionId, userMsg)
 
-        // 4. Создаем заглушку для ответа модели
-        val modelMsgId = UUID.randomUUID().toString()
-        val modelMsg = ChatMessage(
-            id = modelMsgId,
-            role = ChatMessageRole.MODEL,
-            content = "",
-            timestamp = Clock.System.now().toEpochMilliseconds(),
-            status = MessageStatus.Streaming(isComplete = false),
-            modelId = modelId
-        )
-        chatSessionRepository.addMessage(sessionId, modelMsg)
-        emit(DataResult.Success(modelMsg))
-
-        // 5. Формируем контекст для API (с учетом вложений)
-        val context = buildApiContext(sessionId, session.systemPrompt)
-
-        // 6. Стримим ответ
-        val accumulatedContent = StringBuilder()
-        modelsRepository.getStreamingChatCompletion(modelId, context)
-            .collect { result ->
-                result.fold(
-                    onSuccess = { chunk ->
-                        if (chunk.content.isNotEmpty()) {
-                            accumulatedContent.append(chunk.content)
-                        }
-                        val updatedMsg = modelMsg.copy(
-                            content = accumulatedContent.toString(),
-                            status = if (chunk.isComplete) MessageStatus.Sent else MessageStatus.Streaming(false)
-                        )
-                        chatSessionRepository.updateMessage(updatedMsg)
-                        emit(DataResult.Success(updatedMsg))
-                    },
-                    onFailure = { error ->
-                        Logger.e(error, "LLMInteractor", "Streaming failed")
-                        val failedMsg = modelMsg.copy(
-                            content = accumulatedContent.toString(),
-                            status = MessageStatus.Failed(error.message ?: "Unknown error")
-                        )
-                        chatSessionRepository.updateMessage(failedMsg)
-                        emit(DataResult.Error(error))
-                    }
-                )
-            }
-
+        emitResponse(session, modelId)
     }.catch { e ->
-        if (e is CancellationException) {
-            Logger.d("LLMInteractor", "Streaming cancelled")
-            throw e
-        }
-        Logger.e(e, "LLMInteractor", "Unexpected error in sendMessageWithAttachments")
+        if (e is CancellationException) throw e
         emit(DataResult.Error(e))
+    }
+
+    // Both text and attachments use the same response lifecycle as the Android chat.
+    private suspend fun kotlinx.coroutines.flow.FlowCollector<DataResult<ChatMessage>>.emitResponse(
+        session: ChatSession, modelId: String
+    ) {
+        val job = kotlinx.coroutines.currentCoroutineContext()[kotlinx.coroutines.Job]
+        check(currentStreamingJob == null || currentStreamingJob?.isActive != true) { "Дождитесь завершения ответа" }
+        currentStreamingJob = job
+        val placeholder = ChatMessage(role = ChatMessageRole.MODEL, content = "",
+            status = MessageStatus.Streaming(false), modelId = modelId)
+        val content = StringBuilder()
+        var lastWrite = System.nanoTime()
+        try {
+            chatSessionRepository.addMessage(session.id, placeholder)
+            emit(DataResult.Success(placeholder))
+            val context = buildApiContext(session.id, session.systemPrompt, session.settings.contextWindow)
+            modelsRepository.getStreamingChatCompletion(modelId, context,
+                temperature = session.settings.temperature.toDouble(), maxTokens = session.settings.maxTokens,
+                topP = session.settings.topP.toDouble()).collect { result ->
+                val chunk = result.getOrThrow()
+                content.append(chunk.content)
+                val now = System.nanoTime()
+                if (chunk.isComplete || now - lastWrite >= 300_000_000L) {
+                    val updated = placeholder.copy(content = content.toString(),
+                        status = if (chunk.isComplete) MessageStatus.Sent else MessageStatus.Streaming(false))
+                    chatSessionRepository.updateMessage(updated)
+                    emit(DataResult.Success(updated))
+                    lastWrite = now
+                }
+            }
+            if (content.isBlank()) chatSessionRepository.deleteMessage(placeholder.id)
+            else {
+                val completed = placeholder.copy(content = content.toString(), status = MessageStatus.Sent)
+                chatSessionRepository.updateMessage(completed)
+                emit(DataResult.Success(completed))
+            }
+        } catch (e: Exception) {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                if (content.isBlank()) chatSessionRepository.deleteMessage(placeholder.id)
+                else chatSessionRepository.updateMessage(placeholder.copy(content = content.toString(),
+                    status = if (e is CancellationException) MessageStatus.Sent
+                    else MessageStatus.Failed(e.message ?: "Ошибка генерации")))
+            }
+            throw e
+        } finally {
+            if (currentStreamingJob === job) currentStreamingJob = null
+        }
     }
 
     override fun getMessagesForSession(sessionId: String): Flow<List<ChatMessage>> {
@@ -413,19 +372,43 @@ class LLMInteractor(
         chatSessionRepository.deleteMessage(messageId)
     }
 
-    override suspend fun retryMessage(messageId: String) {
-        val message = chatSessionRepository.getMessagesForSession("")
-            .firstOrNull()
-            ?.find { it.id == messageId }
-            ?: return
+    private suspend fun locateMessage(id: String): Pair<ChatSession, List<ChatMessage>> {
+        for (session in chatSessionRepository.getAllSessions().first()) {
+            val messages = chatSessionRepository.getMessagesForSession(session.id).first()
+            if (messages.any { it.id == id }) return session to messages
+        }
+        error("Сообщение не найдено")
+    }
 
-        if (message.role == ChatMessageRole.MODEL && message.isFailed()) {
-            Logger.d("LLMInteractor", "Retry message: $messageId")
+    override suspend fun retryMessage(messageId: String) {
+        val (session, messages) = locateMessage(messageId)
+        val index = messages.indexOfFirst { it.id == messageId }
+        val userIndex = if (messages[index].role == ChatMessageRole.USER) index
+            else (index - 1 downTo 0).firstOrNull { messages[it].role == ChatMessageRole.USER }
+                ?: error("Исходное сообщение не найдено")
+        val modelId = session.modelId ?: settingsRepository.getSelectedModelId().firstOrNull()
+            ?: error("Выберите модель")
+        messages.drop(userIndex + 1).forEach { chatSessionRepository.deleteMessage(it.id) }
+        flow<DataResult<ChatMessage>> { emitResponse(session, modelId) }.collect {
+            if (it is DataResult.Error) throw it.exception ?: IllegalStateException("Ошибка генерации")
         }
     }
 
-    override suspend fun editMessage(messageId: String, newContent: String): Flow<DataResult<ChatMessage>> {
-        return flow { emit(DataResult.Error(NotImplementedError("Edit not implemented yet"))) }
+    override suspend fun editMessage(messageId: String, newContent: String): Flow<DataResult<ChatMessage>> = flow {
+        require(newContent.isNotBlank()) { "Введите сообщение" }
+        val (session, messages) = locateMessage(messageId)
+        val index = messages.indexOfFirst { it.id == messageId }
+        val original = messages[index]
+        require(original.role == ChatMessageRole.USER) { "Редактировать можно сообщение пользователя" }
+        val modelId = session.modelId ?: settingsRepository.getSelectedModelId().firstOrNull()
+            ?: error("Выберите модель")
+        chatSessionRepository.updateMessage(original.copy(content = newContent,
+            editedAt = Clock.System.now().toEpochMilliseconds(), previousVersions = original.previousVersions + original.content))
+        messages.drop(index + 1).forEach { chatSessionRepository.deleteMessage(it.id) }
+        emitResponse(session, modelId)
+    }.catch { e ->
+        if (e is CancellationException) throw e
+        emit(DataResult.Error(e))
     }
 
     override suspend fun cancelStreaming() {
@@ -447,7 +430,7 @@ class LLMInteractor(
      * @param sessionSystemPrompt System prompt сессии (может быть null)
      * @return Список сообщений для API
      */
-    private suspend fun buildApiContext(sessionId: String, sessionSystemPrompt: String?): List<ChatMessage> {
+    private suspend fun buildApiContext(sessionId: String, sessionSystemPrompt: String?, contextWindow: Int): List<ChatMessage> {
         val messages = mutableListOf<ChatMessage>()
         
         // Формируем итоговый системный промпт
@@ -467,8 +450,9 @@ class LLMInteractor(
         }
         
         // Добавляем историю сообщений
-        val history = chatSessionRepository.getRecentMessagesForContext(sessionId, MAX_CONTEXT_MESSAGES)
+        val history = chatSessionRepository.getRecentMessagesForContext(sessionId, contextWindow.coerceIn(1, MAX_CONTEXT_MESSAGES) + 1)
             .filter { it.status is MessageStatus.Sent }
+            .takeLast(contextWindow.coerceIn(1, MAX_CONTEXT_MESSAGES))
         
         messages.addAll(history)
         

@@ -7,12 +7,14 @@ import kotlin.random.Random
 data class ProviderManagerState(
     val config: ProviderConfig = ProviderConfig(), val draft: ProviderProfile? = null,
     val checking: Boolean = false, val models: List<String> = emptyList(), val message: String? = null,
-    val modelQuery: String = ""
+    val modelQuery: String = "",
+    val environmentKeyAvailable: Boolean = false,
 ) {
     val visibleModels: List<String> get() = models.filter { it.contains(modelQuery, ignoreCase = true) }.take(12)
 }
 
 sealed interface ProviderAction {
+    data class KeySource(val value: ProviderKeySource) : ProviderAction
     data class Select(val id: String) : ProviderAction
     data class Edit(val id: String) : ProviderAction
     data class Create(val preset: ProviderPreset) : ProviderAction
@@ -30,7 +32,7 @@ sealed interface ProviderAction {
 
 /** One controller for both clients; credentials only go to the explicitly edited profile. */
 class ProviderManager(private val store: ProviderStore, private val probe: ProviderProbe, private val scope: CoroutineScope) {
-    private val _state = MutableStateFlow(ProviderManagerState(config = store.loadProviders().checked()))
+    private val _state = MutableStateFlow(ProviderManagerState(config = store.loadProviders().checked(), environmentKeyAvailable = store.environmentKeyAvailable()))
     val state = _state.asStateFlow()
     private var check: Job? = null
     private var revision = 0
@@ -52,6 +54,7 @@ class ProviderManager(private val store: ProviderStore, private val probe: Provi
                         is ProviderAction.Name -> draft.copy(name = action.value)
                         is ProviderAction.Url -> draft.copy(baseUrl = action.value, apiKey = if (action.value.trim().trimEnd('/') == draft.baseUrl.trim().trimEnd('/')) draft.apiKey else "")
                         is ProviderAction.Key -> draft.copy(apiKey = action.value)
+                        is ProviderAction.KeySource -> draft.copy(keySource = action.value)
                         is ProviderAction.Model -> draft.copy(modelId = action.value)
                         is ProviderAction.RequiresKey -> draft.copy(requiresKey = if (draft.id == "openrouter") true else action.value)
                         else -> draft

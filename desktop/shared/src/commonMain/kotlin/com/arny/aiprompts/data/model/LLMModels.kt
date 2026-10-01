@@ -146,7 +146,8 @@ data class ChatCompletionRequest(
     @SerialName("messages") val messages: List<ChatMessage>,
     @SerialName("max_tokens") val maxTokens: Int? = null,
     @SerialName("temperature") val temperature: Double? = null,
-    @SerialName("stream") val stream: Boolean = false
+    @SerialName("stream") val stream: Boolean = false,
+    @SerialName("top_p") val topP: Double? = null
 )
 
 @Serializable

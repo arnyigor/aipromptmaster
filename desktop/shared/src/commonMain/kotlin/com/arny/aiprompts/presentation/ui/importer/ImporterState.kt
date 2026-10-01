@@ -61,6 +61,8 @@ data class ImporterState(
     // Навигация и выбор
     val selectedPostId: String? = null,
     val postsToImport: Set<String> = emptySet(),
+    val skippedPostIds: Set<String> = emptySet(),
+    val promptIds: Map<String, String> = emptyMap(),
 
     // Категории
     val availableCategories: List<String> = emptyList(),
@@ -77,6 +79,8 @@ data class ImporterState(
 
     // UI состояние
     val showPreview: Boolean = false,
+    val activePane: Int = 0,
+    val editorTab: Int = 2,
     val expandedPostIds: Set<String> = emptySet(),
     val validationErrors: Map<String, Map<String, String>> = emptyMap(),
 
@@ -96,7 +100,8 @@ data class ImporterState(
         get() = rawPosts.filter { post ->
             // Поисковый фильтр
             (filters.searchQuery.isBlank() ||
-             post.fullHtmlContent.contains(filters.searchQuery, ignoreCase = true) ||
+            post.fullHtmlContent.contains(filters.searchQuery, ignoreCase = true) ||
+             editedData[post.postId]?.title?.contains(filters.searchQuery, ignoreCase = true) == true ||
              post.author.name.contains(filters.searchQuery, ignoreCase = true))
 
             // Фильтр по готовности
@@ -104,13 +109,14 @@ data class ImporterState(
 
             // Фильтр по вероятности промпта
             && (!filters.showOnlyLikelyPrompts || post.isLikelyPrompt)
+            && (filters.selectedCategory == null || editedData[post.postId]?.category == filters.selectedCategory)
         }
 
     val readyToImportCount: Int
         get() = postsToImport.size
 
     val hasValidationErrors: Boolean
-        get() = validationErrors.isNotEmpty()
+        get() = validationErrors.keys.any { it in postsToImport }
 
     val canGenerateJson: Boolean
         get() = postsToImport.isNotEmpty() && !hasValidationErrors && !isLoading

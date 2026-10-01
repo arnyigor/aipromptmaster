@@ -7,6 +7,7 @@ enum class BlockActionTarget { TITLE, DESCRIPTION, CONTENT }
 
 interface ImporterComponent {
     val state: StateFlow<ImporterState>
+    fun onLoadFiles(files: List<java.io.File>)
 
     // --- Навигация и выбор ---
     fun onPostClicked(postId: String)
@@ -33,6 +34,8 @@ interface ImporterComponent {
 
     // --- UI состояние ---
     fun onTogglePreview()
+    fun onPaneSelected(index: Int)
+    fun onEditorTabSelected(index: Int)
     fun onTogglePostExpansion(postId: String)
     fun onDismissError()
     fun onDismissSuccess()

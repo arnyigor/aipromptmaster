@@ -94,18 +94,71 @@ fun ErrorState(
 }
 
 @Suppress("UnusedBoxWithConstraintsScope")
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdaptivePromptDetailLayout(component: PromptDetailComponent) {
-    val state by component.state.collectAsState()
-    if (state.improvement.visible) {
-        PromptImprovementDialog(state.improvement) { component.onEvent(PromptDetailEvent.Improvement(it)) }
-    }
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val clipboardManager = LocalClipboardManager.current
-        if (maxWidth > 800.dp) {
-            DesktopPromptDetailLayout(component, state, clipboardManager)
-        } else {
-            MobilePromptDetailLayout(component, state)
+val state by component.state.collectAsState()
+    val clipboard = LocalClipboardManager.current
+    val prompt = if (state.isEditing) state.draftPrompt else state.prompt
+    if (state.improvement.visible) PromptImprovementDialog(state.improvement) { component.onEvent(PromptDetailEvent.Improvement(it)) }
+    if (state.showDeleteDialog) ConfirmDeleteDialog(
+        show = true,
+        onConfirm = { component.onEvent(PromptDetailEvent.ConfirmDelete) },
+        onDismiss = { component.onEvent(PromptDetailEvent.HideDeleteDialog) },
+    )
+    Scaffold(
+        topBar = { TopAppBar(title = { Text(if (state.isEditing) "Редактирование промпта" else "Промпт") },
+            navigationIcon = { IconButton(onClick = { component.onEvent(PromptDetailEvent.BackClicked) }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Назад") } },
+            actions = {
+                TextButton(onClick = { component.onEvent(PromptDetailEvent.OpenImprovement) }, enabled = prompt != null) { Text("Улучшить") }
+                if (state.isEditing) TextButton(onClick = { component.onEvent(PromptDetailEvent.CancelClicked) }) { Text("Отмена") }
+                else TextButton(onClick = { component.onEvent(PromptDetailEvent.EditClicked) }, enabled = prompt != null) { Text("Редактировать") }
+            }) },
+        floatingActionButton = { if (state.isEditing) FloatingActionButton(onClick = { component.onEvent(PromptDetailEvent.SaveClicked) }) { Icon(Icons.Default.Done, "Сохранить") } },
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0.dp),
+    ) { padding ->
+        val modifier = Modifier.fillMaxSize().padding(padding)
+        if (state.isLoading && prompt == null) Box(modifier, Alignment.Center) { CircularProgressIndicator() }
+        else if (prompt == null) ErrorState(state.error ?: "Промпт не найден", modifier) { component.onEvent(PromptDetailEvent.Refresh) }
+        else if (state.isEditing) com.arny.sharedui.PromptEditorForm(
+            state = com.arny.sharedui.PromptFormUi(prompt.title, prompt.description.orEmpty(), prompt.category, prompt.tags,
+                prompt.content?.ru.orEmpty(), prompt.content?.en.orEmpty(), contentError = state.saveError),
+            onTitle = { component.onEvent(PromptDetailEvent.TitleChanged(it)) },
+            onDescription = { component.onEvent(PromptDetailEvent.DescriptionChanged(it)) },
+            onCategory = { component.onEvent(PromptDetailEvent.CategoryChanged(it)) },
+            onTags = { component.onEvent(PromptDetailEvent.TagsChanged(it)) },
+            onRu = { component.onEvent(PromptDetailEvent.ContentChanged(PromptLanguage.RU, it)) },
+            onEn = { component.onEvent(PromptDetailEvent.ContentChanged(PromptLanguage.EN, it)) }, modifier = modifier,
+        ) else {
+            val variants = prompt.wireDocument?.promptVariants.orEmpty()
+            val content = variants.getOrNull(state.selectedVariantIndex)?.content
+            com.arny.sharedui.PromptViewer(
+                state = com.arny.sharedui.PromptFormUi(prompt.title, prompt.description.orEmpty(), prompt.category, prompt.tags,
+                    content?.get("ru") ?: prompt.content?.ru.orEmpty(), content?.get("en") ?: prompt.content?.en.orEmpty()),
+                onCopy = { clipboard.setText(AnnotatedString(it)) }, modifier = modifier,
+                renderMarkdown = { MarkdownDisplay(it) },
+                header = {
+                    Row(verticalAlignment = Alignment.Top) {
+                        Text(prompt.title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+                        IconButton(onClick = { component.onEvent(PromptDetailEvent.FavoriteClicked) }) { Icon(if (prompt.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "Избранное") }
+                    }
+                    TextButton(onClick = { clipboard.setText(AnnotatedString(prompt.id)) }) { Text("ID: ${prompt.id}") }
+                },
+                variants = {
+                    if (variants.isNotEmpty()) androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        item { androidx.compose.material3.FilterChip(selected = state.selectedVariantIndex == -1, onClick = { component.onEvent(PromptDetailEvent.VariantSelected(-1)) }, label = { Text("Основной") }) }
+                        items(variants.size) { index -> androidx.compose.material3.FilterChip(selected = state.selectedVariantIndex == index,
+                            onClick = { component.onEvent(PromptDetailEvent.VariantSelected(index)) }, label = { Text("Вариант ${index + 1}") }) }
+                    }
+                },
+                metadata = {
+                    prompt.metadata.author?.name?.takeIf { it.isNotBlank() }?.let { Text("Автор: $it") }
+                    prompt.metadata.source?.takeIf { it.isNotBlank() }?.let { Text("Источник: $it") }
+                    prompt.metadata.notes?.takeIf { it.isNotBlank() }?.let { Text(it) }
+                    if (prompt.compatibleModels.any(String::isNotBlank)) Text("Совместимые модели: ${prompt.compatibleModels.joinToString()}")
+                    if (prompt.isLocal) OutlinedButton(onClick = { component.onEvent(PromptDetailEvent.ShowDeleteDialog) }) { Text("Удалить промпт") }
+                },
+            )
         }
     }
 }

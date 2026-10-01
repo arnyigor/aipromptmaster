@@ -18,6 +18,7 @@ data class MessageInput(
 /**
  * Входные данные для вложения (файл, прикрепленный пользователем).
  */
+@kotlinx.serialization.Serializable
 data class AttachmentInput(
     val uri: String,
     val fileName: String,

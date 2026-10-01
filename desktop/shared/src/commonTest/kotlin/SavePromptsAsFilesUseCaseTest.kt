@@ -14,7 +14,8 @@ import java.io.File
 class SavePromptsAsFilesUseCaseTest {
 
     private val mockFileDataSource = mockk<FileDataSource>()
-    private val useCase = SavePromptsAsFilesUseCase(mockFileDataSource)
+    private val repository = mockk<com.arny.aiprompts.domain.interfaces.IPromptsRepository>(relaxed = true)
+    private val useCase = SavePromptsAsFilesUseCase(mockFileDataSource, repository)
 
     @Test
     fun `invoke returns success with files when save succeeds`() = runTest {
@@ -29,6 +30,7 @@ class SavePromptsAsFilesUseCaseTest {
         // Then
         assertTrue(result.isSuccess)
         assertEquals(1, result.getOrNull()?.size)
+        io.mockk.coVerify { repository.savePrompts(match { it.size == 1 && it.single().isLocal && it.single().title == "Test Prompt" }) }
     }
 
     @Test

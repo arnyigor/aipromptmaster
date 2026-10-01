@@ -37,17 +37,25 @@ class DefaultLlmComponent(
 
     /** Текущая задача генерации. */
     private var streamingJob: Job? = null
+    private var messagesJob: Job? = null
+    private var observedSessionId: String? = null
 
     /** Состояние UI. */
     private val restored = stateKeeper.consume("chat-draft", ChatDraft.serializer()) ?: ChatDraft()
-    private val _uiState = MutableStateFlow(LlmUiState(prompt = restored.input, selectedChatId = restored.chatId))
+    private val drafts = restored.drafts.toMutableMap()
+    private val fileDrafts = restored.fileDrafts.toMutableMap()
+    private val _uiState = MutableStateFlow(LlmUiState(prompt = restored.input, selectedChatId = restored.chatId,
+        attachments = restored.attachments, newChatSystemPrompt = restored.systemPrompt, newChatSettings = restored.settings))
     override val uiState: StateFlow<LlmUiState> = _uiState.asStateFlow()
 
     /** Триггер для обновления списка моделей. */
     private val refreshTrigger = MutableSharedFlow<Unit>(replay = 1)
 
     init {
-        stateKeeper.register("chat-draft", ChatDraft.serializer()) { ChatDraft(_uiState.value.prompt, _uiState.value.selectedChatId) }
+        stateKeeper.register("chat-draft", ChatDraft.serializer()) {
+            ChatDraft(_uiState.value.prompt, _uiState.value.selectedChatId, drafts.toMap(),
+                _uiState.value.attachments, fileDrafts.toMap(), _uiState.value.newChatSystemPrompt, _uiState.value.newChatSettings)
+        }
         setupFlows()
         loadInitialData()
     }
@@ -94,19 +102,24 @@ class DefaultLlmComponent(
     }
 
     /** Подписка на сообщения текущей сессии. */
-    private var messagesJob: Job? = null
-
     private fun observeCurrentSessionMessages() {
+        val selectedId = _uiState.value.selectedChatId
+        if (selectedId == observedSessionId && messagesJob?.isActive == true) return
+        observedSessionId = selectedId
         // Отменяем предыдущую подписку
         messagesJob?.cancel()
         
-        val sessionId = _uiState.value.selectedChatId ?: return
+        val sessionId = selectedId ?: run {
+            _uiState.update { it.copy(messages = emptyList(), isLoadingMessages = false) }
+            return
+        }
+        _uiState.update { it.copy(messages = emptyList(), isLoadingMessages = true) }
         
         messagesJob = llmInteractor.getMessagesForSession(sessionId)
             .onEach { messages ->
                 // Гарантируем сортировку по времени (старые -> новые)
                 val sortedMessages = messages.sortedBy { it.timestamp }
-                _uiState.update { it.copy(messages = sortedMessages) }
+                _uiState.update { if (it.selectedChatId == sessionId) it.copy(messages = sortedMessages, isLoadingMessages = false) else it }
             }
             .catch { e ->
                 Logger.e(e, "DefaultLlmComponent", "Error loading messages")
@@ -124,7 +137,7 @@ class DefaultLlmComponent(
 
     override fun onModelSelected(modelId: String) {
         scope.launch {
-            llmInteractor.toggleModelSelection(modelId)
+            llmInteractor.selectModel(modelId)
         }
     }
 
@@ -143,6 +156,7 @@ class DefaultLlmComponent(
     override fun refreshModels() {
         scope.launch {
             refreshTrigger.emit(Unit)
+            llmInteractor.refreshModels()
         }
     }
 
@@ -159,21 +173,29 @@ class DefaultLlmComponent(
     // ==================== Сессии чата ====================
 
     override fun onChatSessionSelected(sessionId: String) {
-        _uiState.update { it.copy(selectedChatId = sessionId) }
+        selectSession(sessionId)
+    }
+
+    private fun selectSession(sessionId: String?) {
+        val previous = _uiState.value
+        previous.selectedChatId?.let { drafts[it] = previous.prompt }
+        previous.selectedChatId?.let { fileDrafts[it] = previous.attachments }
+        _uiState.update { it.copy(selectedChatId = sessionId,
+            prompt = if (sessionId == previous.selectedChatId) previous.prompt else drafts[sessionId].orEmpty(),
+            attachments = if (sessionId == previous.selectedChatId) previous.attachments else fileDrafts[sessionId].orEmpty()) }
         observeCurrentSessionMessages()
     }
 
     override fun onCreateNewChatSession() {
+        val defaults = _uiState.value
         scope.launch {
             try {
                 val newSession = llmInteractor.createSession(
-                    name = "Новый чат ${System.currentTimeMillis() / 1000}",
-                    systemPrompt = null
+                    name = "Новый чат",
+                    systemPrompt = defaults.newChatSystemPrompt.takeIf { it.isNotBlank() }
                 )
-                _uiState.update { state ->
-                    state.copy(selectedChatId = newSession.id)
-                }
-                observeCurrentSessionMessages()
+                llmInteractor.updateChatSettings(newSession.id, defaults.newChatSettings)
+                selectSession(newSession.id)
             } catch (e: Exception) {
                 Logger.e(e, "DefaultLlmComponent", "Failed to create session")
                 _uiState.update { it.copy(errorMessage = "Не удалось создать чат: ${e.message}") }
@@ -186,11 +208,8 @@ class DefaultLlmComponent(
             try {
                 llmInteractor.deleteSession(sessionId)
                 // Если удалили текущую сессию, сбрасываем выбор
-                _uiState.update { state ->
-                    if (state.selectedChatId == sessionId) {
-                        state.copy(selectedChatId = null, messages = emptyList())
-                    } else state
-                }
+                if (_uiState.value.selectedChatId == sessionId) selectSession(_uiState.value.chatSessions.firstOrNull { it.id != sessionId }?.id)
+                drafts.remove(sessionId)
             } catch (e: Exception) {
                 Logger.e(e, "DefaultLlmComponent", "Failed to delete session")
                 _uiState.update { it.copy(errorMessage = "Не удалось удалить чат: ${e.message}") }
@@ -221,7 +240,9 @@ class DefaultLlmComponent(
     }
 
     override fun onSystemPromptChanged(systemPrompt: String) {
-        val sessionId = _uiState.value.selectedChatId ?: return
+        val sessionId = _uiState.value.selectedChatId ?: run {
+            _uiState.update { it.copy(newChatSystemPrompt = systemPrompt) }; return
+        }
         scope.launch {
             try {
                 llmInteractor.updateSystemPrompt(sessionId, systemPrompt)
@@ -233,7 +254,9 @@ class DefaultLlmComponent(
     }
 
     override fun onChatSettingsChanged(settings: ChatSettings) {
-        val sessionId = _uiState.value.selectedChatId ?: return
+        val sessionId = _uiState.value.selectedChatId ?: run {
+            _uiState.update { it.copy(newChatSettings = settings) }; return
+        }
         scope.launch {
             try {
                 llmInteractor.updateChatSettings(sessionId, settings)
@@ -251,82 +274,70 @@ class DefaultLlmComponent(
     // ==================== Сообщения ====================
 
     override fun onPromptChanged(newPrompt: String) {
+        _uiState.value.selectedChatId?.let { drafts[it] = newPrompt }
         _uiState.update { it.copy(prompt = newPrompt) }
     }
 
-    override fun onStreamingGenerateClicked() {
-        val currentState = _uiState.value
-        val sessionId = currentState.selectedChatId
-        val selectedModel = currentState.selectedModel
-
-        // Валидация
-        when {
-            sessionId == null -> {
-                _uiState.update { it.copy(errorMessage = "Выберите или создайте чат") }
-                return
-            }
-            selectedModel == null -> {
-                _uiState.update { it.copy(errorMessage = "Выберите модель") }
-                return
-            }
-            currentState.isGenerating -> {
-                _uiState.update { 
-                    it.copy(errorMessage = "Дождитесь завершения текущей генерации") 
-                }
-                return
-            }
-            currentState.prompt.isBlank() -> {
-                _uiState.update { it.copy(errorMessage = "Введите сообщение") }
-                return
-            }
+    override fun onAttachmentsAdded(files: List<com.arny.aiprompts.domain.interactors.AttachmentInput>) {
+        if (_uiState.value.requestActive) return
+        val supported = files.filter { file ->
+            val mime = file.mimeType.orEmpty()
+            mime.startsWith("text/") || mime.startsWith("image/") || mime in listOf("application/json", "application/xml")
         }
+        _uiState.update { it.copy(attachments = (it.attachments + supported).distinctBy { file -> file.uri },
+            errorMessage = if (supported.size != files.size) "Поддерживаются изображения, текст и исходный код. Другие файлы не добавлены." else it.errorMessage) }
+    }
+    override fun onAttachmentRemoved(uri: String) { _uiState.update { it.copy(attachments = it.attachments.filterNot { file -> file.uri == uri }) } }
+    override fun onAttachmentError(message: String) { _uiState.update { it.copy(errorMessage = message) } }
 
-        val messageToSend = currentState.prompt
-
-        // Отменяем предыдущий запрос
-        streamingJob?.cancel()
-
+    override fun onStreamingGenerateClicked() {
+        val current = _uiState.value
+        if (current.requestActive || (current.prompt.isBlank() && current.attachments.isEmpty())) return
+        if (current.selectedModel == null && current.currentSession?.modelId == null) {
+            _uiState.update { it.copy(errorMessage = "Выберите модель") }
+            return
+        }
+        val text = current.prompt
+        _uiState.update { it.copy(requestActive = true, errorMessage = null) }
         streamingJob = scope.launch {
-            // Очищаем prompt сразу после отправки
-            _uiState.update { it.copy(prompt = "") }
-            
-            llmInteractor.sendMessage(
-                sessionId = sessionId!!,
-                content = messageToSend
-            )
-                .catch { error ->
-                    Logger.e(error, "Streaming error")
-                    _uiState.update {
-                        it.copy(errorMessage = error.message ?: "Произошла ошибка")
-                    }
+            var accepted = false
+            try {
+                val sessionId = current.selectedChatId ?: llmInteractor.createSession(text.take(60).ifBlank { "Новый чат" }, current.newChatSystemPrompt.takeIf { it.isNotBlank() }).id.also {
+                    llmInteractor.updateChatSettings(it, current.newChatSettings)
+                    selectSession(it)
+                    drafts[it] = text
+                    fileDrafts[it] = current.attachments
+                    _uiState.update { state -> state.copy(prompt = text, attachments = current.attachments) }
                 }
-                .onCompletion { cause ->
-                    streamingJob = null
-                    if (cause != null && cause !is CancellationException) {
-                        Logger.e(cause, "Streaming completed with error")
-                    }
-                }
-                .collect { result ->
+                val response = if (current.attachments.isEmpty()) llmInteractor.sendMessage(sessionId, text)
+                    else llmInteractor.sendMessageWithAttachments(sessionId, com.arny.aiprompts.domain.interactors.MessageInput(text, current.attachments))
+                response.collect { result ->
                     when (result) {
                         is DataResult.Success -> {
-                            // Обновления приходят через Flow сообщений
-                            Logger.d("DefaultLlmComponent", "Message updated")
+                            if (!accepted) {
+                                accepted = true
+                                drafts[sessionId] = ""
+                                fileDrafts[sessionId] = emptyList()
+                                _uiState.update { if (it.selectedChatId == sessionId) it.copy(prompt = "", attachments = emptyList()) else it }
+                            }
                         }
-                        is DataResult.Error -> {
-                            val errorMsg = result.exception?.message ?: "Ошибка генерации"
-                            _uiState.update { it.copy(errorMessage = errorMsg) }
-                        }
-                        is DataResult.Loading -> {
-                            // Индикатор начала загрузки
-                        }
+                        is DataResult.Error -> _uiState.update { it.copy(errorMessage = result.exception?.message ?: "Ошибка генерации") }
+                        else -> Unit
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = e.message ?: "Ошибка генерации") }
+            } finally {
+                _uiState.update { it.copy(requestActive = false) }
+                streamingJob = null
+            }
         }
     }
 
     override fun onCancelGenerating() {
         streamingJob?.cancel()
-        streamingJob = null
         scope.launch {
             llmInteractor.cancelStreaming()
         }
@@ -334,37 +345,28 @@ class DefaultLlmComponent(
     }
 
     override fun onRetryMessage(messageId: String) {
-        scope.launch {
-            try {
-                llmInteractor.retryMessage(messageId)
-            } catch (e: Exception) {
-                Logger.e(e, "DefaultLlmComponent", "Failed to retry message")
-                _uiState.update { it.copy(errorMessage = "Не удалось повторить: ${e.message}") }
-            }
+        if (_uiState.value.requestActive) return
+        _uiState.update { it.copy(requestActive = true, errorMessage = null) }
+        streamingJob = scope.launch {
+            try { llmInteractor.retryMessage(messageId) }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { _uiState.update { it.copy(errorMessage = e.message ?: "Не удалось повторить ответ") } }
+            finally { _uiState.update { it.copy(requestActive = false) }; streamingJob = null }
         }
     }
 
     override fun onEditMessage(messageId: String, newContent: String) {
-        scope.launch {
+        onDismissEditMessage()
+        if (_uiState.value.requestActive || newContent.isBlank()) return
+        _uiState.update { it.copy(requestActive = true, errorMessage = null) }
+        streamingJob = scope.launch {
             try {
-                llmInteractor.editMessage(messageId, newContent)
-                    .collect { result ->
-                        when (result) {
-                            is DataResult.Success -> {
-                                Logger.d("DefaultLlmComponent", "Message edited")
-                            }
-                            is DataResult.Error -> {
-                                _uiState.update { 
-                                    it.copy(errorMessage = result.exception?.message ?: "Ошибка редактирования") 
-                                }
-                            }
-                            else -> {}
-                        }
-                    }
-            } catch (e: Exception) {
-                Logger.e(e, "DefaultLlmComponent", "Failed to edit message")
-                _uiState.update { it.copy(errorMessage = "Не удалось отредактировать: ${e.message}") }
-            }
+                llmInteractor.editMessage(messageId, newContent).collect { result ->
+                    if (result is DataResult.Error) _uiState.update { it.copy(errorMessage = result.exception?.message ?: "Ошибка редактирования") }
+                }
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { _uiState.update { it.copy(errorMessage = e.message ?: "Ошибка редактирования") } }
+            finally { _uiState.update { it.copy(requestActive = false) }; streamingJob = null }
         }
     }
 
@@ -378,6 +380,15 @@ class DefaultLlmComponent(
             }
         }
     }
+
+    override fun onBeginEditMessage(messageId: String) {
+        if (_uiState.value.requestActive) return
+        val message = _uiState.value.messages.find { it.id == messageId } ?: return
+        if (message.role != com.arny.aiprompts.data.model.ChatMessageRole.USER) return
+        _uiState.update { it.copy(editingMessageId = messageId, editingText = message.content) }
+    }
+    override fun onEditDraftChanged(text: String) { _uiState.update { it.copy(editingText = text) } }
+    override fun onDismissEditMessage() { _uiState.update { it.copy(editingMessageId = null, editingText = "") } }
 
     override fun clearChat() {
         val sessionId = _uiState.value.selectedChatId
@@ -408,9 +419,13 @@ class DefaultLlmComponent(
                 isSearchingHistory = query.isNotBlank()
             ) 
         }
-        // TODO: Реализовать фильтрацию сообщений по запросу
     }
 }
 
 @kotlinx.serialization.Serializable
-private data class ChatDraft(val input: String = "", val chatId: String? = null)
+private data class ChatDraft(
+    val input: String = "", val chatId: String? = null, val drafts: Map<String, String> = emptyMap(),
+    val attachments: List<com.arny.aiprompts.domain.interactors.AttachmentInput> = emptyList(),
+    val fileDrafts: Map<String, List<com.arny.aiprompts.domain.interactors.AttachmentInput>> = emptyMap(),
+    val systemPrompt: String = "", val settings: ChatSettings = ChatSettings(),
+)

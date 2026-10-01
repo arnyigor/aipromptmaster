@@ -132,14 +132,20 @@ fun PromptData.toPromptJson(): PromptJson {
         title = this.title,
         version = "1.0.0",
         status = "active",
-        isLocal = false, // Импортированные промпты будут сразу отправляться в git
+        isLocal = this.isLocal,
         isFavorite = false,
         description = this.description,
         content = mapOf("ru" to (this.variants.firstOrNull()?.content ?: "")),
+        promptVariants = this.variants.mapIndexed { index, variant ->
+            com.arny.promptcontract.PromptVariantJson(
+                variantId = com.arny.promptcontract.VariantIdJson(type = variant.type, id = "variant-${index + 1}", priority = index + 1),
+                content = mapOf("ru" to variant.content), priority = index + 1,
+            )
+        },
         compatibleModels = emptyList(), // Пока пустой список
         category = this.category,
         tags = this.tags,
-        variables = emptyList(), // Пока пустой список
+        variables = this.variables.map { com.arny.promptcontract.VariableJson(name = it) },
         metadata = com.arny.promptcontract.MetadataJson(
             author = com.arny.promptcontract.AuthorJson(id = this.author.id, name = this.author.name),
             source = this.source,

@@ -12,7 +12,8 @@ data class PromptDetailState(
     val saveError: String? = null,
     val availableTags: List<String> = emptyList(),
     val showDeleteDialog: Boolean = false,
-    val improvement: PromptImprovementState = PromptImprovementState()
+    val improvement: PromptImprovementState = PromptImprovementState(),
+    val selectedVariantIndex: Int = -1,
 )
 
 enum class PromptLanguage {

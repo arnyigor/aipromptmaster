@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.update
  * На Desktop использует шифрование через Keytar.
  */
 class SettingsRepositoryImpl(private val settingsFactory: SettingsFactory) : ISettingsRepository {
+    override fun environmentKeyAvailable(): Boolean = !com.arny.aiprompts.platform.openRouterEnvironmentKey().isNullOrBlank()
 
     private val settings: Settings = settingsFactory.create("app_settings")
     private val _selectedId = MutableStateFlow<String?>(null)
@@ -36,7 +37,7 @@ class SettingsRepositoryImpl(private val settingsFactory: SettingsFactory) : ISe
     }
 
     override fun getOpenRouterApiKey(): String? {
-        if (settings.getStringOrNull("provider_profiles_v1") != null) return loadProviders().active.apiKey
+        if (settings.getStringOrNull("provider_profiles_v1") != null) return com.arny.aiprompts.platform.resolveProviderKey(loadProviders().active)
         return settings.getStringOrNull("openrouter_api_key")
     }
 

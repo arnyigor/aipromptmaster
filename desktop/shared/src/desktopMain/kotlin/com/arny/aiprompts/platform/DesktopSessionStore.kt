@@ -8,7 +8,7 @@ import java.util.UUID
 /** Encrypted local session; chunking respects the Windows Preferences value limit. */
 class DesktopSessionStore {
     private val settings = SettingsFactory().create("window_session")
-    fun load(): SerializableContainer? = runCatching {
+    @Synchronized fun load(): SerializableContainer? = runCatching {
         val generation = settings.getStringOrNull("active") ?: return null
         val count = settings.getIntOrNull("$generation-count") ?: return null
         require(count in 1..10_000)
@@ -17,9 +17,13 @@ class DesktopSessionStore {
     }.getOrNull()
 
     fun save(state: SerializableContainer) {
+        saveEncoded(Json.encodeToString(SerializableContainer.serializer(), state))
+    }
+
+    @Synchronized internal fun saveEncoded(encoded: String) {
         val old = settings.getStringOrNull("active")
         val generation = UUID.randomUUID().toString()
-        val chunks = Json.encodeToString(SerializableContainer.serializer(), state).chunked(3000)
+        val chunks = encoded.chunked(3000)
         chunks.forEachIndexed { index, value -> settings.putString("$generation-$index", value) }
         settings.putInt("$generation-count", chunks.size)
         settings.putString("active", generation)

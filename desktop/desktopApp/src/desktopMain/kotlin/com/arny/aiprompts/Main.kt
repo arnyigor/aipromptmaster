@@ -1,6 +1,7 @@
 package com.arny.aiprompts
 
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPlacement
@@ -83,6 +84,7 @@ fun main() {
         }
 
         LifecycleController(lifecycle, windowState)
+        LaunchedEffect(root) { com.arny.aiprompts.platform.DesktopSessionCheckpoint(stateKeeper, sessionStore).run() }
 
         Window(
             onCloseRequest = { sessionStore.save(stateKeeper.save()); exitApplication() },

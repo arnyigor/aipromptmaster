@@ -126,139 +126,19 @@ fun SettingsContent(
     providerState: com.arny.promptcontract.ProviderManagerState? = null,
     onProviderAction: (com.arny.promptcontract.ProviderAction) -> Unit = {}
 ) {
-    val context = LocalContext.current
-    // Сохраняем видимость пароля, чтобы при пересоздании UI состояние не терялось.
-    var isPasswordVisible by rememberSaveable { mutableStateOf(false) }
-
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-
-        /* ---------- 1. Поле ввода API‑ключа ---------- */
-        if (providerState != null) com.arny.aipromptmaster.ui.providers.ProviderManagementCard(providerState, onProviderAction)
-        else {
-        OutlinedTextField(
-            value = uiState.apiKey,
-            onValueChange = onApiKeyChanged,
-            label = { Text("API‑ключ") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions.Default.copy(
-                keyboardType = KeyboardType.Password,
-                imeAction = ImeAction.Done
-            ),
-            visualTransformation = if (isPasswordVisible) {
-                VisualTransformation.None
-            } else {
-                PasswordVisualTransformation()
-            },
-            trailingIcon = {
-                // Иконка «показать/скрыть»
-                val image = if (isPasswordVisible)
-                    Icons.Default.VisibilityOff
-                else
-                    Icons.Default.Visibility
-
-                IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
-                    Icon(
-                        image,
-                        contentDescription = if (isPasswordVisible) "Скрыть ключ" else "Показать ключ"
-                    )
-                }
-            },
-        )
-
-        /* ---------- 2. Кнопки: Сохранить / Получить ключ ---------- */
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Button(
-                onClick = onSaveClicked,
-                enabled = !uiState.isSaving && uiState.apiKey.isNotBlank(),
-                modifier = Modifier.weight(1f)
-            ) {
-                if (uiState.isSaving) {
-                    CircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp,
-                        modifier = Modifier
-                            .size(24.dp)
-                            .padding(end = 8.dp)
-                    )
-                }
-                Text("Сохранить")
-            }
-
-            OutlinedButton(
-                onClick = {
-                    val intent =
-                        Intent(Intent.ACTION_VIEW, "https://openrouter.ai/settings/keys".toUri())
-                    context.startActivity(intent)
-                },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Получить ключ")
-            }
-        }
-
-        }
-        /* ---------- 5. Пояснительная карточка ---------- */
-        Card(
-            shape = RoundedCornerShape(8.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                Text(
-                    text = "Ваш API‑ключ хранится в зашифрованных SharedPreferences (EncryptedSharedPreferences). Он доступен только этому приложению и не сохраняется в логах. При удалении приложения ключ будет потерян.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-        }
-
-        /* ---------- 3. Заголовок и поле ввода фидбека ---------- */
-        Text(
-            text = "Фидбек",
-            style = MaterialTheme.typography.titleMedium,   // крупный заголовок
-            modifier = Modifier.padding(bottom = 4.dp)       // небольшое расстояние до поля
-        )
-
-        OutlinedTextField(
-            value = uiState.feedbackText,
-            onValueChange = onFeedbackChanged,
-            label = { Text("Напишите ваш отзыв") },         // подпись внутри поля
-            singleLine = false,
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 80.dp, max = 200.dp),
-            keyboardOptions = KeyboardOptions.Default
-        )
-
-        /* ---------- 4. Кнопка отправки фидбека ---------- */
-        Button(
-            onClick = onSendFeedback,
-            enabled = !uiState.isSendingFeedback && uiState.feedbackText.isNotBlank(),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (uiState.isSendingFeedback) {
-                    CircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
+com.arny.sharedui.SettingsPane(
+        providers = providerState ?: com.arny.promptcontract.ProviderManagerState(
+            config = com.arny.promptcontract.ProviderConfig(listOf(com.arny.promptcontract.ProviderProfile.openRouter(uiState.apiKey)))),
+        onProviderAction = onProviderAction, modifier = modifier,
+        extraContent = {
+            Text("Фидбек", style = MaterialTheme.typography.titleMedium)
+            OutlinedTextField(uiState.feedbackText, onFeedbackChanged, label = { Text("Напишите ваш отзыв") },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp, max = 200.dp))
+            Button(onClick = onSendFeedback, enabled = !uiState.isSendingFeedback && uiState.feedbackText.isNotBlank(),
+                modifier = Modifier.fillMaxWidth()) {
+                if (uiState.isSendingFeedback) CircularProgressIndicator(modifier = Modifier.size(20.dp))
                 Text("Отправить")
             }
-        }
-    }
+        },
+    )
 }

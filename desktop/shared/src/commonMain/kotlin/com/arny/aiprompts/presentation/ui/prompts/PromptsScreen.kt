@@ -1,406 +1,65 @@
 package com.arny.aiprompts.presentation.ui.prompts
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.DialogProperties
-import com.arny.aiprompts.domain.model.Prompt
-import com.arny.aiprompts.domain.strings.StringHolder
 import com.arny.aiprompts.domain.strings.asString
 import com.arny.aiprompts.presentation.screens.PromptListComponent
+import com.arny.sharedui.*
 
-enum class ScreenSize {
-    MOBILE,
-    DESKTOP
-}
-
-@Suppress("UnusedBoxWithConstraintsScope")
+/** Desktop state/action adapter; the actual browser content is shared with Android. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PromptsScreen(component: PromptListComponent) {
     val state by component.state.collectAsState()
-    BoxWithConstraints {
-        val screenSize = when {
-            maxWidth >= 800.dp -> ScreenSize.DESKTOP
-            else -> ScreenSize.MOBILE
-        }
-
-        val snackbarHostState = remember { SnackbarHostState() }
-
-        Scaffold(
-            topBar = {
-                PromptsTopAppBar(
-                    state = state,
-                    screenSize = screenSize,
-                    component = component
-                )
-            },
-            floatingActionButton = {
-                if (screenSize == ScreenSize.MOBILE) {
-                    FloatingActionButton(onClick = component::onAddPromptClicked) {
-                        Icon(Icons.Default.Add, contentDescription = "Добавить промпт")
-                    }
-                }
-            },
-            bottomBar = { },
-            snackbarHost = { SnackbarHost(snackbarHostState) },
-            contentWindowInsets = WindowInsets(0.dp) // Убираем системные отступы, так как они уже есть в основном Scaffold
-        ) { paddingValues ->
-            // Основной контент
-            Box(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
-                when (screenSize) {
-                    ScreenSize.DESKTOP -> DesktopLayout(state, component)
-                    ScreenSize.MOBILE -> MobileLayout(state, component)
-                }
-            }
-        }
+    val cards = remember(state.currentPrompts, state.selectedPromptId) {
+        state.currentPrompts.map { PromptCardUi(it.id, it.title, it.description.orEmpty(), it.tags, it.isFavorite, it.id == state.selectedPromptId) }
     }
-}
-
-@Composable
-private fun DesktopLayout(state: PromptsListState, component: PromptListComponent) {
-    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        // Левая панель (фильтры и список)
-        MainContent(
-            modifier = Modifier.weight(1f),
-            state = state,
-            component = component
-        )
-        // Правая панель (действия)
-        ActionPanel(
-            modifier = Modifier.width(220.dp),
-            onAdd = component::onAddPromptClicked,
-            onDeleteAll = component::onDeleteAllPromptsClicked,
-            onSync = component::onSyncClicked,
-        )
-    }
-
-    // Диалог подтверждения удаления для desktop
-    if (state.showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { component.onHideDeleteDialog() },
-            title = { Text("Подтверждение удаления") },
-            text = {
-                val selectedPrompt = state.allPrompts.find { it.id == state.selectedPromptId }
-                Text("Вы действительно хотите удалить промпт \"${selectedPrompt?.title ?: "неизвестный"}\"? Это действие нельзя отменить.")
-            },
-            confirmButton = {
-                Button(
-                    onClick = { component.onConfirmDelete() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("Удалить", color = MaterialTheme.colorScheme.onError)
-                }
-            },
-            dismissButton = {
-                OutlinedButton(onClick = { component.onHideDeleteDialog() }) {
-                    Text("Отмена")
-                }
-            },
-            properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
-        )
-    }
-
-    // Диалог подтверждения удаления всех промптов для desktop
-    if (state.showDeleteAllDialog) {
-        AlertDialog(
-            onDismissRequest = { component.onHideDeleteAllDialog() },
-            title = { Text("Подтверждение удаления всех промптов") },
-            text = {
-                Text("Вы действительно хотите удалить все промпты из базы данных? Это действие нельзя отменить.")
-            },
-            confirmButton = {
-                Button(
-                    onClick = { component.onConfirmDeleteAll() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("Удалить все", color = MaterialTheme.colorScheme.onError)
-                }
-            },
-            dismissButton = {
-                OutlinedButton(onClick = { component.onHideDeleteAllDialog() }) {
-                    Text("Отмена")
-                }
-            },
-            properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
-        )
-    }
-}
-
-@Composable
-fun ActionPanel(
-    modifier: Modifier = Modifier,
-    onAdd: () -> Unit,
-    onDeleteAll: () -> Unit,
-    onSync: () -> Unit,
-) {
-    Card(modifier = modifier) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) { Text("Добавить промпт") }
-            Button(onClick = onSync, modifier = Modifier.fillMaxWidth()) { Text("Синхронизировать") }
-            Button(
-                onClick = onDeleteAll,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
-                )
-            ) { Text("Удалить все промпты", color = MaterialTheme.colorScheme.onError) }
-        }
-    }
-}
-
-@Composable
-private fun MobileLayout(state: PromptsListState, component: PromptListComponent) {
-    MainContent(
-        modifier = Modifier.fillMaxSize(),
-        state = state,
-        component = component
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun PromptsTopAppBar(
-    state: PromptsListState,
-    screenSize: ScreenSize,
-    component: PromptListComponent
-) {
-    TopAppBar(
-        navigationIcon = {
-            // Кнопка сворачивания/разворачивания фильтров слева
-            if (screenSize == ScreenSize.DESKTOP) {
-                IconButton(onClick = component::onToggleFiltersExpanded) {
-                    Icon(
-                        imageVector = if (state.isFiltersExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = if (state.isFiltersExpanded) "Свернуть фильтры" else "Развернуть фильтры"
-                    )
-                }
-            }
+    PromptBrowser(
+        state = PromptBrowserUi(
+            prompts = cards, query = state.searchQuery,
+            categories = state.availableCategories.filter { it != "Все категории" },
+            category = state.selectedCategory.takeUnless { it == "Все категории" },
+            sortOptions = state.availableSortOrders.map { it.title } + "Изменить направление",
+            sort = state.selectedSortOrder.title, favoritesOnly = state.isFavoritesOnly,
+            loading = state.isLoading, error = state.error?.asString(),
+        ),
+        onQuery = component::onSearchQueryChanged,
+        onCategory = { component.onCategoryChanged(it ?: "Все категории") },
+        onOpen = component::onPromptClicked, onFavorite = component::onFavoriteClicked,
+        onCreate = component::onAddPromptClicked,
+        onFavoritesOnly = { component.onFavoritesToggleChanged(!state.isFavoritesOnly) },
+        onSort = { title ->
+            if (title == "Изменить направление") component.onSortDirectionToggle()
+            else state.availableSortOrders.firstOrNull { it.title == title }?.let(component::onSortOrderChanged)
         },
-        title = {
-            Column {
-                Text("Промпты", maxLines = 1, overflow = TextOverflow.Ellipsis)
+        header = {
+            TopAppBar(title = { Column {
+                Text("Промпты")
                 Text("${state.currentPrompts.size} из ${state.allPrompts.size}", style = MaterialTheme.typography.labelMedium)
-            }
+            } }, actions = {
+                IconButton(onClick = { component.onMoreMenuToggle(true) }) { Icon(Icons.Default.MoreVert, "Дополнительные действия") }
+                DropdownMenu(state.isMoreMenuVisible, { component.onMoreMenuToggle(false) }) {
+                    DropdownMenuItem(text = { Text("Настройки") }, onClick = component::onSettingsClicked)
+                    DropdownMenuItem(text = { Text("Синхронизировать") }, onClick = { component.onMoreMenuToggle(false); component.onSyncClicked() })
+                    DropdownMenuItem(text = { Text("Удалить все промпты") }, onClick = { component.onMoreMenuToggle(false); component.onDeleteAllPromptsClicked() })
+                }
+            })
         },
-        actions = {
-            // Показываем меню "три точки" только на мобильной и планшетной версиях
-            if (screenSize != ScreenSize.DESKTOP) {
-                Box {
-                    IconButton(onClick = { component.onMoreMenuToggle(true) }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Дополнительные действия")
-                    }
-                    // Выпадающее меню
-                    DropdownMenu(
-                        expanded = state.isMoreMenuVisible,
-                        onDismissRequest = { component.onMoreMenuToggle(false) }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Настройки") },
-                            onClick = {
-                                component.onSettingsClicked()
-                                component.onMoreMenuToggle(false)
-                            }
-                        )
-                    }
-                }
-        
-                // Диалог подтверждения удаления
-                if (state.showDeleteDialog) {
-                    AlertDialog(
-                        onDismissRequest = { component.onHideDeleteDialog() },
-                        title = { Text("Подтверждение удаления") },
-                        text = {
-                            val selectedPrompt = state.allPrompts.find { it.id == state.selectedPromptId }
-                            Text("Вы действительно хотите удалить промпт \"${selectedPrompt?.title ?: "неизвестный"}\"? Это действие нельзя отменить.")
-                        },
-                        confirmButton = {
-                            Button(
-                                onClick = { component.onConfirmDelete() },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.error
-                                )
-                            ) {
-                                Text("Удалить", color = MaterialTheme.colorScheme.onError)
-                            }
-                        },
-                        dismissButton = {
-                            OutlinedButton(onClick = { component.onHideDeleteDialog() }) {
-                                Text("Отмена")
-                            }
-                        },
-                        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
-                    )
-                }
-
-            }
-        }
     )
-}
-
-@Composable
-private fun MainContent(
-    modifier: Modifier = Modifier,
-    state: PromptsListState,
-    component: PromptListComponent
-) {
-
-    val listState = rememberLazyListState()
-
-    // Скролл к первому элементу при изменении списка промптов
-    LaunchedEffect(state.currentPrompts) {
-        if (state.currentPrompts.isNotEmpty()) {
-            listState.animateScrollToItem(0)
-        }
-    }
-
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        FilterPanel(state = state, component = component)
-
-        when {
-            state.isLoading && state.currentPrompts.isEmpty() -> Box(
-                Modifier.fillMaxSize(),
-                Alignment.Center
-            ) { CircularProgressIndicator() }
-
-            state.error != null -> ErrorState(message = state.error, onRetry = component::onRefresh)
-            state.currentPrompts.isEmpty() -> EmptyState(message = "Промпты не найдены")
-            else -> {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(state.currentPrompts, key = { it.id }) { prompt ->
-                        PromptListItem(
-                            prompt = prompt,
-                            isSelected = state.selectedPromptId == prompt.id,
-                            onClick = { component.onPromptClicked(prompt.id) },
-                            onFavoriteClick = { component.onFavoriteClicked(prompt.id) }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
-@Composable
-fun PromptListItem(
-    prompt: Prompt,
-    isSelected: Boolean, // <-- 1. Добавляем новый параметр
-    onClick: () -> Unit,
-    onFavoriteClick: () -> Unit
-) {
-    // Вместо Card с elevation используем ElevatedCard из M3
-    ElevatedCard(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        // <-- 2. Управляем цветом в зависимости от того, выбран ли элемент
-        colors = if (isSelected) {
-            // Если выбран, используем более заметный цвет фона
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        } else {
-            // Иначе используем цвета по умолчанию для ElevatedCard
-            CardDefaults.elevatedCardColors()
-        }
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = prompt.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = prompt.description.orEmpty().ifEmpty { "Нет описания" },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (prompt.tags.isNotEmpty()) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        prompt.tags.take(2).forEach { tag ->
-                            Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp)) {
-                                Text(tag, modifier = Modifier.widthIn(max = 96.dp).padding(horizontal = 6.dp, vertical = 3.dp),
-                                    style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
-                        }
-                        if (prompt.tags.size > 2) Text("+${prompt.tags.size - 2}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-            Spacer(Modifier.width(8.dp)) // Добавим небольшой отступ
-            IconToggleButton(checked = prompt.isFavorite, onCheckedChange = { onFavoriteClick() }) {
-                Icon(
-                    imageVector = if (prompt.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                    contentDescription = if (prompt.isFavorite) "Удалить из избранного" else "Добавить в избранное",
-                    tint = if (prompt.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-// Вспомогательные Composable для состояний
-@Composable
-fun EmptyState(message: String, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        // Icon(AppIcons.EmptyList, ...)
-        Text(message, style = MaterialTheme.typography.bodyLarge)
-    }
-}
-
-@Composable
-fun ErrorState(message: StringHolder, onRetry: () -> Unit, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        // Icon(AppIcons.Error, ...)
-        Text(message.asString(), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.error)
-        Spacer(Modifier.height(16.dp))
-        Button(onClick = onRetry) {
-            Text("Повторить")
-        }
-    }
+    if (state.showDeleteAllDialog) AlertDialog(
+        onDismissRequest = component::onHideDeleteAllDialog,
+        title = { Text("Удалить все промпты?") },
+        text = { Text("Это действие нельзя отменить.") },
+        confirmButton = { TextButton(onClick = component::onConfirmDeleteAll) { Text("Удалить все") } },
+        dismissButton = { TextButton(onClick = component::onHideDeleteAllDialog) { Text("Отмена") } },
+    )
+    if (state.showDeleteDialog) AlertDialog(
+        onDismissRequest = component::onHideDeleteDialog,
+        title = { Text("Удалить промпт?") },
+        confirmButton = { TextButton(onClick = component::onConfirmDelete) { Text("Удалить") } },
+        dismissButton = { TextButton(onClick = component::onHideDeleteDialog) { Text("Отмена") } },
+    )
 }

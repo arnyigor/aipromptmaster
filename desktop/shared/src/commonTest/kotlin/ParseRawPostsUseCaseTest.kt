@@ -57,4 +57,15 @@ class ParseRawPostsUseCaseTest {
             postUrl = "https://example.com/post"
         )
     }
+
+    @Test fun `legacy Windows 1251 HTML preserves Cyrillic`() = kotlinx.coroutines.runBlocking {
+        val html = "<meta charset=windows-1251><p>Улучши промпт</p>"
+        val file = File.createTempFile("charset", ".html")
+        try {
+            file.writeBytes(html.toByteArray(java.nio.charset.Charset.forName("windows-1251")))
+            every { mockParser.parse(html) } returns emptyList()
+            assertTrue(useCase(file).isSuccess)
+            io.mockk.verify { mockParser.parse(html) }
+        } finally { file.delete() }
+    }
 }

@@ -107,13 +107,36 @@ import kotlin.time.Instant
 @Composable
 fun ImporterScreen(component: ImporterComponent) {
     val state by component.state.collectAsState()
+    val selectFiles: () -> Unit = {
+        javax.swing.SwingUtilities.invokeLater {
+            val dialog = java.awt.FileDialog(null as java.awt.Frame?, "Открыть HTML-файлы", java.awt.FileDialog.LOAD)
+            try {
+                dialog.isMultipleMode = true
+                dialog.file = "*.html"
+                dialog.isVisible = true
+                if (dialog.files.isNotEmpty()) component.onLoadFiles(dialog.files.toList())
+            } finally { dialog.dispose() }
+        }
+    }
+    val snackbarHostState = remember { SnackbarHostState() }
+    androidx.compose.runtime.LaunchedEffect(state.error, state.successMessage) {
+        state.error?.let {
+            snackbarHostState.showSnackbar(it, actionLabel = "OK")
+            component.onDismissError()
+        }
+        state.successMessage?.let {
+            snackbarHostState.showSnackbar(it, actionLabel = "OK")
+            component.onDismissSuccess()
+        }
+    }
+
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Column {
-                        Text("Ассистент Импорта")
+                        Text("Импорт")
                         Text(
                             "${state.filteredPosts.size} из ${state.rawPosts.size} постов",
                             style = MaterialTheme.typography.bodySmall,
@@ -127,43 +150,12 @@ fun ImporterScreen(component: ImporterComponent) {
                     }
                 },
                 actions = {
-                    // Кнопка превью
-                    IconButton(onClick = component::onTogglePreview) {
-                        Icon(
-                            if (state.showPreview) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = if (state.showPreview) "Скрыть превью" else "Показать превью"
-                        )
-                    }
+                    TextButton(onClick = selectFiles, enabled = !state.isLoading) { Text("Открыть HTML") }
+
                 }
             )
         },
-        snackbarHost = {
-            SnackbarHost(hostState = remember { SnackbarHostState() }) {
-                // Обработка ошибок и успехов
-                state.error?.let {
-                    Snackbar(
-                        action = {
-                            TextButton(onClick = component::onDismissError) {
-                                Text("OK")
-                            }
-                        }
-                    ) {
-                        Text(it)
-                    }
-                }
-                state.successMessage?.let {
-                    Snackbar(
-                        action = {
-                            TextButton(onClick = component::onDismissSuccess) {
-                                Text("OK")
-                            }
-                        }
-                    ) {
-                        Text(it)
-                    }
-                }
-            }
-        }
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             // Прогресс бар
@@ -188,6 +180,15 @@ fun ImporterScreen(component: ImporterComponent) {
                         Text("Загрузка и анализ файлов...")
                     }
                 }
+            } else if (state.rawPosts.isEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Text("Импорт из HTML", style = MaterialTheme.typography.headlineSmall)
+                        Text("Выберите сохранённые страницы форума. Затем проверьте посты, отредактируйте промпты и импортируйте выбранные в свою библиотеку.")
+                        Button(onClick = selectFiles) { Text("Выбрать HTML-файлы") }
+                    }
+                }
             } else {
                 ImprovedImporterLayout(state, component)
             }
@@ -201,21 +202,23 @@ fun ImporterScreen(component: ImporterComponent) {
 private fun ImprovedImporterLayout(state: ImporterState, component: ImporterComponent) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
     if (maxWidth < 1100.dp) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            item("posts") {
-                PostListWithFiltersPanel(
-                    Modifier.fillMaxWidth().height(if (state.filteredPosts.isEmpty()) 260.dp else 420.dp),
-                    state, component,
-                )
+        Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            TabRow(selectedTabIndex = state.activePane) {
+                listOf("Посты", "Редактор", "Сохранение").forEachIndexed { index, title ->
+                    Tab(selected = state.activePane == index, onClick = { component.onPaneSelected(index) },
+                        text = { Text(title, maxLines = 1) })
+                }
             }
-            item("editor") {
-                EditorPanel(Modifier.fillMaxWidth().height(if (state.currentEditedData == null) 180.dp else 600.dp), state, component)
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                when (state.activePane) {
+                    0 -> PostListWithFiltersPanel(Modifier.fillMaxSize(), state, component)
+                    1 -> EditorPanel(Modifier.fillMaxSize(), state, component)
+                    else -> SidePanel(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), state, component)
+                }
             }
-            item("actions") { SidePanel(Modifier.fillMaxWidth(), state, component) }
+            Button(onClick = component::onImportClicked, enabled = state.canGenerateJson, modifier = Modifier.fillMaxWidth()) {
+                Text("Импортировать выбранные: ${state.readyToImportCount}")
+            }
         }
     } else {
     Row(
@@ -238,7 +241,7 @@ private fun ImprovedImporterLayout(state: ImporterState, component: ImporterComp
 
         // Правая панель - Действия и превью
         SidePanel(
-            modifier = Modifier.width(300.dp),
+            modifier = Modifier.width(300.dp).verticalScroll(rememberScrollState()),
             state = state,
             component = component
         )
@@ -350,10 +353,10 @@ private fun PostListItem(
     // --- КЛЮЧЕВАЯ ЛОГИКА ДЛЯ ОПРЕДЕЛЕНИЯ СОСТОЯНИЯ ---
 
     // 1. Пост считается "отмеченным", если он уже импортирован ИЛИ выбран для импорта сейчас.
-    val isImportedOrSelected = post.postId in state.savedFiles || post.postId in state.postsToImport
+    val isImportedOrSelected = post.postId in state.postsToImport
 
     // 2. Чекбокс можно изменять, только если пост ЕЩЕ НЕ был импортирован.
-    val isCheckboxEnabled = post.postId !in state.savedFiles
+    val isCheckboxEnabled = !state.isLoading
 
     // 3. Пост считается уже импортированным, если для него есть запись в карте сохраненных файлов.
     val isAlreadyImported = post.postId in state.savedFiles
@@ -432,7 +435,7 @@ private fun PostListItem(
                 // Информация о посте (без изменений)
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        post.author.name,
+                        editedData?.title?.takeIf { it.isNotBlank() } ?: post.author.name,
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1
                     )
@@ -573,7 +576,11 @@ private fun EditorPanel(
             EmptyEditorState()
         } else {
             // Редактор с вкладками
-            EditorWithTabs(state, component)
+            Box(Modifier.weight(1f)) { EditorWithTabs(state, component) }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = component::onSaveAndSelectNextClicked, enabled = !state.isLoading, modifier = Modifier.weight(1f)) { Text("Отметить и далее") }
+                OutlinedButton(onClick = component::onSkipPostClicked, enabled = !state.isLoading) { Text("Пропустить") }
+            }
         }
     }
 }
@@ -609,14 +616,14 @@ private fun EditorWithTabs(state: ImporterState, component: ImporterComponent) {
     val editedData = state.currentEditedData ?: return
 
     val tabs = listOf("Превью", "Структура", "Промпт")
-    var selectedTabIndex by remember { mutableStateOf(0) }
+    val selectedTabIndex = state.editorTab
 
     Column(modifier = Modifier.fillMaxSize()) {
         TabRow(selectedTabIndex = selectedTabIndex) {
             tabs.forEachIndexed { index, title ->
                 Tab(
                     selected = selectedTabIndex == index,
-                    onClick = { selectedTabIndex = index },
+                    onClick = { component.onEditorTabSelected(index) },
                     text = { Text(title) }
                 )
             }
@@ -1010,117 +1017,18 @@ private fun BasicEditorTab(
     editedData: EditedPostData,
     component: ImporterComponent
 ) {
-    Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Заголовок
-        OutlinedTextField(
-            value = editedData.title,
-            onValueChange = { newTitle ->
-                component.onEditDataChanged(editedData.copy(title = newTitle))
-            },
-            label = { Text("Заголовок промпта") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            supportingText = { Text("Краткое название промпта") }
-        )
-
-        // --- ФОРМАТИРОВАНИЕ ДАТЫ ---
-        @Composable
-        fun formatDate(instant: Instant): String {
-            return try {
-                val localDateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
-                "${localDateTime.day.toString().padStart(2, '0')}.${
-                    localDateTime.month.number.toString().padStart(2, '0')
-                }.${localDateTime.year} ${localDateTime.hour.toString().padStart(2, '0')}:${
-                    localDateTime.minute.toString().padStart(2, '0')
-                }"
-            } catch (_: Exception) {
-                instant.toString().substringBefore('T')
-            }
-        }
-
-        // Описание
-        OutlinedTextField(
-            value = editedData.description,
-            onValueChange = { newDescription ->
-                component.onEditDataChanged(editedData.copy(description = newDescription))
-            },
-            label = { Text("Описание") },
-            modifier = Modifier.fillMaxWidth().height(120.dp),
-            supportingText = { Text("Подробное описание промпта и его назначения") },
-            minLines = 2,
-            maxLines = 5,
-            singleLine = false
-        )
-
-        // Категория и теги
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            CategoryDropdown(
-                selectedCategory = editedData.category,
-                availableCategories = state.availableCategories,
-                onCategorySelected = { newCategory ->
-                    component.onEditDataChanged(editedData.copy(category = newCategory))
-                },
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        // Даты поста
-        val selectedPost = state.selectedPost
-        if (selectedPost != null) {
-            Spacer(Modifier.height(16.dp))
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text("Информация о посте", style = MaterialTheme.typography.titleSmall)
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Column {
-                            Text("Дата создания", style = MaterialTheme.typography.labelMedium)
-                            Text(
-                                formatDate(selectedPost.date),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-
-                        selectedPost.updatedDate?.let { updatedDate ->
-                            Column {
-                                Text(
-                                    "Дата обновления",
-                                    style = MaterialTheme.typography.labelMedium
-                                )
-                                Text(
-                                    formatDate(updatedDate),
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Контент промпта
-        OutlinedTextField(
-            value = editedData.content,
-            onValueChange = { newContent ->
-                component.onEditDataChanged(editedData.copy(content = newContent))
-            },
-            label = { Text("Контент промпта") },
-            modifier = Modifier.fillMaxWidth().weight(1f),
-            supportingText = { Text("Основной текст промпта") },
-            minLines = 3,
-            maxLines = 20,
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions.Default.copy(
-                imeAction = androidx.compose.ui.text.input.ImeAction.Default
-            ),
-            singleLine = false
-        )
-    }
+val errors = state.validationErrors[state.selectedPostId].orEmpty()
+    com.arny.sharedui.PromptEditorForm(
+        state = com.arny.sharedui.PromptFormUi(editedData.title, editedData.description,
+            editedData.category, editedData.tags, ru = editedData.content,
+            titleError = errors["title"], contentError = errors["content"], categoryError = errors["category"]),
+        onTitle = { component.onEditDataChanged(editedData.copy(title = it)) },
+        onDescription = { component.onEditDataChanged(editedData.copy(description = it)) },
+        onCategory = { component.onEditDataChanged(editedData.copy(category = it)) },
+        onTags = { component.onEditDataChanged(editedData.copy(tags = it)) },
+        onRu = { component.onEditDataChanged(editedData.copy(content = it)) },
+        onEn = {}, categories = state.availableCategories, showEnglish = false,
+    )
 }
 
 // --- ВКЛАДКА СТРУКТУРЫ ---
@@ -1507,7 +1415,7 @@ private fun StatisticsCard(state: ImporterState) {
 
             if (state.postsToImport.isNotEmpty()) {
                 val completionPercentage =
-                    (state.postsToImport.size.toFloat() / state.filteredPosts.size * 100).toInt()
+                    (state.postsToImport.size.toFloat() / state.rawPosts.size.coerceAtLeast(1) * 100).toInt()
                 LinearProgressIndicator(
                     progress = { completionPercentage / 100f },
                     modifier = Modifier.fillMaxWidth()
@@ -1537,54 +1445,12 @@ private fun StatisticRow(label: String, value: String) {
 // --- КАРТОЧКА ДЕЙСТВИЙ ---
 @Composable
 private fun ActionsCard(state: ImporterState, component: ImporterComponent) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text("Действия", style = MaterialTheme.typography.titleSmall)
-
-            // Кнопки управления постом
-            if (state.selectedPostId != null) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Button(
-                        onClick = component::onSaveAndSelectNextClicked,
-                        modifier = Modifier.weight(1f),
-                        enabled = !state.isLoading
-                    ) {
-                        Icon(Icons.Default.Save, "Сохранить")
-                        Spacer(Modifier.width(6.dp))
-                        Text("Сохранить")
-                    }
-
-                    OutlinedButton(
-                        onClick = component::onSkipPostClicked,
-                        modifier = Modifier.weight(1f),
-                        enabled = !state.isLoading
-                    ) {
-                        Icon(Icons.Default.SkipNext, "Пропустить")
-                        Spacer(Modifier.width(6.dp))
-                        Text("Пропустить")
-                    }
-                }
-            }
-
-            HorizontalDivider(Modifier)
-
-            // Финальные действия
-            Button(
-                onClick = component::onImportClicked,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = state.canGenerateJson
-            ) {
-                if (state.isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
-                } else {
-                    Text("Сгенерировать JSON (${state.readyToImportCount})")
-                }
+Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Импорт в библиотеку", style = MaterialTheme.typography.titleSmall)
+            Text("Выбранные промпты сохраняются как личные. Они появятся в библиотеке сразу.", style = MaterialTheme.typography.bodySmall)
+            Button(onClick = component::onImportClicked, enabled = state.canGenerateJson, modifier = Modifier.fillMaxWidth()) {
+                Text("Импортировать (${state.readyToImportCount})")
             }
         }
     }

@@ -39,7 +39,20 @@ fun ProviderManagementCard(state: ProviderManagerState, onAction: (ProviderActio
                 OutlinedTextField(draft.name, { onAction(ProviderAction.Name(it)) }, label = { Text("Название") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(draft.baseUrl, { onAction(ProviderAction.Url(it)) }, label = { Text("Адрес API, включая /v1") }, enabled = draft.id != "openrouter", singleLine = true, modifier = Modifier.fillMaxWidth())
                 if (mobile) Text("Для сервера на компьютере укажите IP компьютера в вашей сети. localhost — этот телефон; в Android-эмуляторе адрес компьютера — 10.0.2.2.", style = MaterialTheme.typography.bodySmall)
-                OutlinedTextField(draft.apiKey, { onAction(ProviderAction.Key(it)) }, label = { Text("API-ключ этого профиля") }, visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false), singleLine = true, modifier = Modifier.fillMaxWidth())
+                if (!mobile && draft.id == "openrouter") {
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Checkbox(draft.keySource == ProviderKeySource.ENVIRONMENT, {
+                            onAction(ProviderAction.KeySource(if (it) ProviderKeySource.ENVIRONMENT else ProviderKeySource.STORED))
+                        })
+                        Text("Использовать системный ключ OpenRouter")
+                    }
+                    if (draft.keySource == ProviderKeySource.ENVIRONMENT) Text(
+                        if (state.environmentKeyAvailable) "OPENROUTER_API_KEY доступен. Значение не копируется в настройки."
+                        else "OPENROUTER_API_KEY недоступен. После добавления переменной перезапустите приложение.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                if (draft.keySource == ProviderKeySource.STORED) OutlinedTextField(draft.apiKey, { onAction(ProviderAction.Key(it)) }, label = { Text("API-ключ этого профиля") }, visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false), singleLine = true, modifier = Modifier.fillMaxWidth())
                 if (draft.id == "openrouter") TextButton(onClick = { uriHandler.openUri("https://openrouter.ai/settings/keys") }) { Text("Получить ключ OpenRouter") }
                 Row { Checkbox(draft.requiresKey, { onAction(ProviderAction.RequiresKey(it)) }, enabled = draft.id != "openrouter"); Text("Требуется API-ключ") }
                 OutlinedTextField(draft.modelId, { onAction(ProviderAction.Model(it)) }, label = { Text("Модель по умолчанию (ID)") }, singleLine = true, modifier = Modifier.fillMaxWidth())

@@ -41,5 +41,6 @@ interface IOpenRouterRepository {
         apiKey: String? = null,
         temperature: Double = 0.7,
         maxTokens: Int = 4096,
+        topP: Double = 0.9,
     ): Flow<Result<StreamingChatChunk>>
 }

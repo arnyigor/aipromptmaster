@@ -70,7 +70,7 @@ class MultiStackRestorationTest {
         } finally { firstLifecycle.destroy(); nextLifecycle.destroy(); Dispatchers.resetMain() }
     }
 
-    private fun createRoot(lifecycle: LifecycleRegistry, keeper: StateKeeperDispatcher): DefaultMainComponent {
+    internal fun createRoot(lifecycle: LifecycleRegistry, keeper: StateKeeperDispatcher): DefaultMainComponent {
         val prompts = mockk<GetPromptsUseCase>(relaxed = true)
         every { prompts.getPromptsFlow() } returns flowOf(Result.success(emptyList()))
         val getPrompt = mockk<GetPromptUseCase>()

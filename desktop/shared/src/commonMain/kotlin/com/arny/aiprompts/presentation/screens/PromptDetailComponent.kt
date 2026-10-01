@@ -40,6 +40,10 @@ sealed interface PromptDetailEvent {
     object HideDeleteDialog : PromptDetailEvent
     object ConfirmDelete : PromptDetailEvent
     data class TitleChanged(val newTitle: String) : PromptDetailEvent
+    data class DescriptionChanged(val value: String) : PromptDetailEvent
+    data class CategoryChanged(val value: String) : PromptDetailEvent
+    data class TagsChanged(val value: List<String>) : PromptDetailEvent
+    data class VariantSelected(val index: Int) : PromptDetailEvent
     data class ContentChanged(val lang: PromptLanguage, val newContent: String) : PromptDetailEvent
     data class TagAdded(val tag: String) : PromptDetailEvent
     data class TagRemoved(val tag: String) : PromptDetailEvent
@@ -66,7 +70,8 @@ class DefaultPromptDetailComponent(
     private var currentPromptId = promptId
 
     private val restoredDraft = stateKeeper.consume("prompt-draft", PromptEntity.serializer())?.toDomain()
-    private val _state = MutableStateFlow(PromptDetailState(isLoading = true, isEditing = restoredDraft != null, draftPrompt = restoredDraft))
+    private val _state = MutableStateFlow(PromptDetailState(isLoading = true, isEditing = restoredDraft != null, draftPrompt = restoredDraft,
+        selectedVariantIndex = stateKeeper.consume("prompt-variant", kotlinx.serialization.serializer<Int>()) ?: -1))
     override val state: StateFlow<PromptDetailState> = _state.asStateFlow()
 
     private val scope = coroutineScope()
@@ -82,6 +87,7 @@ class DefaultPromptDetailComponent(
     }
 
     init {
+        stateKeeper.register("prompt-variant", kotlinx.serialization.serializer<Int>()) { _state.value.selectedVariantIndex }
         stateKeeper.register("prompt-draft", PromptEntity.serializer()) { _state.value.draftPrompt?.toEntity() }
         improvementController?.let { controller ->
             scope.launch { controller.state.collect { state -> _state.update { it.copy(improvement = state) } } }
@@ -129,6 +135,10 @@ class DefaultPromptDetailComponent(
 
     override fun onEvent(event: PromptDetailEvent) {
         when (event) {
+            is PromptDetailEvent.DescriptionChanged -> _state.update { it.copy(draftPrompt = it.draftPrompt?.copy(description = event.value)) }
+            is PromptDetailEvent.CategoryChanged -> _state.update { it.copy(draftPrompt = it.draftPrompt?.copy(category = event.value)) }
+            is PromptDetailEvent.TagsChanged -> _state.update { it.copy(draftPrompt = it.draftPrompt?.copy(tags = event.value)) }
+            is PromptDetailEvent.VariantSelected -> _state.update { it.copy(selectedVariantIndex = event.index) }
             PromptDetailEvent.OpenImprovement -> {
                 (_state.value.draftPrompt ?: _state.value.prompt)?.let { improvementController?.open(it) }
             }

@@ -3,13 +3,17 @@ package com.arny.promptcontract
 import kotlinx.serialization.Serializable
 
 @Serializable
+enum class ProviderKeySource { STORED, ENVIRONMENT }
+
+@Serializable
 data class ProviderProfile(
     val id: String,
     val name: String,
     val baseUrl: String,
     val apiKey: String = "",
     val modelId: String = "",
-    val requiresKey: Boolean = true
+    val requiresKey: Boolean = true,
+    val keySource: ProviderKeySource = ProviderKeySource.STORED,
 ) {
     override fun toString(): String = "ProviderProfile(id=$id, name=$name, apiKey=<redacted>)"
     fun validated(): ProviderProfile {
@@ -17,7 +21,8 @@ data class ProviderProfile(
         val url = baseUrl.trim().trimEnd('/')
         require(Regex("https?://[^\\s/?#@]+(?:/[^\\s?#]*)?").matches(url)) { "Укажите адрес API с http:// или https:// без параметров и пароля" }
         require(id != "openrouter" || url == "https://openrouter.ai/api/v1") { "Для другого API создайте отдельный профиль" }
-        require(!requiresKey || apiKey.isNotBlank()) { "Введите API-ключ или отключите обязательный ключ для локального сервера" }
+        require(keySource != ProviderKeySource.ENVIRONMENT || id == "openrouter") { "Системный ключ доступен только для OpenRouter" }
+        require(!requiresKey || keySource == ProviderKeySource.ENVIRONMENT || apiKey.isNotBlank()) { "Введите API-ключ или отключите обязательный ключ для локального сервера" }
         return copy(name = name.trim(), baseUrl = url, apiKey = apiKey.trim(), modelId = modelId.trim())
     }
     companion object {
@@ -49,6 +54,7 @@ data class ProviderConfig(val profiles: List<ProviderProfile> = listOf(ProviderP
 }
 
 interface ProviderStore {
+    fun environmentKeyAvailable(): Boolean = false
     fun loadProviders(): ProviderConfig
     fun saveProviders(config: ProviderConfig)
     fun observeProviders(): kotlinx.coroutines.flow.Flow<ProviderConfig> = kotlinx.coroutines.flow.flowOf(loadProviders())

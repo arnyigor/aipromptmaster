@@ -11,6 +11,7 @@ kotlin {
             api(project(":prompt-contract"))
             api(libs.compose.foundation)
             api(libs.compose.material3)
+            implementation(libs.compose.material.icons.extended)
         }
         commonTest.dependencies { implementation(kotlin("test")) }
     }

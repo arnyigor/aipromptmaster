@@ -79,9 +79,30 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        // Exported schemas 4 and 5 are identical, including identityHash.
+        // Early versions from the former data module lack models and message attachments.
+        // Later exported versions 4/5 already contain them; reconcile both histories without dropping data.
         val MIGRATION_4_5 = object : Migration(4, 5) {
-            override fun migrate(db: SupportSQLiteDatabase) = Unit
+            override fun migrate(db: SupportSQLiteDatabase) {
+                val hasAttachments = db.query("PRAGMA table_info(messages)").use { cursor ->
+                    val column = cursor.getColumnIndexOrThrow("name")
+                    var found = false
+                    while (cursor.moveToNext()) if (cursor.getString(column) == "attachments_json") found = true
+                    found
+                }
+                if (!hasAttachments) db.execSQL("ALTER TABLE messages ADD COLUMN attachments_json TEXT NOT NULL DEFAULT '[]'")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS models (
+                        id TEXT NOT NULL, name TEXT NOT NULL, description TEXT NOT NULL,
+                        contextLength INTEGER NOT NULL, pricingPrompt TEXT NOT NULL,
+                        pricingCompletion TEXT NOT NULL, pricingImage TEXT,
+                        inputModalities TEXT NOT NULL, outputModalities TEXT NOT NULL,
+                        isMultimodal INTEGER NOT NULL, isFavorite INTEGER NOT NULL,
+                        isFree INTEGER NOT NULL, isSelected INTEGER NOT NULL,
+                        sortPriority INTEGER NOT NULL, lastUpdated INTEGER NOT NULL,
+                        PRIMARY KEY(id)
+                    )
+                """.trimIndent())
+            }
         }
 
         val MIGRATION_5_6 = object : Migration(5, 6) {

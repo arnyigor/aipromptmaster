@@ -50,46 +50,46 @@ fun ChatMessageCard(
     onCopy: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val isUser = message.role == ChatMessageRole.USER
+val isUser = message.role == ChatMessageRole.USER
     val isSystem = message.role == ChatMessageRole.SYSTEM
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .animateContentSize(animationSpec = tween(300))
-            .padding(vertical = 4.dp),
-        horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
-    ) {
-        // Контейнер сообщения
-        Row(
-            modifier = Modifier.fillMaxWidth(0.85f),
-            horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
-        ) {
-            // Аватар для AI
-            if (!isUser && !isSystem) {
-                AIAvatar(modifier = Modifier.padding(end = 8.dp))
+    Column(modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalAlignment = if (isUser) Alignment.End else Alignment.Start) {
+        Column(Modifier.widthIn(max = 820.dp).fillMaxWidth(if (isUser) 0.9f else 1f),
+            horizontalAlignment = if (isUser) Alignment.End else Alignment.Start) {
+            if (!isUser && !message.modelId.isNullOrBlank()) {
+                Text(message.modelId, style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp))
             }
-
-            Column(
-                modifier = Modifier.weight(1f, fill = false),
-                horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
-            ) {
-                // Бабл сообщения
-                MessageBubble(
-                    message = message,
-                    isUser = isUser,
-                    isSystem = isSystem
-                )
-
-                // Статус и действия
-                if (!isSystem) {
-                    MessageActions(
-                        message = message,
-                        onRetry = onRetry,
-                        onEdit = onEdit,
-                        onCopy = onCopy,
-                        isUser = isUser
-                    )
+            com.arny.sharedui.ChatBubbleSurface(isUser = isUser) {
+                Column(Modifier.padding(12.dp)) {
+                    if (isUser) {
+                        androidx.compose.foundation.text.selection.SelectionContainer {
+                            Text(message.content, color = LocalContentColor.current)
+                        }
+                    } else if (message.isStreaming()) {
+                        if (message.content.isBlank()) StreamingIndicator()
+                        else Text(message.content, color = LocalContentColor.current)
+                    } else {
+                        val (thinking, text) = remember(message.content) { splitThinkingContent(message.content) }
+                        thinking?.let { ThinkingBlock(it) }
+                        androidx.compose.foundation.text.selection.SelectionContainer {
+                            com.arny.aiprompts.presentation.ui.detail.MarkdownDisplay(text, Modifier.fillMaxWidth())
+                        }
+                    }
+                    message.attachments.forEach { attachment ->
+                        Text(attachment.fileName ?: "Вложение", style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+            }
+            if (!isSystem && !message.isStreaming()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(formatMessageTime(message.timestamp), style = MaterialTheme.typography.labelSmall)
+                    IconButton(onClick = onCopy) { Icon(Icons.Default.ContentCopy, "Копировать") }
+                    if (isUser) IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, "Редактировать") }
+                    if (!isUser || isLast) IconButton(onClick = onRetry) { Icon(Icons.Default.Refresh, "Повторить ответ") }
+                }
+                (message.status as? MessageStatus.Failed)?.let {
+                    Text(it.error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }

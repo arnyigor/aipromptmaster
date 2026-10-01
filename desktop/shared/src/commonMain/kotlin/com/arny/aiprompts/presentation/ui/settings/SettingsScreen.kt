@@ -25,58 +25,25 @@ fun SettingsScreen(
     component: SettingsComponent,
     modifier: Modifier = Modifier
 ) {
-    val state by component.state.collectAsState()
+val state by component.state.collectAsState()
     val providers by component.providers.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    // Показываем сообщение в Snackbar при изменении saveMessage
-    LaunchedEffect(state.saveMessage) {
-        state.saveMessage?.let { message ->
-            snackbarHostState.showSnackbar(message)
-            delay(1000)
-        }
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Настройки") },
-                navigationIcon = {
-                    IconButton(onClick = component::onBackClicked) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Назад"
-                        )
-                    }
-                }
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        modifier = modifier
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Navigation Tabs
-            SettingsTabs(
-                activeSection = state.activeSection,
-                onSectionChanged = component::onSectionChanged
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Content based on active section
-            when (state.activeSection) {
-                SettingsSection.API -> ProviderManagementCard(providers, component::onProviderAction, mobile = false)
+    val snackbar = remember { SnackbarHostState() }
+    LaunchedEffect(state.saveMessage) { state.saveMessage?.let { snackbar.showSnackbar(it) } }
+    Scaffold(modifier = modifier, topBar = {
+        TopAppBar(title = { Text("Настройки") }, navigationIcon = {
+            IconButton(onClick = component::onBackClicked) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Назад") }
+        })
+    }, snackbarHost = { SnackbarHost(snackbar) }) { padding ->
+        com.arny.sharedui.SettingsPane(providers, component::onProviderAction, Modifier.padding(padding), mobile = false,
+            tabs = listOf(com.arny.sharedui.SettingsTabUi("API", "API"), com.arny.sharedui.SettingsTabUi("GITHUB", "GitHub"),
+                com.arny.sharedui.SettingsTabUi("PERSONALIZATION", "Профиль")),
+            selectedId = state.activeSection.name, onSection = { component.onSectionChanged(SettingsSection.valueOf(it)) },
+            extraContent = { section -> when (SettingsSection.valueOf(section)) {
+                SettingsSection.API -> Unit
                 SettingsSection.GITHUB -> GitHubSettingsSection(state, component)
                 SettingsSection.PERSONALIZATION -> PersonalizationSection(state, component)
-            }
-        }
+            } },
+        )
     }
 }
 

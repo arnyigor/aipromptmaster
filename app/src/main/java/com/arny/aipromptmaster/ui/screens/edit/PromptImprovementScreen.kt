@@ -20,6 +20,25 @@ import com.arny.aipromptmaster.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PromptImprovementScreen(state: PromptImprovementState, onAction: (PromptImprovementAction) -> Unit) {
+val shared = com.arny.sharedui.ImprovementUi(state.language.name, state.source, state.result, state.model,
+        state.instructions, state.temperature, state.maxTokens, state.stream, state.running, state.canApply,
+        state.error, state.firstResponseMs, state.elapsedMs)
+    val dispatch: (com.arny.sharedui.ImprovementUiAction) -> Unit = { action ->
+        onAction(when (action) {
+            is com.arny.sharedui.ImprovementUiAction.Language -> PromptImprovementAction.Language(PromptLanguage.valueOf(action.value))
+            is com.arny.sharedui.ImprovementUiAction.Source -> PromptImprovementAction.Source(action.value)
+            is com.arny.sharedui.ImprovementUiAction.Result -> PromptImprovementAction.Result(action.value)
+            is com.arny.sharedui.ImprovementUiAction.Model -> PromptImprovementAction.Model(action.value)
+            is com.arny.sharedui.ImprovementUiAction.Instructions -> PromptImprovementAction.Instructions(action.value)
+            is com.arny.sharedui.ImprovementUiAction.Temperature -> PromptImprovementAction.Temperature(action.value)
+            is com.arny.sharedui.ImprovementUiAction.MaxTokens -> PromptImprovementAction.MaxTokens(action.value)
+            is com.arny.sharedui.ImprovementUiAction.Stream -> PromptImprovementAction.Stream(action.value)
+            com.arny.sharedui.ImprovementUiAction.Generate -> PromptImprovementAction.Generate
+            com.arny.sharedui.ImprovementUiAction.Cancel -> PromptImprovementAction.Cancel
+            com.arny.sharedui.ImprovementUiAction.Apply -> PromptImprovementAction.Apply
+            com.arny.sharedui.ImprovementUiAction.Dismiss -> PromptImprovementAction.Dismiss
+        })
+    }
     Dialog(onDismissRequest = { onAction(PromptImprovementAction.Dismiss) }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         val window = (LocalView.current.parent as? DialogWindowProvider)?.window
         val lightBars = MaterialTheme.colorScheme.surface.luminance() > 0.5f
@@ -29,37 +48,6 @@ fun PromptImprovementScreen(state: PromptImprovementState, onAction: (PromptImpr
                 isAppearanceLightNavigationBars = lightBars
             } }
         }
-        Scaffold(
-            modifier = Modifier.fillMaxSize().imePadding(),
-            topBar = { TopAppBar(title = { Text(stringResource(R.string.improve_title)) }, navigationIcon = {
-                TextButton(onClick = { onAction(PromptImprovementAction.Dismiss) }) { Text(stringResource(R.string.improve_close)) }
-            }) },
-            bottomBar = {
-                Surface(shadowElevation = 4.dp) {
-                    Button(onClick = { onAction(PromptImprovementAction.Apply) }, enabled = state.canApply,
-                        modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp)) { Text(stringResource(R.string.improve_apply)) }
-                }
-            }
-        ) { padding ->
-            Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(stringResource(R.string.improve_draft_hint))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PromptLanguage.entries.forEach { language -> FilterChip(selected = state.language == language, onClick = { onAction(PromptImprovementAction.Language(language)) }, enabled = !state.running, label = { Text(language.name) }) }
-                }
-                if (state.running) LinearProgressIndicator(Modifier.fillMaxWidth())
-                OutlinedTextField(state.result, { onAction(PromptImprovementAction.Result(it)) }, label = { Text(stringResource(R.string.improve_preview)) }, readOnly = state.running, minLines = 3, maxLines = 8, modifier = Modifier.fillMaxWidth())
-                state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                if (state.running) OutlinedButton(onClick = { onAction(PromptImprovementAction.Cancel) }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.improve_stop)) }
-                else Button(onClick = { onAction(PromptImprovementAction.Generate) }, enabled = state.source.isNotBlank() && state.model.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.improve_generate)) }
-                OutlinedTextField(state.model, { onAction(PromptImprovementAction.Model(it)) }, label = { Text(stringResource(R.string.improve_model)) }, enabled = !state.running, singleLine = true, modifier = Modifier.fillMaxWidth())
-                Text(stringResource(R.string.improve_provider_hint), style = MaterialTheme.typography.bodySmall)
-                OutlinedTextField(state.source, { onAction(PromptImprovementAction.Source(it)) }, label = { Text(stringResource(R.string.improve_source)) }, enabled = !state.running, minLines = 3, maxLines = 8, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(state.instructions, { onAction(PromptImprovementAction.Instructions(it)) }, label = { Text(stringResource(R.string.improve_instructions)) }, enabled = !state.running, modifier = Modifier.fillMaxWidth())
-                Text(stringResource(R.string.improve_temperature, state.temperature.toString()))
-                Slider(state.temperature, { onAction(PromptImprovementAction.Temperature(it)) }, enabled = !state.running, valueRange = 0f..2f)
-                OutlinedTextField(state.maxTokens, { onAction(PromptImprovementAction.MaxTokens(it)) }, label = { Text(stringResource(R.string.improve_tokens)) }, enabled = !state.running, singleLine = true, modifier = Modifier.fillMaxWidth())
-                Row { Checkbox(state.stream, { onAction(PromptImprovementAction.Stream(it)) }, enabled = !state.running); Text(stringResource(R.string.improve_stream)) }
-            }
-        }
+        com.arny.sharedui.PromptImprovementPane(shared, dispatch, Modifier.fillMaxSize())
     }
 }

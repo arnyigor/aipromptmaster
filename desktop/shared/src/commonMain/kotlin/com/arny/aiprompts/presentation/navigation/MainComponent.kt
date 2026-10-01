@@ -238,7 +238,7 @@ class DefaultMainComponent(
                     fileMetadataReader = fileMetadataReader,
                     onBack = {
                         navigation.pop()
-                        _state.value = _state.value.copy(currentScreen = MainScreen.SCRAPER_WIZARD)
+                        _state.value = _state.value.copy(currentScreen = MainScreen.PROMPTS)
                     }
                 )
             )
@@ -282,6 +282,7 @@ class DefaultMainComponent(
         if (IS_IMPORT_ENABLED) {
             importFiles = files
             _state.value = _state.value.copy(currentScreen = MainScreen.IMPORT)
+            if (files.isNotEmpty()) (stackFor(MainScreen.IMPORT).value.active.instance as? Child.Import)?.component?.onLoadFiles(files)
         } else {
             println("Import is only available in development mode")
         }

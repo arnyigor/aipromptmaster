@@ -18,7 +18,7 @@ class ImprovePromptUseCaseTest {
     }
     private val useCase = ImprovePromptUseCase(repository, settings)
     private fun stream(chunks: Flow<Result<StreamingChatChunk>>) {
-        every { repository.getStreamingChatCompletion(any(), any(), any(), any(), any()) } returns chunks
+        every { repository.getStreamingChatCompletion(any(), any(), any(), any(), any(), any()) } returns chunks
     }
     private fun prompt() = Prompt("id", "Title", null, PromptContent(ru = "Исходный", en = "Original"), compatibleModels = emptyList(), category = "general", status = "active", createdAt = null, modifiedAt = null)
 

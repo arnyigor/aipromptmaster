@@ -58,7 +58,7 @@ class DefaultScraperWizardComponent(
 
     private val indexParser = IndexParser()
     private val pageParser = PromptPageParser()
-    private val savePromptsAsFilesUseCase = SavePromptsAsFilesUseCase(fileDataSource)
+    private val savePromptsAsFilesUseCase = SavePromptsAsFilesUseCase(fileDataSource, promptsRepository)
 
     private val topicUrl = "https://4pda.to/forum/index.php?showtopic=1109539"
 

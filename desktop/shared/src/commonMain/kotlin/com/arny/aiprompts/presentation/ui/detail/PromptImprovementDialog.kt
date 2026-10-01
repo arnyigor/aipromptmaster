@@ -11,44 +11,28 @@ import androidx.compose.ui.window.DialogProperties
 
 @Composable
 fun PromptImprovementDialog(state: PromptImprovementState, onAction: (PromptImprovementAction) -> Unit) {
-    AlertDialog(
-        onDismissRequest = { onAction(PromptImprovementAction.Dismiss) },
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-        modifier = Modifier.widthIn(max = 900.dp).fillMaxWidth(0.95f),
-        title = { Text("Улучшить промпт") },
-        text = {
-            Column(Modifier.heightIn(max = 600.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Используется подключение из настроек LLM. Применение изменит черновик; сохранение выполняется отдельно.")
-                Row {
-                    PromptLanguage.entries.forEach { language ->
-                        TextButton(onClick = { onAction(PromptImprovementAction.Language(language)) }, enabled = !state.running && language != state.language) { Text(language.name) }
-                    }
-                    Text("Выбран: ${state.language.name}")
-                }
-                if (state.running) LinearProgressIndicator(Modifier.fillMaxWidth())
-                OutlinedTextField(state.result, { onAction(PromptImprovementAction.Result(it)) }, label = { Text("Предпросмотр результата") }, readOnly = state.running, minLines = 3, maxLines = 10, modifier = Modifier.fillMaxWidth())
-                state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                state.firstResponseMs?.let { Text("Первый ответ: $it мс") }
-                state.elapsedMs?.let { Text("Время: $it мс") }
-                if (state.running) {
-                    TextButton(onClick = { onAction(PromptImprovementAction.Cancel) }) { Text("Остановить") }
-                } else {
-                    Button(onClick = { onAction(PromptImprovementAction.Generate) }, enabled = state.source.isNotBlank() && state.model.isNotBlank()) { Text("Улучшить") }
-                }
-                OutlinedTextField(state.model, { onAction(PromptImprovementAction.Model(it)) }, label = { Text("ID модели") }, enabled = !state.running, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(state.instructions, { onAction(PromptImprovementAction.Instructions(it)) }, label = { Text("Что улучшить (необязательно)") }, enabled = !state.running, modifier = Modifier.fillMaxWidth())
-                Text("Температура: ${state.temperature}")
-                Slider(state.temperature, { onAction(PromptImprovementAction.Temperature(it)) }, valueRange = 0f..2f, enabled = !state.running)
-                OutlinedTextField(state.maxTokens, { onAction(PromptImprovementAction.MaxTokens(it)) }, label = { Text("Лимит токенов (1–16384)") }, enabled = !state.running, singleLine = true)
-                Row {
-                    Checkbox(state.stream, { onAction(PromptImprovementAction.Stream(it)) }, enabled = !state.running)
-                    Text("Показывать ответ постепенно")
-                }
-                OutlinedTextField(state.source, { onAction(PromptImprovementAction.Source(it)) }, label = { Text("Исходный промпт") }, enabled = !state.running, minLines = 3, maxLines = 8, modifier = Modifier.fillMaxWidth())
-
-            }
-        },
-        confirmButton = { Button(onClick = { onAction(PromptImprovementAction.Apply) }, enabled = state.canApply) { Text("Применить к черновику") } },
-        dismissButton = { TextButton(onClick = { onAction(PromptImprovementAction.Dismiss) }) { Text("Закрыть") } }
-    )
+val shared = com.arny.sharedui.ImprovementUi(state.language.name, state.source, state.result, state.model,
+        state.instructions, state.temperature, state.maxTokens, state.stream, state.running, state.canApply,
+        state.error, state.firstResponseMs, state.elapsedMs)
+    val dispatch: (com.arny.sharedui.ImprovementUiAction) -> Unit = { action ->
+        onAction(when (action) {
+            is com.arny.sharedui.ImprovementUiAction.Language -> PromptImprovementAction.Language(PromptLanguage.valueOf(action.value))
+            is com.arny.sharedui.ImprovementUiAction.Source -> PromptImprovementAction.Source(action.value)
+            is com.arny.sharedui.ImprovementUiAction.Result -> PromptImprovementAction.Result(action.value)
+            is com.arny.sharedui.ImprovementUiAction.Model -> PromptImprovementAction.Model(action.value)
+            is com.arny.sharedui.ImprovementUiAction.Instructions -> PromptImprovementAction.Instructions(action.value)
+            is com.arny.sharedui.ImprovementUiAction.Temperature -> PromptImprovementAction.Temperature(action.value)
+            is com.arny.sharedui.ImprovementUiAction.MaxTokens -> PromptImprovementAction.MaxTokens(action.value)
+            is com.arny.sharedui.ImprovementUiAction.Stream -> PromptImprovementAction.Stream(action.value)
+            com.arny.sharedui.ImprovementUiAction.Generate -> PromptImprovementAction.Generate
+            com.arny.sharedui.ImprovementUiAction.Cancel -> PromptImprovementAction.Cancel
+            com.arny.sharedui.ImprovementUiAction.Apply -> PromptImprovementAction.Apply
+            com.arny.sharedui.ImprovementUiAction.Dismiss -> PromptImprovementAction.Dismiss
+        })
+    }
+    androidx.compose.ui.window.Dialog(onDismissRequest = { onAction(PromptImprovementAction.Dismiss) }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(modifier = Modifier.widthIn(max = 900.dp).fillMaxWidth(0.95f).fillMaxHeight(0.90f), shape = MaterialTheme.shapes.large) {
+            com.arny.sharedui.PromptImprovementPane(shared, dispatch, Modifier.fillMaxSize())
+        }
+    }
 }

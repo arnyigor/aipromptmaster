@@ -106,7 +106,8 @@ class OpenRouterRepositoryImpl(
         Logger.d("OpenRouterRepo", "Refreshing models from: $url")
         
         val response: ModelsResponseDTO = httpClient.get(url) {
-            if (provider.apiKey.isNotBlank()) header("Authorization", "Bearer ${provider.apiKey}")
+            val key = com.arny.aiprompts.platform.resolveProviderKey(provider)
+            if (key.isNotBlank()) header("Authorization", "Bearer $key")
         }.body()
         if (settingsRepository.loadProviders().activeId == provider.id) {
             modelsProvider = provider
@@ -130,41 +131,24 @@ class OpenRouterRepositoryImpl(
         maxTokens: Int
     ): Result<ChatCompletionResponse> {
         return try {
-            val keyToUse = apiKey ?: settingsRepository.getOpenRouterApiKey()
+            val provider = settingsRepository.loadProviders().active
+            val keyToUse = apiKey ?: com.arny.aiprompts.platform.resolveProviderKey(provider)
 
-            if (keyToUse.isNullOrBlank() && settingsRepository.getBaseUrl().isNullOrBlank()) {
+            if (keyToUse.isNullOrBlank() && provider.requiresKey) {
                 return Result.failure(ApiException.MissingApiKey())
             }
 
-            val url = chatCompletionsUrl
+            val url = "${provider.baseUrl.trimEnd('/')}/chat/completions"
             Logger.d("OpenRouterRepo", "Sending chat completion request to: $url")
 
-            // Проверяем, нужен ли мультимодальный формат
-            val hasMultimodalContent = messages.any { it.isMultimodal() }
-            
-            val response: ChatCompletionResponse = if (hasMultimodalContent) {
-                // Используем мультимодальный формат
-                val apiMessages = buildMultimodalApiMessages(messages)
-                val request = OpenAiChatRequest(
-                    model = model,
-                    messages = apiMessages,
-                    stream = false,
-                    temperature = temperature,
-                    maxTokens = maxTokens
-                )
-                httpClient.post(url) {
-                    if (!keyToUse.isNullOrBlank()) header("Authorization", "Bearer $keyToUse")
-                    contentType(ContentType.Application.Json)
-                    setBody(request)
-                }.body()
-            } else {
-                // Обычный текстовый формат
-                httpClient.post(url) {
-                    if (!keyToUse.isNullOrBlank()) header("Authorization", "Bearer $keyToUse")
-                    contentType(ContentType.Application.Json)
-                    setBody(ChatCompletionRequest(model = model, messages = messages, temperature = temperature, maxTokens = maxTokens))
-                }.body()
-            }
+            val request = OpenAiChatRequest(model = model,
+                messages = buildMultimodalApiMessages(messages), stream = false,
+                temperature = temperature, maxTokens = maxTokens)
+            val response: ChatCompletionResponse = httpClient.post(url) {
+                if (!keyToUse.isNullOrBlank()) header("Authorization", "Bearer $keyToUse")
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }.body()
 
             if (response.error != null) {
                 Logger.e("OpenRouterRepo", "API Error: ${response.error.message}")
@@ -190,41 +174,26 @@ class OpenRouterRepositoryImpl(
         messages: List<ChatMessage>,
         apiKey: String?,
         temperature: Double,
-        maxTokens: Int
+        maxTokens: Int,
+        topP: Double
     ): Flow<Result<StreamingChatChunk>> = flow {
-        val keyToUse = apiKey ?: settingsRepository.getOpenRouterApiKey()
+        val provider = settingsRepository.loadProviders().active
+            val keyToUse = apiKey ?: com.arny.aiprompts.platform.resolveProviderKey(provider)
 
-        if (keyToUse.isNullOrBlank() && settingsRepository.getBaseUrl().isNullOrBlank()) {
+        if (keyToUse.isNullOrBlank() && provider.requiresKey) {
             emit(Result.failure(ApiException.MissingApiKey()))
             return@flow
         }
 
         try {
-            val url = chatCompletionsUrl
+            val url = "${provider.baseUrl.trimEnd('/')}/chat/completions"
             Logger.d("OpenRouterRepo", "Starting streaming request to: $url for model: $model")
             
-            // Проверяем, нужен ли мультимодальный формат
-            val hasMultimodalContent = messages.any { it.isMultimodal() }
-            
-            val requestBody = if (hasMultimodalContent) {
-                val apiMessages = buildMultimodalApiMessages(messages)
-                OpenAiChatRequest(
-                    model = model,
-                    messages = apiMessages,
-                    stream = true,
-                    maxTokens = maxTokens,
-                    temperature = temperature
-                )
-            } else {
-                ChatCompletionRequest(
-                    model = model,
-                    messages = messages,
-                    stream = true,
-                    maxTokens = maxTokens,
-                    temperature = temperature
-                )
-            }
-            
+            val requestBody = OpenAiChatRequest(
+                model = model, messages = buildMultimodalApiMessages(messages), stream = true,
+                maxTokens = maxTokens, temperature = temperature, topP = topP,
+            )
+
             val response = httpClient.preparePost(url) {
                 if (!keyToUse.isNullOrBlank()) header(HttpHeaders.Authorization, "Bearer $keyToUse")
                 header(HttpHeaders.Accept, "text/event-stream")

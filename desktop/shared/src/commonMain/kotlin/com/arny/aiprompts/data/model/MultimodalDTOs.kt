@@ -12,9 +12,10 @@ import kotlinx.serialization.json.JsonElement
  data class OpenAiChatRequest(
     val model: String,
     val messages: List<OpenAiMessageDTO>,
-    val stream: Boolean = true,
+    val stream: Boolean = false,
     @SerialName("max_tokens") val maxTokens: Int? = null,
-    @SerialName("temperature") val temperature: Double? = null
+    @SerialName("temperature") val temperature: Double? = null,
+    @SerialName("top_p") val topP: Double? = null
 )
 
 /**

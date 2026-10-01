@@ -35,6 +35,12 @@ data class LlmUiState(
     
     // Ввод
     val prompt: String = "",
+    val requestActive: Boolean = false,
+    val editingMessageId: String? = null,
+    val editingText: String = "",
+    val newChatSystemPrompt: String = "",
+    val newChatSettings: ChatSettings = ChatSettings(),
+    val attachments: List<com.arny.aiprompts.domain.interactors.AttachmentInput> = emptyList(),
     
     // Сессии
     val chatSessions: List<ChatSession> = emptyList(),
@@ -65,7 +71,7 @@ data class LlmUiState(
 
     /** Проверяет, идет ли сейчас генерация ответа. */
     val isGenerating: Boolean
-        get() = messages.any { msg -> msg.isStreaming() }
+        get() = requestActive
 
     /** Отфильтрованные и отсортированные модели для отображения. */
     val displayModels: List<LlmModel>
@@ -85,7 +91,7 @@ data class LlmUiState(
                 filtered = when (selectedCategory) {
                     ModelCategory.ALL -> filtered
                     ModelCategory.FREE -> filtered.filter {
-                        it.pricingPrompt == null || it.pricingPrompt.toDouble() == 0.0
+                        it.pricingPrompt?.signum() == 0 && it.pricingCompletion?.signum() == 0
                     }
                     ModelCategory.TEXT -> filtered.filter { "text" in it.inputModalities }
                     ModelCategory.VISION -> filtered.filter { "image" in it.inputModalities }
@@ -112,11 +118,11 @@ data class LlmUiState(
 
     /** Настройки текущей сессии (или настройки по умолчанию). */
     val currentSettings: ChatSettings
-        get() = currentSession?.settings ?: ChatSettings()
+        get() = currentSession?.settings ?: newChatSettings
 
     /** System prompt текущей сессии. */
     val currentSystemPrompt: String
-        get() = currentSession?.systemPrompt ?: ""
+        get() = currentSession?.systemPrompt ?: newChatSystemPrompt
 
     /** Общее количество токенов в текущей сессии. */
     val totalTokens: Int
@@ -124,7 +130,7 @@ data class LlmUiState(
 
     /** Проверяет, можно ли отправить сообщение. */
     val canSendMessage: Boolean
-        get() = prompt.isNotBlank() && selectedModel != null && !isGenerating
+        get() = (prompt.isNotBlank() || attachments.isNotEmpty()) && (selectedModel != null || currentSession?.modelId != null) && !isGenerating
 
     /** Последнее сообщение для preview в списке сессий. */
     val lastMessagePreview: String

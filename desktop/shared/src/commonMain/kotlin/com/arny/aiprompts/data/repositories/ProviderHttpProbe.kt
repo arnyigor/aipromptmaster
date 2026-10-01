@@ -12,8 +12,13 @@ import kotlinx.serialization.json.*
 class ProviderHttpProbe(private val client: HttpClient) : ProviderProbe {
     override suspend fun models(profile: ProviderProfile): List<String> {
         val valid = profile.validated()
+        val key = com.arny.aiprompts.platform.resolveProviderKey(valid)
+        if (valid.id == "openrouter") {
+            val auth = client.get("${valid.baseUrl}/auth/key") { header("Authorization", "Bearer $key") }
+            require(auth.status.isSuccess()) { "HTTP ${auth.status.value}" }
+        }
         val response = client.get("${valid.baseUrl}/models") {
-            if (valid.apiKey.isNotBlank()) header("Authorization", "Bearer ${valid.apiKey}")
+            if (key.isNotBlank()) header("Authorization", "Bearer $key")
         }
         require(response.status.isSuccess()) { "HTTP ${response.status.value}" }
         val root = Json.parseToJsonElement(response.bodyAsText()).jsonObject

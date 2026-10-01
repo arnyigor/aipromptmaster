@@ -38,6 +38,9 @@ class PromptImprovementHttpTest {
         }
         try {
             val settings = mockk<ISettingsRepository> {
+                every { loadProviders() } returns com.arny.promptcontract.ProviderConfig(
+                    profiles = listOf(com.arny.promptcontract.ProviderProfile.openRouter(),
+                        com.arny.promptcontract.ProviderProfile("local", "Local", "http://127.0.0.1:${server.address.port}/v1", requiresKey = false)), activeId = "local")
                 every { getBaseUrl() } returns "http://127.0.0.1:${server.address.port}/v1"
                 every { getOpenRouterApiKey() } returns null
             }
@@ -47,11 +50,13 @@ class PromptImprovementHttpTest {
                 assertEquals("Improved {name}", useCase(PromptImprovementRequest("Original {name}", "fixture-model", temperature = 0.3, maxTokens = 2048, stream = stream)).toList().last())
             }
             assertEquals(2, requests.size)
+            assertEquals(true, requests.first()["stream"]?.jsonPrimitive?.boolean)
             requests.forEach { request ->
                 assertEquals("fixture-model", request["model"]?.jsonPrimitive?.content)
                 assertEquals(0.3, request["temperature"]?.jsonPrimitive?.double)
                 assertEquals(2048, request["max_tokens"]?.jsonPrimitive?.int)
                 assertEquals("Original {name}", request["messages"]?.jsonArray?.last()?.jsonObject?.get("content")?.jsonPrimitive?.content)
+                request["messages"]!!.jsonArray.forEach { assertEquals(setOf("role", "content"), it.jsonObject.keys) }
             }
         } finally {
             client.close()

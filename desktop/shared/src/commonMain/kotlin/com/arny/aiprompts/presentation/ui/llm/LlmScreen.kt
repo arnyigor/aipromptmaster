@@ -94,6 +94,21 @@ fun LlmScreen(component: LlmComponent) {
     }
 
     // Диалог выбора модели
+    uiState.editingMessageId?.let { id ->
+        AlertDialog(
+            onDismissRequest = component::onDismissEditMessage,
+            title = { Text("Редактировать сообщение") },
+            text = { Column {
+                OutlinedTextField(uiState.editingText, component::onEditDraftChanged,
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp), minLines = 3, maxLines = 10)
+                Text("Последующие ответы будут заменены новым ответом.", style = MaterialTheme.typography.bodySmall)
+            } },
+            confirmButton = { TextButton(enabled = uiState.editingText.isNotBlank(), onClick = {
+                component.onEditMessage(id, uiState.editingText)
+            }) { Text("Сохранить и отправить") } },
+            dismissButton = { TextButton(onClick = component::onDismissEditMessage) { Text("Отмена") } },
+        )
+    }
     if (uiState.showModelDialog) {
         ModelSelectionDialog(
             uiState = uiState,
@@ -170,7 +185,7 @@ private fun DesktopLayout(
 
             AnimatedVisibility(visible = uiState.showParameters) {
                 ParametersPanel(
-                    session = uiState.currentSession,
+                    session = uiState.currentSession ?: com.arny.aiprompts.data.model.ChatSession("draft", "Новый чат", uiState.newChatSystemPrompt, uiState.newChatSettings, 0, 0),
                     selectedModel = uiState.selectedModel,
                     onSettingsChanged = component::onChatSettingsChanged,
                     onSystemPromptChanged = component::onSystemPromptChanged,
@@ -188,78 +203,41 @@ private fun MobileLayout(
     uiState: LlmUiState,
     component: LlmComponent
 ) {
-    var showSidebar by remember { mutableStateOf(false) }
+val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
     var showParams by remember { mutableStateOf(false) }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Header
-            MobileHeader(
-                selectedModel = uiState.selectedModel?.name,
-                onMenuClick = { showSidebar = true },
-                onModelClick = component::toggleModelDialog,
-                onSettingsClick = { showParams = true }
-            )
-
-            HorizontalDivider()
-
-            // Chat area
-            ChatArea(
-                uiState = uiState,
-                component = component,
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        // Sidebar drawer
-        if (showSidebar) {
-            ModalNavigationDrawer(
-                drawerState = rememberDrawerState(initialValue = DrawerValue.Open),
-                drawerContent = {
-                    ModalDrawerSheet {
-                        ChatSidebar(
-                            sessions = uiState.chatSessions,
-                            selectedSessionId = uiState.selectedChatId,
-                            onSessionSelected = {
-                                component.onChatSessionSelected(it)
-                                showSidebar = false
-                            },
-                            onNewChat = {
-                                component.onCreateNewChatSession()
-                                showSidebar = false
-                            },
-                            onDeleteSession = component::onDeleteChatSession,
-                            onRenameSession = component::onRenameChatSession,
-                            onArchiveSession = component::onArchiveChatSession,
-                            modifier = Modifier.width(300.dp)
-                        )
-                    }
-                },
-                gesturesEnabled = false
-            ) {
-                // Empty content - just to show drawer
-                Box(modifier = Modifier.fillMaxSize())
-            }
-        }
-
-        // Parameters bottom sheet
-        if (showParams) {
-            val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-            ModalBottomSheet(
-                sheetState = sheetState,
-                onDismissRequest = { showParams = false }
-            ) {
-                ParametersPanel(
-                    session = uiState.currentSession,
-                    selectedModel = uiState.selectedModel,
-                    onSettingsChanged = component::onChatSettingsChanged,
-                    onSystemPromptChanged = component::onSystemPromptChanged,
-                    onDismiss = { showParams = false },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight(0.9f)
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                ChatSidebar(
+                    sessions = uiState.chatSessions, selectedSessionId = uiState.selectedChatId,
+                    onSessionSelected = { component.onChatSessionSelected(it); scope.launch { drawerState.close() } },
+                    onNewChat = { component.onCreateNewChatSession(); scope.launch { drawerState.close() } },
+                    onDeleteSession = component::onDeleteChatSession, onRenameSession = component::onRenameChatSession,
+                    onArchiveSession = component::onArchiveChatSession, modifier = Modifier.width(300.dp),
                 )
             }
+        },
+    ) {
+        Column(Modifier.fillMaxSize()) {
+            MobileHeader(selectedModel = uiState.selectedModel?.name,
+                chatTitle = uiState.currentSession?.name ?: "Новый чат",
+                onMenuClick = { scope.launch { drawerState.open() } },
+                onModelClick = component::toggleModelDialog, onSettingsClick = { showParams = true })
+            HorizontalDivider()
+            ChatArea(uiState, component, Modifier.weight(1f))
+        }
+    }
+    if (showParams) {
+        ModalBottomSheet(onDismissRequest = { showParams = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+            ParametersPanel(
+                session = uiState.currentSession ?: com.arny.aiprompts.data.model.ChatSession("draft", "Новый чат", uiState.newChatSystemPrompt, uiState.newChatSettings, 0, 0),
+                selectedModel = uiState.selectedModel,
+                onSettingsChanged = component::onChatSettingsChanged, onSystemPromptChanged = component::onSystemPromptChanged,
+                onDismiss = { showParams = false }, modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f),
+            )
         }
     }
 }
@@ -272,28 +250,45 @@ private fun ChatArea(
     component: LlmComponent,
     modifier: Modifier = Modifier
 ) {
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
     Column(modifier = modifier.fillMaxHeight()) {
         // Messages
         MessagesList(
-            messages = uiState.messages,
+            messages = if (uiState.searchHistoryQuery.isBlank()) uiState.messages
+                else uiState.messages.filter { it.content.contains(uiState.searchHistoryQuery, ignoreCase = true) },
             isLoading = uiState.isLoadingMessages,
             onRetry = component::onRetryMessage,
-            onEdit = component::onEditMessage,
-            onCopy = { /* TODO */ },
+            onEdit = { id, _ -> component.onBeginEditMessage(id) },
+            onCopy = { clipboard.setText(androidx.compose.ui.text.AnnotatedString(it)) },
             modifier = Modifier.weight(1f)
         )
 
         HorizontalDivider()
 
         // Input
-        ChatInput(
+        com.arny.sharedui.ChatComposer(
             value = uiState.prompt,
             onValueChange = component::onPromptChanged,
             onSend = component::onStreamingGenerateClicked,
             onCancel = component::onCancelGenerating,
-            isGenerating = uiState.isGenerating,
+            generating = uiState.isGenerating,
             canSend = uiState.canSendMessage,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            sendOnEnter = true,
+            onAttach = { com.arny.aiprompts.platform.pickChatAttachments(component::onAttachmentsAdded, component::onAttachmentError) },
+            attachments = {
+                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(uiState.attachments, key = { it.uri }) { file ->
+                        InputChip(selected = true, onClick = { component.onAttachmentRemoved(file.uri) },
+                            enabled = !uiState.isGenerating, label = { Text(file.fileName, maxLines = 1) },
+                            trailingIcon = { Icon(Icons.Default.Close, "Удалить вложение") })
+                    }
+                }
+            },
+            onClear = {
+                component.onPromptChanged("")
+                uiState.attachments.forEach { component.onAttachmentRemoved(it.uri) }
+            },
         )
     }
 }
@@ -311,9 +306,11 @@ private fun MessagesList(
     val scope = rememberCoroutineScope()
 
     // Автоскролл к последнему сообщению
-    LaunchedEffect(messages.size) {
+    LaunchedEffect(messages.lastOrNull()?.id, messages.lastOrNull()?.content?.length) {
         if (messages.isNotEmpty()) {
-            scope.launch {
+            val nearBottom = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index?.let { it >= messages.lastIndex - 1 } ?: true
+            if (nearBottom && !listState.isScrollInProgress) {
+                withFrameNanos { }
                 listState.animateScrollToItem(messages.size - 1)
             }
         }
@@ -370,66 +367,8 @@ private fun ChatInput(
     canSend: Boolean,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .background(MaterialTheme.colorScheme.inputPanelBackground())
-            .padding(16.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Bottom
-        ) {
-            OutlinedTextField(
-                value = value,
-                onValueChange = onValueChange,
-                placeholder = { Text("Сообщение…") },
-                modifier = Modifier
-                    .weight(1f)
-                    .onKeyEvent { event ->
-                        if (event.type == KeyEventType.KeyDown && 
-                            event.key == Key.Enter &&
-                            !event.isShiftPressed
-                        ) {
-                            if (canSend && !isGenerating) {
-                                onSend()
-                                true
-                            } else false
-                        } else false
-                    },
-                enabled = !isGenerating,
-                maxLines = 5,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences
-                ),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            if (isGenerating) {
-                // Кнопка отмены
-                FilledIconButton(
-                    onClick = onCancel,
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Icon(Icons.Default.Stop, contentDescription = "Остановить генерацию")
-                }
-            } else {
-                // Кнопка отправки
-                FilledIconButton(
-                    onClick = onSend,
-                    enabled = canSend
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Отправить"
-                    )
-                }
-            }
-        }
-    }
+com.arny.sharedui.ChatComposer(value, onValueChange, onSend, onCancel,
+        generating = isGenerating, canSend = canSend, modifier = modifier, sendOnEnter = true, onClear = { onValueChange("") })
 }
 
 // ==================== Headers ====================
@@ -471,6 +410,7 @@ private fun ChatHeader(
 @Composable
 private fun MobileHeader(
     selectedModel: String?,
+    chatTitle: String,
     onMenuClick: () -> Unit,
     onModelClick: () -> Unit,
     onSettingsClick: () -> Unit
@@ -487,7 +427,7 @@ private fun MobileHeader(
         }
 
         Text(
-            text = selectedModel ?: "Выберите модель",
+            text = chatTitle,
             modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
             maxLines = 1,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,

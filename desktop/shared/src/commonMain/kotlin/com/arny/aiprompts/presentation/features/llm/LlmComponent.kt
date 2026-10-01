@@ -68,6 +68,9 @@ interface LlmComponent {
 
     /** Изменение текста в поле ввода. */
     fun onPromptChanged(newPrompt: String)
+    fun onAttachmentsAdded(files: List<com.arny.aiprompts.domain.interactors.AttachmentInput>)
+    fun onAttachmentRemoved(uri: String)
+    fun onAttachmentError(message: String)
 
     /** Отправка сообщения (запуск генерации). */
     fun onStreamingGenerateClicked()
@@ -80,6 +83,9 @@ interface LlmComponent {
 
     /** Редактирование сообщения пользователя. */
     fun onEditMessage(messageId: String, newContent: String)
+    fun onBeginEditMessage(messageId: String)
+    fun onEditDraftChanged(text: String)
+    fun onDismissEditMessage()
 
     /** Удаление сообщения. */
     fun onDeleteMessage(messageId: String)

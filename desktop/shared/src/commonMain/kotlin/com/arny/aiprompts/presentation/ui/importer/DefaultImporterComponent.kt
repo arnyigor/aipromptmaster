@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.awt.Desktop
 import java.io.File
@@ -33,7 +34,7 @@ import kotlin.time.ExperimentalTime
 
 class DefaultImporterComponent(
     componentContext: ComponentContext,
-    private val filesToImport: List<File>,
+    private var filesToImport: List<File>,
     private val parseRawPostsUseCase: ParseRawPostsUseCase,
     private val savePromptsAsFilesUseCase: SavePromptsAsFilesUseCase,
     private val hybridParser: IHybridParser,
@@ -54,8 +55,6 @@ class DefaultImporterComponent(
     private var historyIndex = -1
 
     init {
-        loadAvailableCategories()
-        loadAndParseFiles()
         loadInitialData()
     }
 
@@ -67,6 +66,7 @@ class DefaultImporterComponent(
             try {
                 // Пробуем найти папку prompts в разных местах
                 val promptsDirs = listOf(
+                    File(System.getProperty("user.home"), ".aiprompts/personal_prompts"),
                     File("prompts"),  // относительно рабочей директории
                     File("../prompts"),  // на уровень выше
                     File("../../prompts"), // еще на уровень выше
@@ -167,7 +167,9 @@ class DefaultImporterComponent(
                 if (firstPostToSelect != null) {
                     ensureAndPrefillEditedData(firstPostToSelect)
                 }
-                _state.update { it.copy(successMessage = "Успешно загружено ${sortedPosts.size} постов") }
+                if (filesToImport.isNotEmpty()) {
+                    _state.update { it.copy(successMessage = "Успешно загружено ${sortedPosts.size} постов") }
+                }
             } catch (e: Exception) {
                 _state.update {
                     it.copy(
@@ -311,9 +313,25 @@ class DefaultImporterComponent(
         }
     }
 
+    override fun onLoadFiles(files: List<File>) {
+        if (files.isEmpty()) return
+        if (files.any { !it.isFile || it.extension.lowercase() !in listOf("html", "htm") }) {
+            _state.update { it.copy(error = "Выберите существующие HTML-файлы (.html или .htm)") }
+            return
+        }
+        scope.launch {
+            state.first { !it.isLoading }
+            val merged = (filesToImport + files).distinctBy { it.absolutePath }
+            if (merged == filesToImport) return@launch
+            filesToImport = merged
+            _state.update { it.copy(sourceHtmlFiles = filesToImport, isLoading = true) }
+            loadAndParseFiles()
+        }
+    }
+
     override fun onPostClicked(postId: String) {
         val selectedPost = _state.value.rawPosts.find { it.postId == postId } ?: return
-        _state.update { it.copy(selectedPostId = postId) }
+        _state.update { it.copy(selectedPostId = postId, activePane = 1) }
         ensureAndPrefillEditedData(selectedPost)
     }
 
@@ -322,7 +340,7 @@ class DefaultImporterComponent(
         saveStateToHistory()
         _state.update {
             val newEditedData = it.editedData + (postId to editedData)
-            it.copy(editedData = newEditedData)
+            it.copy(editedData = newEditedData, validationErrors = it.validationErrors - postId)
         }
     }
 
@@ -341,20 +359,20 @@ class DefaultImporterComponent(
             BlockActionTarget.CONTENT -> currentEditedData.copy(content = normalizeLineBreaks(if (currentEditedData.content.isBlank()) normalizedText else "${currentEditedData.content}\n\n$normalizedText"))
         }
         _state.update {
-            it.copy(editedData = it.editedData + (postId to newEditedData))
+            it.copy(editedData = it.editedData + (postId to newEditedData), validationErrors = it.validationErrors - postId)
         }
     }
 
     override fun onSkipPostClicked() {
-        // TODO: Добавить ID в список пропущенных
+        val id = _state.value.selectedPostId ?: return
+        _state.update { it.copy(skippedPostIds = it.skippedPostIds + id, postsToImport = it.postsToImport - id) }
         selectNextUnprocessedPost()
     }
 
     override fun onSaveAndSelectNextClicked() {
         val postId = _state.value.selectedPostId ?: return
         onTogglePostForImport(postId, true)
-        // Теперь просто сохраняем пост без перехода к следующему
-        println("✅ Пост $postId сохранен для импорта")
+        if (validateEditedData(postId)) selectNextUnprocessedPost()
     }
 
     override fun onSaveAndSelectPreviousClicked() {
@@ -372,6 +390,8 @@ class DefaultImporterComponent(
     }
 
     override fun onTogglePostForImport(postId: String, isChecked: Boolean) {
+        val post = _state.value.rawPosts.find { it.postId == postId } ?: return
+        if (isChecked) ensureAndPrefillEditedData(post)
         val currentSet = _state.value.postsToImport.toMutableSet()
         if (isChecked) currentSet.add(postId) else currentSet.remove(postId)
         _state.update { it.copy(postsToImport = currentSet) }
@@ -393,6 +413,8 @@ class DefaultImporterComponent(
     }
 
     override fun onImportClicked() {
+        if (_state.value.isLoading || _state.value.postsToImport.isEmpty()) return
+        _state.update { it.copy(isLoading = true) }
         scope.launch {
             println("🚀 Начинаем процесс импорта...")
             // Сбрасываем предыдущие ошибки и ставим флаг загрузки
@@ -431,6 +453,12 @@ class DefaultImporterComponent(
                 }
 
                 println("✅ Все посты прошли валидацию, продолжаем импорт.")
+                _state.update { state ->
+                    state.copy(promptIds = state.promptIds + postsToImport.associateWith { id ->
+                        state.promptIds[id] ?: state.savedFiles[id]?.let { File(it).nameWithoutExtension }
+                            ?.takeIf { it.matches(Regex("[A-Za-z0-9_-]+")) } ?: uuid4().toString()
+                    })
+                }
                 updateProgress(ImportStep.GENERATING_JSON, 0.5f, "Генерация JSON файлов")
 
                 // --- ШАГ 2: ГЕНЕРАЦИЯ ДАННЫХ ДЛЯ JSON ---
@@ -446,18 +474,21 @@ class DefaultImporterComponent(
 
                     if (rawPost != null && editedData != null) {
                         PromptData(
-                            id = uuid4().toString(),
+                            id = _state.value.promptIds.getValue(postId),
                             sourceId = rawPost.postId,
                             title = editedData.title.ifBlank { "Prompt ${rawPost.postId}" },
                             description = editedData.description,
-                            variants = listOf(PromptVariant(content = editedData.content)),
+                            variants = (listOf(PromptVariant(content = editedData.content)) + editedData.variants.map {
+                                PromptVariant(type = it.title, content = it.content)
+                            }).filter { it.content.isNotBlank() }.distinctBy { it.content },
                             author = rawPost.author,
                             createdAt = rawPost.date.toEpochMilliseconds(),
                             updatedAt = rawPost.date.toEpochMilliseconds(),
                             category = editedData.category,
                             tags = editedData.tags,
                             isLocal = true,
-                            variables = editedData.variables
+                            variables = editedData.variables,
+                            source = rawPost.postUrl ?: "4pda.to",
                         )
                     } else {
                         null // Если данных нет, пропускаем этот пост
@@ -496,7 +527,8 @@ class DefaultImporterComponent(
                                 isLoading = false,
                                 successMessage = successMessage,
                                 progress = ImportProgress(),
-                                savedFiles = it.savedFiles + newSavedFiles // Добавляем новые связи к старым
+                                savedFiles = it.savedFiles + newSavedFiles,
+                                postsToImport = it.postsToImport - postsToImport
                             )
                         }
 
@@ -556,7 +588,7 @@ class DefaultImporterComponent(
 
     private fun selectNextUnprocessedPost() {
         val currentState = _state.value
-        val processedIds = currentState.postsToImport // + пропущенные ID в будущем
+        val processedIds = currentState.postsToImport + currentState.skippedPostIds
         val currentIndex = currentState.rawPosts.indexOfFirst { it.postId == currentState.selectedPostId }
 
         val nextPost = currentState.rawPosts
@@ -573,7 +605,7 @@ class DefaultImporterComponent(
 
     private fun selectPreviousUnprocessedPost() {
         val currentState = _state.value
-        val processedIds = currentState.postsToImport // + пропущенные ID в будущем
+        val processedIds = currentState.postsToImport + currentState.skippedPostIds
         val currentIndex = currentState.rawPosts.indexOfFirst { it.postId == currentState.selectedPostId }
 
         val previousPost = currentState.rawPosts
@@ -646,6 +678,12 @@ class DefaultImporterComponent(
             it.copy(showPreview = !it.showPreview)
         }
     }
+
+    override fun onPaneSelected(index: Int) {
+        _state.update { it.copy(activePane = index.coerceIn(0, 2)) }
+    }
+
+    override fun onEditorTabSelected(index: Int) { _state.update { it.copy(editorTab = index.coerceIn(0, 2)) } }
 
     override fun onTogglePostExpansion(postId: String) {
         val currentExpanded = _state.value.expandedPostIds
@@ -952,7 +990,7 @@ class DefaultImporterComponent(
             println("✅ Валидация успешна для поста $postId")
             // Выводим полную структуру JSON
             try {
-                println("📄 Полная JSON-структура:\n${resultJson}")
+                println("JSON-структура проверена")
             } catch (e: Exception) {
                 println("⚠️ Не удалось сериализовать JSON: ${e.message}")
             }
