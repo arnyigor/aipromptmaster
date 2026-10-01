@@ -45,10 +45,12 @@ fun main() {
             position = WindowPosition(Alignment.Center),
         )
         val lifecycle = remember { LifecycleRegistry() }
+        val sessionStore = remember { com.arny.aiprompts.platform.DesktopSessionStore() }
+        val stateKeeper = remember { com.arkivanov.essenty.statekeeper.StateKeeperDispatcher(sessionStore.load()) }
 
         val root = remember {
             DefaultMainComponent(
-                componentContext = DefaultComponentContext(lifecycle = lifecycle),
+                componentContext = DefaultComponentContext(lifecycle = lifecycle, stateKeeper = stateKeeper),
                 getPromptsUseCase = getKoin().get(),
                 getPromptUseCase = getKoin().get(),
                 toggleFavoriteUseCase = getKoin().get(),
@@ -83,11 +85,11 @@ fun main() {
         LifecycleController(lifecycle, windowState)
 
         Window(
-            onCloseRequest = ::exitApplication,
+            onCloseRequest = { sessionStore.save(stateKeeper.save()); exitApplication() },
             state = windowState,
             title = "AI Prompt Master"
         ) {
-            MainContentDesktopImpl(component = root)
+            com.arny.sharedui.PromptTheme { MainContentDesktopImpl(component = root) }
         }
     }
 }

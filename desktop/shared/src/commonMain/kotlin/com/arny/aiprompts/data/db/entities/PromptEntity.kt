@@ -6,6 +6,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.util.UUID
 
+@kotlinx.serialization.Serializable
 @Entity(
     tableName = "prompts",
     indices = [

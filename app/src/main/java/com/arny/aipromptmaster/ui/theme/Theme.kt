@@ -103,9 +103,9 @@ fun AIPromptMasterComposeTheme(
         else -> LightColorScheme
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
+    com.arny.sharedui.PromptTheme(
+        dark = darkTheme,
+        colors = colorScheme,
         content = content
     )
 }

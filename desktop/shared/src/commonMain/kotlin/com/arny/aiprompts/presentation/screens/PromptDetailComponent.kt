@@ -6,6 +6,9 @@ import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.essenty.lifecycle.coroutines.coroutineScope
 import com.arny.aiprompts.domain.model.Prompt
 import com.arny.aiprompts.domain.model.PromptContent
+import com.arny.aiprompts.data.mappers.toEntity
+import com.arny.aiprompts.data.mappers.toDomain
+import com.arny.aiprompts.data.db.entities.PromptEntity
 import com.arny.aiprompts.domain.usecase.GetPromptUseCase
 import com.arny.aiprompts.domain.usecase.UpdatePromptUseCase
 import com.arny.aiprompts.domain.usecase.CreatePromptUseCase
@@ -62,7 +65,8 @@ class DefaultPromptDetailComponent(
 
     private var currentPromptId = promptId
 
-    private val _state = MutableStateFlow(PromptDetailState(isLoading = true))
+    private val restoredDraft = stateKeeper.consume("prompt-draft", PromptEntity.serializer())?.toDomain()
+    private val _state = MutableStateFlow(PromptDetailState(isLoading = true, isEditing = restoredDraft != null, draftPrompt = restoredDraft))
     override val state: StateFlow<PromptDetailState> = _state.asStateFlow()
 
     private val scope = coroutineScope()
@@ -78,6 +82,7 @@ class DefaultPromptDetailComponent(
     }
 
     init {
+        stateKeeper.register("prompt-draft", PromptEntity.serializer()) { _state.value.draftPrompt?.toEntity() }
         improvementController?.let { controller ->
             scope.launch { controller.state.collect { state -> _state.update { it.copy(improvement = state) } } }
         }
@@ -88,7 +93,7 @@ class DefaultPromptDetailComponent(
                     result.onSuccess { existingPrompt ->
                         if (existingPrompt == null) {
                             // Новый промпт - инициализируем пустое состояние в режиме редактирования
-                            _state.update { createNewPrompt() }
+                            _state.update { if (restoredDraft != null) it.copy(isLoading = false) else createNewPrompt() }
                             loadAvailableTags()
                         } else {
                             // Существующий промпт - загружаем его
@@ -96,7 +101,7 @@ class DefaultPromptDetailComponent(
                         }
                     }.onFailure { error ->
                         // В случае ошибки считаем, что промпт новый
-                        _state.update { createNewPrompt() }
+                        _state.update { if (restoredDraft != null) it.copy(isLoading = false) else createNewPrompt() }
                         loadAvailableTags()
                     }
                 }

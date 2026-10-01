@@ -39,9 +39,15 @@ compose.desktop {
         nativeDistributions {
             targetFormats(
                 TargetFormat.Exe,    // Windows EXE-установщик
+                TargetFormat.Msi,
             )
             packageName = "AIPrompts"
             packageVersion = "1.0.0"
+            windows {
+                perUserInstall = true
+                dirChooser = true
+                upgradeUuid = "b6b9c07c-94d4-4a0f-b968-dfe5d41a4c6b"
+            }
             modules(
                 "jdk.accessibility",
                 "java.net.http",     // Исправляет ошибку WebSocket$Listener

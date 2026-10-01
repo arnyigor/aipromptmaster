@@ -119,26 +119,39 @@ class DefaultMainComponent(
     private val providerProbe: com.arny.promptcontract.ProviderProbe,
 ) : MainComponent, ComponentContext by componentContext {
 
-    private val navigation = StackNavigation<MainConfig>()
+    private val tabNavigations = MainScreen.entries.associateWith { StackNavigation<MainConfig>() }
+    private val navigation: StackNavigation<MainConfig> get() = tabNavigations.getValue(_state.value.currentScreen)
     private var importFiles = emptyList<File>()
 
     private val _state = MutableStateFlow(
         MainState(
-            currentScreen = MainScreen.PROMPTS,
+            currentScreen = stateKeeper.consume("selected-tab", kotlinx.serialization.serializer<String>())
+                ?.let { name -> MainScreen.entries.firstOrNull { it.name == name } } ?: MainScreen.PROMPTS,
             sidebarCollapsed = false,
             activeWorkspace = null
         )
     )
     override val state: StateFlow<MainState> = _state.asStateFlow()
 
-    override val childStack: Value<ChildStack<*, Child>> =
+    private val tabStacks = MainScreen.entries.associateWith { tab ->
         childStack(
-            source = navigation,
+            source = tabNavigations.getValue(tab),
             serializer = MainConfig.serializer(),
-            initialConfiguration = MainConfig.Prompts,
-            handleBackButton = true,
+            initialConfiguration = when (tab) {
+                MainScreen.PROMPTS -> MainConfig.Prompts
+                MainScreen.CHAT -> MainConfig.Chat
+                MainScreen.SCRAPER_WIZARD -> MainConfig.ScraperWizard
+                MainScreen.IMPORT -> MainConfig.Import
+                MainScreen.SETTINGS -> MainConfig.Settings
+            },
+            key = "tab-${tab.name}",
+            handleBackButton = false,
             childFactory = ::createChild
         )
+    }
+    override val childStack: Value<ChildStack<*, Child>> get() = tabStacks.getValue(_state.value.currentScreen)
+
+    init { stateKeeper.register("selected-tab", kotlinx.serialization.serializer<String>()) { _state.value.currentScreen.name } }
 
     @OptIn(DelicateDecomposeApi::class)
     private fun createChild(config: MainConfig, context: ComponentContext): Child {
@@ -160,7 +173,7 @@ class DefaultMainComponent(
                         this@DefaultMainComponent.navigateToScraper()
                     },
                     onNavigateToLLM = {
-                        navigation.push(MainConfig.Chat)
+                        navigateToChat()
                     }
                 )
             )
@@ -235,12 +248,10 @@ class DefaultMainComponent(
     }
 
     override fun navigateToScraperWizard() {
-        navigation.navigate { listOf(MainConfig.ScraperWizard) }
         _state.value = _state.value.copy(currentScreen = MainScreen.SCRAPER_WIZARD)
     }
 
     override fun navigateToPrompts() {
-        navigation.navigate { listOf(MainConfig.Prompts) }
         _state.value = _state.value.copy(currentScreen = MainScreen.PROMPTS)
     }
 
@@ -251,14 +262,12 @@ class DefaultMainComponent(
 
     @OptIn(DelicateDecomposeApi::class)
     override fun navigateToChat() {
-        navigation.push(MainConfig.Chat)
         _state.value = _state.value.copy(currentScreen = MainScreen.CHAT)
     }
 
     override fun navigateToImport(files: List<File>) {
         if (IS_IMPORT_ENABLED) {
             importFiles = files
-            navigation.navigate { listOf(MainConfig.Import) }
             _state.value = _state.value.copy(currentScreen = MainScreen.IMPORT)
         } else {
             println("Import is only available in development mode")
@@ -266,7 +275,6 @@ class DefaultMainComponent(
     }
 
     override fun navigateToSettings() {
-        navigation.navigate { listOf(MainConfig.Settings) }
         _state.value = _state.value.copy(currentScreen = MainScreen.SETTINGS)
     }
 

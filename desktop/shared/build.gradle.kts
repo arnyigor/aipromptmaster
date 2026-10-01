@@ -23,6 +23,7 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 api(project(":prompt-contract"))
+                api(project(":shared-ui"))
                 // Compose
                 api(libs.compose.runtime)
                 api(libs.compose.foundation)

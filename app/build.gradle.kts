@@ -149,6 +149,8 @@ room {
 }
 
 dependencies {
+    implementation(project(":shared-ui"))
+    implementation("androidx.lifecycle:lifecycle-viewmodel-navigation3:2.10.0")
     implementation(project(":prompt-contract"))
 
     // Koin core + Android support

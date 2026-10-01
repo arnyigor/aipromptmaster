@@ -58,15 +58,7 @@ fun EditablePromptContentCard(
 
             if (isEditing) {
                 // Режим редактирования - обычное текстовое поле
-                OutlinedTextField(
-                    value = editText,
-                    onValueChange = onValueChange,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp),
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(
-                        fontFamily = FontFamily.Monospace
-                    ),
-                    placeholder = { Text("Введите содержимое промпта (поддерживается Markdown)...") }
-                )
+                com.arny.sharedui.PromptTextEditor(language, editText, onValueChange)
             } else {
                 // Режим просмотра
                 var showMarkdown by remember { mutableStateOf(true) }

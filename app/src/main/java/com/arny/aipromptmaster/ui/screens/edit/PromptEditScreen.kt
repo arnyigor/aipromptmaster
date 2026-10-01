@@ -452,15 +452,7 @@ fun SectionHeader(title: String) {
 
 @Composable
 fun ContentCard(lang: String, text: String, onValueChange: (String) -> Unit) {
-    OutlinedTextField(
-        value = text,
-        onValueChange = onValueChange,
-        label = { Text("Текст ($lang)") },
-        minLines = 3,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 12.dp)
-    )
+    com.arny.sharedui.PromptTextEditor(lang, text, onValueChange, Modifier.padding(bottom = 12.dp))
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

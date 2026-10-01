@@ -27,11 +27,13 @@ data class Prompt(
     val wireDocument: com.arny.promptcontract.PromptJson? = null
 )
 
+@Serializable
 data class Author(
     val id: String = "",
     val name: String = ""
 )
 
+@Serializable
 data class PromptMetadata(
     val author: Author = Author(),
     val source: String = "",

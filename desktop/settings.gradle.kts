@@ -23,3 +23,6 @@ include(":shared")
 include(":desktopApp")
 include(":prompt-contract")
 project(":prompt-contract").projectDir = file("../prompt-contract")
+include(":shared-ui")
+project(":shared-ui").projectDir = file("../shared-ui")
+project(":shared-ui").buildFileName = "build-desktop.gradle.kts"

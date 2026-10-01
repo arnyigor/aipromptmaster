@@ -29,7 +29,8 @@ val viewModelModule = module {
             shareService = get(),
             fileRepository = get(),
             interactor = get(),
-            modelRepository = get()
+            modelRepository = get(),
+            savedState = get()
         )
     }
     viewModel { (conversationId: String) ->
@@ -45,7 +46,8 @@ val viewModelModule = module {
         PromptEditViewModel(
             promptId = promptId,        // 1. Приходит из parametersOf
             interactor = get(),
-            improvePrompt = get()
+            improvePrompt = get(),
+            savedState = get()
         )
     }
 }

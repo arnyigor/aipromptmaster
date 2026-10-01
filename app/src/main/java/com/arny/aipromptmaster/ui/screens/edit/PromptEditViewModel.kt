@@ -1,6 +1,10 @@
 package com.arny.aipromptmaster.ui.screens.edit
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.SavedStateHandle
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import androidx.lifecycle.viewModelScope
 import com.arny.aipromptmaster.domain.interactors.IPromptsInteractor
 import com.arny.aipromptmaster.domain.models.DomainPromptVariant
@@ -25,12 +29,14 @@ class PromptEditViewModel(
     promptId: String?,
     private val interactor: IPromptsInteractor,
     improvePrompt: com.arny.aipromptmaster.domain.ImprovePromptUseCase? = null,
+    private val savedState: SavedStateHandle = SavedStateHandle(),
 ) : ViewModel() {
 
     /* ---------------------------------------------------------------------*
      *  Private mutable holders
      * ---------------------------------------------------------------------*/
-    private val _uiState = MutableStateFlow(EditUiState())
+    private val restoredDraft = savedState.get<String>("prompt-edit-draft")?.let { runCatching { Json.decodeFromString<EditUiState>(it) }.getOrNull() }
+    private val _uiState = MutableStateFlow(restoredDraft ?: EditUiState())
     private val _validation = MutableStateFlow(ValidationState())
     private val _saveResult = MutableStateFlow<SaveResult>(SaveResult.Idle)
     /** Holds the list of categories loaded from DB */
@@ -63,11 +69,14 @@ class PromptEditViewModel(
     private val MAX_TITLE_LENGTH = 200
 
     init {
-        if (promptId != null) {
+        if (promptId != null && restoredDraft == null) {
             loadPrompt(promptId)
         }
         // Load categories from DB during initialization
         loadCategories()
+        viewModelScope.launch {
+            _uiState.collect { draft -> if (!draft.isLoading) savedState["prompt-edit-draft"] = Json.encodeToString(draft) }
+        }
     }
 
     /* ---------------------------------------------------------------------*
@@ -365,6 +374,7 @@ class PromptEditViewModel(
     /* ---------------------------------------------------------------------*
      *  Immutable data classes
      * ---------------------------------------------------------------------*/
+    @Serializable
     data class EditUiState(
         val title: String = "",
         val description: String? = null,

@@ -39,13 +39,15 @@ class DefaultLlmComponent(
     private var streamingJob: Job? = null
 
     /** Состояние UI. */
-    private val _uiState = MutableStateFlow(LlmUiState())
+    private val restored = stateKeeper.consume("chat-draft", ChatDraft.serializer()) ?: ChatDraft()
+    private val _uiState = MutableStateFlow(LlmUiState(prompt = restored.input, selectedChatId = restored.chatId))
     override val uiState: StateFlow<LlmUiState> = _uiState.asStateFlow()
 
     /** Триггер для обновления списка моделей. */
     private val refreshTrigger = MutableSharedFlow<Unit>(replay = 1)
 
     init {
+        stateKeeper.register("chat-draft", ChatDraft.serializer()) { ChatDraft(_uiState.value.prompt, _uiState.value.selectedChatId) }
         setupFlows()
         loadInitialData()
     }
@@ -409,3 +411,6 @@ class DefaultLlmComponent(
         // TODO: Реализовать фильтрацию сообщений по запросу
     }
 }
+
+@kotlinx.serialization.Serializable
+private data class ChatDraft(val input: String = "", val chatId: String? = null)
