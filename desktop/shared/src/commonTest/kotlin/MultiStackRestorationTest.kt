@@ -18,6 +18,28 @@ import kotlin.test.*
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class, kotlin.time.ExperimentalTime::class)
 class MultiStackRestorationTest {
+    @Test fun settingsMenuClosesAndReturnsToThePreviousTab() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val lifecycle = LifecycleRegistry()
+        try {
+            val root = createRoot(lifecycle, StateKeeperDispatcher())
+            val prompts = (root.childStack.value.active.instance as MainComponent.Child.Prompts).component
+            prompts.onMoreMenuToggle(true)
+            prompts.onSettingsClicked()
+            assertEquals(MainScreen.SETTINGS, root.state.value.currentScreen)
+            assertFalse(prompts.state.value.isMoreMenuVisible)
+            (root.childStack.value.active.instance as MainComponent.Child.Settings).component.onBackClicked()
+            assertEquals(MainScreen.PROMPTS, root.state.value.currentScreen)
+            assertSame(prompts, (root.childStack.value.active.instance as MainComponent.Child.Prompts).component)
+            root.navigateToChat()
+            val chat = root.childStack.value.active.instance
+            root.navigateToSettings()
+            (root.childStack.value.active.instance as MainComponent.Child.Settings).component.onBackClicked()
+            assertEquals(MainScreen.CHAT, root.state.value.currentScreen)
+            assertSame(chat, root.childStack.value.active.instance)
+        } finally { lifecycle.destroy(); Dispatchers.resetMain() }
+    }
+
     @Test fun tabsKeepTheirInstancesAndRestoreDraftAndChat() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val firstLifecycle = LifecycleRegistry()

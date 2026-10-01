@@ -130,26 +130,15 @@ private fun TabButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Button(
+    Tab(
+        selected = isActive,
         onClick = onClick,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = if (isActive) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
-            },
-            contentColor = if (isActive) {
-                MaterialTheme.colorScheme.onPrimary
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            }
-        ),
-        modifier = modifier
-    ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(label, style = MaterialTheme.typography.labelSmall)
-    }
+        selectedContentColor = MaterialTheme.colorScheme.primary,
+        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier,
+        icon = { Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp)) },
+        text = { Text(label, maxLines = 1, style = MaterialTheme.typography.labelMedium) },
+    )
 }
 
 // ==================== GitHub Settings Section ====================

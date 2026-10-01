@@ -126,6 +126,9 @@ class DefaultMainComponent(
         return tabNavigations.getValue(_state.value.currentScreen)
     }
     private var importFiles = emptyList<File>()
+    private var settingsReturnScreen = stateKeeper.consume("settings-return-tab", kotlinx.serialization.serializer<String>())
+        ?.let { name -> MainScreen.entries.firstOrNull { it.name == name && it != MainScreen.SETTINGS } }
+        ?: MainScreen.PROMPTS
 
     private val _state = MutableStateFlow(
         MainState(
@@ -157,7 +160,10 @@ class DefaultMainComponent(
     override val childStack: Value<ChildStack<*, Child>> get() = stackForScreen(_state.value.currentScreen)
     override fun stackFor(screen: MainScreen): Value<ChildStack<*, Child>> = stackForScreen(screen)
 
-    init { stateKeeper.register("selected-tab", kotlinx.serialization.serializer<String>()) { _state.value.currentScreen.name } }
+    init {
+        stateKeeper.register("selected-tab", kotlinx.serialization.serializer<String>()) { _state.value.currentScreen.name }
+        stateKeeper.register("settings-return-tab", kotlinx.serialization.serializer<String>()) { settingsReturnScreen.name }
+    }
 
     @OptIn(DelicateDecomposeApi::class)
     private fun createChild(config: MainConfig, context: ComponentContext): Child {
@@ -180,7 +186,8 @@ class DefaultMainComponent(
                     },
                     onNavigateToLLM = {
                         navigateToChat()
-                    }
+                    },
+                    onNavigateToSettings = ::navigateToSettings,
                 )
             )
 
@@ -242,7 +249,7 @@ class DefaultMainComponent(
                     settingsRepository = settingsRepository,
                     gitHubSyncService = gitHubSyncService,
                     probe = providerProbe,
-                    onBack = { navigation.pop() }
+                    onBack = { _state.value = _state.value.copy(currentScreen = settingsReturnScreen) }
                 )
             )
         }
@@ -281,6 +288,7 @@ class DefaultMainComponent(
     }
 
     override fun navigateToSettings() {
+        if (_state.value.currentScreen != MainScreen.SETTINGS) settingsReturnScreen = _state.value.currentScreen
         _state.value = _state.value.copy(currentScreen = MainScreen.SETTINGS)
     }
 

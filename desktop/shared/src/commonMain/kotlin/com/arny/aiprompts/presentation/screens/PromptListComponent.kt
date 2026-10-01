@@ -71,6 +71,7 @@ class DefaultPromptListComponent(
     private val onNavigateToDetails: (promptId: String) -> Unit,
     private val onNavigateToScraper: () -> Unit,
     private val onNavigateToLLM: () -> Unit,
+    private val onNavigateToSettings: () -> Unit,
 ) : PromptListComponent, ComponentContext by componentContext {
 
     private companion object {
@@ -227,7 +228,8 @@ class DefaultPromptListComponent(
     }
 
     override fun onSettingsClicked() {
-
+        onMoreMenuToggle(false)
+        onNavigateToSettings()
     }
 
     override fun onNavigateToScraperClicked() {

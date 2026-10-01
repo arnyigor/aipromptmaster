@@ -10,9 +10,13 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.pager.rememberPagerState
-import kotlinx.coroutines.launch
+import androidx.compose.foundation.pager.PagerState
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.collect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -49,7 +53,6 @@ fun MainContentDesktopImpl(component: MainComponent) {
         }
         add(com.arny.sharedui.AppDestination("SETTINGS", "Настройки", Icons.Default.Settings))
     }
-    val scope = rememberCoroutineScope()
     val pager = rememberPagerState(initialPage = destinations.indexOfFirst { it.id == state.currentScreen.name }.coerceAtLeast(0), pageCount = { destinations.size })
     fun select(screen: MainScreen) = when (screen) {
         MainScreen.PROMPTS -> component.navigateToPrompts()
@@ -58,15 +61,13 @@ fun MainContentDesktopImpl(component: MainComponent) {
         MainScreen.IMPORT -> component.navigateToImport(emptyList())
         MainScreen.SETTINGS -> component.navigateToSettings()
     }
-    LaunchedEffect(pager.currentPage) { select(MainScreen.valueOf(destinations[pager.currentPage].id)) }
-    LaunchedEffect(state.currentScreen) {
-        val page = destinations.indexOfFirst { it.id == state.currentScreen.name }
-        if (page >= 0 && page != pager.currentPage) pager.scrollToPage(page)
+    SyncTabPager(pager, destinations.indexOfFirst { it.id == state.currentScreen.name }) { page ->
+        select(MainScreen.valueOf(destinations[page].id))
     }
     com.arny.sharedui.AdaptiveAppShell(
         destinations = destinations,
         selectedId = state.currentScreen.name,
-        onSelect = { id -> scope.launch { pager.animateScrollToPage(destinations.indexOfFirst { it.id == id }) } },
+        onSelect = { id -> select(MainScreen.valueOf(id)) },
     ) { layout ->
         Row(Modifier.fillMaxSize()) {
             Column(Modifier.weight(1f)) {
@@ -88,5 +89,23 @@ fun MainContentDesktopImpl(component: MainComponent) {
             }
 
         }
+    }
+}
+
+@Composable
+internal fun SyncTabPager(pager: PagerState, selectedPage: Int, onSwipeSettled: (Int) -> Unit) {
+    val isDragged by pager.interactionSource.collectIsDraggedAsState()
+    val onSettled by androidx.compose.runtime.rememberUpdatedState(onSwipeSettled)
+    val currentSelection by androidx.compose.runtime.rememberUpdatedState(selectedPage)
+    LaunchedEffect(pager) {
+        // Only a user drag can change the selected tab. Programmatic jumps never feed back into navigation.
+        snapshotFlow { isDragged }.filter { it }.collect {
+            val selectionAtDragStart = currentSelection
+            snapshotFlow { !pager.isScrollInProgress }.first { it }
+            if (currentSelection == selectionAtDragStart) onSettled(pager.settledPage)
+        }
+    }
+    LaunchedEffect(selectedPage) {
+        if (selectedPage >= 0 && selectedPage != pager.currentPage) pager.scrollToPage(selectedPage)
     }
 }
