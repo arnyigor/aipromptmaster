@@ -3,6 +3,8 @@ name: Android tagged release
 on:
   push:
     tags: ['v*']
+    branches: ['codex/unify-android-desktop']
+    paths: ['.github/workflows/release.yml']
   workflow_dispatch:
     inputs:
       tag:
@@ -23,13 +25,15 @@ concurrency:
 
 jobs:
   release:
+    env:
+      VERIFICATION_ONLY: ${{ inputs.verify_only || (github.event_name == 'push' && github.ref_type == 'branch') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - name: Validate requested tag
         id: version
-        if: ${{ !inputs.verify_only }}
+        if: ${{ env.VERIFICATION_ONLY != 'true' }}
         env:
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
@@ -40,11 +44,11 @@ jobs:
           echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
           echo "name=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
       - name: Select verification source
-        if: ${{ inputs.verify_only }}
+        if: ${{ env.VERIFICATION_ONLY == 'true' }}
         run: echo 'Release verification only; no tag or publication'
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.verify_only && github.sha || format('refs/tags/{0}', steps.version.outputs.tag) }}
+          ref: ${{ env.VERIFICATION_ONLY == 'true' && github.sha || format('refs/tags/{0}', steps.version.outputs.tag) }}
           fetch-depth: 0
       - name: Record source commit
         run: git rev-parse HEAD > source-commit.txt
@@ -90,7 +94,7 @@ jobs:
           cp "${apks[0]}" "$artifact"
           sha256sum "$artifact" > checksums.txt
       - uses: softprops/action-gh-release@v2
-        if: ${{ !inputs.verify_only }}
+        if: ${{ env.VERIFICATION_ONLY != 'true' }}
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           generate_release_notes: true
@@ -100,7 +104,7 @@ jobs:
             source-commit.txt
           fail_on_unmatched_files: true
       - uses: actions/upload-artifact@v4
-        if: ${{ inputs.verify_only }}
+        if: ${{ env.VERIFICATION_ONLY == 'true' }}
         with:
           name: android-signed-verification
           path: |
