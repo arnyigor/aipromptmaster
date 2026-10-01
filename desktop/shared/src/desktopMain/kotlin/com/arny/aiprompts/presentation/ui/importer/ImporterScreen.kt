@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -198,6 +199,25 @@ fun ImporterScreen(component: ImporterComponent) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ImprovedImporterLayout(state: ImporterState, component: ImporterComponent) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+    if (maxWidth < 1100.dp) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            item("posts") {
+                PostListWithFiltersPanel(
+                    Modifier.fillMaxWidth().height(if (state.filteredPosts.isEmpty()) 260.dp else 420.dp),
+                    state, component,
+                )
+            }
+            item("editor") {
+                EditorPanel(Modifier.fillMaxWidth().height(if (state.currentEditedData == null) 180.dp else 600.dp), state, component)
+            }
+            item("actions") { SidePanel(Modifier.fillMaxWidth(), state, component) }
+        }
+    } else {
     Row(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -223,6 +243,8 @@ private fun ImprovedImporterLayout(state: ImporterState, component: ImporterComp
             component = component
         )
     }
+    }
+    }
 }
 
 // --- СПИСОК ПОСТОВ С ФИЛЬТРАМИ ---
@@ -243,8 +265,12 @@ private fun PostListWithFiltersPanel(
         FilterPanel(state, component)
 
         // Список постов
+        if (state.filteredPosts.isEmpty()) {
+            Text("Посты не найдены", style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(8.dp))
+        } else {
         LazyColumn(
-            modifier = Modifier.fillMaxHeight()
+            modifier = Modifier.fillMaxWidth().fillMaxHeight()
                 .border(1.dp, MaterialTheme.colorScheme.outlineVariant)
                 .padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -262,6 +288,7 @@ private fun PostListWithFiltersPanel(
                     onToggleExpansion = { component.onTogglePostExpansion(post.postId) }
                 )
             }
+        }
         }
     }
 }
