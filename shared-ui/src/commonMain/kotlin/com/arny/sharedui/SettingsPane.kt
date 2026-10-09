@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -21,17 +22,28 @@ fun SettingsPane(
     tabs: List<SettingsTabUi> = listOf(SettingsTabUi("API", "API")), selectedId: String = "API",
     onSection: (String) -> Unit = {}, extraContent: @Composable ColumnScope.(String) -> Unit = {},
 ) {
+    val scrollStates = rememberSaveableStateHolder()
     Box(modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-        Column(Modifier.widthIn(max = 900.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
+        Column(Modifier.widthIn(max = 900.dp).fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            if (tabs.size > 1) Card(Modifier.fillMaxWidth()) {
-                Row(Modifier.fillMaxWidth()) {
-                    tabs.forEach { tab -> Tab(selected = tab.id == selectedId, onClick = { onSection(tab.id) },
-                        text = { Text(tab.label, maxLines = 1) }, modifier = Modifier.weight(1f)) }
+            if (tabs.size > 1) SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                tabs.forEachIndexed { index, tab ->
+                    SegmentedButton(selected = tab.id == selectedId, onClick = { onSection(tab.id) },
+                        shape = SegmentedButtonDefaults.itemShape(index, tabs.size), icon = {}) {
+                        Text(tab.label, maxLines = 1)
+                    }
                 }
             }
-            if (selectedId == "API") ProviderManagementCard(providers, onProviderAction, mobile)
-            extraContent(selectedId)
+            ContentReveal(selectedId, Modifier.weight(1f)) {
+                scrollStates.SaveableStateProvider(selectedId) {
+                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        if (selectedId == "API") ProviderManagementCard(providers, onProviderAction, mobile)
+                        extraContent(selectedId)
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
+            }
         }
     }
 }

@@ -1,6 +1,11 @@
 package com.arny.sharedui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -15,19 +20,24 @@ import com.arny.promptcontract.*
 @Composable
 fun ProviderManagementCard(state: ProviderManagerState, onAction: (ProviderAction) -> Unit, mobile: Boolean = true) {
     val uriHandler = LocalUriHandler.current
-    Card(Modifier.fillMaxWidth()) {
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Провайдеры LLM", style = MaterialTheme.typography.titleLarge)
-            Text("Выберите профиль для чата и улучшения промптов. Ключи хранятся зашифрованно и отдельно для каждого сервиса.")
+            Text("Выберите сервис для чата и улучшения промптов.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             state.config.profiles.forEach { profile ->
-                Column {
+                val selected = profile.id == state.config.activeId
+                Surface(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium,
+                    color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
+                    border = if (selected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null) {
+                Column(Modifier.padding(12.dp)) {
                     Text(profile.name + if (profile.id == state.config.activeId) " • выбран" else "", style = MaterialTheme.typography.titleMedium)
-                    Text(profile.baseUrl, style = MaterialTheme.typography.bodySmall)
+                    Text(profile.baseUrl, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     FlowRow {
-                        TextButton(onClick = { onAction(ProviderAction.Select(profile.id)) }, enabled = profile.id != state.config.activeId) { Text("Использовать") }
+                        if (!selected) TextButton(onClick = { onAction(ProviderAction.Select(profile.id)) }) { Text("Использовать") }
                         TextButton(onClick = { onAction(ProviderAction.Edit(profile.id)) }) { Text("Настроить") }
                         if (profile.id != "openrouter") TextButton(onClick = { onAction(ProviderAction.Delete(profile.id)) }) { Text("Удалить") }
                     }
+                }
                 }
             }
             Text("Добавить профиль")
@@ -38,13 +48,13 @@ fun ProviderManagementCard(state: ProviderManagerState, onAction: (ProviderActio
                 HorizontalDivider()
                 OutlinedTextField(draft.name, { onAction(ProviderAction.Name(it)) }, label = { Text("Название") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(draft.baseUrl, { onAction(ProviderAction.Url(it)) }, label = { Text("Адрес API, включая /v1") }, enabled = draft.id != "openrouter", singleLine = true, modifier = Modifier.fillMaxWidth())
-                if (mobile) Text("Для сервера на компьютере укажите IP компьютера в вашей сети. localhost — этот телефон; в Android-эмуляторе адрес компьютера — 10.0.2.2.", style = MaterialTheme.typography.bodySmall)
+                if (mobile && draft.id != "openrouter") Text("Для локального сервера укажите IP компьютера в вашей сети. localhost — адрес этого устройства.", style = MaterialTheme.typography.bodySmall)
                 if (!mobile && draft.id == "openrouter") {
-                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        Checkbox(draft.keySource == ProviderKeySource.ENVIRONMENT, {
+                    Row(Modifier.fillMaxWidth().toggleable(draft.keySource == ProviderKeySource.ENVIRONMENT, role = Role.Checkbox, onValueChange = {
                             onAction(ProviderAction.KeySource(if (it) ProviderKeySource.ENVIRONMENT else ProviderKeySource.STORED))
-                        })
-                        Text("Использовать системный ключ OpenRouter")
+                        }), verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(draft.keySource == ProviderKeySource.ENVIRONMENT, onCheckedChange = null)
+                        Text("Использовать системный ключ OpenRouter", Modifier.weight(1f))
                     }
                     if (draft.keySource == ProviderKeySource.ENVIRONMENT) Text(
                         if (state.environmentKeyAvailable) "OPENROUTER_API_KEY доступен. Значение не копируется в настройки."
@@ -54,7 +64,11 @@ fun ProviderManagementCard(state: ProviderManagerState, onAction: (ProviderActio
                 }
                 if (draft.keySource == ProviderKeySource.STORED) OutlinedTextField(draft.apiKey, { onAction(ProviderAction.Key(it)) }, label = { Text("API-ключ этого профиля") }, visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false), singleLine = true, modifier = Modifier.fillMaxWidth())
                 if (draft.id == "openrouter") TextButton(onClick = { uriHandler.openUri("https://openrouter.ai/settings/keys") }) { Text("Получить ключ OpenRouter") }
-                Row { Checkbox(draft.requiresKey, { onAction(ProviderAction.RequiresKey(it)) }, enabled = draft.id != "openrouter"); Text("Требуется API-ключ") }
+                Row(Modifier.fillMaxWidth().toggleable(draft.requiresKey, enabled = draft.id != "openrouter", role = Role.Checkbox,
+                    onValueChange = { onAction(ProviderAction.RequiresKey(it)) }), verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(draft.requiresKey, onCheckedChange = null, enabled = draft.id != "openrouter")
+                    Text("Требуется API-ключ", Modifier.weight(1f))
+                }
                 OutlinedTextField(draft.modelId, { onAction(ProviderAction.Model(it)) }, label = { Text("Модель по умолчанию (ID)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedButton(onClick = { onAction(ProviderAction.Test) }, enabled = !state.checking) { Text(if (state.checking) "Проверка…" else "Проверить и получить модели") }
                 if (state.checking) LinearProgressIndicator(Modifier.fillMaxWidth())

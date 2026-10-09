@@ -36,7 +36,7 @@ val state by component.state.collectAsState()
         })
     }, snackbarHost = { SnackbarHost(snackbar) }) { padding ->
         com.arny.sharedui.SettingsPane(providers, component::onProviderAction, Modifier.padding(padding), mobile = false,
-            tabs = listOf(com.arny.sharedui.SettingsTabUi("API", "API"), com.arny.sharedui.SettingsTabUi("GITHUB", "GitHub"),
+            tabs = listOf(com.arny.sharedui.SettingsTabUi("API", "Модели"), com.arny.sharedui.SettingsTabUi("GITHUB", "GitHub"),
                 com.arny.sharedui.SettingsTabUi("PERSONALIZATION", "Профиль")),
             selectedId = state.activeSection.name, onSection = { component.onSectionChanged(SettingsSection.valueOf(it)) },
             extraContent = { section -> when (SettingsSection.valueOf(section)) {

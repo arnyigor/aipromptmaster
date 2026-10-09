@@ -87,6 +87,7 @@ fun SettingsScreen(
     val uiState by viewModel.state.collectAsState()
     val vault by providers.personalVault.state.collectAsStateWithLifecycle()
     val providerState by providers.manager.state.collectAsStateWithLifecycle()
+    val section by providers.section.collectAsStateWithLifecycle()
 
     // 2. Snackbar‑хост – хранится в stateful‑компоненте, чтобы не пересоздавался при каждом рендере
     val snackbarHostState = remember { SnackbarHostState() }
@@ -113,6 +114,7 @@ fun SettingsScreen(
                 onVaultAction = providers.personalVault::onAction,
                 providerState = providerState,
                 onProviderAction = providers.manager::onAction,
+                selectedSection = section, onSection = providers::onSection,
             )
         }
     )
@@ -129,21 +131,29 @@ fun SettingsContent(
     providerState: com.arny.promptcontract.ProviderManagerState? = null,
     vaultState: com.arny.promptcontract.PersonalVaultUi? = null,
     onVaultAction: (com.arny.promptcontract.PersonalVaultAction) -> Unit = {},
-    onProviderAction: (com.arny.promptcontract.ProviderAction) -> Unit = {}
+    onProviderAction: (com.arny.promptcontract.ProviderAction) -> Unit = {},
+    selectedSection: String = "API", onSection: (String) -> Unit = {},
 ) {
 com.arny.sharedui.SettingsPane(
         providers = providerState ?: com.arny.promptcontract.ProviderManagerState(
             config = com.arny.promptcontract.ProviderConfig(listOf(com.arny.promptcontract.ProviderProfile.openRouter(uiState.apiKey)))),
         onProviderAction = onProviderAction, modifier = modifier,
-        extraContent = {
+        tabs = listOf(com.arny.sharedui.SettingsTabUi("API", "Модели"),
+            com.arny.sharedui.SettingsTabUi("GITHUB", "GitHub"), com.arny.sharedui.SettingsTabUi("FEEDBACK", "Отзыв")),
+        selectedId = selectedSection, onSection = onSection,
+        extraContent = { section ->
+            if (section == "GITHUB") {
             vaultState?.let { com.arny.sharedui.PersonalVaultCard(it, onVaultAction) }
-            Text("Фидбек", style = MaterialTheme.typography.titleMedium)
+            }
+            if (section == "FEEDBACK") {
+            Text("Обратная связь", style = MaterialTheme.typography.titleMedium)
             OutlinedTextField(uiState.feedbackText, onFeedbackChanged, label = { Text("Напишите ваш отзыв") },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp, max = 200.dp))
             Button(onClick = onSendFeedback, enabled = !uiState.isSendingFeedback && uiState.feedbackText.isNotBlank(),
                 modifier = Modifier.fillMaxWidth()) {
                 if (uiState.isSendingFeedback) CircularProgressIndicator(modifier = Modifier.size(20.dp))
                 Text("Отправить")
+            }
             }
         },
     )

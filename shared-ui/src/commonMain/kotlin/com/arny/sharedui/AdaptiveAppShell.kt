@@ -31,7 +31,7 @@ fun AdaptiveAppShell(
         val layout = windowLayout(maxWidth.value)
         CompositionLocalProvider(LocalWindowLayout provides layout) {
             Scaffold(topBar = topBar, bottomBar = {
-                if (navigationVisible && layout == WindowLayout.Compact) NavigationBar {
+                if (navigationVisible && layout == WindowLayout.Compact) NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest, tonalElevation = 0.dp) {
                     destinations.forEach { item -> NavigationBarItem(
                         selected = item.id == selectedId, onClick = { onSelect(item.id) },
                         icon = { Icon(item.icon, item.title) }, label = { Text(item.title, maxLines = 1) }
@@ -39,7 +39,7 @@ fun AdaptiveAppShell(
                 }
             }) { padding ->
                 Row(Modifier.fillMaxSize().padding(padding)) {
-                    if (navigationVisible && layout == WindowLayout.Medium) NavigationRail {
+                    if (navigationVisible && layout == WindowLayout.Medium) NavigationRail(containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
                         Column(Modifier.verticalScroll(rememberScrollState())) {
                             destinations.forEach { item -> NavigationRailItem(
                                 selected = item.id == selectedId, onClick = { onSelect(item.id) },
@@ -50,13 +50,15 @@ fun AdaptiveAppShell(
                     if (navigationVisible && layout == WindowLayout.Expanded) {
                         Column(Modifier.width(220.dp).fillMaxHeight().verticalScroll(rememberScrollState()).padding(12.dp)) {
                             Text("AI Prompt Master", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(12.dp))
+                            Text("Библиотека и AI-диалоги", style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 12.dp, bottom = 24.dp))
                             destinations.forEach { item -> NavigationDrawerItem(
                                 label = { Text(item.title) }, selected = item.id == selectedId,
                                 onClick = { onSelect(item.id) }, icon = { Icon(item.icon, item.title) }
                             ) }
                         }
                     }
-                    key("screen-content") { Box(Modifier.weight(1f).fillMaxHeight()) { content(layout) } }
+                    key("screen-content") { ContentReveal(selectedId, Modifier.weight(1f).fillMaxHeight()) { content(layout) } }
                 }
             }
         }

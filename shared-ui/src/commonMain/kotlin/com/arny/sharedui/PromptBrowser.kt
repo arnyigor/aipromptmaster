@@ -1,12 +1,18 @@
 package com.arny.sharedui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -70,15 +76,28 @@ fun PromptBrowser(
             when {
                 state.loading && state.prompts.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
                 state.error != null && state.prompts.isEmpty() -> Box(Modifier.fillMaxSize().padding(16.dp), Alignment.Center) { Text(state.error) }
-                state.prompts.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) { Text("Промпты не найдены") }
+                state.prompts.isEmpty() -> Box(Modifier.fillMaxSize().padding(24.dp), Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Icon(Icons.Default.Search, null, Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Промпты не найдены", style = MaterialTheme.typography.titleMedium)
+                        if (state.query.isNotBlank() || state.category != null || state.favoritesOnly || state.selectedTags.isNotEmpty()) {
+                            Text("Попробуйте изменить поиск или фильтры", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            TextButton(onClick = {
+                                onQuery(""); onCategory(null)
+                                if (state.favoritesOnly) onFavoritesOnly?.invoke()
+                                state.selectedTags.forEach { onTag?.invoke(it) }
+                            }) { Text("Сбросить фильтры") }
+                        }
+                    }
+                }
                 else -> LazyVerticalGrid(
-                    columns = GridCells.Adaptive(360.dp), modifier = Modifier.weight(1f),
+                    columns = GridCells.Adaptive(320.dp), modifier = Modifier.weight(1f),
                     contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 88.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     items(state.prompts, key = { it.id }) { prompt ->
                         PromptCardContent(prompt, { onOpen(prompt.id) }, { onFavorite(prompt.id) },
-                            onCopy?.let { { it(prompt.id) } }, onDelete?.let { { it(prompt.id) } })
+                            onCopy?.let { { it(prompt.id) } }, onDelete?.let { { it(prompt.id) } }, Modifier.animateItem())
                     }
                 }
             }
@@ -101,7 +120,7 @@ private fun PromptBrowserFilters(
                 Row {
                     if (state.query.isNotEmpty()) IconButton(onClick = { onQuery("") }) { Icon(Icons.Default.Close, "Очистить поиск") }
                     if (onSort != null) Box {
-                        IconButton(onClick = { sortOpen = true }) { Icon(Icons.Default.MoreVert, "Сортировка: ${state.sort}") }
+                        IconButton(onClick = { sortOpen = true }) { Icon(Icons.AutoMirrored.Filled.Sort, "Сортировка: ${state.sort}") }
                         DropdownMenu(sortOpen, { sortOpen = false }) {
                             state.sortOptions.forEach { order -> DropdownMenuItem(text = { Text(order) }, onClick = { sortOpen = false; onSort(order) }) }
                         }
@@ -112,7 +131,8 @@ private fun PromptBrowserFilters(
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (state.categories.isNotEmpty()) item("category") {
                 Box {
-                    AssistChip(onClick = { categoryOpen = true }, label = { Text(state.category ?: "Все категории", maxLines = 1) })
+                    AssistChip(onClick = { categoryOpen = true }, label = { Text(state.category ?: "Все категории", maxLines = 1) },
+                        trailingIcon = { Icon(Icons.Default.ExpandMore, null) })
                     DropdownMenu(categoryOpen, { categoryOpen = false }) {
                         DropdownMenuItem(text = { Text("Все категории") }, onClick = { categoryOpen = false; onCategory(null) })
                         state.categories.forEach { category -> DropdownMenuItem(text = { Text(category) }, onClick = { categoryOpen = false; onCategory(category) }) }
@@ -131,9 +151,14 @@ private fun PromptBrowserFilters(
 
 @Composable
 fun PromptCardContent(prompt: PromptCardUi, onOpen: () -> Unit, onFavorite: () -> Unit,
-                      onCopy: (() -> Unit)? = null, onDelete: (() -> Unit)? = null) {
-    ElevatedCard(onClick = onOpen, modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.elevatedCardColors(containerColor = if (prompt.selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerLow)) {
+                      onCopy: (() -> Unit)? = null, onDelete: (() -> Unit)? = null, modifier: Modifier = Modifier) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale = animateFloatAsState(if (pressed) 0.985f else 1f, spring(stiffness = 600f), label = "prompt-press")
+    ElevatedCard(onClick = onOpen, modifier = modifier.fillMaxWidth().graphicsLayer { scaleX = scale.value; scaleY = scale.value },
+        interactionSource = interaction,
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp, pressedElevation = 0.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = if (prompt.selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLowest)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {

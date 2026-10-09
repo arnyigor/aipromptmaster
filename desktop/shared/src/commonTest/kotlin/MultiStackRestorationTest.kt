@@ -97,6 +97,24 @@ class MultiStackRestorationTest {
         } finally { firstLifecycle.destroy(); nextLifecycle.destroy(); Dispatchers.resetMain() }
     }
 
+    @Test fun settingsSubsectionRestoresAfterApplicationRecreation() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val firstLifecycle = LifecycleRegistry()
+        val secondLifecycle = LifecycleRegistry()
+        try {
+            val keeper = StateKeeperDispatcher()
+            val root = createRoot(firstLifecycle, keeper)
+            root.navigateToSettings()
+            val settings = (root.childStack.value.active.instance as MainComponent.Child.Settings).component
+            settings.onSectionChanged(com.arny.aiprompts.presentation.screens.SettingsSection.GITHUB)
+            val restored = createRoot(secondLifecycle, StateKeeperDispatcher(keeper.save()))
+            advanceUntilIdle()
+            assertEquals(MainScreen.SETTINGS, restored.state.value.currentScreen)
+            assertEquals(com.arny.aiprompts.presentation.screens.SettingsSection.GITHUB,
+                (restored.childStack.value.active.instance as MainComponent.Child.Settings).component.state.value.activeSection)
+        } finally { firstLifecycle.destroy(); secondLifecycle.destroy(); Dispatchers.resetMain() }
+    }
+
     internal fun createRoot(lifecycle: LifecycleRegistry, keeper: StateKeeperDispatcher): DefaultMainComponent {
         val prompts = mockk<GetPromptsUseCase>(relaxed = true)
         every { prompts.getPromptsFlow() } returns flowOf(Result.success(emptyList()))

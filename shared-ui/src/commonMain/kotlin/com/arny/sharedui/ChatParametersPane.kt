@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -17,7 +18,8 @@ fun SystemPromptEditor(value: String, onValueChange: (String) -> Unit, modifier:
         modifier = modifier.fillMaxWidth(),
         label = { Text("Системный промпт") },
         placeholder = { Text("Задайте роль и правила ответа…") },
-        minLines = 4, maxLines = 12,
+        minLines = 3, maxLines = 10,
+        shape = MaterialTheme.shapes.medium,
         trailingIcon = {
             if (value.isNotEmpty()) IconButton(onClick = { onValueChange("") }) {
                 Icon(Icons.Default.Close, "Очистить системный промпт")
@@ -37,18 +39,21 @@ fun ChatParametersPane(
     generation: @Composable () -> Unit = {},
     statistics: @Composable () -> Unit = {},
 ) {
-    Surface(modifier.fillMaxHeight(), color = MaterialTheme.colorScheme.surface) {
-    Column(Modifier.fillMaxHeight().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(Modifier.fillMaxWidth()) {
-            Text("Параметры чата", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+    Surface(modifier.fillMaxHeight(), color = MaterialTheme.colorScheme.surfaceContainerLowest) {
+    Column(Modifier.fillMaxHeight()) {
+        Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Text("Параметры чата", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
             if (onDismiss != null) IconButton(onDismiss) { Icon(Icons.Default.Close, "Закрыть параметры") }
         }
         HorizontalDivider()
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)) {
         modelInfo()
         SystemPromptEditor(systemPrompt, onSystemPromptChanged)
         generation()
         statistics()
+        }
     }
     }
 }

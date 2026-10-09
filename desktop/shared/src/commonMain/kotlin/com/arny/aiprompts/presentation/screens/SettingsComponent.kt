@@ -99,7 +99,9 @@ class DefaultSettingsComponent(
     private val onBack: () -> Unit
 ) : SettingsComponent, ComponentContext by componentContext {
 
-    private val _state = MutableStateFlow(SettingsState())
+    private val restoredSection = stateKeeper.consume("settings-section", kotlinx.serialization.serializer<String>())
+        ?.let { saved -> SettingsSection.entries.firstOrNull { it.name == saved } } ?: SettingsSection.API
+    private val _state = MutableStateFlow(SettingsState(activeSection = restoredSection))
     override val state: StateFlow<SettingsState> = _state.asStateFlow()
 
     private val scope = coroutineScope()
@@ -111,6 +113,7 @@ class DefaultSettingsComponent(
     override fun onProviderAction(action: com.arny.promptcontract.ProviderAction) = providerManager.onAction(action)
 
     init {
+        stateKeeper.register("settings-section", kotlinx.serialization.serializer<String>()) { _state.value.activeSection.name }
         loadCurrentSettings()
     }
 
