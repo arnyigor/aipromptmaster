@@ -41,7 +41,7 @@ jobs:
       - name: Compile all tests and run offline catalog checks
         env:
           PROMPT_SCREENSHOT_DIR: ${{ runner.temp }}/ui-screenshots
-        run: ./gradlew.bat -PdesktopBuildType=release :prompt-contract:jvmTest :shared:desktopTest --tests '*UseCaseTest' --tests '*PromptSynchronizerTest' --tests '*LegacyCatalogSafetyTest' --tests '*PromptExtensionsTest' --tests '*CatalogDatabaseSafetyTest' --tests '*PromptWireRoundTripTest' --tests '*PromptDetailComponentTest' --tests '*PromptImprovementHttpTest' --tests '*MultiStackRestorationTest' --tests '*AdaptiveShellScreenshotTest' --tests '*CompactChatScreenshotTest' --tests '*PersonalVaultDatabaseTest' --tests '*PersonalVaultScreenshotTest' --tests '*SettingsPagerNavigationTest' --tests '*SharedConversationScreenshotTest' :desktopApp:createDistributable --console=plain
+        run: ./gradlew.bat -PdesktopBuildType=release :prompt-contract:jvmTest :shared:desktopTest --tests '*UseCaseTest' --tests '*PromptSynchronizerTest' --tests '*LegacyCatalogSafetyTest' --tests '*PromptExtensionsTest' --tests '*CatalogDatabaseSafetyTest' --tests '*PromptWireRoundTripTest' --tests '*PromptDetailComponentTest' --tests '*PromptImprovementHttpTest' --tests '*MultiStackRestorationTest' --tests '*AdaptiveShellScreenshotTest' --tests '*CompactChatScreenshotTest' --tests '*PersonalVaultDatabaseTest' --tests '*PersonalVaultScreenshotTest' --tests '*SettingsPagerNavigationTest' --tests '*SharedConversationScreenshotTest' --tests '*UiPolishTest' :desktopApp:createDistributable --console=plain
       - name: Verify debug tools cannot enter an installer
         run: |
           ./gradlew.bat -PdesktopBuildType=debug :shared:desktopTest --tests '*MultiStackRestorationTest' --console=plain
