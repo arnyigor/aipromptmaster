@@ -15,6 +15,15 @@ class SettingsRepositoryImpl(private val settingsFactory: SettingsFactory) : ISe
     override fun environmentKeyAvailable(): Boolean = !com.arny.aiprompts.platform.openRouterEnvironmentKey().isNullOrBlank()
 
     private val settings: Settings = settingsFactory.create("app_settings")
+    override fun legacyPersonalFilesLoaded(): Boolean = settings.getBoolean("legacy_personal_files_loaded", false)
+    override fun markLegacyPersonalFilesLoaded() = settings.putBoolean("legacy_personal_files_loaded", true)
+    private val vaultPreferences = com.arny.promptcontract.PersonalVaultPreferences(settings::getStringOrNull, settings::putString)
+    override fun loadPersonalVault() = vaultPreferences.loadPersonalVault()
+    override fun disconnectPersonalVault() = vaultPreferences.disconnectPersonalVault()
+    override fun savePersonalVault(config: com.arny.promptcontract.PersonalVaultConfig) = vaultPreferences.savePersonalVault(config)
+    override fun loadPersonalVaultBaseline() = vaultPreferences.loadPersonalVaultBaseline()
+    override fun savePersonalVaultBaseline(baseline: com.arny.promptcontract.PersonalVaultBaseline) = vaultPreferences.savePersonalVaultBaseline(baseline)
+
     private val _selectedId = MutableStateFlow<String?>(null)
     private val providerChanges by lazy { MutableStateFlow(loadProviders()) }
     override fun observeProviders(): Flow<com.arny.promptcontract.ProviderConfig> = providerChanges

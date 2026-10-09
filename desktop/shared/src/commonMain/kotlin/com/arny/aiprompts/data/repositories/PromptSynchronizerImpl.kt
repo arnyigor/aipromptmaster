@@ -173,6 +173,8 @@ class PromptSynchronizerImpl(
      * Вызывается при старте приложения для загрузки промптов, созданных через Importer.
      */
     override suspend fun loadLocalPrompts(): SyncResult = withContext(Dispatchers.IO) {
+        if (!com.arny.aiprompts.presentation.navigation.MainComponent.IS_IMPORT_ENABLED || settingsRepository.legacyPersonalFilesLoaded())
+            return@withContext SyncResult.Success(emptyList())
         runCatching {
             val localPrompts = loadPromptsFromLocalDirectory()
             if (localPrompts.isNotEmpty()) {
@@ -183,6 +185,7 @@ class PromptSynchronizerImpl(
             } else {
                 println("ℹ️ [PromptSync] Локальные промпты не найдены")
             }
+            settingsRepository.markLegacyPersonalFilesLoaded()
         }.fold(
             onSuccess = { SyncResult.Success(emptyList()) },
             onFailure = { e ->

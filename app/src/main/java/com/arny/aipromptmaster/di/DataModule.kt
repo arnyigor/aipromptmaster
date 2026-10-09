@@ -58,6 +58,8 @@ Room.databaseBuilder(
             }).build()
     }
 
+    single<com.arny.promptcontract.PersonalVaultLocal> { com.arny.aipromptmaster.data.repositories.AndroidPersonalVaultLocal(get()) }
+
     // ---------- DAO‑ы ----------
     factory<PromptDao> { get<AppDatabase>().promptDao() }
     factory<ModelDao> { get<AppDatabase>().modelDao() }

@@ -40,6 +40,10 @@ class LLMInteractor(
     private val historyRepository: IChatHistoryRepository,
     private val fileRepository: IFileRepository
 ) : ILLMInteractor {
+    override fun getChatGeneration(conversationId: String) =
+        settingsRepository.getChatGeneration(conversationId) ?: com.arny.promptcontract.ChatGenerationConfig()
+    override fun saveChatGeneration(conversationId: String, settings: com.arny.promptcontract.ChatGenerationConfig) =
+        settingsRepository.saveChatGeneration(conversationId, settings.checked())
 
     var capturedError: DomainError? = null // 1. Переменная для ошибки
 
@@ -268,7 +272,14 @@ class LLMInteractor(
 
         try {
 
+            val generation = getChatGeneration(chatId).checked()
+            val systemPrompt = historyRepository.getSystemPrompt(chatId).orEmpty()
             val history = historyRepository.getFullHistory(chatId)
+                .filter { it.id != assistantMsgId }
+                .let { messages ->
+                    val system = if (systemPrompt.isBlank()) emptyList() else listOf(ChatMessage(role = ChatRole.SYSTEM, content = systemPrompt))
+                    system + messages.filter { it.role != ChatRole.SYSTEM }.takeLast(generation.contextWindow)
+                }
             try {
                 // Получаем стрим от репозитория/API с прикрепленными файлами и моделью
                 val streamFlow: Flow<DataResult<StreamResult>> =
@@ -277,7 +288,8 @@ class LLMInteractor(
                         messages = history,
                         apiKey = apiKey,
                         attachedFiles = attachedFiles,
-                        llmModel = selectedModel
+                        llmModel = selectedModel,
+                        generation = generation
                     )
 
                 // Переменная для хранения актуальной модели из ответа

@@ -11,8 +11,8 @@ import com.arny.promptcontract.VariableJson
 
 fun Prompt.toExportJson(): PromptJson = (wireDocument ?: PromptJson()).copy(
     id = id, title = title, description = description,
-    content = mapOf("ru" to content?.ru.orEmpty(), "en" to content?.en.orEmpty()),
-    category = category, status = status, tags = tags, compatibleModels = compatibleModels,
+    content = wireDocument?.content.orEmpty() + mapOf("ru" to content?.ru.orEmpty(), "en" to content?.en.orEmpty()),
+    category = category, status = status, tags = tags, compatibleModels = compatibleModels.map(String::trim).filter(String::isNotBlank),
     isLocal = isLocal, isFavorite = isFavorite,
     variables = wireDocument?.variables ?: variables.map { (name, value) -> VariableJson(name, defaultValue = value) },
     metadata = MetadataJson(AuthorJson(metadata.author?.id, metadata.author?.name), metadata.source, metadata.notes),

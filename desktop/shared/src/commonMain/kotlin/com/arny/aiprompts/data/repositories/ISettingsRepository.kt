@@ -6,7 +6,9 @@ import kotlinx.coroutines.flow.Flow
  * Интерфейс репозитория настроек приложения.
  * Поддерживает хранение API ключей, настроек моделей, GitHub синхронизации и персонализации.
  */
-interface ISettingsRepository : com.arny.promptcontract.ProviderStore {
+interface ISettingsRepository : com.arny.promptcontract.ProviderStore, com.arny.promptcontract.PersonalVaultStore {
+    fun legacyPersonalFilesLoaded(): Boolean
+    fun markLegacyPersonalFilesLoaded()
     // === API Keys ===
     fun saveApiKey(apiKey: String)
     fun getApiKey(): String?

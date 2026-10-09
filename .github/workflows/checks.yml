@@ -41,7 +41,16 @@ jobs:
       - name: Compile all tests and run offline catalog checks
         env:
           PROMPT_SCREENSHOT_DIR: ${{ runner.temp }}/ui-screenshots
-        run: ./gradlew.bat :prompt-contract:jvmTest :shared:desktopTest --tests '*UseCaseTest' --tests '*PromptSynchronizerTest' --tests '*LegacyCatalogSafetyTest' --tests '*PromptExtensionsTest' --tests '*CatalogDatabaseSafetyTest' --tests '*PromptWireRoundTripTest' --tests '*PromptDetailComponentTest' --tests '*PromptImprovementHttpTest' --tests '*MultiStackRestorationTest' --tests '*AdaptiveShellScreenshotTest' --tests '*CompactChatScreenshotTest' :desktopApp:createDistributable --console=plain
+        run: ./gradlew.bat -PdesktopBuildType=release :prompt-contract:jvmTest :shared:desktopTest --tests '*UseCaseTest' --tests '*PromptSynchronizerTest' --tests '*LegacyCatalogSafetyTest' --tests '*PromptExtensionsTest' --tests '*CatalogDatabaseSafetyTest' --tests '*PromptWireRoundTripTest' --tests '*PromptDetailComponentTest' --tests '*PromptImprovementHttpTest' --tests '*MultiStackRestorationTest' --tests '*AdaptiveShellScreenshotTest' --tests '*CompactChatScreenshotTest' --tests '*PersonalVaultDatabaseTest' --tests '*PersonalVaultScreenshotTest' --tests '*SettingsPagerNavigationTest' --tests '*SharedConversationScreenshotTest' :desktopApp:createDistributable --console=plain
+      - name: Verify debug tools cannot enter an installer
+        run: |
+          ./gradlew.bat -PdesktopBuildType=debug :shared:desktopTest --tests '*MultiStackRestorationTest' --console=plain
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $guardLog = Join-Path $env:RUNNER_TEMP 'debug-installer-guard.log'
+          ./gradlew.bat -PdesktopBuildType=debug :desktopApp:packageMsi --console=plain *> $guardLog
+          if ($LASTEXITCODE -eq 0) { throw 'Debug installer was unexpectedly allowed' }
+          if (-not (Get-Content -LiteralPath $guardLog -Raw).Contains('Installers must use release mode')) { throw 'Installer failed for an unrelated reason' }
+          exit 0
       - uses: actions/upload-artifact@v4
         with:
           name: desktop-ui-screenshots

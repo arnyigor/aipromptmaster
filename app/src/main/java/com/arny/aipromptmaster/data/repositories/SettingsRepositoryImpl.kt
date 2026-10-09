@@ -7,6 +7,21 @@ import com.arny.aipromptmaster.domain.repositories.ISettingsRepository
 class SettingsRepositoryImpl(
     private val securePrefs: SecurePrefs,
 ) : ISettingsRepository {
+    override fun getChatGeneration(conversationId: String): com.arny.promptcontract.ChatGenerationConfig? =
+        securePrefs.get<String>("chat_generation_$conversationId")?.let {
+            kotlinx.serialization.json.Json.decodeFromString<com.arny.promptcontract.ChatGenerationConfig>(it).checked()
+        }
+    override fun saveChatGeneration(conversationId: String, settings: com.arny.promptcontract.ChatGenerationConfig) {
+        require(conversationId.isNotBlank())
+        securePrefs.put("chat_generation_$conversationId", kotlinx.serialization.json.Json.encodeToString(com.arny.promptcontract.ChatGenerationConfig.serializer(), settings.checked()))
+    }
+    private val vaultPreferences = com.arny.promptcontract.PersonalVaultPreferences({ securePrefs.get<String>(it) }, { key, value -> securePrefs.put(key, value) })
+    override fun loadPersonalVault() = vaultPreferences.loadPersonalVault()
+    override fun disconnectPersonalVault() = vaultPreferences.disconnectPersonalVault()
+    override fun savePersonalVault(config: com.arny.promptcontract.PersonalVaultConfig) = vaultPreferences.savePersonalVault(config)
+    override fun loadPersonalVaultBaseline() = vaultPreferences.loadPersonalVaultBaseline()
+    override fun savePersonalVaultBaseline(baseline: com.arny.promptcontract.PersonalVaultBaseline) = vaultPreferences.savePersonalVaultBaseline(baseline)
+
     private val providerChanges by lazy { kotlinx.coroutines.flow.MutableStateFlow(loadProviders()) }
     override fun observeProviders(): kotlinx.coroutines.flow.Flow<com.arny.promptcontract.ProviderConfig> = providerChanges
 

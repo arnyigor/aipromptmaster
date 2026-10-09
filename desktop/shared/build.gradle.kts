@@ -1,7 +1,5 @@
 // shared/build.gradle.kts
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import java.io.FileInputStream
-import java.util.*
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -103,18 +101,9 @@ kotlin {
     }
 }
 
-// Загружаем свойства из local.properties
-val localProperties = Properties()
-val localPropertiesFile = rootProject.file("local.properties")
-if (localPropertiesFile.exists()) {
-    localProperties.load(FileInputStream(localPropertiesFile))
-}
-
-fun getProperty(key: String): String? {
-    return localProperties.getProperty(key)
-}
-
-val isDebug = getProperty("DEBUG_MODE")?.toBoolean() ?: false
+val desktopBuildType = providers.gradleProperty("desktopBuildType").orElse("release").get()
+require(desktopBuildType in setOf("debug", "release")) { "desktopBuildType must be debug or release" }
+val isDebug = desktopBuildType == "debug"
 
 buildConfig {
     packageName("com.arny.aiprompts")
@@ -131,6 +120,7 @@ dependencies {
 }
 
 tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    systemProperty("expected.desktopBuildType", desktopBuildType)
     // Lets the crash regression launch a genuine second JVM without Gradle worker internals.
     doFirst {
         val classpathFile = File(temporaryDir, "fork-classpath.txt")

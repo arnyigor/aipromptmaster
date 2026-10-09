@@ -29,6 +29,11 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 
 class LegacyCatalogSafetyTest {
+    @Test fun releaseDoesNotLoadDebugImportBackups() = runTest {
+        if (com.arny.aiprompts.presentation.navigation.MainComponent.IS_IMPORT_ENABLED) return@runTest
+        synchronizer.loadLocalPrompts()
+        coVerify(exactly = 0) { repository.savePrompts(any()) }
+    }
     private val repository = mockk<IPromptsRepository>(relaxed = true)
     private val settings = mockk<ISettingsRepository>(relaxed = true)
     private val service = mockk<GitHubService>()

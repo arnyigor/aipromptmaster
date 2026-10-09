@@ -40,6 +40,7 @@ class SettingsPagerNavigationTest {
         val output = System.getenv("PROMPT_SCREENSHOT_DIR") ?: return
         val settings = mockk<SettingsComponent>(relaxed = true)
         every { settings.state } returns MutableStateFlow(SettingsState())
+        every { settings.personalVault } returns MutableStateFlow(com.arny.promptcontract.PersonalVaultUi())
         every { settings.providers } returns MutableStateFlow(ProviderManagerState())
         for (width in listOf(360, 480)) {
             val scene = ImageComposeScene(width, 900)

@@ -59,6 +59,8 @@ enum class SettingsSection {
  * Интерфейс компонента настроек.
  */
 interface SettingsComponent {
+    val personalVault: StateFlow<com.arny.promptcontract.PersonalVaultUi>
+    fun onPersonalVaultAction(action: com.arny.promptcontract.PersonalVaultAction)
     val providers: StateFlow<com.arny.promptcontract.ProviderManagerState>
     fun onProviderAction(action: com.arny.promptcontract.ProviderAction)
     val state: StateFlow<SettingsState>
@@ -101,6 +103,9 @@ class DefaultSettingsComponent(
     override val state: StateFlow<SettingsState> = _state.asStateFlow()
 
     private val scope = coroutineScope()
+    private val vaultManager = com.arny.promptcontract.PersonalVaultManager(settingsRepository, gitHubSyncService.vaultLocal, com.arny.promptcontract.JvmGitHubPersonalVault(), scope)
+    override val personalVault = vaultManager.state
+    override fun onPersonalVaultAction(action: com.arny.promptcontract.PersonalVaultAction) = vaultManager.onAction(action)
     private val providerManager = com.arny.promptcontract.ProviderManager(settingsRepository, probe, scope)
     override val providers = providerManager.state
     override fun onProviderAction(action: com.arny.promptcontract.ProviderAction) = providerManager.onAction(action)

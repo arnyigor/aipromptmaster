@@ -26,6 +26,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
 val state by component.state.collectAsState()
+    val vault by component.personalVault.collectAsState()
     val providers by component.providers.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(state.saveMessage) { state.saveMessage?.let { snackbar.showSnackbar(it) } }
@@ -40,7 +41,7 @@ val state by component.state.collectAsState()
             selectedId = state.activeSection.name, onSection = { component.onSectionChanged(SettingsSection.valueOf(it)) },
             extraContent = { section -> when (SettingsSection.valueOf(section)) {
                 SettingsSection.API -> Unit
-                SettingsSection.GITHUB -> GitHubSettingsSection(state, component)
+                SettingsSection.GITHUB -> com.arny.sharedui.PersonalVaultCard(vault, component::onPersonalVaultAction)
                 SettingsSection.PERSONALIZATION -> PersonalizationSection(state, component)
             } },
         )
@@ -109,143 +110,6 @@ private fun TabButton(
 }
 
 // ==================== GitHub Settings Section ====================
-
-@Composable
-private fun GitHubSettingsSection(
-    state: SettingsState,
-    component: SettingsComponent
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = "Синхронизация с GitHub",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Text(
-                text = "Настройте синхронизацию промптов с вашим GitHub репозиторием для бэкапа и версионирования.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            // GitHub Token
-            OutlinedTextField(
-                value = state.gitHubToken,
-                onValueChange = component::onGitHubTokenChanged,
-                label = { Text("Personal Access Token (PAT)") },
-                placeholder = { Text("ghp_...") },
-                modifier = Modifier.fillMaxWidth(),
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                singleLine = true,
-                supportingText = { 
-                    Text("Токен с правами 'repo'. Создайте в Settings → Developer settings → Personal access tokens") 
-                }
-            )
-
-            // GitHub Repo
-            OutlinedTextField(
-                value = state.gitHubRepo,
-                onValueChange = component::onGitHubRepoChanged,
-                label = { Text("Репозиторий") },
-                placeholder = { Text("username/repo-name") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                supportingText = { Text("Формат: username/repository") }
-            )
-
-            // Connection Test
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Button(
-                    onClick = component::onTestGitHubConnectionClicked,
-                    enabled = state.gitHubToken.isNotBlank() && 
-                             state.gitHubRepo.isNotBlank() &&
-                             state.connectionStatus != ConnectionStatus.CHECKING
-                ) {
-                    if (state.connectionStatus == ConnectionStatus.CHECKING) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    Text("Проверить соединение")
-                }
-
-                // Status Indicator
-                when (state.connectionStatus) {
-                    ConnectionStatus.SUCCESS -> {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = Color.Green
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Подключено", color = Color.Green)
-                        }
-                    }
-                    ConnectionStatus.ERROR -> {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.Error,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Ошибка", color = MaterialTheme.colorScheme.error)
-                        }
-                    }
-                    else -> {}
-                }
-            }
-
-            // Info Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = "ℹ️ Информация",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "• Промпты сохраняются в папку prompts/ в вашем репозитории",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Text(
-                        text = "• Каждый промпт - отдельный JSON файл",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Text(
-                        text = "• Репозиторий должен быть публичным или токен иметь доступ к приватным",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
-        }
-    }
-}
 
 // ==================== Personalization Section ====================
 

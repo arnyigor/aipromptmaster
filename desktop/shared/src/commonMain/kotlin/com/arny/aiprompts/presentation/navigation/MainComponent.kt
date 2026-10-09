@@ -71,9 +71,7 @@ interface MainComponent {
     }
 
     companion object {
-        // Import feature enabled on Desktop by default
-        // On Android, this is controlled by BuildConfig (checked at call site)
-        val IS_IMPORT_ENABLED: Boolean = getPlatform() == Platform.Desktop
+        val IS_IMPORT_ENABLED: Boolean = getPlatform() == Platform.Desktop && com.arny.aiprompts.BuildConfig.IS_IMPORT_ENABLED
     }
 
     fun navigateToScraper()
@@ -127,13 +125,13 @@ class DefaultMainComponent(
     }
     private var importFiles = emptyList<File>()
     private var settingsReturnScreen = stateKeeper.consume("settings-return-tab", kotlinx.serialization.serializer<String>())
-        ?.let { name -> MainScreen.entries.firstOrNull { it.name == name && it != MainScreen.SETTINGS } }
+        ?.let { name -> MainScreen.entries.firstOrNull { it.name == name && it != MainScreen.SETTINGS }?.let(::allowedMainScreen) }
         ?: MainScreen.PROMPTS
 
     private val _state = MutableStateFlow(
         MainState(
             currentScreen = stateKeeper.consume("selected-tab", kotlinx.serialization.serializer<String>())
-                ?.let { name -> MainScreen.entries.firstOrNull { it.name == name } } ?: MainScreen.PROMPTS,
+                ?.let { name -> MainScreen.entries.firstOrNull { it.name == name }?.let(::allowedMainScreen) } ?: MainScreen.PROMPTS,
             sidebarCollapsed = false,
             activeWorkspace = null
         )
@@ -158,7 +156,7 @@ class DefaultMainComponent(
         )
     }
     override val childStack: Value<ChildStack<*, Child>> get() = stackForScreen(_state.value.currentScreen)
-    override fun stackFor(screen: MainScreen): Value<ChildStack<*, Child>> = stackForScreen(screen)
+    override fun stackFor(screen: MainScreen): Value<ChildStack<*, Child>> = stackForScreen(allowedMainScreen(screen))
 
     init {
         stateKeeper.register("selected-tab", kotlinx.serialization.serializer<String>()) { _state.value.currentScreen.name }
@@ -167,6 +165,9 @@ class DefaultMainComponent(
 
     @OptIn(DelicateDecomposeApi::class)
     private fun createChild(config: MainConfig, context: ComponentContext): Child {
+        if (!IS_IMPORT_ENABLED && (config is MainConfig.Import || config is MainConfig.ScraperWizard)) {
+            return createChild(MainConfig.Prompts, context)
+        }
         return when (config) {
 
             is MainConfig.Prompts -> Child.Prompts(
@@ -261,6 +262,7 @@ class DefaultMainComponent(
     }
 
     override fun navigateToScraperWizard() {
+        if (!IS_IMPORT_ENABLED) return
         _state.value = _state.value.copy(currentScreen = MainScreen.SCRAPER_WIZARD)
     }
 
@@ -325,6 +327,9 @@ data class MainState(
     val showImportDialog: Boolean = false,
     val activeWorkspace: Workspace? = null
 )
+
+internal fun allowedMainScreen(screen: MainScreen): MainScreen =
+    if (!MainComponent.IS_IMPORT_ENABLED && screen in setOf(MainScreen.IMPORT, MainScreen.SCRAPER_WIZARD)) MainScreen.PROMPTS else screen
 
 enum class MainScreen {
     SCRAPER_WIZARD,

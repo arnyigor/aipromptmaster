@@ -37,7 +37,8 @@ interface IOpenRouterRepository {
         messages: List<ChatMessage>,
         apiKey: String,
         attachedFiles: List<FileAttachment>,
-        llmModel: LlmModel? = null
+        llmModel: LlmModel? = null,
+        generation: com.arny.promptcontract.ChatGenerationConfig = com.arny.promptcontract.ChatGenerationConfig()
     ): Flow<DataResult<StreamResult>>
 
     /**

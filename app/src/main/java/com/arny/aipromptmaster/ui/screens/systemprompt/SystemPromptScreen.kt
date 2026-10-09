@@ -49,6 +49,7 @@ fun SystemPromptPickerScreen(
     navToPrompts: () -> Unit,
 ) {
     val systemPrompt by viewModel.systemPrompt.collectAsState()
+    val generation by viewModel.generation.collectAsState()
     val context = LocalContext.current
     val screenConfig by viewModel.screenConfig.collectAsState()
     val topBarManager = LocalTopBarManager.current
@@ -77,6 +78,8 @@ fun SystemPromptPickerScreen(
     SystemPromptPickerContent(
         systemPrompt = systemPrompt,
         onSystemPromptChange = viewModel::onTextChanged,
+        generation = com.arny.sharedui.GenerationParametersUi(generation.temperature, generation.maxTokens, generation.topP, generation.contextWindow),
+        onGenerationChanged = viewModel::onGenerationChanged,
     )
 }
 /**
@@ -89,10 +92,13 @@ fun SystemPromptPickerScreen(
 fun SystemPromptPickerContent(
     systemPrompt: String,
     onSystemPromptChange: (String) -> Unit,
+    generation: com.arny.sharedui.GenerationParametersUi? = null,
+    onGenerationChanged: (com.arny.sharedui.GenerationParametersUi) -> Unit = {},
 ) {
     com.arny.sharedui.ChatParametersPane(
         systemPrompt = systemPrompt, onSystemPromptChanged = onSystemPromptChange,
         modifier = Modifier.fillMaxSize(),
+        generation = { generation?.let { com.arny.sharedui.GenerationParameters(it, onGenerationChanged) } },
     )
 }
 

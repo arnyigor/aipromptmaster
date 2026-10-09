@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.StateFlow
  * Интерфейс для взаимодействия с бизнес-логикой LLM.
  */
 interface ILLMInteractor {
+    fun getChatGeneration(conversationId: String): com.arny.promptcontract.ChatGenerationConfig
+    fun saveChatGeneration(conversationId: String, settings: com.arny.promptcontract.ChatGenerationConfig)
 
     /**
      * Возвращает поток истории сообщений для указанного диалога.

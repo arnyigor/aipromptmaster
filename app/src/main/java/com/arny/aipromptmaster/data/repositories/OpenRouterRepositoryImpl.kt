@@ -183,7 +183,8 @@ class OpenRouterRepositoryImpl(
         messages: List<ChatMessage>,
         apiKey: String,
         attachedFiles: List<FileAttachment>,
-        llmModel: LlmModel?
+        llmModel: LlmModel?,
+        generation: com.arny.promptcontract.ChatGenerationConfig
     ): Flow<DataResult<StreamResult>> = flow {
         // Предварительно загружаем полный контент всех файлов из сообщений
         val messageFiles = withContext(dispatcher) {
@@ -205,6 +206,9 @@ class OpenRouterRepositoryImpl(
         val request = ChatCompletionRequestDTO(
             model = model,
             messages = messagesWithFiles,
+            temperature = generation.checked().temperature.toDouble(),
+            maxTokens = generation.maxTokens,
+            topP = generation.topP.toDouble(),
             stream = true
         )
 

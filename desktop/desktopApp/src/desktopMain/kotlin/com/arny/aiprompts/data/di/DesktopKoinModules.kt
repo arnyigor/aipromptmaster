@@ -38,6 +38,7 @@ import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
 
 val desktopDataModule = module {
+    single<com.arny.promptcontract.PersonalVaultLocal> { com.arny.aiprompts.data.repositories.DesktopPersonalVaultLocal(get(), get()) }
     single { getAppDatabase() }
     single { get<AppDatabase>().promptDao() }
     single { get<AppDatabase>().chatSessionDao() }

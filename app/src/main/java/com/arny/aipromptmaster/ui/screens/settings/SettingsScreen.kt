@@ -85,6 +85,7 @@ fun SettingsScreen(
 ) {
     // 1. Собираем состояние ViewModel
     val uiState by viewModel.state.collectAsState()
+    val vault by providers.personalVault.state.collectAsStateWithLifecycle()
     val providerState by providers.manager.state.collectAsStateWithLifecycle()
 
     // 2. Snackbar‑хост – хранится в stateful‑компоненте, чтобы не пересоздавался при каждом рендере
@@ -108,6 +109,8 @@ fun SettingsScreen(
                 onSaveClicked = viewModel::saveApiKey,
                 onSendFeedback = viewModel::sendFeedback,
                 onFeedbackChanged = viewModel::onFeedbackChanged,
+                vaultState = vault,
+                onVaultAction = providers.personalVault::onAction,
                 providerState = providerState,
                 onProviderAction = providers.manager::onAction,
             )
@@ -124,6 +127,8 @@ fun SettingsContent(
     onFeedbackChanged: (String) -> Unit,
     onSendFeedback: () -> Unit,
     providerState: com.arny.promptcontract.ProviderManagerState? = null,
+    vaultState: com.arny.promptcontract.PersonalVaultUi? = null,
+    onVaultAction: (com.arny.promptcontract.PersonalVaultAction) -> Unit = {},
     onProviderAction: (com.arny.promptcontract.ProviderAction) -> Unit = {}
 ) {
 com.arny.sharedui.SettingsPane(
@@ -131,6 +136,7 @@ com.arny.sharedui.SettingsPane(
             config = com.arny.promptcontract.ProviderConfig(listOf(com.arny.promptcontract.ProviderProfile.openRouter(uiState.apiKey)))),
         onProviderAction = onProviderAction, modifier = modifier,
         extraContent = {
+            vaultState?.let { com.arny.sharedui.PersonalVaultCard(it, onVaultAction) }
             Text("Фидбек", style = MaterialTheme.typography.titleMedium)
             OutlinedTextField(uiState.feedbackText, onFeedbackChanged, label = { Text("Напишите ваш отзыв") },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp, max = 200.dp))

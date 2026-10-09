@@ -1,5 +1,8 @@
 package com.arny.aipromptmaster.data.db.daos
 
+import com.arny.aipromptmaster.data.mappers.toDomain
+import com.arny.aipromptmaster.data.mappers.toEntity
+import com.arny.aipromptmaster.data.mappers.toExportJson
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -11,6 +14,19 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PromptDao {
+    @Transaction
+    suspend fun applyPersonalVault(expected: com.arny.promptcontract.PersonalVaultSnapshot, result: com.arny.promptcontract.PersonalVaultSnapshot) {
+        val records = getAllPrompts()
+        val personal = records.filter { it.isLocal }.map { it.toDomain().toExportJson() }.sortedBy { it.id }
+        require(com.arny.promptcontract.PersonalVaultSnapshot(prompts = personal).checked() == expected) { "Локальные промпты изменились. Проверьте изменения снова" }
+        val publicIds = records.filterNot { it.isLocal }.map { it.id }.toSet()
+        require(result.checked().prompts.none { it.id in publicIds }) { "ID личного промпта совпадает с публичным каталогом" }
+        val keep = result.prompts.map { it.id }.toSet()
+        val deleted = personal.mapNotNull { it.id }.filterNot { it in keep }
+        if (deleted.isNotEmpty()) deletePromptsByIds(deleted)
+        insertPrompts(result.checked().prompts.map { it.toDomain().toEntity() })
+    }
+
     @Query(
         """
         SELECT * FROM prompts 

@@ -48,6 +48,18 @@ require(desktopVersionParts[0] in 0..255 && desktopVersionParts[1] in 0..255 && 
     "Desktop package version exceeds Windows Installer limits"
 }
 
+tasks.configureEach {
+    if (name.startsWith("package") || name == "createReleaseDistributable") {
+        val releaseMode = providers.gradleProperty("desktopBuildType").orElse("release").get() == "release"
+        inputs.property("installerReleaseMode", releaseMode)
+        doFirst {
+            check(releaseMode) {
+                "Installers must use release mode; debug tools are allowed only in local debug portable builds"
+            }
+        }
+    }
+}
+
 compose.desktop {
     application {
         mainClass = "com.arny.aiprompts.MainKt"

@@ -10,7 +10,8 @@ import io.ktor.http.HttpStatusCode
 /** Connection diagnostics for settings. Public publication is owned by the catalog workflow. */
 class GitHubSyncService(
     private val httpClient: HttpClient,
-    private val settingsRepository: ISettingsRepository
+    private val settingsRepository: ISettingsRepository,
+    val vaultLocal: com.arny.promptcontract.PersonalVaultLocal
 ) {
     private val baseUrl = "https://api.github.com"
 

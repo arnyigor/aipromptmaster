@@ -18,6 +18,33 @@ import kotlin.test.*
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class, kotlin.time.ExperimentalTime::class)
 class MultiStackRestorationTest {
+    @Test fun importFlagMatchesExplicitBuildType() {
+        val expected = System.getProperty("expected.desktopBuildType") == "debug"
+        assertEquals(expected, com.arny.aiprompts.BuildConfig.DEBUG)
+        assertEquals(expected, MainComponent.IS_IMPORT_ENABLED)
+    }
+    @Test fun releaseRejectsDeveloperToolsAndRestoredImportTab() = runTest {
+        if (MainComponent.IS_IMPORT_ENABLED) return@runTest
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val lifecycle = LifecycleRegistry()
+        try {
+            val saved = StateKeeperDispatcher()
+            saved.register("selected-tab", kotlinx.serialization.serializer<String>()) { "IMPORT" }
+            saved.register("settings-return-tab", kotlinx.serialization.serializer<String>()) { "SCRAPER_WIZARD" }
+            val root = createRoot(lifecycle, StateKeeperDispatcher(saved.save()))
+            assertEquals(MainScreen.PROMPTS, root.state.value.currentScreen)
+            root.navigateToImport(emptyList())
+            root.navigateToScraperWizard()
+            root.navigateToScraper()
+            assertEquals(MainScreen.PROMPTS, root.state.value.currentScreen)
+            assertIs<MainComponent.Child.Prompts>(root.stackFor(MainScreen.IMPORT).value.active.instance)
+            assertIs<MainComponent.Child.Prompts>(root.stackFor(MainScreen.SCRAPER_WIZARD).value.active.instance)
+            root.navigateToSettings()
+            (root.childStack.value.active.instance as MainComponent.Child.Settings).component.onBackClicked()
+            assertEquals(MainScreen.PROMPTS, root.state.value.currentScreen)
+        } finally { lifecycle.destroy(); Dispatchers.resetMain() }
+    }
+
     @Test fun settingsMenuClosesAndReturnsToThePreviousTab() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val lifecycle = LifecycleRegistry()
