@@ -132,7 +132,7 @@ private fun DesktopLayout(
     Column(modifier = Modifier.fillMaxSize()) {
         // Header
         ChatHeader(
-            selectedModel = uiState.selectedModel?.name,
+            selectedModel = uiState.selectedModelLabel,
             onModelClick = component::toggleModelDialog
         )
 
@@ -221,7 +221,7 @@ val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         },
     ) {
         Column(Modifier.fillMaxSize()) {
-            MobileHeader(selectedModel = uiState.selectedModel?.name,
+            MobileHeader(selectedModel = uiState.selectedModelLabel,
                 chatTitle = uiState.currentSession?.name ?: "Новый чат",
                 onMenuClick = { scope.launch { drawerState.open() } },
                 onModelClick = component::toggleModelDialog, onSettingsClick = { showParams = true })
@@ -373,23 +373,13 @@ private fun ChatHeader(
     ) {
         Text(
             text = "Чаты",
+            modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold
         )
 
         // Кнопка выбора модели
-        Button(
-            onClick = onModelClick,
-            shape = RoundedCornerShape(8.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.SmartToy,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(selectedModel ?: "Выбрать модель")
-        }
+        com.arny.sharedui.ChatModelSelector(selectedModel, onModelClick, Modifier.widthIn(max = 420.dp))
     }
 }
 
@@ -401,6 +391,7 @@ private fun MobileHeader(
     onModelClick: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
+    Column {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -422,13 +413,13 @@ private fun MobileHeader(
         )
 
         Row {
-            IconButton(onClick = onModelClick) {
-                Icon(Icons.Default.SmartToy, contentDescription = "Модель")
-            }
             IconButton(onClick = onSettingsClick) {
                 Icon(Icons.Default.Settings, contentDescription = "Настройки")
             }
         }
+    }
+    com.arny.sharedui.ChatModelSelector(selectedModel, onModelClick,
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
     }
 }
 

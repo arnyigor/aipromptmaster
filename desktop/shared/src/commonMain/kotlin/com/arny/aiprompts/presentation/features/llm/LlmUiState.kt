@@ -69,6 +69,10 @@ data class LlmUiState(
             else -> null
         }
 
+    val selectedModelLabel: String?
+        get() = selectedModel?.let { it.name.takeIf(String::isNotBlank) ?: it.id }
+            ?: currentSession?.modelId?.takeIf(String::isNotBlank)
+
     /** Проверяет, идет ли сейчас генерация ответа. */
     val isGenerating: Boolean
         get() = requestActive

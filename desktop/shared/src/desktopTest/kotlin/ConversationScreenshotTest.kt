@@ -22,7 +22,7 @@ class ConversationScreenshotTest {
                 ChatMessage(role = ChatMessageRole.USER, content = "Как объединить Android и desktop?", timestamp = 1),
                 ChatMessage(role = ChatMessageRole.MODEL, content = "Используй **общий UI** и адаптивный layout.\n\n1. Компактное окно — одна панель.\n2. Широкое окно — список и содержимое рядом.\n\n```kotlin\nval compact = width < 600.dp\n```", timestamp = 2, modelId = "test-model")))
         val component = mockk<LlmComponent>(relaxed = true) { every { uiState } returns MutableStateFlow(state) }
-        for (width in listOf(360, 720, 1440)) {
+        for (width in listOf(320, 360, 720, 1440)) {
             val scene = ImageComposeScene(width, 900)
             try {
                 scene.setContent { PromptTheme(dark = false) { LlmScreen(component) } }

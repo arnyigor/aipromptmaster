@@ -478,6 +478,10 @@ fun ChatScreen(
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        topBar = {
+            com.arny.sharedui.ChatModelSelector(uiState.selectedModel?.let { it.name.takeIf(String::isNotBlank) ?: it.id },
+                onModelsClick, Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp))
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             Column(modifier = Modifier.fillMaxWidth()) {
