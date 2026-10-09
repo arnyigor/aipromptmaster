@@ -194,18 +194,7 @@ fun ChatList(
     onChatClick: (Chat) -> Unit,
     onChatLongClick: (Chat) -> Unit
 ) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        items(
-            items = chats,
-            key = { it.id }
-        ) { chat ->
-            ChatRow(
-                chat = chat,
-                onClick = { onChatClick(chat) },
-                onLongClick = { onChatLongClick(chat) }
-            )
-        }
+    com.arny.sharedui.ConversationList(chats, key = { it.id }, modifier = Modifier.fillMaxSize()) { chat ->
+        ChatRow(chat, { onChatClick(chat) }, { onChatLongClick(chat) })
     }
 }

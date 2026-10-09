@@ -49,56 +49,19 @@ fun ChatSidebar(
     onArchiveSession: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxHeight()
-            .background(MaterialTheme.colorScheme.sidebarBackground())
-            .padding(8.dp)
-    ) {
-        // Заголовок и кнопка нового чата
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Чаты",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            IconButton(onClick = onNewChat) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Новый чат"
-                )
-            }
+    Column(modifier.fillMaxHeight().background(MaterialTheme.colorScheme.surface)) {
+        Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("Чаты", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            IconButton(onNewChat) { Icon(Icons.Default.Add, "Новый чат") }
         }
-
-        Divider(modifier = Modifier.padding(vertical = 8.dp))
-
-        // Список чатов
-        if (sessions.isEmpty()) {
-            EmptySidebarState(onNewChat)
-        } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                items(
-                    items = sessions,
-                    key = { it.id }
-                ) { session ->
-                    ChatSessionItem(
-                        session = session,
-                        isSelected = session.id == selectedSessionId,
-                        onClick = { onSessionSelected(session.id) },
-                        onDelete = { onDeleteSession(session.id) },
-                        onRename = { newName -> onRenameSession(session.id, newName) },
-                        onArchive = { onArchiveSession(session.id) }
-                    )
-                }
-            }
+        HorizontalDivider()
+        com.arny.sharedui.ConversationList(
+            sessions, key = { it.id }, modifier = Modifier.weight(1f),
+            emptyContent = { EmptySidebarState(onNewChat) },
+        ) { session ->
+            ChatSessionItem(session, session.id == selectedSessionId,
+                { onSessionSelected(session.id) }, { onDeleteSession(session.id) },
+                { onRenameSession(session.id, it) }, { onArchiveSession(session.id) })
         }
     }
 }
@@ -156,180 +119,32 @@ private fun ChatSessionItem(
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
-    var newName by remember { mutableStateOf(session.name) }
-
-    val backgroundColor by animateColorAsState(
-        targetValue = when {
-            isSelected -> MaterialTheme.colorScheme.sidebarSelectedItem()
-            else -> MaterialTheme.colorScheme.sidebarBackground()
+    var newName by remember(session.id, session.name) { mutableStateOf(session.name) }
+    com.arny.sharedui.ConversationRow(
+        title = session.name, preview = session.getLastMessagePreview(100),
+        isSelected = isSelected, onClick = onClick,
+        metadata = {
+            Text(formatRelativeTime(session.updatedAt), style = MaterialTheme.typography.labelSmall)
+            val tokenCount = session.messages.sumOf { it.tokenCount ?: 0 }
+            if (tokenCount > 0) Text("$tokenCount токенов", style = MaterialTheme.typography.labelSmall)
         },
-        label = "background"
-    )
-
-    Box(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(backgroundColor)
-                .clickable(onClick = onClick)
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Иконка и текст
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ChatBubbleOutline,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = session.name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    // Preview последнего сообщения
-                    val preview = session.getLastMessagePreview(30)
-                    if (preview.isNotBlank()) {
-                        Text(
-                            text = preview,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-
-                    // Время и токены
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = formatRelativeTime(session.updatedAt),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                        )
-
-                        val tokenCount = session.messages.sumOf { it.tokenCount ?: 0 }
-                        if (tokenCount > 0) {
-                            Text(
-                                text = "• ${tokenCount} токенов",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Меню действий
+        actions = {
             Box {
-                IconButton(
-                    onClick = { showMenu = true },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "Меню",
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Переименовать") },
-                        leadingIcon = {
-                            Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp))
-                        },
-                        onClick = {
-                            showMenu = false
-                            showRenameDialog = true
-                        }
-                    )
-
-                    DropdownMenuItem(
-                        text = { Text("Архивировать") },
-                        leadingIcon = {
-                            Icon(Icons.Default.Archive, null, modifier = Modifier.size(18.dp))
-                        },
-                        onClick = {
-                            showMenu = false
-                            onArchive()
-                        }
-                    )
-
-                    Divider()
-
-                    DropdownMenuItem(
-                        text = { Text("Удалить", color = MaterialTheme.colorScheme.error) },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Delete,
-                                null,
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        },
-                        onClick = {
-                            showMenu = false
-                            onDelete()
-                        }
-                    )
+                IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, "Действия с чатом") }
+                DropdownMenu(showMenu, onDismissRequest = { showMenu = false }) {
+                    DropdownMenuItem(text = { Text("Переименовать") }, onClick = { showMenu = false; showRenameDialog = true })
+                    DropdownMenuItem(text = { Text("Архивировать") }, onClick = { showMenu = false; onArchive() })
+                    DropdownMenuItem(text = { Text("Удалить") }, onClick = { showMenu = false; onDelete() })
                 }
             }
-        }
-    }
-
-    // Диалог переименования
-    if (showRenameDialog) {
-        AlertDialog(
-            onDismissRequest = { showRenameDialog = false },
-            title = { Text("Переименовать чат") },
-            text = {
-                OutlinedTextField(
-                    value = newName,
-                    onValueChange = { newName = it },
-                    label = { Text("Название") },
-                    singleLine = true
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (newName.isNotBlank()) {
-                            onRename(newName)
-                        }
-                        showRenameDialog = false
-                    }
-                ) {
-                    Text("Сохранить")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showRenameDialog = false }) {
-                    Text("Отмена")
-                }
-            }
-        )
-    }
+        },
+    )
+    if (showRenameDialog) AlertDialog(
+        onDismissRequest = { showRenameDialog = false }, title = { Text("Переименовать чат") },
+        text = { OutlinedTextField(newName, { newName = it }, label = { Text("Название") }, singleLine = true) },
+        confirmButton = { TextButton(onClick = { onRename(newName.trim()); showRenameDialog = false }, enabled = newName.isNotBlank()) { Text("Сохранить") } },
+        dismissButton = { TextButton(onClick = { showRenameDialog = false }) { Text("Отмена") } },
+    )
 }
 
 @OptIn(ExperimentalTime::class)

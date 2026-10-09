@@ -90,37 +90,10 @@ fun SystemPromptPickerContent(
     systemPrompt: String,
     onSystemPromptChange: (String) -> Unit,
 ) {
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    Scaffold(
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-    ) { innerPadding ->
-        Column(
-            Modifier
-                .padding(innerPadding)
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            OutlinedTextField(
-                value = systemPrompt,
-                onValueChange = onSystemPromptChange,
-                label = { Text("Системный промпт") },
-                modifier = Modifier.fillMaxWidth(),
-                trailingIcon = {
-                    if (systemPrompt.isNotEmpty()) {
-                        IconButton(onClick = { onSystemPromptChange("") }) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Очистить поле",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                },
-            )
-        }
-    }
+    com.arny.sharedui.ChatParametersPane(
+        systemPrompt = systemPrompt, onSystemPromptChanged = onSystemPromptChange,
+        modifier = Modifier.fillMaxSize(),
+    )
 }
 
 /**
