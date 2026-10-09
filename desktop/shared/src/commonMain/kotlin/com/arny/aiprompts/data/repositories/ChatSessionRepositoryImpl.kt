@@ -37,10 +37,9 @@ class ChatSessionRepositoryImpl(
     // ==================== Сессии ====================
 
     override fun getAllSessions(): Flow<List<ChatSession>> {
-        return sessionDao.getAllActiveSessions()
-            .map { entities ->
-                entities.map { it.toDomain(emptyList()) }
-            }
+        return sessionDao.summaries().map { rows -> rows.map {
+            it.session.toDomain(emptyList()).copy(lastMessagePreview = it.lastContent.orEmpty(), totalTokenCount = it.totalTokens)
+        } }
     }
 
     override fun getSessionById(sessionId: String): Flow<ChatSession?> {
@@ -71,13 +70,17 @@ class ChatSessionRepositoryImpl(
         return session
     }
 
+    override suspend fun updateSettings(sessionId: String, settings: ChatSettings) {
+        sessionDao.setSettings(sessionId, settings.temperature, settings.maxTokens, settings.topP, settings.contextWindow, System.currentTimeMillis())
+    }
+    override suspend fun updateModel(sessionId: String, modelId: String, providerId: String?) = sessionDao.setModel(sessionId, modelId, providerId, System.currentTimeMillis())
+
     override suspend fun updateSession(session: ChatSession) {
         sessionDao.updateSession(session.toEntity())
     }
 
     override suspend fun renameSession(sessionId: String, newName: String) {
-        val session = sessionDao.getSessionById(sessionId) ?: return
-        sessionDao.updateSession(session.copy(name = newName, updatedAt = System.currentTimeMillis()))
+        sessionDao.rename(sessionId, newName, System.currentTimeMillis())
     }
 
     override suspend fun deleteSession(sessionId: String) {
@@ -143,13 +146,7 @@ class ChatSessionRepositoryImpl(
     }
 
     override suspend fun updateSystemPrompt(sessionId: String, systemPrompt: String?) {
-        val session = sessionDao.getSessionById(sessionId) ?: return
-        sessionDao.updateSession(
-            session.copy(
-                systemPrompt = systemPrompt,
-                updatedAt = System.currentTimeMillis()
-            )
-        )
+        sessionDao.setSystemPrompt(sessionId, systemPrompt, System.currentTimeMillis())
     }
 
     override fun searchSessions(query: String): Flow<List<ChatSession>> {
@@ -174,6 +171,7 @@ class ChatSessionRepositoryImpl(
             updatedAt = updatedAt,
             isArchived = isArchived,
             modelId = modelId,
+            providerId = providerId,
             messages = messages
         )
     }
@@ -190,7 +188,8 @@ class ChatSessionRepositoryImpl(
             createdAt = createdAt,
             updatedAt = updatedAt,
             isArchived = isArchived,
-            modelId = modelId
+            modelId = modelId,
+            providerId = providerId
         )
     }
 

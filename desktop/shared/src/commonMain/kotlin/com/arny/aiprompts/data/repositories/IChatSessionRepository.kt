@@ -37,6 +37,8 @@ interface IChatSessionRepository {
      * @param session Обновленная сессия
      */
     suspend fun updateSession(session: ChatSession)
+    suspend fun updateSettings(sessionId: String, settings: com.arny.aiprompts.data.model.ChatSettings)
+    suspend fun updateModel(sessionId: String, modelId: String, providerId: String? = null)
 
     /**
      * Обновляет только название сессии.

@@ -41,7 +41,7 @@ class ChatGenerationSettingsTest {
         val router = mockk<IOpenRouterRepository>(relaxed = true)
         val models = mockk<ModelRepository>(); val settings = mockk<ISettingsRepository>()
         val history = mockk<IChatHistoryRepository>(relaxed = true)
-        val selected = mockk<LlmModel>(); every { selected.id } returns "model"
+        val selected = mockk<LlmModel>(); every { selected.id } returns "model"; every { selected.contextLength } returns "8192"
         coEvery { models.getSelectedModel() } returns selected
         every { settings.getApiKey() } returns "fake-test-key"
         val generation = ChatGenerationConfig(1.1f, 3072, 0.8f, 2)
@@ -61,4 +61,26 @@ class ChatGenerationSettingsTest {
         assertEquals(listOf("Current system", "Previous answer", "New question"), captured.captured.map { it.content })
         assertEquals(ChatRole.SYSTEM, captured.captured.first().role)
     }
+    @Test fun interruptedStreamKeepsPartialAnswerInsteadOfDeletingIt() = runTest {
+        val router = mockk<IOpenRouterRepository>(relaxed = true)
+        val models = mockk<ModelRepository>(); val settings = mockk<ISettingsRepository>()
+        val history = mockk<IChatHistoryRepository>(relaxed = true)
+        val selected = mockk<LlmModel>()
+        every { selected.id } returns "model"; every { selected.contextLength } returns "8192"
+        coEvery { models.getSelectedModel() } returns selected
+        every { settings.getApiKey() } returns "fake-test-key"
+        every { settings.getChatGeneration("chat") } returns ChatGenerationConfig()
+        coEvery { history.addMessage(any(), any()) } returns "placeholder"
+        coEvery { history.getSystemPrompt("chat") } returns ""
+        coEvery { history.getFullHistory("chat") } returns listOf(ChatMessage(id="user", role=ChatRole.USER,content="Question"))
+        coEvery { router.getChatCompletionStream(any(),any(),any(),any(),any(),any()) } returns kotlinx.coroutines.flow.flow {
+            emit(DataResult.Success(StreamResult("Partial", "model")))
+            throw IllegalStateException("Disconnected")
+        }
+        val interactor = LLMInteractor(router, models, settings, history, mockk(relaxed = true))
+        assertFailsWith<IllegalStateException> { interactor.sendMessageWithFallback("chat", "Question",emptyList(),true) }
+        coVerify { history.updateMessageContent("placeholder", match { it.startsWith("Partial") && it.contains("Ответ прерван") }) }
+        coVerify(exactly=0) { history.deleteMessage("placeholder") }
+    }
+
 }

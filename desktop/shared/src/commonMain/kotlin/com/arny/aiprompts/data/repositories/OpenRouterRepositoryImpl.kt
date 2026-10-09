@@ -41,6 +41,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.addJsonObject
@@ -147,7 +150,7 @@ class OpenRouterRepositoryImpl(
             val response: ChatCompletionResponse = httpClient.post(url) {
                 if (!keyToUse.isNullOrBlank()) header("Authorization", "Bearer $keyToUse")
                 contentType(ContentType.Application.Json)
-                setBody(request)
+                setBody(com.arny.promptcontract.completionRequestBody(model, provider.baseUrl, json.encodeToJsonElement(request.messages).jsonArray, false, maxTokens, temperature))
             }.body()
 
             if (response.error != null) {
@@ -204,7 +207,7 @@ class OpenRouterRepositoryImpl(
                     connectTimeoutMillis = 15_000
                     socketTimeoutMillis = 60_000
                 }
-                setBody(requestBody)
+                setBody(com.arny.promptcontract.completionRequestBody(model, provider.baseUrl, json.encodeToJsonElement(requestBody.messages).jsonArray, true, maxTokens, temperature, topP))
             }.execute()
 
             if (!response.status.isSuccess()) {
@@ -300,12 +303,8 @@ class OpenRouterRepositoryImpl(
                             }
                         }
                     } catch (e: Exception) {
-                        Logger.e(e, "OpenRouterRepo", "Failed to read image: ${attachment.uri}")
-                        // Заглушка при ошибке
-                        addJsonObject {
-                            put("type", "text")
-                            put("text", "[Image: ${attachment.uri.substringAfterLast("/")}]")
-                        }
+                        if (e is CancellationException) throw e
+                        throw IllegalStateException("Не удалось подготовить изображение. Проверьте формат и размер файла.", e)
                     }
                 } else {
                     // Для старых сообщений - только заглушка
@@ -319,42 +318,30 @@ class OpenRouterRepositoryImpl(
     }
 
     private fun parseServerSentEvents(channel: ByteReadChannel): Flow<StreamingChatChunk> = flow {
-        while (!channel.isClosedForRead) {
+        val frame = com.arny.promptcontract.SseFrameDecoder()
+        var completed = false
+        suspend fun consume(data: String) {
+            if (data == SSE_DONE_MARKER) {
+                completed = true
+                emit(StreamingChatChunk("", isComplete = true))
+                return
+            }
+            val root = json.parseToJsonElement(data).jsonObject
+            check(root["error"] == null || root["error"] == kotlinx.serialization.json.JsonNull) { "Провайдер сообщил об ошибке потока" }
+            val chunk = json.decodeFromString<StreamingChatResponse>(data)
+            val choice = chunk.choices?.firstOrNull() ?: return
+            val content = choice.delta?.content.orEmpty()
+            if (choice.finishReason != null) completed = true
+            if (content.isNotEmpty() || choice.finishReason != null)
+                emit(StreamingChatChunk(content, choice.finishReason, choice.finishReason != null))
+        }
+        while (true) {
             currentCoroutineContext().ensureActive()
             val line = channel.readUTF8Line() ?: break
-            if (line.isBlank() || line.startsWith(":")) continue
-
-            if (line.startsWith(SSE_DATA_PREFIX)) {
-                val jsonData = line.substring(SSE_DATA_PREFIX.length).trim()
-                if (jsonData == SSE_DONE_MARKER) {
-                    Logger.d("OpenRouterRepo", "Stream completed with DONE marker")
-                    emit(StreamingChatChunk(content = "", isComplete = true))
-                    break
-                }
-                val chunk = try {
-                    json.decodeFromString<StreamingChatResponse>(jsonData)
-                } catch (e: Exception) {
-                    Logger.w("OpenRouterRepo", "Failed to parse SSE chunk")
-                    throw e
-                }
-                    val choice = chunk.choices?.firstOrNull()
-                    val delta = choice?.delta
-
-                    if ((delta?.content == null || delta.content.isEmpty())
-                        && choice?.finishReason == null
-                    ) {
-                        continue
-                    }
-
-                    emit(
-                        StreamingChatChunk(
-                            content = delta?.content.orEmpty(),
-                            finishReason = choice.finishReason,
-                            isComplete = choice.finishReason != null
-                        )
-                    )
-            }
+            frame.accept(line)?.let { consume(it) }
         }
+        frame.finish()?.let { consume(it) }
+        check(completed) { "Ответ прерван: поток закрылся без завершения" }
     }
 
     companion object {

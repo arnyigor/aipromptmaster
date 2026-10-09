@@ -47,21 +47,25 @@ fun ChatSidebar(
     onDeleteSession: (String) -> Unit,
     onRenameSession: (String, String) -> Unit,
     onArchiveSession: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showArchived: Boolean = false,
+    onToggleArchive: () -> Unit = {},
+    onRestore: (String) -> Unit = {},
 ) {
     Column(modifier.fillMaxHeight().background(MaterialTheme.colorScheme.surface)) {
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("Чаты", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
             IconButton(onNewChat) { Icon(Icons.Default.Add, "Новый чат") }
         }
+        TextButton(onToggleArchive) { Text(if (showArchived) "Показать активные" else "Архив чатов") }
         HorizontalDivider()
         com.arny.sharedui.ConversationList(
-            sessions, key = { it.id }, modifier = Modifier.weight(1f),
+            sessions.filter { it.isArchived == showArchived }, key = { it.id }, modifier = Modifier.weight(1f),
             emptyContent = { EmptySidebarState(onNewChat) },
         ) { session ->
             ChatSessionItem(session, session.id == selectedSessionId,
                 { onSessionSelected(session.id) }, { onDeleteSession(session.id) },
-                { onRenameSession(session.id, it) }, { onArchiveSession(session.id) })
+                { onRenameSession(session.id, it) }, { if (session.isArchived) onRestore(session.id) else onArchiveSession(session.id) })
         }
     }
 }
@@ -125,7 +129,7 @@ private fun ChatSessionItem(
         isSelected = isSelected, onClick = onClick,
         metadata = {
             Text(formatRelativeTime(session.updatedAt), style = MaterialTheme.typography.labelSmall)
-            val tokenCount = session.messages.sumOf { it.tokenCount ?: 0 }
+            val tokenCount = session.totalTokenCount
             if (tokenCount > 0) Text("$tokenCount токенов", style = MaterialTheme.typography.labelSmall)
         },
         actions = {
@@ -133,7 +137,7 @@ private fun ChatSessionItem(
                 IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, "Действия с чатом") }
                 DropdownMenu(showMenu, onDismissRequest = { showMenu = false }) {
                     DropdownMenuItem(text = { Text("Переименовать") }, onClick = { showMenu = false; showRenameDialog = true })
-                    DropdownMenuItem(text = { Text("Архивировать") }, onClick = { showMenu = false; onArchive() })
+                    DropdownMenuItem(text = { Text(if (session.isArchived) "Восстановить" else "Архивировать") }, onClick = { showMenu = false; onArchive() })
                     DropdownMenuItem(text = { Text("Удалить") }, onClick = { showMenu = false; onDelete() })
                 }
             }

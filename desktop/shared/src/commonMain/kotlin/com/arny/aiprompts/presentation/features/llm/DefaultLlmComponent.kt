@@ -75,8 +75,8 @@ class DefaultLlmComponent(
             .onEach { sessions ->
                 _uiState.update { state ->
                     // Если нет выбранной сессии, выбираем первую активную
-                    val newSelectedId = state.selectedChatId 
-                        ?: sessions.firstOrNull()?.id
+                    val newSelectedId = state.selectedChatId?.takeIf { id -> sessions.any { it.id == id && !it.isArchived } }
+                        ?: sessions.firstOrNull { !it.isArchived }?.id
                     state.copy(
                         chatSessions = sessions,
                         selectedChatId = newSelectedId
@@ -136,8 +136,10 @@ class DefaultLlmComponent(
     // ==================== Модели ====================
 
     override fun onModelSelected(modelId: String) {
+        val sessionId = _uiState.value.selectedChatId
         scope.launch {
-            llmInteractor.selectModel(modelId)
+            if (sessionId == null) llmInteractor.selectModel(modelId)
+            else llmInteractor.selectSessionModel(sessionId, modelId)
         }
     }
 
@@ -173,7 +175,9 @@ class DefaultLlmComponent(
     // ==================== Сессии чата ====================
 
     override fun onChatSessionSelected(sessionId: String) {
-        selectSession(sessionId)
+        if (_uiState.value.chatSessions.firstOrNull { it.id == sessionId }?.isArchived == true) {
+            _uiState.update { it.copy(errorMessage = "Восстановите чат из архива, чтобы продолжить переписку") }
+        } else selectSession(sessionId)
     }
 
     private fun selectSession(sessionId: String?) {
@@ -203,13 +207,26 @@ class DefaultLlmComponent(
         }
     }
 
-    override fun onDeleteChatSession(sessionId: String) {
+    override fun onDeleteChatSession(sessionId: String) { _uiState.update { it.copy(pendingDeleteChatId = sessionId) } }
+    override fun onDismissDeleteChatSession() { _uiState.update { it.copy(pendingDeleteChatId = null) } }
+    override fun onToggleArchivedChats() { _uiState.update { it.copy(showArchivedChats = !it.showArchivedChats) } }
+    override fun onUnarchiveChatSession(sessionId: String) {
+        scope.launch {
+            try { llmInteractor.unarchiveSession(sessionId) }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { _uiState.update { it.copy(errorMessage = "Не удалось восстановить чат") } }
+        }
+    }
+    override fun onConfirmDeleteChatSession() {
+        val sessionId = _uiState.value.pendingDeleteChatId ?: return
+        onDismissDeleteChatSession()
         scope.launch {
             try {
                 llmInteractor.deleteSession(sessionId)
                 // Если удалили текущую сессию, сбрасываем выбор
-                if (_uiState.value.selectedChatId == sessionId) selectSession(_uiState.value.chatSessions.firstOrNull { it.id != sessionId }?.id)
+                if (_uiState.value.selectedChatId == sessionId) selectSession(_uiState.value.chatSessions.firstOrNull { it.id != sessionId && !it.isArchived }?.id)
                 drafts.remove(sessionId)
+                fileDrafts.remove(sessionId)
             } catch (e: Exception) {
                 Logger.e(e, "DefaultLlmComponent", "Failed to delete session")
                 _uiState.update { it.copy(errorMessage = "Не удалось удалить чат: ${e.message}") }
@@ -284,8 +301,8 @@ class DefaultLlmComponent(
             val mime = file.mimeType.orEmpty()
             mime.startsWith("text/") || mime.startsWith("image/") || mime in listOf("application/json", "application/xml")
         }
-        _uiState.update { it.copy(attachments = (it.attachments + supported).distinctBy { file -> file.uri },
-            errorMessage = if (supported.size != files.size) "Поддерживаются изображения, текст и исходный код. Другие файлы не добавлены." else it.errorMessage) }
+        _uiState.update { it.copy(attachments = (it.attachments + supported).distinctBy { file -> file.uri }.take(8),
+            errorMessage = if ((it.attachments + supported).distinctBy { file -> file.uri }.size > 8) "Можно добавить до 8 вложений" else if (supported.size != files.size) "Поддерживаются изображения, текст и исходный код. Другие файлы не добавлены." else it.errorMessage) }
     }
     override fun onAttachmentRemoved(uri: String) { _uiState.update { it.copy(attachments = it.attachments.filterNot { file -> file.uri == uri }) } }
     override fun onAttachmentError(message: String) { _uiState.update { it.copy(errorMessage = message) } }

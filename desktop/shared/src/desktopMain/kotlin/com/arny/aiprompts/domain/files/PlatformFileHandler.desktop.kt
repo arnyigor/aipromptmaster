@@ -17,16 +17,40 @@ actual class PlatformFileHandler {
 
     actual suspend fun readImageToBase64(uriString: String): String = withContext(Dispatchers.IO) {
         val path = uriToPath(uriString)
-        val bytes = Files.readAllBytes(path)
-        
-        // TODO: Добавить ресайз изображения для экономии токенов
-        // (макс 2048x2048, сжатие JPG качество 85%)
-        
-        Base64.getEncoder().encodeToString(bytes)
+        require(Files.size(path) <= 10L * 1024 * 1024) { "Изображение больше 10 МБ" }
+        javax.imageio.ImageIO.createImageInputStream(path.toFile()).use { input ->
+            require(input != null) { "Не удалось прочитать изображение" }
+            val readers = javax.imageio.ImageIO.getImageReaders(input)
+            require(readers.hasNext()) { "Формат изображения не поддерживается" }
+            val reader = readers.next()
+            try {
+                reader.input = input
+                val width = reader.getWidth(0); val height = reader.getHeight(0)
+                require(width.toLong() * height <= 40_000_000) { "Изображение имеет слишком большое разрешение" }
+                val format = reader.formatName.lowercase()
+                val parameters = reader.defaultReadParam
+                val sample = (maxOf(width, height) / 2048).coerceAtLeast(1)
+                parameters.setSourceSubsampling(sample, sample, 0, 0)
+                val source = reader.read(0, parameters)
+                val scale = minOf(1.0, 2048.0 / maxOf(source.width, source.height))
+                val image = if (scale == 1.0) source else java.awt.image.BufferedImage(
+                    (source.width * scale).toInt().coerceAtLeast(1), (source.height * scale).toInt().coerceAtLeast(1),
+                    if (format in setOf("jpeg", "jpg")) java.awt.image.BufferedImage.TYPE_INT_RGB else java.awt.image.BufferedImage.TYPE_INT_ARGB).also { target ->
+                        val graphics = target.createGraphics()
+                        try { graphics.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+                            graphics.drawImage(source, 0, 0, target.width, target.height, null)
+                        } finally { graphics.dispose() }
+                    }
+                val output = java.io.ByteArrayOutputStream()
+                require(javax.imageio.ImageIO.write(image, format, output)) { "Формат изображения не поддерживается" }
+                Base64.getEncoder().encodeToString(output.toByteArray())
+            } finally { reader.dispose() }
+        }
     }
 
     actual suspend fun readText(uriString: String): String = withContext(Dispatchers.IO) {
         val path = uriToPath(uriString)
+        require(Files.size(path) <= 2L * 1024 * 1024) { "Текстовый файл больше 2 МБ" }
         Files.readString(path)
     }
 
@@ -45,7 +69,11 @@ actual class PlatformFileHandler {
         // Получаем папку пользователя для приложения
         val userHome = System.getProperty("user.home")
         val attachmentsDir = File(userHome, "aiprompts/attachments").apply { mkdirs() }
-        val targetFile = File(attachmentsDir, targetName)
+        require(Files.size(sourcePath) <= 10L * 1024 * 1024) { "Вложение больше 10 МБ" }
+        val safeName = targetName.substringAfterLast('/').substringAfterLast('\\').take(200)
+        require(safeName.isNotBlank() && safeName !in setOf(".", "..")) { "Некорректное имя вложения" }
+        val targetFile = File(attachmentsDir, safeName)
+        require(targetFile.toPath().normalize().startsWith(attachmentsDir.toPath().normalize()))
         
         Files.copy(sourcePath, targetFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
         

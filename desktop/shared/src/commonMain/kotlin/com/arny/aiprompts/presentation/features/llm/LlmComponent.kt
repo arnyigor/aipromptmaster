@@ -48,6 +48,10 @@ interface LlmComponent {
 
     /** Удаление сессии чата. */
     fun onDeleteChatSession(sessionId: String)
+    fun onConfirmDeleteChatSession()
+    fun onDismissDeleteChatSession()
+    fun onToggleArchivedChats()
+    fun onUnarchiveChatSession(sessionId: String)
 
     /** Переименование сессии чата. */
     fun onRenameChatSession(sessionId: String, newName: String)

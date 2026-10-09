@@ -50,6 +50,11 @@ fun canonicalPersonalPrompt(prompt: PromptJson): PromptJson {
 }
 @Serializable data class PersonalVaultBaseline(val target: String, val hashes: Map<String, String>)
 interface PersonalVaultStore {
+    fun loadSyncStage(): String? = null
+    fun saveSyncStage(stage: String?) {}
+    fun lastSuccessfulSync(): String? = null
+    fun recordSuccessfulSync(value: String) {}
+
     fun loadPersonalVault(): PersonalVaultConfig?
     fun savePersonalVault(config: PersonalVaultConfig)
     fun disconnectPersonalVault()
@@ -74,6 +79,7 @@ data class PersonalVaultUi(
     val message: String? = null, val ready: Boolean = false, val conflicts: List<PersonalVaultConflict> = emptyList(),
     val localCount: Int = 0, val remoteCount: Int = 0, val resultCount: Int = 0,
     val changes: List<PersonalVaultChange> = emptyList(),
+    val lastSuccessfulSync: String? = null,
 )
 sealed interface PersonalVaultAction {
     data class Repository(val value: String) : PersonalVaultAction
@@ -113,9 +119,12 @@ class PersonalVaultManager(
 ) {
     private val initial = runCatching { store.loadPersonalVault() }
     private val _state = MutableStateFlow(PersonalVaultUi(config = initial.getOrNull() ?: PersonalVaultConfig(),
-        message = if (initial.isFailure) "Проверьте сохранённые настройки GitHub" else null))
+        lastSuccessfulSync = runCatching { store.lastSuccessfulSync() }.getOrNull(),
+        message = if (initial.isFailure) "Проверьте сохранённые настройки GitHub" else
+            runCatching { store.loadSyncStage() }.getOrNull()?.let { "Предыдущая синхронизация не завершена ($it). Проверьте изменения снова." }))
     val state = _state.asStateFlow()
     private var plan: PersonalVaultPlan? = null
+    private var stage: String? = null
     fun onAction(action: PersonalVaultAction) {
         if (_state.value.busy) return
         when (action) {
@@ -123,7 +132,7 @@ class PersonalVaultManager(
             is PersonalVaultAction.Branch -> edit(_state.value.config.copy(branch = action.value.trim()))
             is PersonalVaultAction.Token -> edit(_state.value.config.copy(token = action.value.trim()))
             PersonalVaultAction.Disconnect -> execute {
-                store.disconnectPersonalVault(); plan = null
+                store.disconnectPersonalVault(); store.saveSyncStage(null); stage = null; plan = null
                 _state.value = PersonalVaultUi(message = "GitHub отключён. Личные промпты остались на устройстве")
             }
             is PersonalVaultAction.Resolve -> {
@@ -156,16 +165,21 @@ class PersonalVaultManager(
                 require(local.snapshot() == prepared.local) { "Локальные промпты изменились. Проверьте изменения снова" }
                 local.validate(prepared.local, result)
                 val config = _state.value.config.checked()
+                stage = "обновление GitHub"; store.saveSyncStage(stage)
                 if (result != prepared.remote.snapshot) remote.write(config, result, prepared.remote.sha)
                 else require(remote.read(config).sha == prepared.remote.sha) { "GitHub изменился после проверки. Проверьте изменения снова" }
+                stage = "GitHub обновлён"; store.saveSyncStage(stage)
                 local.apply(prepared.local, result)
+                stage = "локальные записи обновлены"; store.saveSyncStage(stage)
                 store.savePersonalVaultBaseline(PersonalVaultBaseline(config.target, result.prompts.associate { it.id!! to remote.hash(Json.encodeToString(PromptJson.serializer(), it).encodeToByteArray()) }))
+                val syncedAt = syncTimestamp()
+                store.recordSuccessfulSync(syncedAt); store.saveSyncStage(null); stage = null
                 plan = null
-                _state.value = _state.value.copy(ready = false, conflicts = emptyList(), message = "Личные промпты синхронизированы: ${result.prompts.size}")
+                _state.value = _state.value.copy(ready = false, conflicts = emptyList(), lastSuccessfulSync = syncedAt, message = "Личные промпты синхронизированы: ${result.prompts.size}")
             }
         }
     }
-    private fun edit(config: PersonalVaultConfig) { plan = null; _state.value = PersonalVaultUi(config = config) }
+    private fun edit(config: PersonalVaultConfig) { plan = null; _state.value = PersonalVaultUi(config = config, lastSuccessfulSync = _state.value.lastSuccessfulSync) }
     private fun refreshChanges() {
         val prepared = plan ?: return
         val unresolved = _state.value.conflicts.filter { it.useRemote == null }.map { it.id }.toSet()
@@ -188,14 +202,21 @@ class PersonalVaultManager(
         scope.launch {
             try { block() }
             catch (cancel: CancellationException) { throw cancel }
-            catch (error: Exception) { plan = null; _state.value = _state.value.copy(ready = false, message = error.message ?: "Ошибка синхронизации") }
+            catch (error: Exception) { plan = null; _state.value = _state.value.copy(ready = false, message = (stage?.let { "Синхронизация не завершена: $it. Проверьте изменения снова. " } ?: "") + (error.message ?: "Ошибка синхронизации")) }
             finally { _state.value = _state.value.copy(busy = false) }
         }
     }
 }
 
 /** Chunked preferences keep Windows' value limit from truncating a large baseline. */
+@OptIn(kotlin.time.ExperimentalTime::class)
+private fun syncTimestamp(): String = kotlin.time.Clock.System.now().toString()
+
 class PersonalVaultPreferences(private val get: (String) -> String?, private val put: (String, String) -> Unit) : PersonalVaultStore {
+    override fun loadSyncStage() = get("personal_vault_stage")?.takeIf(String::isNotBlank)
+    override fun saveSyncStage(stage: String?) = put("personal_vault_stage", stage.orEmpty())
+    override fun lastSuccessfulSync() = get("personal_vault_success")?.takeIf(String::isNotBlank)
+    override fun recordSuccessfulSync(value: String) = put("personal_vault_success", value)
     override fun loadPersonalVault() = get("personal_vault_config")?.takeIf(String::isNotBlank)?.let { Json.decodeFromString<PersonalVaultConfig>(it) }
     override fun disconnectPersonalVault() = put("personal_vault_config", "")
     override fun savePersonalVault(config: PersonalVaultConfig) = put("personal_vault_config", Json.encodeToString(PersonalVaultConfig.serializer(), config.checked()))

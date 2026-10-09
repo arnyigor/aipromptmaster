@@ -47,6 +47,8 @@ interface ILLMInteractor {
      * Выбирает модель по ID.
      */
     suspend fun selectModel(id: String)
+    suspend fun selectSessionModel(sessionId: String, modelId: String)
+    suspend fun unarchiveSession(sessionId: String)
 
     /**
      * Обновляет список моделей из API.

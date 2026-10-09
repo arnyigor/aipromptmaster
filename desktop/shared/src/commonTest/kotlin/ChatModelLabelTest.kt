@@ -13,6 +13,13 @@ class ChatModelLabelTest {
         assertEquals("provider/model", LlmUiState(modelsResult = DataResult.Success(listOf(model.copy(name = "")))).selectedModelLabel)
     }
 
+    @Test fun sessionModelHasTheSamePriorityAsTheGenerationRequest() {
+        val session = ChatSession("chat", "Test", null, ChatSettings(), 0, 0, modelId = "session/model")
+        val selected = LlmModel("global/model", "Global", "", 0, 32000, null, null, null, listOf("text"), listOf("text"), true)
+        val actual = selected.copy(id = "session/model", name = "Session", isSelected = false)
+        assertEquals("Session", LlmUiState(selectedChatId = "chat", chatSessions = listOf(session), modelsResult = DataResult.Success(listOf(selected, actual))).selectedModelLabel)
+    }
+
     @Test fun savedConversationModelRemainsVisibleWhileCatalogIsLoading() {
         val session = ChatSession("chat", "Чат", null, ChatSettings(), 0, 0, modelId = "saved/model")
         val state = LlmUiState(selectedChatId = session.id, chatSessions = listOf(session), modelsResult = DataResult.Loading)

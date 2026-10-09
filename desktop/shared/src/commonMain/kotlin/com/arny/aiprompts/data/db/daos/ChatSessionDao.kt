@@ -15,6 +15,9 @@ import kotlinx.coroutines.flow.Flow
  */
 @Dao
 interface ChatSessionDao {
+    @Query("SELECT s.*, (SELECT content FROM chat_messages WHERE session_id=s.id ORDER BY order_index DESC LIMIT 1) AS lastContent, (SELECT COALESCE(SUM(token_count),0) FROM chat_messages WHERE session_id=s.id) AS totalTokens FROM chat_sessions s ORDER BY s.updated_at DESC")
+    fun summaries(): Flow<List<ChatSessionSummary>>
+
 
     /**
      * Получает все активные (не архивированные) сессии, отсортированные по времени обновления.
@@ -47,6 +50,15 @@ interface ChatSessionDao {
      */
     @Update
     suspend fun updateSession(session: ChatSessionEntity)
+
+    @Query("UPDATE chat_sessions SET name = :name, updated_at = :timestamp WHERE id = :id")
+    suspend fun rename(id: String, name: String, timestamp: Long)
+    @Query("UPDATE chat_sessions SET system_prompt = :prompt, updated_at = :timestamp WHERE id = :id")
+    suspend fun setSystemPrompt(id: String, prompt: String?, timestamp: Long)
+    @Query("UPDATE chat_sessions SET temperature = :temperature, max_tokens = :maxTokens, top_p = :topP, context_window = :contextWindow, updated_at = :timestamp WHERE id = :id")
+    suspend fun setSettings(id: String, temperature: Float, maxTokens: Int, topP: Float, contextWindow: Int, timestamp: Long)
+    @Query("UPDATE chat_sessions SET model_id = :modelId, provider_id = :providerId, updated_at = :timestamp WHERE id = :id")
+    suspend fun setModel(id: String, modelId: String, providerId: String?, timestamp: Long)
 
     /**
      * Удаляет сессию из базы данных.
@@ -93,3 +105,5 @@ interface ChatSessionDao {
     @Query("DELETE FROM chat_sessions WHERE is_archived = 1 AND updated_at < :timestamp")
     suspend fun deleteOldArchivedSessions(timestamp: Long)
 }
+
+data class ChatSessionSummary(@androidx.room.Embedded val session: ChatSessionEntity, val lastContent: String?, val totalTokens: Int)

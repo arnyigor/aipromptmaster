@@ -138,4 +138,7 @@ private fun SQLiteConnection.execute(sql: String) {
  * Список всех миграций для базы данных.
  * Используется при создании DatabaseBuilder.
  */
-val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(connection: SQLiteConnection) { connection.execute("ALTER TABLE chat_sessions ADD COLUMN provider_id TEXT") }
+}
+val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)

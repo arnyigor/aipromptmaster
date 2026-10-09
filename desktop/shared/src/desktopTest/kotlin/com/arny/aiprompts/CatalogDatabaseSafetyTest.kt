@@ -36,7 +36,7 @@ class CatalogDatabaseSafetyTest {
     }
 
     @Test fun `exported desktop schemas migrate without losing private data`() = runTest {
-        for (version in 1..2) {
+        for (version in 1..3) {
             val directory = Files.createTempDirectory("catalog-migration").toFile()
             val file = File(directory, "test.db")
             val schema = Json.parseToJsonElement(File("schemas/com.arny.aiprompts.data.db.AppDatabase/$version.json").readText()).jsonObject.getValue("database").jsonObject

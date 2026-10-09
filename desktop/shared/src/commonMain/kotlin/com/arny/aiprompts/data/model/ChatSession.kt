@@ -26,7 +26,10 @@ data class ChatSession(
     val updatedAt: Long,
     val isArchived: Boolean = false,
     val modelId: String? = null,
-    val messages: List<ChatMessage> = emptyList()
+    val messages: List<ChatMessage> = emptyList(),
+    val lastMessagePreview: String = "",
+    val totalTokenCount: Int = 0,
+    val providerId: String? = null
 )
 
 /**
@@ -49,7 +52,7 @@ data class ChatSettings(
  * Расширения для ChatSession.
  */
 fun ChatSession.getLastMessagePreview(maxLength: Int = 50): String {
-    val lastMessage = messages.lastOrNull()?.content ?: ""
+    val lastMessage = messages.lastOrNull()?.content ?: lastMessagePreview
     return if (lastMessage.length > maxLength) {
         lastMessage.take(maxLength) + "..."
     } else {

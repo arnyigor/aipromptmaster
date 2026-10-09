@@ -52,6 +52,55 @@ class PersonalVaultTest {
         }
         override fun hash(value: ByteArray) = value.decodeToString()
     }
+    @Test fun remoteSuccessLocalFailureHasPersistentRecoveryStageAndCanBeRetried() = runTest {
+        val values = mutableMapOf<String, String>()
+        val preferences = PersonalVaultPreferences(values::get) { key, value -> values[key] = value }
+        preferences.savePersonalVault(PersonalVaultConfig("owner/private", "main", "test-token"))
+        var value = snap(prompt("a")); var fail = true
+        val local = object : PersonalVaultLocal {
+            override suspend fun snapshot() = value
+            override suspend fun apply(expected: PersonalVaultSnapshot, result: PersonalVaultSnapshot) {
+                if (fail) error("Synthetic local failure")
+                assertEquals(expected, value); value = result
+            }
+        }
+        val remote = Remote(PersonalVaultRemoteSnapshot(snap(prompt("b")), "sha"))
+        val manager = PersonalVaultManager(preferences, local, remote, this)
+        manager.onAction(PersonalVaultAction.Preview); advanceUntilIdle()
+        manager.onAction(PersonalVaultAction.Apply); advanceUntilIdle()
+        assertEquals(1, remote.writes); assertEquals(snap(prompt("a")), value)
+        assertEquals("GitHub обновлён", preferences.loadSyncStage())
+        assertTrue(manager.state.value.message!!.contains("GitHub обновлён"))
+        assertTrue(PersonalVaultManager(preferences, local, remote, this).state.value.message!!.contains("не завершена"))
+        fail = false
+        manager.onAction(PersonalVaultAction.Preview); advanceUntilIdle()
+        manager.onAction(PersonalVaultAction.Apply); advanceUntilIdle()
+        assertEquals(remote.value.snapshot, value); assertNull(preferences.loadSyncStage())
+        assertNotNull(preferences.lastSuccessfulSync())
+    }
+
+    @Test fun baselineFailureAfterLocalApplyCanBeRetriedWithoutAnotherRemoteWrite() = runTest {
+        val values = mutableMapOf<String, String>(); var fail = false
+        val preferences = PersonalVaultPreferences(values::get) { key, value ->
+            if (fail && key == "personal_vault_base_marker") error("Synthetic baseline failure")
+            values[key] = value
+        }
+        preferences.savePersonalVault(PersonalVaultConfig("owner/private", "main", "test-token"))
+        val local = Local(snap(prompt("a")))
+        val remote = Remote(PersonalVaultRemoteSnapshot(snap(prompt("b")), "sha"))
+        val manager = PersonalVaultManager(preferences, local, remote, this)
+        manager.onAction(PersonalVaultAction.Preview); advanceUntilIdle(); fail = true
+        manager.onAction(PersonalVaultAction.Apply); advanceUntilIdle()
+        assertEquals(local.value, remote.value.snapshot); assertEquals(1, remote.writes)
+        assertNotNull(preferences.loadSyncStage()); assertNull(preferences.lastSuccessfulSync())
+        fail = false
+        val restored = PersonalVaultManager(preferences, local, remote, this)
+        restored.onAction(PersonalVaultAction.Preview); advanceUntilIdle()
+        restored.onAction(PersonalVaultAction.Apply); advanceUntilIdle()
+        assertEquals(1, remote.writes); assertNull(preferences.loadSyncStage())
+        assertNotNull(preferences.loadPersonalVaultBaseline()); assertNotNull(preferences.lastSuccessfulSync())
+    }
+
     @Test fun previewDoesNotPublishAndExplicitApplyUnifiesBothSides() = runTest {
         val store = Store(); val local = Local(snap(prompt("a"))); val remote = Remote(PersonalVaultRemoteSnapshot(snap(prompt("b")), "old"))
         val manager = PersonalVaultManager(store, local, remote, this)

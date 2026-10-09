@@ -58,20 +58,27 @@ data class LlmUiState(
     
     // Поиск по истории
     val searchHistoryQuery: String = "",
-    val isSearchingHistory: Boolean = false
+    val isSearchingHistory: Boolean = false,
+    val showArchivedChats: Boolean = false,
+    val pendingDeleteChatId: String? = null
 ) {
     // ==================== Computed Properties ====================
     
     /** Выбранная модель из списка доступных. */
     val selectedModel: LlmModel?
         get() = when (modelsResult) {
-            is DataResult.Success -> modelsResult.data.firstOrNull { it.isSelected }
+            is DataResult.Success -> currentSession?.modelId?.takeIf(String::isNotBlank)?.let { id ->
+                modelsResult.data.firstOrNull { it.id == id }
+            } ?: modelsResult.data.firstOrNull { it.isSelected && currentSession?.modelId.isNullOrBlank() }
             else -> null
         }
 
     val selectedModelLabel: String?
-        get() = selectedModel?.let { it.name.takeIf(String::isNotBlank) ?: it.id }
-            ?: currentSession?.modelId?.takeIf(String::isNotBlank)
+        get() {
+            val id = currentSession?.modelId?.takeIf(String::isNotBlank) ?: selectedModel?.id ?: return null
+            val model = (modelsResult as? DataResult.Success)?.data?.firstOrNull { it.id == id }
+            return model?.name?.takeIf(String::isNotBlank) ?: id
+        }
 
     /** Проверяет, идет ли сейчас генерация ответа. */
     val isGenerating: Boolean
@@ -118,7 +125,7 @@ data class LlmUiState(
 
     /** Текущая выбранная сессия чата. */
     val currentSession: ChatSession?
-        get() = chatSessions.find { it.id == selectedChatId }
+        get() = chatSessions.find { it.id == selectedChatId }?.copy(messages = messages)
 
     /** Настройки текущей сессии (или настройки по умолчанию). */
     val currentSettings: ChatSettings

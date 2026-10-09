@@ -16,6 +16,10 @@ class SettingsRepositoryImpl(
         securePrefs.put("chat_generation_$conversationId", kotlinx.serialization.json.Json.encodeToString(com.arny.promptcontract.ChatGenerationConfig.serializer(), settings.checked()))
     }
     private val vaultPreferences = com.arny.promptcontract.PersonalVaultPreferences({ securePrefs.get<String>(it) }, { key, value -> securePrefs.put(key, value) })
+    override fun loadSyncStage() = vaultPreferences.loadSyncStage()
+    override fun saveSyncStage(stage: String?) = vaultPreferences.saveSyncStage(stage)
+    override fun lastSuccessfulSync() = vaultPreferences.lastSuccessfulSync()
+    override fun recordSuccessfulSync(value: String) = vaultPreferences.recordSuccessfulSync(value)
     override fun loadPersonalVault() = vaultPreferences.loadPersonalVault()
     override fun disconnectPersonalVault() = vaultPreferences.disconnectPersonalVault()
     override fun savePersonalVault(config: com.arny.promptcontract.PersonalVaultConfig) = vaultPreferences.savePersonalVault(config)

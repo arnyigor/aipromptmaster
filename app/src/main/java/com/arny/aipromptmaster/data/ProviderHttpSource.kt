@@ -34,7 +34,8 @@ class ProviderHttpSource(private val client: OkHttpClient, private val json: Jso
                 addJsonObject { put("role", "user"); put("content", request.source) }
             }
         }
-        return request(profile, "chat/completions", body.toString(), request.stream).map { data ->
+        val wire = com.arny.promptcontract.completionRequestBody(request.model, profile.baseUrl, body.getValue("messages").jsonArray, request.stream, request.maxTokens, request.temperature)
+        return request(profile, "chat/completions", wire.toString(), request.stream).map { data ->
             if (data == "[DONE]") CompletionPiece(complete = true)
             else {
                 val root = json.parseToJsonElement(data).jsonObject

@@ -291,17 +291,9 @@ private fun MessageContent(
     content: String,
     isUser: Boolean
 ) {
-    // TODO: Заменить на полноценный Markdown рендерер
-    // Пока используем простой текст с базовым форматированием
-    Text(
-        text = content,
-        style = MaterialTheme.typography.bodyLarge,
-        color = if (isUser) {
-            MaterialTheme.colorScheme.onPrimaryContainer
-        } else {
-            MaterialTheme.colorScheme.onSurface
-        }
-    )
+    androidx.compose.foundation.text.selection.SelectionContainer {
+        com.mikepenz.markdown.m3.Markdown(content = content)
+    }
 }
 
 @Composable

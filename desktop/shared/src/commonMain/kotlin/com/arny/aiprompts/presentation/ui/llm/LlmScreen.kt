@@ -94,6 +94,13 @@ fun LlmScreen(component: LlmComponent) {
     }
 
     // Диалог выбора модели
+    uiState.pendingDeleteChatId?.let { id ->
+        AlertDialog(onDismissRequest = component::onDismissDeleteChatSession,
+            title = { Text("Удалить чат?") },
+            text = { Text("«${uiState.chatSessions.firstOrNull { it.id == id }?.name.orEmpty()}» и его сообщения будут удалены.") },
+            confirmButton = { TextButton(component::onConfirmDeleteChatSession) { Text("Удалить") } },
+            dismissButton = { TextButton(component::onDismissDeleteChatSession) { Text("Отмена") } })
+    }
     uiState.editingMessageId?.let { id ->
         AlertDialog(
             onDismissRequest = component::onDismissEditMessage,
@@ -150,6 +157,7 @@ private fun DesktopLayout(
                     onDeleteSession = component::onDeleteChatSession,
                     onRenameSession = component::onRenameChatSession,
                     onArchiveSession = component::onArchiveChatSession,
+                    showArchived = uiState.showArchivedChats, onToggleArchive = component::onToggleArchivedChats, onRestore = component::onUnarchiveChatSession,
                     modifier = Modifier.width(280.dp)
                 )
             }
@@ -215,7 +223,8 @@ val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
                     onSessionSelected = { component.onChatSessionSelected(it); scope.launch { drawerState.close() } },
                     onNewChat = { component.onCreateNewChatSession(); scope.launch { drawerState.close() } },
                     onDeleteSession = component::onDeleteChatSession, onRenameSession = component::onRenameChatSession,
-                    onArchiveSession = component::onArchiveChatSession, modifier = Modifier.width(300.dp),
+                    onArchiveSession = component::onArchiveChatSession,
+                    showArchived = uiState.showArchivedChats, onToggleArchive = component::onToggleArchivedChats, onRestore = component::onUnarchiveChatSession, modifier = Modifier.width(300.dp),
                 )
             }
         },

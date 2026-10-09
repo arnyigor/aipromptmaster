@@ -56,6 +56,16 @@ class ChatWorkflowTest {
         }, null, session.settings.temperature.toDouble(), 123, session.settings.topP.toDouble()) }
     }
 
+    @Test fun `incomplete and length limited streams retain partial text with failure status`() = runTest {
+        for (chunk in listOf(StreamingChatChunk("Partial"), StreamingChatChunk("Partial", "length", true))) {
+            history.value = emptyList()
+            stream(flowOf(Result.success(chunk)))
+            interactor.sendMessage("chat", "Question").toList()
+            assertEquals("Partial", history.value.last().content)
+            assertTrue(history.value.last().status is MessageStatus.Failed)
+        }
+    }
+
     @Test fun `retry replaces response without duplicating user message`() = runTest {
         stream(successful())
         interactor.sendMessage("chat", "Question").toList()

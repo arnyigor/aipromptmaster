@@ -48,6 +48,14 @@ require(desktopVersionParts[0] in 0..255 && desktopVersionParts[1] in 0..255 && 
     "Desktop package version exceeds Windows Installer limits"
 }
 
+// Reject requested debug installers during configuration, before external tool checks.
+val installerRequested = gradle.startParameter.taskNames.any {
+    it.substringAfterLast(':').startsWith("package") || it.substringAfterLast(':') == "createReleaseDistributable"
+}
+check(!installerRequested || providers.gradleProperty("desktopBuildType").orElse("release").get() == "release") {
+    "Installers must use release mode; debug tools are allowed only in local debug portable builds"
+}
+
 tasks.configureEach {
     if (name.startsWith("package") || name == "createReleaseDistributable") {
         val releaseMode = providers.gradleProperty("desktopBuildType").orElse("release").get() == "release"

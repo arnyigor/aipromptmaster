@@ -270,6 +270,7 @@ class LLMInteractor(
             )
         )
 
+        val partialResponse = StringBuilder()
         try {
 
             val generation = getChatGeneration(chatId).checked()
@@ -278,7 +279,10 @@ class LLMInteractor(
                 .filter { it.id != assistantMsgId }
                 .let { messages ->
                     val system = if (systemPrompt.isBlank()) emptyList() else listOf(ChatMessage(role = ChatRole.SYSTEM, content = systemPrompt))
-                    system + messages.filter { it.role != ChatRole.SYSTEM }.takeLast(generation.contextWindow)
+                    system + com.arny.promptcontract.fitContextHistory(
+                        messages.filter { it.role != ChatRole.SYSTEM }.takeLast(generation.contextWindow),
+                        systemPrompt, selectedModel?.contextLength?.toLongOrNull()?.coerceIn(1, Int.MAX_VALUE.toLong())?.toInt() ?: 8192,
+                        generation.maxTokens, text = { it.content })
                 }
             try {
                 // Получаем стрим от репозитория/API с прикрепленными файлами и моделью
@@ -317,7 +321,7 @@ class LLMInteractor(
 
                 // 2. ЗАПУСК ТРОТТЛИНГА
                 val finalContent = contentFlow.collectWithThrottling(
-                    initialValue = StringBuilder(), // Используем StringBuilder как аккумулятор
+                    initialValue = partialResponse, // Retain partial output on interruption
                     periodMillis = 300L, // Обновляем БД ~3 раза в секунду
                     accumulator = { builder, newChunk ->
                         builder.append(newChunk.content) // Эффективное добавление без лишних аллокаций
@@ -358,14 +362,14 @@ class LLMInteractor(
             } catch (e: Exception) {
                 // Обработка ошибок
                 Timber.e(e, "Streaming failed")
-                // Удаляем плейсхолдер при ошибке
-                historyRepository.deleteMessage(assistantMsgId)
-                throw e // Пробрасываем, чтобы ViewModel показала ошибку
+                throw e // The outer handler preserves partial output.
             }
 
         } catch (e: Exception) {
-            // Удаляем плейсхолдер при ошибке
-            historyRepository.deleteMessage(assistantMsgId)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                if (partialResponse.isBlank()) historyRepository.deleteMessage(assistantMsgId)
+                else historyRepository.updateMessageContent(assistantMsgId, partialResponse.toString().trim() + "\n\n_Ответ прерван._")
+            }
             throw e
         }
     }

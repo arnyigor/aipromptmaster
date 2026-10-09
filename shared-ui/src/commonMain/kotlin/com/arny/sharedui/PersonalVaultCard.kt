@@ -22,6 +22,7 @@ fun PersonalVaultCard(state: PersonalVaultUi, onAction: (PersonalVaultAction) ->
             Button({ onAction(PersonalVaultAction.Preview) }, enabled = !state.busy) { Text("Проверить изменения") }
             if (state.config.repository.isNotBlank() || state.config.token.isNotBlank())
                 TextButton({ onAction(PersonalVaultAction.Disconnect) }, enabled = !state.busy) { Text("Отключить GitHub") }
+            state.lastSuccessfulSync?.let { Text("Последняя синхронизация: $it", style = MaterialTheme.typography.bodySmall) }
             if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             state.message?.let { Text(it) }
             if (state.ready) {

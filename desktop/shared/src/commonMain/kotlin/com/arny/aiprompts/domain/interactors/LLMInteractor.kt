@@ -106,6 +106,13 @@ class LLMInteractor(
         }
     }
 
+    override suspend fun selectSessionModel(sessionId: String, modelId: String) {
+        chatSessionRepository.updateModel(sessionId, modelId, settingsRepository.loadProviders().activeId)
+        settingsRepository.setSelectedModelId(modelId)
+    }
+
+    override suspend fun unarchiveSession(sessionId: String) = chatSessionRepository.unarchiveSession(sessionId)
+
     override suspend fun selectModel(id: String) {
         settingsRepository.setSelectedModelId(id)
     }
@@ -140,7 +147,12 @@ class LLMInteractor(
     }
 
     override suspend fun createSession(name: String, systemPrompt: String?): ChatSession {
-        return chatSessionRepository.createSession(name, systemPrompt)
+        val session = chatSessionRepository.createSession(name, systemPrompt)
+        val provider = settingsRepository.loadProviders().active
+        val modelId = settingsRepository.getSelectedModelId().firstOrNull()?.takeIf(String::isNotBlank) ?: provider.modelId.takeIf(String::isNotBlank)
+        if (modelId == null) return session
+        chatSessionRepository.updateModel(session.id, modelId, provider.id)
+        return session.copy(modelId = modelId, providerId = provider.id)
     }
 
     override suspend fun deleteSession(sessionId: String) {
@@ -160,10 +172,7 @@ class LLMInteractor(
     }
 
     override suspend fun updateChatSettings(sessionId: String, settings: ChatSettings) {
-        chatSessionRepository.updateSession(
-            chatSessionRepository.getSessionById(sessionId).firstOrNull()?.copy(settings = settings)
-                ?: return
-        )
+        chatSessionRepository.updateSettings(sessionId, settings)
     }
 
     // ==================== Сообщения ====================
@@ -190,6 +199,7 @@ class LLMInteractor(
                 return@flow
             }
 
+        ensureProvider(session)
         val modelId = session.modelId ?: settingsRepository.getSelectedModelId().firstOrNull()
             ?: run {
                 emit(DataResult.Error(IllegalStateException("No model selected")))
@@ -234,11 +244,21 @@ class LLMInteractor(
                 return@flow
             }
 
+        ensureProvider(session)
         val modelId = session.modelId ?: settingsRepository.getSelectedModelId().firstOrNull()
             ?: run {
                 emit(DataResult.Error(IllegalStateException("No model selected")))
                 return@flow
             }
+
+        require(input.attachments.size <= 8) { "Можно добавить до 8 вложений" }
+        val totalSize = input.attachments.sumOf { fileHandler.getFileSize(it.uri) }
+        require(totalSize <= 20L * 1024 * 1024) { "Общий размер вложений больше 20 МБ" }
+        input.attachments.forEach { attachment ->
+            val mime = attachment.mimeType ?: fileHandler.getMimeType(attachment.uri).orEmpty()
+            val limit = if (mime.startsWith("image/")) 10L * 1024 * 1024 else 2L * 1024 * 1024
+            require(fileHandler.getFileSize(attachment.uri) <= limit) { "Вложение слишком велико: ${attachment.fileName}" }
+        }
 
         // 1. Сохраняем вложения во внутреннее хранилище
         val savedAttachments = mutableListOf<MessageAttachment>()
@@ -315,15 +335,19 @@ class LLMInteractor(
             status = MessageStatus.Streaming(false), modelId = modelId)
         val content = StringBuilder()
         var lastWrite = System.nanoTime()
+        var completed = false
+        var finishReason: String? = null
         try {
             chatSessionRepository.addMessage(session.id, placeholder)
             emit(DataResult.Success(placeholder))
-            val context = buildApiContext(session.id, session.systemPrompt, session.settings.contextWindow)
+            val context = buildApiContext(session.id, session.systemPrompt, session.settings.contextWindow, modelId, session.settings.maxTokens)
             modelsRepository.getStreamingChatCompletion(modelId, context,
                 temperature = session.settings.temperature.toDouble(), maxTokens = session.settings.maxTokens,
                 topP = session.settings.topP.toDouble()).collect { result ->
                 val chunk = result.getOrThrow()
                 content.append(chunk.content)
+                completed = completed || chunk.isComplete
+                if (chunk.finishReason != null) finishReason = chunk.finishReason
                 val now = System.nanoTime()
                 if (chunk.isComplete || now - lastWrite >= 300_000_000L) {
                     val updated = placeholder.copy(content = content.toString(),
@@ -333,6 +357,9 @@ class LLMInteractor(
                     lastWrite = now
                 }
             }
+            check(completed) { "Ответ прерван: поток закрылся без завершения" }
+            check(finishReason != "length") { "Ответ обрезан лимитом токенов" }
+            check(finishReason != "content_filter") { "Ответ остановлен фильтром провайдера" }
             if (content.isBlank()) chatSessionRepository.deleteMessage(placeholder.id)
             else {
                 val completed = placeholder.copy(content = content.toString(), status = MessageStatus.Sent)
@@ -386,6 +413,7 @@ class LLMInteractor(
         val userIndex = if (messages[index].role == ChatMessageRole.USER) index
             else (index - 1 downTo 0).firstOrNull { messages[it].role == ChatMessageRole.USER }
                 ?: error("Исходное сообщение не найдено")
+        ensureProvider(session)
         val modelId = session.modelId ?: settingsRepository.getSelectedModelId().firstOrNull()
             ?: error("Выберите модель")
         messages.drop(userIndex + 1).forEach { chatSessionRepository.deleteMessage(it.id) }
@@ -400,6 +428,7 @@ class LLMInteractor(
         val index = messages.indexOfFirst { it.id == messageId }
         val original = messages[index]
         require(original.role == ChatMessageRole.USER) { "Редактировать можно сообщение пользователя" }
+        ensureProvider(session)
         val modelId = session.modelId ?: settingsRepository.getSelectedModelId().firstOrNull()
             ?: error("Выберите модель")
         chatSessionRepository.updateMessage(original.copy(content = newContent,
@@ -417,6 +446,13 @@ class LLMInteractor(
         Logger.d("LLMInteractor", "Streaming cancelled")
     }
 
+    private fun ensureProvider(session: ChatSession) {
+        val active = settingsRepository.loadProviders().active
+        require(session.providerId == null || session.providerId == active.id) {
+            "Провайдер этого чата изменён. Выберите модель текущего провайдера для продолжения."
+        }
+    }
+
     // ==================== Private Methods ====================
 
     /**
@@ -430,7 +466,7 @@ class LLMInteractor(
      * @param sessionSystemPrompt System prompt сессии (может быть null)
      * @return Список сообщений для API
      */
-    private suspend fun buildApiContext(sessionId: String, sessionSystemPrompt: String?, contextWindow: Int): List<ChatMessage> {
+    private suspend fun buildApiContext(sessionId: String, sessionSystemPrompt: String?, contextWindow: Int, modelId: String, outputTokens: Int): List<ChatMessage> {
         val messages = mutableListOf<ChatMessage>()
         
         // Формируем итоговый системный промпт
@@ -454,7 +490,9 @@ class LLMInteractor(
             .filter { it.status is MessageStatus.Sent }
             .takeLast(contextWindow.coerceIn(1, MAX_CONTEXT_MESSAGES))
         
-        messages.addAll(history)
+        val contextLimit = runCatching { modelsRepository.getModelsFlow().first().firstOrNull { it.id == modelId }?.contextLength }.getOrNull() ?: 8192
+        messages.addAll(com.arny.promptcontract.fitContextHistory(history, finalSystemPrompt.orEmpty(), contextLimit.coerceIn(1, Int.MAX_VALUE.toLong()).toInt(), outputTokens,
+            text = { it.content }, images = { message -> message.attachments.count { it.type == AttachmentType.IMAGE } }))
         
         return messages
     }

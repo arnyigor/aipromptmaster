@@ -11,12 +11,8 @@ data class ModelAvailabilityUi(val modelId: String = "", val providerName: Strin
 class ModelProbeHttpError(val status: Int) : Exception("HTTP $status")
 class ModelProbeResponseError : Exception("Invalid model probe response")
 
-fun modelProbeBody(modelId: String, baseUrl: String = ""): String = buildJsonObject {
-    val tokenField = if (baseUrl.trim().trimEnd('/').lowercase() in setOf("https://api.openai.com/v1", "https://openrouter.ai/api/v1"))
-        "max_completion_tokens" else "max_tokens"
-    put("model", modelId); put("stream", false); put(tokenField, 16)
-    putJsonArray("messages") { addJsonObject { put("role", "user"); put("content", "Reply OK.") } }
-}.toString()
+fun modelProbeBody(modelId: String, baseUrl: String = ""): String = completionRequestBody(modelId, baseUrl,
+    buildJsonArray { addJsonObject { put("role", "user"); put("content", "Reply OK.") } }, false, 16).toString()
 
 fun verifyModelProbeResponse(body: String) {
     val root = Json.parseToJsonElement(body).jsonObject

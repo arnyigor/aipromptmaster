@@ -60,5 +60,6 @@ data class ChatSessionEntity(
     val isArchived: Boolean = false,
 
     @ColumnInfo(name = "model_id")
-    val modelId: String? = null
+    val modelId: String? = null,
+    @ColumnInfo(name = "provider_id") val providerId: String? = null
 )
