@@ -357,20 +357,6 @@ private fun MessagesList(
     }
 }
 
-@Composable
-private fun ChatInput(
-    value: String,
-    onValueChange: (String) -> Unit,
-    onSend: () -> Unit,
-    onCancel: () -> Unit,
-    isGenerating: Boolean,
-    canSend: Boolean,
-    modifier: Modifier = Modifier
-) {
-com.arny.sharedui.ChatComposer(value, onValueChange, onSend, onCancel,
-        generating = isGenerating, canSend = canSend, modifier = modifier, sendOnEnter = true, onClear = { onValueChange("") })
-}
-
 // ==================== Headers ====================
 
 @Composable
