@@ -561,53 +561,15 @@ private fun ModelListItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) 
-                MaterialTheme.colorScheme.primaryContainer 
-            else 
-                MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            RadioButton(
-                selected = isSelected,
-                onClick = onClick
-            )
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = model.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                )
-                Text(
-                    text = model.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 2,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                )
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(top = 4.dp)
-                ) {
-                    model.contextLength?.let {
-                        AssistChip(
-                            onClick = { },
-                            label = { Text("${it / 1000}K контекст") }
-                        )
-                    }
-                }
+    com.arny.sharedui.ModelRow(
+        name = model.name,
+        description = model.description,
+        selected = isSelected,
+        onSelect = onClick,
+        details = {
+            model.contextLength?.let {
+                Text("Контекст: $it токенов", style = MaterialTheme.typography.bodySmall)
             }
-        }
-    }
+        },
+    )
 }

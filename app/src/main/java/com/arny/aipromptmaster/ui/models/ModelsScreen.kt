@@ -296,137 +296,35 @@ fun ModelItem(
     onFavoriteClick: () -> Unit,
     onCheckAvailabilityClick: () -> Unit
 ) {
-    val containerColor = if (model.isSelected)
-        MaterialTheme.colorScheme.secondaryContainer
-    else
-        Color.Transparent
-
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(8.dp),
-        color = containerColor,
-        tonalElevation = 0.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Индикатор доступности
-            AvailabilityIndicator(
-                isAvailable = model.isAvailable,
-                isChecking = isChecking,
-                onCheckClick = onCheckAvailabilityClick,
-                modifier = Modifier.padding(end = 12.dp)
-            )
-
-            Column(modifier = Modifier.weight(1f)) {
-
-                // ----- Название и рейтинг -----
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = model.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.weight(1f)
-                    )
-                    // Рейтинг
-                    if (model.rating != null && model.rating > 0) {
-                        RatingBadge(rating = model.rating)
-                    }
-                }
-
-                Spacer(Modifier.height(4.dp))
-
-                // ----- Context length и время отклика -----
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Context: ${model.contextLength}",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    if (model.availabilityResponseTimeMs != null) {
-                        Text(
-                            text = " | ${model.availabilityResponseTimeMs}ms",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                // ----- Цены -----
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Filled.ArrowUpward,
-                        contentDescription = "Prompt",
-                        modifier = Modifier.size(14.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = model.pricingPrompt,
-                        color = if (model.pricingPrompt.equals("Free", ignoreCase = true))
-                            MaterialTheme.colorScheme.tertiary
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-
-                    Text(
-                        text = "/",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-
-                    Icon(
-                        imageVector = Icons.Filled.ArrowDownward,
-                        contentDescription = "Completion",
-                        modifier = Modifier.size(14.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "${model.pricingCompletion} 1M",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-
-                Spacer(Modifier.height(4.dp))
-
-                // ----- Поддерживаемые входные типы -----
-                if (model.inputModalities.isNotEmpty()) {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        model.inputModalities.forEach { modality ->
-                            ChipWithIcon(modality = modality)
-                        }
-                    }
-                }
-            }
-
-            // ----- Иконка избранного -----
+    com.arny.sharedui.ModelRow(
+        name = model.name,
+        selected = model.isSelected,
+        onSelect = onClick,
+        leading = {
+            AvailabilityIndicator(model.isAvailable, isChecking, onCheckAvailabilityClick)
+        },
+        trailing = {
             IconButton(onClick = onFavoriteClick) {
                 Icon(
-                    imageVector = if (model.isFavorite) Icons.Filled.Star
-                    else Icons.Outlined.StarBorder,
-                    contentDescription = if (model.isFavorite)
-                        "Убрать из избранного"
-                    else
-                        "В избранное",
-                    tint = if (model.isFavorite)
-                        MaterialTheme.colorScheme.primary
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant
+                    if (model.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                    contentDescription = if (model.isFavorite) "Убрать из избранного" else "В избранное",
+                    tint = if (model.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-        }
-    }
+        },
+        details = {
+            if (model.rating != null && model.rating > 0) RatingBadge(model.rating)
+            Text("Контекст: ${model.contextLength} токенов", style = MaterialTheme.typography.bodySmall)
+            model.availabilityResponseTimeMs?.let { Text("Отклик: ${it} мс", style = MaterialTheme.typography.bodySmall) }
+            Text("Вход: ${model.pricingPrompt} / выход: ${model.pricingCompletion} за 1M",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (model.inputModalities.isNotEmpty()) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    model.inputModalities.forEach { ChipWithIcon(it) }
+                }
+            }
+        },
+    )
 }
 
 @Composable

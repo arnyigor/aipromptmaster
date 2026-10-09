@@ -9,14 +9,8 @@ import androidx.compose.material.icons.automirrored.filled.MenuOpen
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.foundation.interaction.collectIsDraggedAsState
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.pager.PagerState
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.collect
+import com.arny.sharedui.SyncTabPager
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -89,23 +83,5 @@ fun MainContentDesktopImpl(component: MainComponent) {
             }
 
         }
-    }
-}
-
-@Composable
-internal fun SyncTabPager(pager: PagerState, selectedPage: Int, onSwipeSettled: (Int) -> Unit) {
-    val isDragged by pager.interactionSource.collectIsDraggedAsState()
-    val onSettled by androidx.compose.runtime.rememberUpdatedState(onSwipeSettled)
-    val currentSelection by androidx.compose.runtime.rememberUpdatedState(selectedPage)
-    LaunchedEffect(pager) {
-        // Only a user drag can change the selected tab. Programmatic jumps never feed back into navigation.
-        snapshotFlow { isDragged }.filter { it }.collect {
-            val selectionAtDragStart = currentSelection
-            snapshotFlow { !pager.isScrollInProgress }.first { it }
-            if (currentSelection == selectionAtDragStart) onSettled(pager.settledPage)
-        }
-    }
-    LaunchedEffect(selectedPage) {
-        if (selectedPage >= 0 && selectedPage != pager.currentPage) pager.scrollToPage(selectedPage)
     }
 }

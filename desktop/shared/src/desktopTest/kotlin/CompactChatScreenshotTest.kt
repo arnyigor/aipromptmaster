@@ -4,6 +4,8 @@ import com.arny.aiprompts.presentation.features.llm.LlmUiState
 import com.arny.aiprompts.presentation.ui.llm.ModelSelectionDialog
 import com.arny.aiprompts.presentation.ui.llm.components.ParametersPanel
 import com.arny.aiprompts.results.DataResult
+import com.arny.aiprompts.data.model.LlmModel
+import java.math.BigDecimal
 import com.arny.sharedui.PromptTheme
 import java.io.File
 import kotlin.test.Test
@@ -19,7 +21,15 @@ class CompactChatScreenshotTest {
                 try {
                     scene.setContent { PromptTheme(dark = false) {
                         if (dialog) ModelSelectionDialog(
-                            LlmUiState(modelsResult = DataResult.Success(emptyList())),
+                            LlmUiState(modelsResult = DataResult.Success(listOf(
+                                LlmModel("fixture-1", "Модель с длинным названием для проверки компактного окна",
+                                    "Текст и изображения; описание переносится без сжатия кнопок.", 0L,
+                                    128000L, BigDecimal.ZERO, BigDecimal.ZERO, null,
+                                    listOf("text", "image"), listOf("text"), true),
+                                LlmModel("fixture-2", "Текстовая модель", "Помощник для работы с промптами", 0L,
+                                    32000L, BigDecimal.ZERO, BigDecimal.ZERO, null,
+                                    listOf("text"), listOf("text"), false),
+                            ))),
                             {}, {}, {}, {}, {}, {}
                         ) else ParametersPanel(null, null, {}, {}, onDismiss = {})
                     } }

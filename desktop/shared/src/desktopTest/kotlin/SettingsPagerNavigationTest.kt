@@ -3,7 +3,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
-import com.arny.aiprompts.presentation.ui.SyncTabPager
+import com.arny.sharedui.SyncTabPager
 import com.arny.sharedui.TabPager
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -20,6 +20,22 @@ import java.io.File
 
 @OptIn(ExperimentalComposeUiApi::class)
 class SettingsPagerNavigationTest {
+    @Test fun restoredSelectionOverridesDefaultPagerWithoutNavigationFeedback() {
+        val callbacks = mutableListOf<Int>()
+        lateinit var pager: PagerState
+        val scene = ImageComposeScene(360, 900)
+        try {
+            scene.setContent {
+                pager = rememberPagerState(initialPage = 0, pageCount = { 5 })
+                SyncTabPager(pager, 4) { callbacks.add(it) }
+                TabPager(pager, swipeEnabled = true) { }
+            }
+            repeat(5) { scene.render(it * 100_000_000L).close() }
+            assertEquals(4, pager.currentPage)
+            assertEquals(emptyList(), callbacks)
+        } finally { scene.close() }
+    }
+
     @Test fun renderCompactSettings() {
         val output = System.getenv("PROMPT_SCREENSHOT_DIR") ?: return
         val settings = mockk<SettingsComponent>(relaxed = true)
