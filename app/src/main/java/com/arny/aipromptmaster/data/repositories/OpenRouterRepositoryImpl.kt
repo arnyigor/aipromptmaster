@@ -32,7 +32,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.*
 import retrofit2.HttpException
 import timber.log.Timber
 import kotlin.coroutines.cancellation.CancellationException
@@ -183,7 +183,8 @@ class OpenRouterRepositoryImpl(
         messages: List<ChatMessage>,
         apiKey: String,
         attachedFiles: List<FileAttachment>,
-        llmModel: LlmModel?
+        llmModel: LlmModel?,
+        generation: com.arny.promptcontract.ChatGenerationConfig
     ): Flow<DataResult<StreamResult>> = flow {
         // Предварительно загружаем полный контент всех файлов из сообщений
         val messageFiles = withContext(dispatcher) {
@@ -205,6 +206,9 @@ class OpenRouterRepositoryImpl(
         val request = ChatCompletionRequestDTO(
             model = model,
             messages = messagesWithFiles,
+            temperature = generation.checked().temperature.toDouble(),
+            maxTokens = generation.maxTokens,
+            topP = generation.topP.toDouble(),
             stream = true
         )
 
@@ -217,30 +221,8 @@ class OpenRouterRepositoryImpl(
 
             val source = response.body()?.source() ?: throw DomainError.Generic("Empty body")
 
-            // Используем use для авто-закрытия
-            source.use { bufferedSource ->
-                while (!bufferedSource.exhausted()) {
-                    // Читаем до перевода строки
-                    val line = bufferedSource.readUtf8Line() ?: break
+            source.use { bufferedSource -> parseStream(bufferedSource, model).collect { emit(it) } }
 
-                    if (line.startsWith("data:")) {
-                        val jsonPart = line.removePrefix("data:").trim()
-                        if (jsonPart == "[DONE]") break
-
-                        try {
-                            val chunk = jsonParser.decodeFromString<StreamChunk>(jsonPart)
-                            val content = chunk.choices.firstOrNull()?.delta?.content
-                            val actualModelId = chunk.model ?: model
-                            if (!content.isNullOrEmpty()) {
-                                emit(DataResult.Success(StreamResult(content = content, modelId = actualModelId)))
-                            }
-                        } catch (e: Exception) {
-                            // Логируем, но не крашим поток из-за одного битого чанка
-                            Timber.w(e, "Failed to parse chunk: $jsonPart")
-                        }
-                    }
-                }
-            }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             emit(DataResult.Error(e.toDomainError()))
@@ -314,30 +296,38 @@ class OpenRouterRepositoryImpl(
                 return@flow
             }
 
-            response.body()?.source()?.use { source ->
-                while (!source.exhausted()) {
-                    val line = source.readUtf8Line()
-                    if (line?.startsWith("data: ") == true) {
-                        val json = line.substring(6).trim()
-                        if (json != "[DONE]") {
-                            try {
-                                val streamResponse =
-                                    jsonParser.decodeFromString<ChatCompletionResponseDTO>(json)
-                                val content =
-                                    streamResponse.choices.firstOrNull()?.delta?.content
-                                if (!content.isNullOrEmpty()) {
-                                    emit(DataResult.Success(StreamResult(content = content, modelId = request.model)))
-                                }
-                            } catch (e: Exception) {
-                                Timber.e("Error parsing chunk: $json", e.stackTraceToString())
-                            }
-                        }
-                    }
-                }
-            }
+            val source = response.body()?.source() ?: throw DomainError.Generic("Пустой ответ провайдера")
+            source.use { parseStream(it, request.model).collect { result -> emit(result) } }
+
         } catch (e: Throwable) {
+            if (e is CancellationException) throw e
             emit(DataResult.Error(e.toDomainError()))
         }
+    }
+
+    private fun parseStream(source: okio.BufferedSource, model: String): Flow<DataResult<StreamResult>> = flow {
+        val frame = com.arny.promptcontract.SseFrameDecoder()
+        var complete = false
+        suspend fun consume(data: String) {
+            if (data == "[DONE]") { complete = true; return }
+            val root = jsonParser.parseToJsonElement(data).jsonObject
+            check(root["error"] == null || root["error"] == JsonNull) { "Провайдер сообщил об ошибке потока" }
+            val choice = root["choices"]?.jsonArray?.firstOrNull()?.jsonObject ?: return
+            val text = choice["delta"]?.jsonObject?.get("content")?.jsonPrimitive?.contentOrNull.orEmpty()
+            val actualModel = root["model"]?.jsonPrimitive?.contentOrNull ?: model
+            if (text.isNotEmpty()) emit(DataResult.Success(StreamResult(text, actualModel)))
+            val reason = choice["finish_reason"]?.jsonPrimitive?.contentOrNull
+            if (reason != null) complete = true
+            check(reason != "length") { "Ответ обрезан лимитом токенов" }
+            check(reason != "content_filter") { "Ответ остановлен фильтром провайдера" }
+        }
+        while (!source.exhausted()) {
+            currentCoroutineContext().ensureActive()
+            val line = source.readUtf8Line() ?: break
+            frame.accept(line)?.let { consume(it) }
+        }
+        frame.finish()?.let { consume(it) }
+        check(complete) { "Ответ прерван: поток закрылся без завершения" }
     }
 
     /* --------------------------------------------------------------- */

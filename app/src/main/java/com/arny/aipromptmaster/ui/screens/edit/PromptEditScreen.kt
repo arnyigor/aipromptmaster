@@ -85,6 +85,8 @@ fun PromptEditScreen(
     val validationState by viewModel.validation.collectAsStateWithLifecycle()
     val saveResult by viewModel.saveResult.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val improvement by viewModel.improvement.collectAsStateWithLifecycle()
+    if (improvement.visible) PromptImprovementScreen(improvement, viewModel::onImprovementAction)
 
     val snackbarHostState = remember { SnackbarHostState() }
     val focusManager = LocalFocusManager.current
@@ -101,6 +103,12 @@ fun PromptEditScreen(
     }
 
     Scaffold(
+        topBar = {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                TextButton(onClick = onBack) { Text("Назад") }
+                TextButton(onClick = viewModel::openImprovement, enabled = !uiState.isLoading && saveResult !is PromptEditViewModel.SaveResult.Loading) { Text(androidx.compose.ui.res.stringResource(com.arny.aipromptmaster.R.string.improve_title)) }
+            }
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (!uiState.isLoading) {
@@ -165,135 +173,26 @@ fun PromptEditContent(
     categoryList: List<String>,
     categoryError: String? = null
 ) {
-    Column(
-        modifier = modifier
-            .verticalScroll(rememberScrollState())
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // --- 1. Основная информация ---
-        SectionHeader("Основная информация")
-
-        OutlinedTextField(
-            value = uiState.title,
-            onValueChange = onTitleChange,
-            label = { Text("Заголовок *") },
-            isError = !validationState.isTitleValid,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 8.dp),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
-        )
-        if (!validationState.isTitleValid) {
-            Text(
-                text = validationState.titleError ?: "",
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier
-                    .align(Alignment.Start)
-                    .padding(bottom = 16.dp)
-            )
-        }
-
-        // Категория
-        CategoryDropdown(uiState.category, onCategoryChange, categoryList, categoryError)
-        if (!categoryError.isNullOrBlank()) {
-            Text(
-                text = categoryError,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier
-                    .align(Alignment.Start)
-                    .padding(top = 4.dp, bottom = 8.dp)
-            )
-        }
-
-        // Описание
-        OutlinedTextField(
-            value = uiState.description ?: "",
-            onValueChange = onDescriptionChange,
-            label = { Text("Описание") },
-            minLines = 2,
-            maxLines = 4,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp)
-        )
-
-        // Теги
-        TagsInput(uiState.tags, onTagsChange)
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // --- 2. Основной контент ---
-        SectionHeader("Основной промпт")
-
-        if (validationState.contentError != null) {
-            Text(
-                text = validationState.contentError!!,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier
-                    .align(Alignment.Start)
-                    .padding(bottom = 8.dp)
-            )
-        }
-
-        ContentCard("RU", uiState.contentRu, onContentRuChange)
-        ContentCard("EN", uiState.contentEn, onContentEnChange)
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // --- 3. Варианты ---
-        SectionHeader("Варианты и версии")
-
-        if (uiState.variants.isEmpty()) {
-            Text(
-                "Нет дополнительных вариантов.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-        } else {
+com.arny.sharedui.PromptEditorForm(
+        state = com.arny.sharedui.PromptFormUi(uiState.title, uiState.description.orEmpty(), uiState.category,
+            uiState.tags, uiState.contentRu, uiState.contentEn,
+            titleError = if (validationState.isTitleValid) null else validationState.titleError ?: "Введите заголовок",
+            contentError = validationState.contentError, categoryError = categoryError),
+        onTitle = onTitleChange, onDescription = onDescriptionChange, onCategory = onCategoryChange,
+        onTags = onTagsChange, onRu = onContentRuChange, onEn = onContentEnChange,
+        modifier = modifier, categories = categoryList,
+        variants = {
+            SectionHeader("Варианты и версии")
             uiState.variants.forEachIndexed { index, variant ->
-                val isValid =
-                    validationState.variantsValidation.find { it.index == index }?.isValid ?: true
-                val errors = validationState.variantsValidation.find { it.index == index }?.errors
-                    ?: emptyList()
-                val isExpanded = uiState.expandedVariantIndex == index
-
-                VariantItem(
-                    index = index,
-                    variant = variant,
-                    isExpanded = isExpanded,
-                    isValid = isValid,
-                    errors = errors,
+                val validation = validationState.variantsValidation.find { it.index == index }
+                VariantItem(index, variant, uiState.expandedVariantIndex == index,
+                    validation?.isValid ?: true, validation?.errors.orEmpty(),
                     onToggleExpand = { onToggleVariantExpand(index) },
-                    onUpdate = { updated -> onUpdateVariant(index, updated) },
-                    onDelete = { onDeleteVariant(index) }
-                )
-                Spacer(modifier = Modifier.height(12.dp))
+                    onUpdate = { onUpdateVariant(index, it) }, onDelete = { onDeleteVariant(index) })
             }
-        }
-
-        Button(
-            onClick = onAddVariant,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-        ) {
-            Icon(Icons.Default.Add, null)
-            Spacer(Modifier.width(8.dp))
-            Text("Добавить вариант")
-        }
-
-        Spacer(Modifier.height(64.dp)) // Отступ под FAB
-    }
+            Button(onClick = onAddVariant, modifier = Modifier.fillMaxWidth()) { Text("Добавить вариант") }
+        },
+    )
 }
 
 // --- Вспомогательные компоненты ---
@@ -444,15 +343,7 @@ fun SectionHeader(title: String) {
 
 @Composable
 fun ContentCard(lang: String, text: String, onValueChange: (String) -> Unit) {
-    OutlinedTextField(
-        value = text,
-        onValueChange = onValueChange,
-        label = { Text("Текст ($lang)") },
-        minLines = 3,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 12.dp)
-    )
+    com.arny.sharedui.PromptTextEditor(lang, text, onValueChange, Modifier.padding(bottom = 12.dp))
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

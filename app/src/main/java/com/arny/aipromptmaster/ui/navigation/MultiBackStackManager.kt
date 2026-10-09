@@ -80,7 +80,7 @@ class MultiBackStackManager(
                 val data = json.decodeFromString<BackStackData>(jsonString)
                 MultiBackStackManager(
                     initialTab = data.currentTab,
-                    backStacks = data.backStacks.mapValues {
+                    backStacks = mapOf(ModelsKey to mutableStateListOf<AppNavKey>(ModelsKey)) + data.backStacks.mapValues {
                         it.value.toMutableStateList()
                     }
                 )
@@ -103,6 +103,7 @@ fun rememberMultiBackStackManager(): MultiBackStackManager {
             backStacks = mapOf(
                 PromptsKey() to mutableStateListOf(PromptsKey()),
                 ChatHistoryKey to mutableStateListOf(ChatHistoryKey),
+                ModelsKey to mutableStateListOf(ModelsKey),
                 SettingsKey to mutableStateListOf(SettingsKey)
             )
         )

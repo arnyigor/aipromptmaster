@@ -11,6 +11,7 @@ import org.koin.core.module.dsl.factoryOf
 import org.koin.dsl.module
 
 val domainModule = module {
+    factory { com.arny.aipromptmaster.domain.ImprovePromptUseCase(get(), get(), get()) }
     // Koin сам найдет зависимости для конструктора Interactor'а
     // factory - создаем каждый раз новый (безопаснее для stateful интеракторов)
     // single - один на все приложение

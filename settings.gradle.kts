@@ -21,3 +21,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "AI Prompt Master"
 include(":app")
+include(":prompt-contract")
+include(":shared-ui")

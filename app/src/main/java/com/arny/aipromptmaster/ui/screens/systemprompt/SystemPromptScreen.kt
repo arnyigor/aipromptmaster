@@ -49,6 +49,7 @@ fun SystemPromptPickerScreen(
     navToPrompts: () -> Unit,
 ) {
     val systemPrompt by viewModel.systemPrompt.collectAsState()
+    val generation by viewModel.generation.collectAsState()
     val context = LocalContext.current
     val screenConfig by viewModel.screenConfig.collectAsState()
     val topBarManager = LocalTopBarManager.current
@@ -77,6 +78,8 @@ fun SystemPromptPickerScreen(
     SystemPromptPickerContent(
         systemPrompt = systemPrompt,
         onSystemPromptChange = viewModel::onTextChanged,
+        generation = com.arny.sharedui.GenerationParametersUi(generation.temperature, generation.maxTokens, generation.topP, generation.contextWindow),
+        onGenerationChanged = viewModel::onGenerationChanged,
     )
 }
 /**
@@ -89,38 +92,14 @@ fun SystemPromptPickerScreen(
 fun SystemPromptPickerContent(
     systemPrompt: String,
     onSystemPromptChange: (String) -> Unit,
+    generation: com.arny.sharedui.GenerationParametersUi? = null,
+    onGenerationChanged: (com.arny.sharedui.GenerationParametersUi) -> Unit = {},
 ) {
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    Scaffold(
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-    ) { innerPadding ->
-        Column(
-            Modifier
-                .padding(innerPadding)
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            OutlinedTextField(
-                value = systemPrompt,
-                onValueChange = onSystemPromptChange,
-                label = { Text("Системный промпт") },
-                modifier = Modifier.fillMaxWidth(),
-                trailingIcon = {
-                    if (systemPrompt.isNotEmpty()) {
-                        IconButton(onClick = { onSystemPromptChange("") }) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Очистить поле",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                },
-            )
-        }
-    }
+    com.arny.sharedui.ChatParametersPane(
+        systemPrompt = systemPrompt, onSystemPromptChanged = onSystemPromptChange,
+        modifier = Modifier.fillMaxSize(),
+        generation = { generation?.let { com.arny.sharedui.GenerationParameters(it, onGenerationChanged) } },
+    )
 }
 
 /**

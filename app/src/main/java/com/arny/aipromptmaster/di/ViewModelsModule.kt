@@ -12,6 +12,7 @@ import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 val viewModelModule = module {
+    viewModel { com.arny.aipromptmaster.ui.providers.ProvidersViewModel(get(), get(), get(), get()) }
     viewModel { (navScreen: String) ->
         PromptListViewModel(
             navScreen = navScreen,
@@ -28,13 +29,15 @@ val viewModelModule = module {
             shareService = get(),
             fileRepository = get(),
             interactor = get(),
-            modelRepository = get()
+            modelRepository = get(),
+            savedState = get()
         )
     }
     viewModel { (conversationId: String) ->
         SystemPromptViewModel(
             interactor = get(),
             conversationId = conversationId,
+            savedState = get(),
         )
     }
     viewModel { ChatHistoryViewModel(interactor = get()) }
@@ -43,7 +46,9 @@ val viewModelModule = module {
     viewModel { (promptId: String?) ->
         PromptEditViewModel(
             promptId = promptId,        // 1. Приходит из parametersOf
-            interactor = get()          // 3. Обычная зависимость
+            interactor = get(),
+            improvePrompt = get(),
+            savedState = get()
         )
     }
 }

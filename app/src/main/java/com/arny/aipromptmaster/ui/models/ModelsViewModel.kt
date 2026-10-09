@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
@@ -113,6 +114,10 @@ class ModelsViewModel(
                     )
                 }
                 .onStart { emit(ModelsUiState(isLoading = true, filter = currentFilter)) }
+        }
+        // Debounce the results request, never the text displayed in the search field.
+        .combine(_filter) { result, inputFilter ->
+            result.copy(filter = inputFilter, isLoading = result.isLoading || result.filter != inputFilter)
         }
         .stateIn(
             scope = viewModelScope,

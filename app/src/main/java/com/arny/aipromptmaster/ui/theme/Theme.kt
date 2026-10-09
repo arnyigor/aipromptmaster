@@ -4,10 +4,8 @@ import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.contentColorFor
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -64,28 +62,6 @@ object MarkdownColorPalette {
         @Composable get() = MaterialTheme.colorScheme.outline
 }
 
-private val DarkColorScheme = darkColorScheme(
-    primary          = Purple80,
-    secondary        = PurpleGrey80,
-    tertiary         = Pink80,
-
-    // ── явно задаём контейнеры, чтобы они отличались от primary
-    primaryContainer   = Color(0xFF4A2E8F),
-    secondaryContainer  = Color(0xFF3C3045),
-    tertiaryContainer   = Color(0xFF9D6B7C)
-)
-
-private val LightColorScheme = lightColorScheme(
-    primary          = Purple40,
-    secondary        = PurpleGrey40,
-    tertiary         = Pink40,
-
-    primaryContainer   = Color(0xFFB39DFF),
-    secondaryContainer  = Color(0xFFE1E0EB),
-    tertiaryContainer   = Color(0xFFF8C6CE)
-)
-
-
 @Composable
 fun AIPromptMasterComposeTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -99,13 +75,12 @@ fun AIPromptMasterComposeTheme(
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
 
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+        else -> null
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
+    com.arny.sharedui.PromptTheme(
+        dark = darkTheme,
+        colors = colorScheme,
         content = content
     )
 }

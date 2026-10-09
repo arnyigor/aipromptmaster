@@ -47,7 +47,8 @@ sealed class SystemPromptEffect {
 
 class SystemPromptViewModel(
     private val conversationId: String,
-    private val interactor: ILLMInteractor
+    private val interactor: ILLMInteractor,
+    private val savedState: androidx.lifecycle.SavedStateHandle,
 ) : ViewModel() {
 
     private val _screenConfig = MutableStateFlow(
@@ -65,10 +66,21 @@ class SystemPromptViewModel(
     )
     val screenConfig = _screenConfig.asStateFlow()
 
-    private val _systemPrompt = MutableStateFlow("")
+    private val restoredPrompt = savedState.contains("system-prompt")
+    private val _systemPrompt = MutableStateFlow(savedState.get<String>("system-prompt").orEmpty())
     val systemPrompt: StateFlow<String> get() = _systemPrompt.asStateFlow()
+    private val _generation = MutableStateFlow(
+        savedState.get<String>("chat-generation")?.let { kotlinx.serialization.json.Json.decodeFromString<com.arny.promptcontract.ChatGenerationConfig>(it) }
+            ?: interactor.getChatGeneration(conversationId)
+    )
+    val generation = _generation.asStateFlow()
+    fun onGenerationChanged(value: com.arny.sharedui.GenerationParametersUi) {
+        val config = com.arny.promptcontract.ChatGenerationConfig(value.temperature, value.maxTokens, value.topP, value.contextWindow).checked()
+        _generation.value = config
+        savedState["chat-generation"] = kotlinx.serialization.json.Json.encodeToString(com.arny.promptcontract.ChatGenerationConfig.serializer(), config)
+    }
 
-    private val _intentChannel = Channel<SystemPromptIntent>(capacity = Channel.CONFLATED)
+    private val _intentChannel = Channel<SystemPromptIntent>(capacity = Channel.UNLIMITED)
     val intentFlow: Flow<SystemPromptIntent> get() = _intentChannel.receiveAsFlow()
 
     private val _effectFlow = MutableSharedFlow<SystemPromptEffect>(replay = 0)
@@ -78,7 +90,7 @@ class SystemPromptViewModel(
         viewModelScope.launch {
             try {
                 val prompt = interactor.getSystemPrompt(conversationId)
-                _systemPrompt.value = prompt.orEmpty()
+                if (!restoredPrompt && !savedState.contains("system-prompt")) _systemPrompt.value = prompt.orEmpty()
             } catch (e: Exception) {
                 _effectFlow.emit(SystemPromptEffect.ShowToast(e.message.orEmpty()))
             }
@@ -99,7 +111,10 @@ class SystemPromptViewModel(
 
     private suspend fun handleIntent(intent: SystemPromptIntent) {
         when (intent) {
-            is SystemPromptIntent.UpdateText -> _systemPrompt.value = intent.text
+            is SystemPromptIntent.UpdateText -> {
+                _systemPrompt.value = intent.text
+                savedState["system-prompt"] = intent.text
+            }
 
             is SystemPromptIntent.SaveClicked -> processSave()
 
@@ -114,7 +129,8 @@ class SystemPromptViewModel(
         val prompt = _systemPrompt.value.trim()
         try {
             interactor.setSystemPrompt(conversationId, prompt)
-            _effectFlow.emit(SystemPromptEffect.ShowToast("Системный промпт сохранен"))
+            interactor.saveChatGeneration(conversationId, _generation.value)
+            _effectFlow.emit(SystemPromptEffect.ShowToast("Параметры чата сохранены"))
         } catch (e: Exception) {
             // Любая ошибка – показываем сообщение
             _effectFlow.emit(SystemPromptEffect.ShowToast("Не удалось сохранить: ${e.message}"))
