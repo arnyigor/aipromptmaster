@@ -5,6 +5,7 @@ import com.arny.aiprompts.data.model.AttachmentType
 import com.arny.aiprompts.data.model.ChatCompletionRequest
 import com.arny.aiprompts.data.model.ChatCompletionResponse
 import com.arny.aiprompts.data.model.ChatMessage
+import com.arny.aiprompts.data.model.ChatMessageRole
 import com.arny.aiprompts.data.model.LlmModel
 import com.arny.aiprompts.data.model.ModelsResponseDTO
 import com.arny.aiprompts.data.model.OpenAiChatRequest
@@ -147,23 +148,32 @@ class OpenRouterRepositoryImpl(
             val request = OpenAiChatRequest(model = model,
                 messages = buildMultimodalApiMessages(messages), stream = false,
                 temperature = temperature, maxTokens = maxTokens)
-            val response: ChatCompletionResponse = httpClient.post(url) {
+            val httpResponse = httpClient.post(url) {
                 if (!keyToUse.isNullOrBlank()) header("Authorization", "Bearer $keyToUse")
                 contentType(ContentType.Application.Json)
                 setBody(com.arny.promptcontract.completionRequestBody(model, provider.baseUrl, json.encodeToJsonElement(request.messages).jsonArray, false, maxTokens, temperature))
-            }.body()
+            }
+            if (!httpResponse.status.isSuccess()) return Result.failure(ApiException.HttpError(httpResponse.status.value, "Провайдер отклонил запрос"))
+            val response: com.arny.aiprompts.data.model.MultimodalChatResponse = httpResponse.body()
 
             if (response.error != null) {
-                Logger.e("OpenRouterRepo", "API Error: ${response.error.message}")
+                Logger.e("OpenRouterRepo", "API returned an error")
                 return Result.failure(
                     ApiException.HttpError(
-                        response.error.code ?: 0,
-                        response.error.message
+                        (response.error.code as? JsonPrimitive)?.content?.toIntOrNull() ?: 0,
+                        "Провайдер сообщил об ошибке"
                     )
                 )
             }
 
-            Result.success(response)
+            require(response.choices.orEmpty().none { it.finishReason == "length" }) { "Ответ обрезан лимитом токенов" }
+            require(response.choices.orEmpty().none { it.finishReason == "content_filter" }) { "Ответ остановлен фильтром провайдера" }
+            val choices = response.choices.orEmpty().map { choice ->
+                com.arny.aiprompts.data.model.Choice(ChatMessage(role = ChatMessageRole.MODEL,
+                    content = choice.message?.content.orEmpty()), choice.finishReason)
+            }
+            require(choices.any { it.message.content.isNotBlank() }) { "Провайдер вернул пустой ответ" }
+            Result.success(ChatCompletionResponse(response.id, choices, response.usage))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -211,9 +221,8 @@ class OpenRouterRepositoryImpl(
             }.execute()
 
             if (!response.status.isSuccess()) {
-                val errorBody = response.bodyAsText()
-                Logger.e("OpenRouterRepositoryImpl", "API Error: ${response.status} - $errorBody")
-                emit(Result.failure(ApiException.HttpError(response.status.value, errorBody)))
+                Logger.e("OpenRouterRepositoryImpl", "API Error: ${response.status}")
+                emit(Result.failure(ApiException.HttpError(response.status.value, "Провайдер отклонил запрос")))
                 return@flow
             }
 

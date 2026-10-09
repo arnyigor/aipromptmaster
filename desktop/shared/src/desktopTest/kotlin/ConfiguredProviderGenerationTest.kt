@@ -44,19 +44,20 @@ class ConfiguredProviderGenerationTest {
         try {
             val available = ProviderHttpProbe(client).models(profile)
             val model = profile.modelId.takeIf { it.isNotBlank() && it in available }
+                ?: available.firstOrNull { it == "openrouter/free" }
                 ?: available.firstOrNull { it.endsWith(":free") }
                 ?: available.firstOrNull { it.contains("mini") || it.contains("flash") }
                 ?: available.first()
             val repository = OpenRouterRepositoryImpl(client, serializer, settings, mockk<FilePromptProcessor>())
             val messages = listOf(ChatMessage(role = ChatMessageRole.USER, content = "Reply with exactly: CONNECTION_OK"))
-            val regular = repository.getChatCompletion(model, messages, temperature = 0.0, maxTokens = 64)
+            val regular = repository.getChatCompletion(model, messages, temperature = 0.0, maxTokens = 512)
                 .getOrElse { failure -> throw AssertionError("Real generation failed: ${failure::class.simpleName}; HTTP=${(failure as? com.arny.aiprompts.data.model.ApiException.HttpError)?.code}; model=$model; credentials/body omitted") }
             assertTrue(regular.choices.orEmpty().any { it.message?.content?.isNotBlank() == true }, "Generation returned no text")
             var characters = 0
             var chunks = 0
             var complete = false
             withTimeout(120_000) {
-                repository.getStreamingChatCompletion(model, messages, temperature = 0.0, maxTokens = 64).collect { result ->
+                repository.getStreamingChatCompletion(model, messages, temperature = 0.0, maxTokens = 512).collect { result ->
                     val chunk = result.getOrElse { throw AssertionError("Real streaming failed; credentials/body omitted") }
                     characters += chunk.content.length
                     if (chunk.content.isNotEmpty()) chunks++

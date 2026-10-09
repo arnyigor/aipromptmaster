@@ -107,7 +107,7 @@ data class ChatCompletionResponse(
 @Serializable
 data class ApiError(
     val message: String,
-    val code: Int? = null // Код ошибки может быть строкой или числом, String безопаснее
+    val code: kotlinx.serialization.json.JsonElement? = null // Compatible servers use both strings and numbers.
 )
 
 @Serializable
