@@ -9,6 +9,7 @@ data class ProviderManagerState(
     val checking: Boolean = false, val models: List<String> = emptyList(), val message: String? = null,
     val modelQuery: String = "",
     val environmentKeyAvailable: Boolean = false,
+    val modelAvailability: ModelAvailabilityUi = ModelAvailabilityUi(),
 ) {
     val visibleModels: List<String> get() = models.filter { it.contains(modelQuery, ignoreCase = true) }.take(12)
 }
@@ -27,6 +28,7 @@ sealed interface ProviderAction {
     data class RequiresKey(val value: Boolean) : ProviderAction
     data object Save : ProviderAction
     data object Test : ProviderAction
+    data object CheckModel : ProviderAction
     data object Close : ProviderAction
 }
 
@@ -36,9 +38,16 @@ class ProviderManager(private val store: ProviderStore, private val probe: Provi
     val state = _state.asStateFlow()
     private var check: Job? = null
     private var revision = 0
+    private val modelCheck = ModelAvailabilityController(store, probe, scope,
+        onStateChanged = { result -> _state.update { it.copy(modelAvailability = result) } })
 
     fun onAction(action: ProviderAction) {
-        if (action == ProviderAction.Test) { test(); return }
+        if (action == ProviderAction.CheckModel) {
+            if (!_state.value.checking) _state.value.draft?.let { modelCheck.check(it.modelId, it) }
+            return
+        }
+        if (action == ProviderAction.Test) { modelCheck.reset(); test(); return }
+        if (action !is ProviderAction.ModelSearch) modelCheck.reset()
         check?.cancel(); revision++
         _state.update { it.copy(checking = false, message = null) }
         try {

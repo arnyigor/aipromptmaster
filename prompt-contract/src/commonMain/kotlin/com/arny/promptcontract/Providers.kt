@@ -59,7 +59,10 @@ interface ProviderStore {
     fun saveProviders(config: ProviderConfig)
     fun observeProviders(): kotlinx.coroutines.flow.Flow<ProviderConfig> = kotlinx.coroutines.flow.flowOf(loadProviders())
 }
-fun interface ProviderProbe { suspend fun models(profile: ProviderProfile): List<String> }
+fun interface ProviderProbe {
+    suspend fun models(profile: ProviderProfile): List<String>
+    suspend fun checkModel(profile: ProviderProfile, modelId: String) { throw UnsupportedOperationException() }
+}
 
 enum class ProviderPreset(val title: String, val url: String, val requiresKey: Boolean) {
     OPENAI("OpenAI", "https://api.openai.com/v1", true),

@@ -5,6 +5,26 @@ import kotlin.test.*
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ProviderManagerTest {
+    @Test fun `model check uses unsaved profile form and leaves active provider unchanged`() = runTest {
+        val store = Store()
+        var checked: ProviderProfile? = null
+        val probe = object : ProviderProbe {
+            override suspend fun models(profile: ProviderProfile) = emptyList<String>()
+            override suspend fun checkModel(profile: ProviderProfile, modelId: String) {
+                checked = profile
+                assertEquals("draft/model", modelId)
+            }
+        }
+        val manager = ProviderManager(store, probe, this)
+        manager.onAction(ProviderAction.Create(ProviderPreset.LM_STUDIO))
+        manager.onAction(ProviderAction.Model("draft/model"))
+        manager.onAction(ProviderAction.CheckModel); advanceUntilIdle()
+        assertEquals("http://localhost:1234/v1", checked?.baseUrl)
+        assertEquals(true, manager.state.value.modelAvailability.available)
+        assertEquals("openrouter", store.config.activeId)
+        manager.onAction(ProviderAction.Model("another/model"))
+        assertEquals(ModelAvailabilityUi(), manager.state.value.modelAvailability)
+    }
     private class Store(var config: ProviderConfig = ProviderConfig()) : ProviderStore {
         override fun loadProviders() = config
         override fun saveProviders(config: ProviderConfig) { this.config = config }

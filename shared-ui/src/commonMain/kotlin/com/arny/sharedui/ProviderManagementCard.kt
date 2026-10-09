@@ -70,11 +70,12 @@ fun ProviderManagementCard(state: ProviderManagerState, onAction: (ProviderActio
                     Text("Требуется API-ключ", Modifier.weight(1f))
                 }
                 OutlinedTextField(draft.modelId, { onAction(ProviderAction.Model(it)) }, label = { Text("Модель по умолчанию (ID)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedButton(onClick = { onAction(ProviderAction.Test) }, enabled = !state.checking) { Text(if (state.checking) "Проверка…" else "Проверить и получить модели") }
+                ModelAvailabilityControl(draft.modelId, state.modelAvailability, { onAction(ProviderAction.CheckModel) }, enabled = !state.checking)
+                OutlinedButton(onClick = { onAction(ProviderAction.Test) }, enabled = !state.checking && !state.modelAvailability.checking) { Text(if (state.checking) "Загрузка…" else "Загрузить список моделей") }
                 if (state.checking) LinearProgressIndicator(Modifier.fillMaxWidth())
                 if (state.models.isNotEmpty()) OutlinedTextField(state.modelQuery, { onAction(ProviderAction.ModelSearch(it)) }, label = { Text("Поиск среди моделей провайдера") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    state.visibleModels.forEach { id -> SuggestionChip(onClick = { onAction(ProviderAction.Model(id)) }, label = { Text(id) }) }
+                    state.visibleModels.forEach { id -> FilterChip(selected = id == draft.modelId, onClick = { onAction(ProviderAction.Model(id)) }, label = { Text(id) }) }
                 }
                 if (state.models.size > 12) Text("Уточните поиск, чтобы найти нужную модель. Можно также ввести ID вручную.")
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

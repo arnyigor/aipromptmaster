@@ -14,6 +14,10 @@ import okhttp3.RequestBody.Companion.toRequestBody
 
 /** Separate client has no logging interceptor and never sends another provider's credentials. */
 class ProviderHttpSource(private val client: OkHttpClient, private val json: Json) : ProviderGateway {
+    override suspend fun checkModel(profile: ProviderProfile, modelId: String) {
+        val body = request(profile, "chat/completions", com.arny.promptcontract.modelProbeBody(modelId, profile.baseUrl)).single()
+        com.arny.promptcontract.verifyModelProbeResponse(body)
+    }
     override suspend fun models(profile: ProviderProfile): List<String> {
         if (profile.id == "openrouter") request(profile, "auth/key").single()
         val response = request(profile, "models").single()
@@ -59,7 +63,7 @@ class ProviderHttpSource(private val client: OkHttpClient, private val json: Jso
                 launch(Dispatchers.IO) {
                     try {
                         response.use {
-                            require(response.isSuccessful) { "HTTP ${response.code}" }
+                            if (!response.isSuccessful) throw com.arny.promptcontract.ModelProbeHttpError(response.code)
                             val source = response.body?.source() ?: error("Пустой ответ")
                             if (!streaming) send(source.readUtf8())
                             else while (!source.exhausted()) {

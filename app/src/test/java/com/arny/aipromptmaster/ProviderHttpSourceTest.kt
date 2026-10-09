@@ -14,6 +14,28 @@ import org.junit.Test
 import kotlin.test.*
 
 class ProviderHttpSourceTest {
+    @Test fun `availability sends only a short completion to the selected provider and preserves HTTP status`() = runBlocking {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setBody("{\"choices\":[{\"message\":{\"content\":\"OK\"}}]}"))
+        server.enqueue(MockResponse().setResponseCode(403).setBody("secret server response"))
+        server.start()
+        val client = OkHttpClient()
+        try {
+            val profile = ProviderProfile("fixture", "Fixture", server.url("/v1").toString(), "only-this-provider-key")
+            val gateway = ProviderHttpSource(client, Json)
+            gateway.checkModel(profile, "chosen/model")
+            val recorded = server.takeRequest()
+            assertEquals("/v1/chat/completions", recorded.path)
+            assertEquals("Bearer only-this-provider-key", recorded.getHeader("Authorization"))
+            val body = Json.parseToJsonElement(recorded.body.readUtf8()).jsonObject
+            assertEquals(16, body["max_tokens"]!!.jsonPrimitive.int)
+            assertEquals("chosen/model", body["model"]!!.jsonPrimitive.content)
+            assertEquals(1, body["messages"]!!.jsonArray.size)
+            val failure = assertFailsWith<ModelProbeHttpError> { gateway.checkModel(profile, "chosen/model") }
+            assertEquals(403, failure.status)
+            assertFalse(failure.message.orEmpty().contains("secret"))
+        } finally { server.shutdown(); client.dispatcher.executorService.shutdown(); client.connectionPool.evictAll() }
+    }
     @Test fun `real provider HTTP checks models parameters streaming and isolated keys`() = runBlocking {
         val server = MockWebServer()
         server.enqueue(MockResponse().setBody("{\"data\":[{\"id\":\"fixture-model\"}]}"))
