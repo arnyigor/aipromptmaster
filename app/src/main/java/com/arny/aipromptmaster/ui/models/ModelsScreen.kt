@@ -153,35 +153,34 @@ fun ModelsScreenContent(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             Column {
-                TopAppBar(
-                    title = { Text("Модели") },
-                    actions = {
-                        // Кнопка проверки free моделей
-                        if (state.filter.isFreeOnly || state.models.any { it.isFree }) {
-                            TextButton(
-                                onClick = { onEvent(ModelsEvent.CheckFreeModelsAvailability) },
-                                enabled = !state.isCheckingAvailability
-                            ) {
-                                if (state.isCheckingAvailability) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(16.dp),
-                                        strokeWidth = 2.dp
-                                    )
-                                } else {
-                                    Icon(
-                                        Icons.Default.Refresh,
-                                        contentDescription = "Проверить доступность",
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Проверить")
+                // The app shell already renders the screen title, so only the screen action belongs here.
+                if (state.filter.isFreeOnly || state.models.any { it.isFree }) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        TextButton(
+                            onClick = { onEvent(ModelsEvent.CheckFreeModelsAvailability) },
+                            enabled = !state.isCheckingAvailability
+                        ) {
+                            if (state.isCheckingAvailability) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Default.Refresh,
+                                    contentDescription = "Проверить доступность",
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Проверить")
                         }
-                        
                     }
-                )
-                
+                }
+
                 com.arny.sharedui.ModelPickerControls(
                     query = state.filter.query,
                     filters = listOf(
@@ -200,6 +199,29 @@ fun ModelsScreenContent(
                     onSortClick = { onEvent(ModelsEvent.ChangeSort(SortType.valueOf(it))) },
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
+                // --- Провайдеры: показать модели одного профиля ---
+                if (state.providers.size > 1) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        FilterChip(
+                            selected = state.filter.providerId == null,
+                            onClick = { onEvent(ModelsEvent.SelectProvider(null)) },
+                            label = { Text("Все") },
+                        )
+                        state.providers.forEach { provider ->
+                            FilterChip(
+                                selected = state.filter.providerId == provider.id,
+                                onClick = { onEvent(ModelsEvent.SelectProvider(provider.id)) },
+                                label = { Text(provider.name, maxLines = 1) },
+                            )
+                        }
+                    }
+                }
                 // --- Прогресс проверки ---
                 AnimatedVisibility(
                     visible = state.isCheckingAvailability,
@@ -258,28 +280,59 @@ fun ModelsScreenContent(
                 ) {
                     CircularProgressIndicator()
                 }
+            } else if (state.models.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(24.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text("Модели не загружены", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "Проверьте профиль провайдера и обновите список моделей",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        TextButton(onClick = { onEvent(ModelsEvent.Refresh) }) { Text("Обновить список") }
+                    }
+                }
             } else {
+                // Группируем по провайдеру: модели разных профилей идут одним списком,
+                // но с заголовками, чтобы было видно, откуда каждая модель.
+                val grouped = state.models.groupBy { it.providerName.ifBlank { it.providerId.ifBlank { "OpenRouter" } } }
                 LazyColumn(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(
-                        items = state.models,
-                        key = { it.id }
-                    ) { model ->
-                        ModelItem(
-                            model = model,
-                            isChecking = state.isCheckingAvailability,
-                            onClick = {
-                                onEvent(ModelsEvent.SelectModel(model.id))
-                            },
-                            onFavoriteClick = {
-                                onEvent(ModelsEvent.ToggleModelFavorite(model.id))
-                            },
-                            onCheckAvailabilityClick = {
-                                onEvent(ModelsEvent.CheckModelAvailability(model.id))
-                            }
-                        )
-                        HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
+                    grouped.forEach { (provider, models) ->
+                        item(key = "header:$provider", contentType = "header") {
+                            Text(
+                                text = provider,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),
+                            )
+                        }
+                        items(
+                            items = models,
+                            key = { it.providerId + "|" + it.id },
+                            contentType = { "model" },
+                        ) { model ->
+                            ModelItem(
+                                model = model,
+                                isChecking = state.isCheckingAvailability,
+                                onClick = {
+                                    onEvent(ModelsEvent.SelectModel(model.id, model.providerId))
+                                },
+                                onFavoriteClick = {
+                                    onEvent(ModelsEvent.ToggleModelFavorite(model.id, model.providerId))
+                                },
+                                onCheckAvailabilityClick = {
+                                    onEvent(ModelsEvent.CheckModelAvailability(model.id))
+                                }
+                            )
+                            HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
+                        }
                     }
                 }
             }

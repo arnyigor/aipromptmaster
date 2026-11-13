@@ -208,6 +208,7 @@ class ChatSessionRepositoryImpl(
             editedAt = editedAt,
             modelId = modelId,
             tokenCount = tokenCount,
+            reasoning = reasoning,
             attachments = attachments.map { it.toDomain() }
         )
     }
@@ -238,6 +239,7 @@ class ChatSessionRepositoryImpl(
             status = json.encodeToString(status),
             modelId = modelId,
             tokenCount = tokenCount,
+            reasoning = reasoning,
             editedAt = editedAt,
             orderIndex = 0 // Устанавливается при вставке
         )

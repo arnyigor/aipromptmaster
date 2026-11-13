@@ -233,7 +233,8 @@ class LLMInteractor(
         conversationId: String?,
         userMessageText: String,
         attachedFiles: List<FileAttachment>,
-        skipUserMessageCreation: Boolean
+        skipUserMessageCreation: Boolean,
+        onReasoning: (String) -> Unit
     ) {
         val chatId = conversationId ?: throw DomainError.local(R.string.error_no_conversation_id)
 
@@ -271,6 +272,10 @@ class LLMInteractor(
         )
 
         val partialResponse = StringBuilder()
+        // Размышления: для UI отдаём сразу через onReasoning, в БД пишем троттлингом,
+        // чтобы восстановить блок после перезапуска и не нагружать Room каждым чанком.
+        val reasoningBuffer = StringBuilder()
+        var lastReasoningWrite = 0L
         try {
 
             val generation = getChatGeneration(chatId).checked()
@@ -309,6 +314,16 @@ class LLMInteractor(
                             result.data.modelId?.let { modelId ->
                                 if (modelId != requestedModelId && actualModelId == null) {
                                     actualModelId = modelId
+                                }
+                            }
+                            result.data.reasoning?.takeIf { it.isNotEmpty() }?.let { chunk ->
+                                onReasoning(chunk)
+                                reasoningBuffer.append(chunk)
+                                val now = System.currentTimeMillis()
+                                if (now - lastReasoningWrite >= 400L) {
+                                    lastReasoningWrite = now
+                                    val snapshot = reasoningBuffer.toString()
+                                    historyRepository.updateMessageReasoning(assistantMsgId, snapshot, snapshot.length)
                                 }
                             }
                             result.data
@@ -352,6 +367,10 @@ class LLMInteractor(
                 } else {
                     // Обновляем контент финально (уже тримированный)
                     historyRepository.updateMessageContent(assistantMsgId, finalContentStr)
+                    if (reasoningBuffer.isNotEmpty()) {
+                        val snapshot = reasoningBuffer.toString()
+                        historyRepository.updateMessageReasoning(assistantMsgId, snapshot, snapshot.length)
+                    }
 
                     // Обновляем modelId если пришел отличный от запрошенного
                     actualModelId?.let { modelId ->

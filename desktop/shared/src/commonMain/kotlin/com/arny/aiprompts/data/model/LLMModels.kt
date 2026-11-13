@@ -34,7 +34,9 @@ data class ChatMessage @OptIn(ExperimentalTime::class) constructor(
     val previousVersions: List<String> = emptyList(),
     val attachments: List<MessageAttachment> = emptyList(),
     val modelId: String? = null,
-    val tokenCount: Int? = null
+    val tokenCount: Int? = null,
+    /** Размышления модели: только отображение, в контекст запроса не попадают. */
+    val reasoning: String? = null,
 ) {
     fun isStreaming(): Boolean = status is MessageStatus.Streaming
 
@@ -173,6 +175,8 @@ data class StreamingUsage(
 data class StreamingChatDelta(
     @SerialName("role") val role: String? = null,
     @SerialName("content") val content: String? = null,
+    /** llama.cpp и часть провайдеров отдают размышления отдельным полем. */
+    @SerialName("reasoning_content") val reasoningContent: String? = null,
     @SerialName("reasoning_details") val reasoningDetails: List<ReasoningDetail>? = null
 )
 
@@ -193,7 +197,9 @@ data class StreamingChatChoice(
 data class StreamingChatChunk(
     val content: String,
     val finishReason: String? = null,
-    val isComplete: Boolean = false
+    val isComplete: Boolean = false,
+    /** Размышления модели в этом чанке (если провайдер их отдаёт). */
+    val reasoning: String = "",
 )
 
 @Serializable

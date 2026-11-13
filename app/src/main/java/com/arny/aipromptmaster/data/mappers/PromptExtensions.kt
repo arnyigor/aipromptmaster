@@ -45,37 +45,41 @@ fun Prompt.toEntity(): PromptEntity = PromptEntity(
     modifiedAt = modifiedAt.toIsoString(),
 )
 
-fun PromptEntity.toDomain(): Prompt = Prompt(
-    variables = com.arny.promptcontract.PromptStorage.decode(variablesJson).variables,
-    wireDocument = com.arny.promptcontract.PromptStorage.decode(variablesJson).document,
-    id = id,
-    title = title,
-    content = PromptContent(
-        ru = contentRu,
-        en = contentEn
-    ),
-    description = description,
-    category = category,
-    status = status,
-    tags = tags.split(",").filter { it.isNotBlank() },
-    isLocal = isLocal,
-    isFavorite = isFavorite,
-    rating = rating,
-    ratingVotes = ratingVotes,
-    compatibleModels = compatibleModels.split(","),
-    metadata = PromptMetadata(
-        author = Author(
-            id = authorId,
-            name = author
+fun PromptEntity.toDomain(): Prompt {
+    // Decode the storage envelope once per row: list rendering maps hundreds of rows per emission.
+    val stored = com.arny.promptcontract.PromptStorage.decode(variablesJson)
+    return Prompt(
+        variables = stored.variables,
+        wireDocument = stored.document,
+        id = id,
+        title = title,
+        content = PromptContent(
+            ru = contentRu,
+            en = contentEn
         ),
-        source = source,
-        notes = notes
-    ),
-    version = version,
-    promptVariants = jsonParser.decodeFromString(promptVariantsJson),
-    createdAt = createdAt.toIsoDate(),
-    modifiedAt = modifiedAt.toIsoDate(),
-)
+        description = description,
+        category = category,
+        status = status,
+        tags = tags.split(",").filter { it.isNotBlank() },
+        isLocal = isLocal,
+        isFavorite = isFavorite,
+        rating = rating,
+        ratingVotes = ratingVotes,
+        compatibleModels = compatibleModels.split(","),
+        metadata = PromptMetadata(
+            author = Author(
+                id = authorId,
+                name = author
+            ),
+            source = source,
+            notes = notes
+        ),
+        version = version,
+        promptVariants = jsonParser.decodeFromString(promptVariantsJson),
+        createdAt = createdAt.toIsoDate(),
+        modifiedAt = modifiedAt.toIsoDate(),
+    )
+}
 
 fun PromptJson.toDomain(): Prompt {
     val variablesMap = variables.associate { it.name to it.defaultValue.orEmpty() }

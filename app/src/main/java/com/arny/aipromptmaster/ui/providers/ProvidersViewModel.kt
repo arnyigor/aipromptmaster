@@ -11,7 +11,7 @@ class ProvidersViewModel(settings: ISettingsRepository, gateway: ProviderGateway
                          private val savedState: SavedStateHandle) : ViewModel() {
     val section = savedState.getStateFlow("settings-section", "API")
     fun onSection(id: String) {
-        if (id in setOf("API", "GITHUB", "FEEDBACK")) savedState["settings-section"] = id
+        if (id in setOf("API", "SYNC", "GITHUB", "FEEDBACK")) savedState["settings-section"] = id
     }
     val personalVault = com.arny.promptcontract.PersonalVaultManager(settings, local, com.arny.promptcontract.JvmGitHubPersonalVault(), viewModelScope)
     val manager = ProviderManager(settings, gateway, viewModelScope)

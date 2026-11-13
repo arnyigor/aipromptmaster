@@ -39,7 +39,7 @@ expect fun getAppDatabase(): AppDatabase
         ChatMessageEntity::class,
         MessageAttachmentEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 @ConstructedBy(AppDatabaseCtor::class)

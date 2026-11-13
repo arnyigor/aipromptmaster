@@ -90,6 +90,9 @@ interface IChatHistoryRepository {
      */
     suspend fun updateMessageContent(messageId: String, newContent: String)
 
+    /** Сохраняет размышления модели (reasoning_content) для восстановления отображения. */
+    suspend fun updateMessageReasoning(messageId: String, reasoning: String?, chars: Int)
+
     /**
      * Обновляет идентификатор модели для сообщения ассистента.
      * Используется когда API возвращает модель, отличную от запрошенной.

@@ -141,4 +141,9 @@ private fun SQLiteConnection.execute(sql: String) {
 val MIGRATION_3_4 = object : Migration(3, 4) {
     override fun migrate(connection: SQLiteConnection) { connection.execute("ALTER TABLE chat_sessions ADD COLUMN provider_id TEXT") }
 }
-val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execute("ALTER TABLE chat_messages ADD COLUMN reasoning TEXT")
+    }
+}
+val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)

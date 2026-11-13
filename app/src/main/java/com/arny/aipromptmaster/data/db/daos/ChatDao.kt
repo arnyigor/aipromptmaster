@@ -53,6 +53,10 @@ interface ChatDao {
     @Query("UPDATE messages SET content = :newContent WHERE id = :messageId")
     suspend fun updateMessageContent(messageId: String, newContent: String)
 
+    /** Сохраняет накопленные размышления модели (reasoning_content). */
+    @Query("UPDATE messages SET reasoning = :reasoning, reasoning_chars = :chars WHERE id = :messageId")
+    suspend fun updateMessageReasoning(messageId: String, reasoning: String?, chars: Int)
+
     /**
      * Обновляет идентификатор модели для сообщения.
      *

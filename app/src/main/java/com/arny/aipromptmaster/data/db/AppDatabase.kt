@@ -19,7 +19,7 @@ import com.arny.aipromptmaster.data.db.entities.PromptEntity
         MessageEntity::class,
         ModelEntity::class,
     ],
-    version = 8,
+    version = 10,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -117,6 +117,47 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // Добавляем колонку isAvailable в таблицу models
                 db.execSQL("ALTER TABLE models ADD COLUMN isAvailable INTEGER")
+            }
+        }
+
+        /** Модели: составной ключ (providerId, id); legacy-строки получают владельца openrouter. */
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // SQL совпадает с экспортированной схемой v10 (иначе Room отвергнет миграцию).
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `models_new` (`providerId` TEXT NOT NULL, `id` TEXT NOT NULL, " +
+                        "`name` TEXT NOT NULL, `description` TEXT NOT NULL, `contextLength` INTEGER NOT NULL, " +
+                        "`pricingPrompt` TEXT NOT NULL, `pricingCompletion` TEXT NOT NULL, `pricingImage` TEXT, " +
+                        "`inputModalities` TEXT NOT NULL, `outputModalities` TEXT NOT NULL, " +
+                        "`isMultimodal` INTEGER NOT NULL, `isFavorite` INTEGER NOT NULL, `isFree` INTEGER NOT NULL, " +
+                        "`isSelected` INTEGER NOT NULL, `sortPriority` INTEGER NOT NULL, `isAvailable` INTEGER, " +
+                        "`availabilityResponseTimeMs` INTEGER, `rating` REAL, `lastAvailabilityCheck` INTEGER, " +
+                        "`lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`providerId`, `id`))"
+                )
+                db.execSQL(
+                    "INSERT OR REPLACE INTO `models_new` (`providerId`, `id`, `name`, `description`, " +
+                        "`contextLength`, `pricingPrompt`, `pricingCompletion`, `pricingImage`, " +
+                        "`inputModalities`, `outputModalities`, `isMultimodal`, `isFavorite`, `isFree`, " +
+                        "`isSelected`, `sortPriority`, `isAvailable`, `availabilityResponseTimeMs`, `rating`, " +
+                        "`lastAvailabilityCheck`, `lastUpdated`) " +
+                        "SELECT CASE WHEN `providerId` = '' THEN 'openrouter' ELSE `providerId` END, `id`, " +
+                        "`name`, `description`, `contextLength`, `pricingPrompt`, `pricingCompletion`, " +
+                        "`pricingImage`, `inputModalities`, `outputModalities`, `isMultimodal`, `isFavorite`, " +
+                        "`isFree`, `isSelected`, `sortPriority`, `isAvailable`, `availabilityResponseTimeMs`, " +
+                        "`rating`, `lastAvailabilityCheck`, `lastUpdated` FROM `models`"
+                )
+                db.execSQL("DROP TABLE `models`")
+                db.execSQL("ALTER TABLE `models_new` RENAME TO `models`")
+            }
+        }
+
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Размышления модели: храним для восстановления отображения после перезапуска.
+                db.execSQL("ALTER TABLE messages ADD COLUMN reasoning TEXT")
+                db.execSQL("ALTER TABLE messages ADD COLUMN reasoning_chars INTEGER NOT NULL DEFAULT 0")
+                // Модели разных провайдеров живут в одной таблице: храним владельца.
+                db.execSQL("ALTER TABLE models ADD COLUMN providerId TEXT NOT NULL DEFAULT ''")
             }
         }
 

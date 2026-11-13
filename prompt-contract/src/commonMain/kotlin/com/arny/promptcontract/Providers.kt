@@ -64,8 +64,9 @@ fun interface ProviderProbe {
     suspend fun checkModel(profile: ProviderProfile, modelId: String) { throw UnsupportedOperationException() }
 }
 
-enum class ProviderPreset(val title: String, val url: String, val requiresKey: Boolean) {
+enum class ProviderPreset(val title: String, val url: String, val requiresKey: Boolean, val modelId: String = "") {
     OPENAI("OpenAI", "https://api.openai.com/v1", true),
+    OPENROUTER_FREE("OpenRouter — бесплатные", "https://openrouter.ai/api/v1", true, "openrouter/free"),
     LM_STUDIO("LM Studio", "http://localhost:1234/v1", false),
     OLLAMA("Ollama", "http://localhost:11434/v1", false),
     CUSTOM("Другой совместимый API", "", true)

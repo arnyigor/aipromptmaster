@@ -1,11 +1,15 @@
 package com.arny.aipromptmaster.data.db.entities
 
 import androidx.room.Entity
-import androidx.room.PrimaryKey
 
-@Entity(tableName = "models")
+/**
+ * Модель провайдера. Ключ составной: одинаковый `id` у разных провайдеров — это разные записи.
+ * `providerId` у записей, созданных до появления ключа, нормализуется в `openrouter`.
+ */
+@Entity(tableName = "models", primaryKeys = ["providerId", "id"])
 data class ModelEntity(
-    @PrimaryKey
+    /** Профиль провайдера-владельца; `openrouter` для legacy-записей. */
+    val providerId: String = "openrouter",
     val id: String,
     val name: String,
     val description: String,

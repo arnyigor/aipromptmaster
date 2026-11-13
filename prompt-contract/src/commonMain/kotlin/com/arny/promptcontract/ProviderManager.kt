@@ -54,7 +54,7 @@ class ProviderManager(private val store: ProviderStore, private val probe: Provi
             when (action) {
                 is ProviderAction.Select -> persist(_state.value.config.select(action.id))
                 is ProviderAction.Edit -> _state.update { it.copy(draft = it.config.profiles.first { p -> p.id == action.id }, models = emptyList()) }
-                is ProviderAction.Create -> _state.update { it.copy(draft = ProviderProfile("provider-${Random.nextLong().toString(16)}", action.preset.title, action.preset.url, requiresKey = action.preset.requiresKey), models = emptyList()) }
+                is ProviderAction.Create -> _state.update { it.copy(draft = ProviderProfile("provider-${Random.nextLong().toString(16)}", action.preset.title, action.preset.url, modelId = action.preset.modelId, requiresKey = action.preset.requiresKey), models = emptyList()) }
                 is ProviderAction.Delete -> persist(_state.value.config.delete(action.id))
                 ProviderAction.Save -> _state.value.draft?.let { persist(_state.value.config.upsert(it)); _state.update { state -> state.copy(draft = null) } }
                 ProviderAction.Close -> _state.update { it.copy(draft = null, models = emptyList()) }

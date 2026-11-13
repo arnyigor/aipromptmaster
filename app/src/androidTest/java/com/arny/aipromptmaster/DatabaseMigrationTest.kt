@@ -12,9 +12,9 @@ import org.junit.Test
 import org.junit.Assert.assertEquals
 
 class DatabaseMigrationTest {
-    @Test fun historical1MigratesTo8() = migrateHistorical(1)
-    @Test fun historical2MigratesTo8() = migrateHistorical(2)
-    @Test fun historical3MigratesTo8() = migrateHistorical(3)
+    @Test fun historical1MigratesToLatest() = migrateHistorical(1)
+    @Test fun historical2MigratesToLatest() = migrateHistorical(2)
+    @Test fun historical3MigratesToLatest() = migrateHistorical(3)
 
     private fun migrateHistorical(version: Int) = runBlocking {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
@@ -41,7 +41,7 @@ class DatabaseMigrationTest {
         val database = Room.databaseBuilder(context, AppDatabase::class.java, name).addMigrations(
             AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4,
             AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6, AppDatabase.MIGRATION_6_7,
-            AppDatabase.MIGRATION_7_8,
+            AppDatabase.MIGRATION_7_8, AppDatabase.MIGRATION_8_9, AppDatabase.MIGRATION_9_10,
         ).build()
         try {
             val prompt = database.promptDao().getById("historical-personal")!!
@@ -56,7 +56,7 @@ class DatabaseMigrationTest {
             if (version >= 3) db.query("SELECT systemPrompt FROM conversations WHERE id='chat'").use {
                 check(it.moveToFirst()); assertEquals("Private system prompt", it.getString(0))
             }
-            assertEquals(8, db.version)
+            assertEquals(10, db.version)
         } finally { database.close(); context.deleteDatabase(name) }
     }
 
@@ -65,6 +65,52 @@ class DatabaseMigrationTest {
         AppDatabase::class.java.canonicalName!!,
         FrameworkSQLiteOpenHelperFactory()
     )
+
+    @Test fun migrationFrom8To9AddsReasoningColumns() {
+        val name = "migration-test-8-9"
+        helper.createDatabase(name, 8).apply {
+            execSQL("""
+                INSERT INTO conversations(id,title,lastUpdated,systemPrompt) VALUES ('c','Chat',1,NULL)
+            """.trimIndent())
+            execSQL("""
+                INSERT INTO messages(id,conversationId,role,content,model_id,attachments_json,timestamp)
+                VALUES ('m','c','assistant','Ответ','local','[]',2)
+            """.trimIndent())
+            close()
+        }
+        helper.runMigrationsAndValidate(name, 9, true, AppDatabase.MIGRATION_8_9).use { db ->
+            db.query("SELECT reasoning, reasoning_chars FROM messages WHERE id='m'").use { cursor ->
+                check(cursor.moveToFirst())
+                assertEquals(null, cursor.getString(0))
+                assertEquals(0, cursor.getInt(1))
+            }
+        }
+    }
+
+    @Test fun migrationFrom9To10MakesModelKeyComposite() {
+        val name = "migration-test-9-10"
+        helper.createDatabase(name, 9).apply {
+            execSQL(
+                """
+                INSERT INTO models (providerId, id, name, description, contextLength, pricingPrompt,
+                    pricingCompletion, pricingImage, inputModalities, outputModalities, isMultimodal,
+                    isFavorite, isFree, isSelected, sortPriority, isAvailable, availabilityResponseTimeMs,
+                    rating, lastAvailabilityCheck, lastUpdated)
+                VALUES ('', 'shared/model', 'Legacy', '', 1, '0', '0', NULL, '[]', '[]', 0, 1, 1, 0, 0,
+                    NULL, NULL, NULL, NULL, 1)
+                """.trimIndent()
+            )
+            close()
+        }
+        helper.runMigrationsAndValidate(name, 10, true, AppDatabase.MIGRATION_9_10).use { db ->
+            db.query("SELECT providerId, isFavorite FROM models WHERE id='shared/model'").use { cursor ->
+                check(cursor.moveToFirst())
+                // legacy providerId='' нормализуется в openrouter, избранное сохраняется
+                assertEquals("openrouter", cursor.getString(0))
+                assertEquals(1, cursor.getInt(1))
+            }
+        }
+    }
 
     @Test fun migrationFrom4To8PreservesPersonalPromptAndFavorite() {
         val name = "migration-test-4-8"
@@ -78,9 +124,9 @@ class DatabaseMigrationTest {
             """.trimIndent())
             close()
         }
-        helper.runMigrationsAndValidate(name, 8, true,
+        helper.runMigrationsAndValidate(name, 9, true,
             AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6,
-            AppDatabase.MIGRATION_6_7, AppDatabase.MIGRATION_7_8
+            AppDatabase.MIGRATION_6_7, AppDatabase.MIGRATION_7_8, AppDatabase.MIGRATION_8_9
         ).use { db ->
             db.query("SELECT content_en,is_local,is_favorite,notes FROM prompts WHERE _id='personal'").use { cursor ->
                 check(cursor.moveToFirst())

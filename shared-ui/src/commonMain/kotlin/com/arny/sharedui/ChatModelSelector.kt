@@ -13,13 +13,15 @@ import androidx.compose.ui.unit.dp
 /** The active model is text, not an icon hidden behind a menu. */
 @Composable
 fun ChatModelSelector(model: String?, onSelect: () -> Unit, modifier: Modifier = Modifier) {
-    OutlinedButton(onClick = onSelect, modifier = modifier.heightIn(min = 48.dp),
-        shape = MaterialTheme.shapes.medium, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
-        Icon(Icons.Default.SmartToy, null, Modifier.size(20.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(model?.takeIf { it.isNotBlank() } ?: "Выбрать модель", Modifier.weight(1f),
-            style = MaterialTheme.typography.labelLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Spacer(Modifier.width(8.dp))
-        Icon(Icons.Default.ExpandMore, "Изменить модель", Modifier.size(20.dp))
+    val label = shortModelName(model)
+    OutlinedButton(onClick = onSelect, modifier = modifier.heightIn(min = 36.dp),
+        shape = MaterialTheme.shapes.small,
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp)) {
+        Icon(Icons.Default.SmartToy, null, Modifier.size(18.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(label.ifBlank { "Выбрать модель" },
+            style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Spacer(Modifier.width(4.dp))
+        Icon(Icons.Default.ExpandMore, "Изменить модель", Modifier.size(18.dp))
     }
 }

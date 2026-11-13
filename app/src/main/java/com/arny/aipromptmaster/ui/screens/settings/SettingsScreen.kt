@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -26,6 +28,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -115,6 +118,7 @@ fun SettingsScreen(
                 providerState = providerState,
                 onProviderAction = providers.manager::onAction,
                 selectedSection = section, onSection = providers::onSection,
+                onSyncCatalog = viewModel::syncCatalog,
             )
         }
     )
@@ -133,15 +137,39 @@ fun SettingsContent(
     onVaultAction: (com.arny.promptcontract.PersonalVaultAction) -> Unit = {},
     onProviderAction: (com.arny.promptcontract.ProviderAction) -> Unit = {},
     selectedSection: String = "API", onSection: (String) -> Unit = {},
+    onSyncCatalog: () -> Unit = {},
 ) {
 com.arny.sharedui.SettingsPane(
         providers = providerState ?: com.arny.promptcontract.ProviderManagerState(
             config = com.arny.promptcontract.ProviderConfig(listOf(com.arny.promptcontract.ProviderProfile.openRouter(uiState.apiKey)))),
         onProviderAction = onProviderAction, modifier = modifier,
         tabs = listOf(com.arny.sharedui.SettingsTabUi("API", "Модели"),
+            com.arny.sharedui.SettingsTabUi("SYNC", "Синхронизация"),
             com.arny.sharedui.SettingsTabUi("GITHUB", "GitHub"), com.arny.sharedui.SettingsTabUi("FEEDBACK", "Отзыв")),
         selectedId = selectedSection, onSection = onSection,
         extraContent = { section ->
+            if (section == "SYNC") {
+                // Синхронизация каталога — отдельный раздел, отдельно от профилей и GitHub-хранилища.
+                com.arny.sharedui.CatalogSyncCard(
+                    onSync = onSyncCatalog,
+                    enabled = !uiState.syncRunning,
+                )
+                uiState.syncStage?.let {
+                    Spacer(Modifier.height(8.dp))
+                    Text(it, style = MaterialTheme.typography.bodySmall)
+                }
+                if (uiState.syncProgress > 0f) {
+                    Spacer(Modifier.height(4.dp))
+                    LinearProgressIndicator(
+                        progress = { uiState.syncProgress },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                uiState.syncSummary?.let {
+                    Spacer(Modifier.height(8.dp))
+                    Text(it, style = MaterialTheme.typography.bodySmall)
+                }
+            }
             if (section == "GITHUB") {
             vaultState?.let { com.arny.sharedui.PersonalVaultCard(it, onVaultAction) }
             }

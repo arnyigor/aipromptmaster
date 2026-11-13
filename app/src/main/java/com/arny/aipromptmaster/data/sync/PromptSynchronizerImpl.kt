@@ -73,9 +73,17 @@ class PromptSynchronizerImpl(
 
     override val status: StateFlow<SyncStatus> get() = _status
 
+    private val _stage = MutableStateFlow(com.arny.aipromptmaster.domain.models.SyncStage.IDLE)
+    override val stage: StateFlow<com.arny.aipromptmaster.domain.models.SyncStage> get() = _stage
+
+    private val _progress = MutableStateFlow(0f)
+    override val progress: StateFlow<Float> get() = _progress
+
     override suspend fun synchronize(): SyncResult =
         withContext(Dispatchers.IO) {
             syncMutex.withLock {
+                _stage.value = com.arny.aipromptmaster.domain.models.SyncStage.CHECKING
+                _progress.value = 0f
 
                 // 1️⃣ Проверяем, есть ли локальные промпты
                 val localPrompts = promptsRepository.observeAllPrompts().first()
@@ -91,6 +99,7 @@ class PromptSynchronizerImpl(
 
                 if (now - lastSync < SYNC_COOLDOWN_MS) {
                     Timber.tag(TAG).d("Попытка синхронизации слишком ранняя. Cooldown активен.")
+                    _stage.value = com.arny.aipromptmaster.domain.models.SyncStage.IDLE
                     _status.value = SyncStatus.Cooldown
                     return@withContext SyncResult.TooSoon
                 }
@@ -99,8 +108,14 @@ class PromptSynchronizerImpl(
                 _status.value = SyncStatus.InProgress
 
                 try {
+                    _stage.value = com.arny.aipromptmaster.domain.models.SyncStage.DOWNLOADING
                     val remotePrompts = downloadAndProcessArchive()
-                        .also { _status.value = SyncStatus.InProgress }
+                        .also {
+                            _stage.value = com.arny.aipromptmaster.domain.models.SyncStage.VALIDATING
+                            _status.value = SyncStatus.InProgress
+                        }
+
+                    _stage.value = com.arny.aipromptmaster.domain.models.SyncStage.IMPORTING
 
                     // 4️⃣ Сохраняем в одной транзакции
                     // Legacy ZIP has no completeness manifest: missing IDs do not imply deletion.
@@ -109,6 +124,8 @@ class PromptSynchronizerImpl(
                     setLastSyncTime(now)
                     promptsRepository.invalidateSortDataCache()
 
+                    _progress.value = 1f
+                    _stage.value = com.arny.aipromptmaster.domain.models.SyncStage.DONE
                     _status.value = SyncStatus.Success(updatedCount = remotePrompts.size)
                     SyncResult.Success(remotePrompts)
                 } catch (e: CancellationException) {
@@ -156,7 +173,12 @@ class PromptSynchronizerImpl(
 
             try {
                 body.use {
-                    ZipUtils.extractZip(it.byteStream(), tempDir).getOrThrow()
+                    val total = body.contentLength()
+                    _stage.value = com.arny.aipromptmaster.domain.models.SyncStage.DOWNLOADING
+                    ZipUtils.extractZip(it.byteStream(), tempDir, total) { read, size ->
+                        // Прогресс есть только при известном Content-Length; иначе UI показывает индикатор без процентов.
+                        if (size > 0) _progress.value = (read.toFloat() / size).coerceIn(0f, 1f)
+                    }.getOrThrow()
                 }
 
                 Timber.d("Archive extracted to: ${tempDir.absolutePath}")
@@ -178,7 +200,14 @@ class PromptSynchronizerImpl(
 
                 // 3️⃣ Десериализуем каждый файл
                 val prompts = mutableListOf<Prompt>()
+                val total = jsonFiles.size.coerceAtLeast(1)
+                var processed = 0
                 for ((category, content) in jsonFiles) {
+                    processed++
+                    // Прогресс разбора: скачивание идёт потоком через ZipUtils без счётчика байт.
+                    if (processed % 25 == 0 || processed == total) {
+                        _progress.value = processed.toFloat() / total
+                    }
                     CatalogContract.parse(content)
                     val promptJson = json.decodeFromString<PromptJson>(content)
                     require(!promptJson.id.isNullOrBlank() && !promptJson.title.isNullOrBlank()) {

@@ -42,7 +42,7 @@ val viewModelModule = module {
     }
     viewModel { ChatHistoryViewModel(interactor = get()) }
     viewModel { ModelsViewModel(repository = get(), settingsRepository = get()) }
-    viewModel { SettingsViewModel(interactor = get()) }
+    viewModel { SettingsViewModel(interactor = get(), synchronizer = get()) }
     viewModel { (promptId: String?) ->
         PromptEditViewModel(
             promptId = promptId,        // 1. Приходит из parametersOf

@@ -26,12 +26,16 @@ fun ModelPickerControls(
     modifier: Modifier = Modifier,
 ) {
     var sortExpanded by remember { mutableStateOf(false) }
+    // Keep the typed text local: the host echoes the query back asynchronously and a stale echo
+    // reordered characters during fast typing. Only an external reset clears the field.
+    var queryText by remember { mutableStateOf(query) }
+    LaunchedEffect(query) { if (query.isEmpty() && queryText.isNotEmpty()) queryText = "" }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedTextField(
-            value = query, onValueChange = onQueryChange,
+            value = queryText, onValueChange = { queryText = it; onQueryChange(it) },
             label = { Text("Поиск моделей") }, singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            trailingIcon = { if (query.isNotEmpty()) TextButton(onClick = { onQueryChange("") }) { Text("Очистить") } },
+            trailingIcon = { if (queryText.isNotEmpty()) TextButton(onClick = { queryText = ""; onQueryChange("") }) { Text("Очистить") } },
         )
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             filters.forEach { filter ->

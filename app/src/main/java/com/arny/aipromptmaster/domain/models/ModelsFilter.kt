@@ -5,6 +5,8 @@ data class ModelsFilter(
     val isFreeOnly: Boolean = false,
     val isFavoritesOnly: Boolean = false,
     val isAvailableOnly: Boolean = false,
+    /** Ограничение списка одним провайдером; null — все провайдеры. */
+    val providerId: String? = null,
     val sortType: SortType = SortType.RATING
 )
 

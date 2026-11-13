@@ -1,12 +1,14 @@
 package com.arny.aipromptmaster.ui.navigation
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.outlined.Chat
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ImportExport
 import androidx.compose.material.icons.filled.MoreVert
@@ -106,15 +108,27 @@ fun AppTopBar(
 
     TopAppBar(
         title = {
-            Text(
-                fontSize = 16.sp,
-                modifier = Modifier.clickable(
-                    onClick = {
-                        if (titleActions.isNotEmpty()) {
-                            titleActions.first().onClick()
-                        }
-                    }
-                ), text = dynamicTitle)
+            Row(
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                modifier = Modifier.clickable(enabled = titleActions.isNotEmpty()) {
+                    titleActions.firstOrNull()?.onClick()
+                },
+            ) {
+                Text(
+                    fontSize = 16.sp,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                    text = dynamicTitle,
+                )
+                if (titleActions.isNotEmpty()) {
+                    Icon(
+                        Icons.Default.ExpandMore,
+                        contentDescription = "Выбрать модель",
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
         },
 
         navigationIcon = {

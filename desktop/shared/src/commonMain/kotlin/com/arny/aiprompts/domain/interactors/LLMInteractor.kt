@@ -334,6 +334,7 @@ class LLMInteractor(
         val placeholder = ChatMessage(role = ChatMessageRole.MODEL, content = "",
             status = MessageStatus.Streaming(false), modelId = modelId)
         val content = StringBuilder()
+        val reasoning = StringBuilder()
         var lastWrite = System.nanoTime()
         var completed = false
         var finishReason: String? = null
@@ -346,12 +347,16 @@ class LLMInteractor(
                 topP = session.settings.topP.toDouble()).collect { result ->
                 val chunk = result.getOrThrow()
                 content.append(chunk.content)
+                if (chunk.reasoning.isNotEmpty()) reasoning.append(chunk.reasoning)
                 completed = completed || chunk.isComplete
                 if (chunk.finishReason != null) finishReason = chunk.finishReason
                 val now = System.nanoTime()
                 if (chunk.isComplete || now - lastWrite >= 300_000_000L) {
-                    val updated = placeholder.copy(content = content.toString(),
-                        status = if (chunk.isComplete) MessageStatus.Sent else MessageStatus.Streaming(false))
+                    val updated = placeholder.copy(
+                        content = content.toString(),
+                        reasoning = reasoning.toString().ifBlank { null },
+                        status = if (chunk.isComplete) MessageStatus.Sent else MessageStatus.Streaming(false),
+                    )
                     chatSessionRepository.updateMessage(updated)
                     emit(DataResult.Success(updated))
                     lastWrite = now
@@ -362,7 +367,11 @@ class LLMInteractor(
             check(finishReason != "content_filter") { "Ответ остановлен фильтром провайдера" }
             if (content.isBlank()) chatSessionRepository.deleteMessage(placeholder.id)
             else {
-                val completed = placeholder.copy(content = content.toString(), status = MessageStatus.Sent)
+                val completed = placeholder.copy(
+                    content = content.toString(),
+                    reasoning = reasoning.toString().ifBlank { null },
+                    status = MessageStatus.Sent,
+                )
                 chatSessionRepository.updateMessage(completed)
                 emit(DataResult.Success(completed))
             }

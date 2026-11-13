@@ -313,9 +313,13 @@ class OpenRouterRepositoryImpl(
             val root = jsonParser.parseToJsonElement(data).jsonObject
             check(root["error"] == null || root["error"] == JsonNull) { "Провайдер сообщил об ошибке потока" }
             val choice = root["choices"]?.jsonArray?.firstOrNull()?.jsonObject ?: return
-            val text = choice["delta"]?.jsonObject?.get("content")?.jsonPrimitive?.contentOrNull.orEmpty()
+            val delta = choice["delta"]?.jsonObject
+            val text = delta?.get("content")?.jsonPrimitive?.contentOrNull.orEmpty()
+            val reasoning = delta?.get("reasoning_content")?.jsonPrimitive?.contentOrNull.orEmpty()
             val actualModel = root["model"]?.jsonPrimitive?.contentOrNull ?: model
-            if (text.isNotEmpty()) emit(DataResult.Success(StreamResult(text, actualModel)))
+            if (text.isNotEmpty() || reasoning.isNotEmpty()) {
+                emit(DataResult.Success(StreamResult(text, actualModel, reasoning.ifEmpty { null })))
+            }
             val reason = choice["finish_reason"]?.jsonPrimitive?.contentOrNull
             if (reason != null) complete = true
             check(reason != "length") { "Ответ обрезан лимитом токенов" }

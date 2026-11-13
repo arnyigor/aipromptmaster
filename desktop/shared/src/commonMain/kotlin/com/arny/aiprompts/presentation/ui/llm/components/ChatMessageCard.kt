@@ -70,6 +70,9 @@ val isUser = message.role == ChatMessageRole.USER
                         if (message.content.isBlank()) StreamingIndicator()
                         else Text(message.content, color = LocalContentColor.current)
                     } else {
+                        // Размышления приходят отдельным полем (reasoning_content); старые
+                        // сообщения могут содержать их внутри текста — поддерживаем оба варианта.
+                        message.reasoning?.takeIf { it.isNotBlank() }?.let { ThinkingBlock(it) }
                         val (thinking, text) = remember(message.content) { splitThinkingContent(message.content) }
                         thinking?.let { ThinkingBlock(it) }
                         androidx.compose.foundation.text.selection.SelectionContainer {

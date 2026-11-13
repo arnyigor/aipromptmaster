@@ -32,5 +32,11 @@ data class MessageEntity(
     /** JSON‑массив вложений */
     @ColumnInfo(name = "attachments_json")
     val attachmentsJson: String = "",
+    /** Размышления модели (reasoning_content). Только для отображения, в контекст не уходит. */
+    @ColumnInfo(name = "reasoning")
+    val reasoning: String? = null,
+    /** Длина размышлений в символах — для превью в свёрнутом блоке. */
+    @ColumnInfo(name = "reasoning_chars")
+    val reasoningChars: Int = 0,
     val timestamp: Long = System.currentTimeMillis()
 )

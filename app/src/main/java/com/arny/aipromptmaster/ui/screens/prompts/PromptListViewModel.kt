@@ -198,7 +198,7 @@ class PromptListViewModel(
                                     append("RU: $it\n")
                                 }
                                 content.en.takeIf { it.isNotBlank() }?.let {
-                                    append("RU: $it\n")
+                                    append("EN: $it\n")
                                 }
                             }
                             sendEffect(PromptListEffect.Copy(copy, "Скопировано"))

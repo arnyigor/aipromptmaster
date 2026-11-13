@@ -112,13 +112,18 @@ private fun PromptBrowserFilters(
 ) {
     var sortOpen by remember { mutableStateOf(false) }
     var categoryOpen by remember { mutableStateOf(false) }
+    // Keep the typed text local: the host echoes it back asynchronously, and a stale echo must never
+    // overwrite what was typed since (fast typing dropped and reordered characters). The only external
+    // change is a reset, so only an empty host query clears the field.
+    var queryText by remember { mutableStateOf(state.query) }
+    LaunchedEffect(state.query) { if (state.query.isEmpty() && queryText.isNotEmpty()) queryText = "" }
     Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         OutlinedTextField(
-            value = state.query, onValueChange = onQuery, placeholder = { Text("Поиск промптов") },
+            value = queryText, onValueChange = { queryText = it; onQuery(it) }, placeholder = { Text("Поиск промптов") },
             singleLine = true, modifier = Modifier.fillMaxWidth(), leadingIcon = { Icon(Icons.Default.Search, null) },
             trailingIcon = {
                 Row {
-                    if (state.query.isNotEmpty()) IconButton(onClick = { onQuery("") }) { Icon(Icons.Default.Close, "Очистить поиск") }
+                    if (queryText.isNotEmpty()) IconButton(onClick = { queryText = ""; onQuery("") }) { Icon(Icons.Default.Close, "Очистить поиск") }
                     if (onSort != null) Box {
                         IconButton(onClick = { sortOpen = true }) { Icon(Icons.AutoMirrored.Filled.Sort, "Сортировка: ${state.sort}") }
                         DropdownMenu(sortOpen, { sortOpen = false }) {

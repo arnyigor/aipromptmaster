@@ -340,9 +340,10 @@ class OpenRouterRepositoryImpl(
             val chunk = json.decodeFromString<StreamingChatResponse>(data)
             val choice = chunk.choices?.firstOrNull() ?: return
             val content = choice.delta?.content.orEmpty()
+            val reasoning = choice.delta?.reasoningContent.orEmpty()
             if (choice.finishReason != null) completed = true
-            if (content.isNotEmpty() || choice.finishReason != null)
-                emit(StreamingChatChunk(content, choice.finishReason, choice.finishReason != null))
+            if (content.isNotEmpty() || reasoning.isNotEmpty() || choice.finishReason != null)
+                emit(StreamingChatChunk(content, choice.finishReason, choice.finishReason != null, reasoning))
         }
         while (true) {
             currentCoroutineContext().ensureActive()

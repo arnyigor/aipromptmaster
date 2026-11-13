@@ -30,6 +30,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import kotlin.math.roundToLong
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -77,6 +81,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -253,7 +258,8 @@ fun ChatRoute(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val inputText by viewModel.currentInputText.collectAsStateWithLifecycle()
     val attachedFiles by viewModel.attachedFiles.collectAsStateWithLifecycle()
-    val estimatedTokens by viewModel.estimatedTokens.collectAsStateWithLifecycle()
+    val responseMetrics by viewModel.responseMetrics.collectAsStateWithLifecycle()
+    val thinking by viewModel.thinking.collectAsStateWithLifecycle()
     var showClearChatDialog by remember { mutableStateOf(false) }
 
     val topBarManager = LocalTopBarManager.current
@@ -268,35 +274,45 @@ fun ChatRoute(
         }
     }
 
-    DisposableEffect(screenConfig.actions) {
+    // Имя модели снова в шапке: тап по заголовку открывает выбор модели.
+    val modelTitle = state.selectedModel
+        ?.let { it.name.takeIf(String::isNotBlank) ?: it.id }
+        ?.let { com.arny.sharedui.shortModelName(it) }
+        ?.takeIf { it.isNotBlank() }
+        ?: "Выберите модель"
+
+    val chatActions = remember(screenConfig.actions, onModelsClick) {
+        screenConfig.actions + com.arny.aipromptmaster.ui.navigation.AppBarAction(
+            icon = Icons.Default.Info,
+            contentDescription = "Выбрать модель",
+            showIcon = false,
+            isTitleAction = true,
+            onClick = onModelsClick,
+        )
+    }
+
+    DisposableEffect(chatActions) {
         topBarManager.setActions(
             key = AppConstants.CHAT_SCREEN_KEY,
-            newActions = screenConfig.actions
+            newActions = chatActions
         )
         onDispose { topBarManager.clearIfCurrent(AppConstants.CHAT_SCREEN_KEY) }
     }
 
-    // Формируем заголовок на основе состояния модели
-    val selectedModel = state.selectedModel
-    val titleText = when {
-        selectedModel == null -> "Выберите модель..."
-        selectedModel.id.isBlank() -> "Модель не выбрана"
-        else -> selectedModel.name.takeIf { it.isNotBlank() } ?: selectedModel.id
-    }
-
-    DisposableEffect(titleText) {
+    DisposableEffect(modelTitle) {
         topBarManager.setTitle(
             key = AppConstants.CHAT_SCREEN_KEY,
-            newTitle = titleText
+            newTitle = modelTitle
         )
         onDispose { }
     }
 
     ChatScreen(
         uiState = state,
+        thinking = thinking,
         inputText = inputText,
         attachedFiles = attachedFiles,
-        estimatedTokens = estimatedTokens,
+        responseMetrics = responseMetrics,
         uiEvents = viewModel.uiEvents,
         updateInputText = viewModel::updateInputText,
         sendMessage = viewModel::sendMessage,
@@ -428,9 +444,10 @@ private fun DomainError.fullMessage(context: Context): String {
 @Composable
 fun ChatScreen(
     uiState: ChatUiState,
+    thinking: String = "",
     inputText: String = "",
     attachedFiles: List<FileAttachment>,
-    estimatedTokens: Int = 0,
+    responseMetrics: ResponseMetrics? = null,
     uiEvents: Flow<ChatUiEvent> = emptyFlow(),
     onModelsClick: () -> Unit = {},
     updateInputText: (String) -> Unit = {},
@@ -459,6 +476,8 @@ fun ChatScreen(
                     val error = event.error
                     lastError = when (error) {
                         is DomainError -> error.fullMessage(context)
+                        is com.arny.promptcontract.ModelProbeHttpError ->
+                            com.arny.aipromptmaster.domain.models.errors.providerHttpMessage(error.status)
                         else -> event.error.localizedMessage
                     }
                 }
@@ -478,10 +497,6 @@ fun ChatScreen(
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        topBar = {
-            com.arny.sharedui.ChatModelSelector(uiState.selectedModel?.let { it.name.takeIf(String::isNotBlank) ?: it.id },
-                onModelsClick, Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp))
-        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -499,7 +514,6 @@ fun ChatScreen(
                     isStreaming = uiState.isStreamingResponse,
                     attachedFiles = attachedFiles,
                     onRemoveFile = removeAttachedFile,
-                    tokenCount = estimatedTokens,
                     clearInput = clearInput,
                 )
             }
@@ -512,6 +526,8 @@ fun ChatScreen(
         ) {
             ChatContent(
                 uiState = uiState,
+                thinking = thinking,
+                responseMetrics = responseMetrics,
                 onCopyText = onCopyText,
                 onRetryMessage = onRetryMessage,
                 onEditMessage = onEditMessage,
@@ -527,6 +543,8 @@ fun ChatScreen(
 @Composable
 fun ChatContent(
     uiState: ChatUiState,
+    thinking: String = "",
+    responseMetrics: ResponseMetrics? = null,
     onCopyText: (String) -> Unit = {},
     onRetryMessage: () -> Unit = {},
     onEditMessage: (String) -> Unit = {},
@@ -552,7 +570,29 @@ fun ChatContent(
         }
     }
 
-    // ❌ АВТОСКРОЛЛ УБРАН - теперь только ручной скролл через MessageJumper
+    // Автоскролл: отправка сообщения всегда прокручивает вниз, ответ модели догоняется
+    // только пока пользователь не отлистал историю вверх.
+    suspend fun scrollToLatest() {
+        // Несколько кадров: список успевает разложить новое сообщение.
+        repeat(3) {
+            withFrameNanos { }
+            val last = listState.layoutInfo.totalItemsCount - 1
+            if (last >= 0) listState.scrollToItem(last)
+        }
+    }
+
+    // Ключ только по последнему сообщению ПОЛЬЗОВАТЕЛЯ: ответ добавляется сразу следом и
+    // раньше отменял прокрутку, не дав ей выполниться.
+    val lastUserId = messages.lastOrNull { it.role == ChatRole.USER }?.id
+    LaunchedEffect(lastUserId) {
+        if (lastUserId != null) scrollToLatest()
+    }
+
+    val lastContentLength = messages.lastOrNull()?.content?.length ?: 0
+    LaunchedEffect(messages.size, lastContentLength) {
+        if (messages.isEmpty() || !isAtBottom) return@LaunchedEffect
+        scrollToLatest()
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -574,6 +614,8 @@ fun ChatContent(
                     message = message,
                     isStreaming = isStreaming,
                     isLast = isLast,
+                    thinking = if (isLast && message.role != ChatRole.USER) thinking else "",
+                    metrics = if (isLast && message.role != ChatRole.USER) responseMetrics else null,
                     onCopy = { onCopyText(it) },
                     onRetry = onRetryMessage,
                     onEdit = { onEditMessage(message.content) },
@@ -724,6 +766,8 @@ fun MessageBubble(
     message: ChatMessage,
     isStreaming: Boolean,
     isLast: Boolean,
+    thinking: String = "",
+    metrics: ResponseMetrics? = null,
     onCopy: (String) -> Unit,
     onRetry: () -> Unit,
     onEdit: () -> Unit,
@@ -739,8 +783,10 @@ fun MessageBubble(
     val showFooter by remember(isStreaming) { derivedStateOf { !isStreaming } }
     val showTypingIndicator by remember(
         content,
-        isSending
-    ) { derivedStateOf { content.isBlank() && isSending } }
+        isSending,
+        isStreaming,
+        thinking
+    ) { derivedStateOf { content.isBlank() && thinking.isBlank() && (isSending || isStreaming) } }
 
     Row(
         modifier = Modifier
@@ -753,10 +799,19 @@ fun MessageBubble(
             horizontalAlignment = if (isUser) Alignment.End else Alignment.Start,
             modifier = Modifier.weight(1f, fill = false)
         ) {
-            // Показываем modelId в header для AI-сообщений
-            if (!isUser && !message.modelId.isNullOrBlank()) {
+            // Имя модели и измеренная скорость ответа в header AI-сообщения
+            if (!isUser && (!message.modelId.isNullOrBlank() || metrics != null)) {
+                val seconds = metrics?.let { (it.totalMs / 100.0).roundToLong() / 10.0 }
+                val caption = buildString {
+                    message.modelId?.let { append(com.arny.sharedui.shortModelName(it)) }
+                    if (seconds != null) {
+                        if (isNotEmpty()) append(" · ")
+                        append("$seconds с")
+                        if (metrics.charsPerSecond > 0) append(" · ${metrics.charsPerSecond} симв./с")
+                    }
+                }
                 Text(
-                    text = message.modelId,
+                    text = caption,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     modifier = Modifier.padding(start = 8.dp, bottom = 2.dp)
@@ -764,6 +819,10 @@ fun MessageBubble(
             }
             com.arny.sharedui.ChatBubbleSurface(isUser = isUser) {
                 Column(modifier = Modifier.padding(12.dp)) {
+                    if (!isUser && thinking.isNotBlank()) {
+                        ThinkingBlock(text = thinking, streaming = isStreaming)
+                        Spacer(modifier = Modifier.height(6.dp))
+                    }
                     if (showTypingIndicator) {
                         TypingIndicator()
                     } else {
@@ -854,7 +913,7 @@ private fun MessageContent(
                         Markdown(
                             content = content,
                             colors = markdownColors,
-                            typography = markdownTypography(),
+                            typography = com.arny.aipromptmaster.ui.theme.compactMarkdownTypography(),
                             modifier = Modifier.wrapContentWidth()
                         )
                     }
@@ -1036,7 +1095,6 @@ fun ChatInputArea(
     isStreaming: Boolean,
     attachedFiles: List<FileAttachment>,
     onRemoveFile: (String) -> Unit,
-    tokenCount: Int,
     clearInput: () -> Unit = {}
 ) {
 com.arny.sharedui.ChatComposer(inputValue, onValueChange, onSendClick, onCancelClick,
@@ -1050,7 +1108,6 @@ com.arny.sharedui.ChatComposer(inputValue, onValueChange, onSendClick, onCancelC
                         trailingIcon = { IconButton(onClick = { onRemoveFile(file.id) }) { Icon(Icons.Default.Close, "Удалить вложение") } })
                 }
             }
-            if (tokenCount > 0) Text("Примерно $tokenCount токенов", style = MaterialTheme.typography.labelSmall)
         },
     )
 }
@@ -1111,3 +1168,56 @@ fun ErrorBanner(error: String?, onDismiss: () -> Unit) {
     }
 }
 
+
+
+/** Блок размышлений модели (reasoning_content). Свёрнут, пока модель не думает. */
+@Composable
+private fun ThinkingBlock(text: String, streaming: Boolean) {
+    // По умолчанию свёрнут: заголовок + одна строка с последним фрагментом размышления.
+    var expanded by remember { mutableStateOf(false) }
+    val preview = remember(text) {
+        text.trim().lineSequence().lastOrNull { it.isNotBlank() }?.trim()?.takeLast(120).orEmpty()
+    }
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = MaterialTheme.shapes.small,
+        modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded },
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Info, null, modifier = Modifier.size(14.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = (if (streaming) "Думает…" else "Размышления модели") + " · ${text.length} симв.",
+                    style = MaterialTheme.typography.labelMedium,
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Icon(
+                    if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (expanded) "Свернуть" else "Развернуть",
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+            if (expanded) {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .padding(top = 4.dp)
+                        .heightIn(max = 240.dp)
+                        .verticalScroll(rememberScrollState()),
+                )
+            } else if (preview.isNotBlank()) {
+                Text(
+                    text = preview,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+        }
+    }
+}

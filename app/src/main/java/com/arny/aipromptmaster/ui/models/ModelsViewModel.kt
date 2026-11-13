@@ -68,7 +68,7 @@ class ModelsViewModel(
     )
     val effects: Flow<ModelsEffect> = _effects.asSharedFlow()
 
-    private val favoriteToggleFlow = MutableSharedFlow<String>(
+    private val favoriteToggleFlow = MutableSharedFlow<Pair<String, String>>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
@@ -100,7 +100,8 @@ class ModelsViewModel(
                         totalToCheck = _totalToCheck.value,
                         availableCount = modelsWithRating.count { it.isAvailable == true },
                         totalCheckedCount = modelsWithRating.count { it.isAvailable != null },
-                        bestRatedModel = bestModel
+                        bestRatedModel = bestModel,
+                        providers = _providers.value,
                     )
                 }
                 .catch { exception ->
@@ -128,7 +129,12 @@ class ModelsViewModel(
             initialValue = ModelsUiState(isLoading = true)
         )
 
+    private val _providers = MutableStateFlow<List<com.arny.aipromptmaster.domain.repositories.ProviderOption>>(emptyList())
+
     init {
+        viewModelScope.launch {
+            repository.observeProviderOptions().collect { _providers.value = it }
+        }
         refreshModels()
         setupFavoriteToggle()
     }
@@ -136,14 +142,14 @@ class ModelsViewModel(
     private fun setupFavoriteToggle() {
         favoriteToggleFlow
             .debounce(300)
-            .onEach { modelId ->
+            .onEach { (providerId, modelId) ->
                 try {
-                    val newState = repository.toggleFavorite(modelId)
+                    val newState = repository.toggleFavorite(providerId, modelId)
                     _effects.emit(ModelsEffect.FavoriteToggled(modelId, newState))
                 } catch (e: Throwable) {
                     _effects.emit(
                         ModelsEffect.ShowMessage(
-                            StringHolder.Text(e.localizedMessage ?: "Unknown error"),
+                            StringHolder.Text(e.localizedMessage ?: "Не удалось загрузить модели"),
                             isError = true
                         )
                     )
@@ -155,17 +161,20 @@ class ModelsViewModel(
     fun onEvent(event: ModelsEvent) {
         when (event) {
             is ModelsEvent.Search -> _filter.update { it.copy(query = event.query) }
+            is ModelsEvent.SelectProvider -> _filter.update {
+                it.copy(providerId = if (it.providerId == event.providerId) null else event.providerId)
+            }
             is ModelsEvent.ToggleFree -> _filter.update { it.copy(isFreeOnly = !it.isFreeOnly) }
             is ModelsEvent.ToggleFavoritesOnly -> _filter.update { it.copy(isFavoritesOnly = !it.isFavoritesOnly) }
             is ModelsEvent.ToggleAvailableOnly -> _filter.update { it.copy(isAvailableOnly = !it.isAvailableOnly) }
             is ModelsEvent.ChangeSort -> _filter.update { it.copy(sortType = event.type) }
             is ModelsEvent.ToggleModelFavorite -> {
                 viewModelScope.launch {
-                    favoriteToggleFlow.emit(event.id)
+                    favoriteToggleFlow.emit(event.providerId to event.id)
                 }
             }
 
-            is ModelsEvent.SelectModel -> selectModel(event.id)
+            is ModelsEvent.SelectModel -> selectModel(event.providerId, event.id)
             ModelsEvent.Refresh -> refreshModels()
             ModelsEvent.CheckFreeModelsAvailability -> checkFreeModelsAvailability()
             is ModelsEvent.CheckModelAvailability -> checkModelAvailability(event.id)
@@ -173,10 +182,10 @@ class ModelsViewModel(
         }
     }
 
-    private fun selectModel(modelId: String) {
+    private fun selectModel(providerId: String, modelId: String) {
         viewModelScope.launch {
             try {
-                repository.selectModel(modelId)
+                repository.selectModel(providerId, modelId)
                 _effects.emit(
                     ModelsEffect.ShowMessage(
                         StringHolder.Text("Модель выбрана"),
@@ -186,7 +195,7 @@ class ModelsViewModel(
             } catch (e: Exception) {
                 _effects.emit(
                     ModelsEffect.ShowMessage(
-                        StringHolder.Text(e.localizedMessage ?: "Unknown error"),
+                        StringHolder.Text(e.localizedMessage ?: "Не удалось загрузить модели"),
                         isError = true
                     )
                 )
@@ -201,7 +210,7 @@ class ModelsViewModel(
                 result.onFailure { e ->
                     _effects.emit(
                         ModelsEffect.ShowMessage(
-                            StringHolder.Text("Refresh failed: ${e.message}"),
+                            StringHolder.Text(e.message ?: "Не удалось загрузить модели"),
                             isError = true
                         )
                     )
@@ -209,7 +218,7 @@ class ModelsViewModel(
             } catch (e: Exception) {
                 _effects.emit(
                     ModelsEffect.ShowMessage(
-                        StringHolder.Text(e.localizedMessage ?: "Unknown error"),
+                        StringHolder.Text(e.localizedMessage ?: "Не удалось загрузить модели"),
                         isError = true
                     )
                 )

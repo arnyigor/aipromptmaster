@@ -43,6 +43,10 @@ class ChatHistoryRepositoryImpl(
         return entity.id
     }
 
+    override suspend fun updateMessageReasoning(messageId: String, reasoning: String?, chars: Int) {
+        chatDao.updateMessageReasoning(messageId, reasoning, chars)
+    }
+
     override suspend fun updateMessageContent(messageId: String, newContent: String) {
         chatDao.updateMessageContent(messageId, newContent)
     }
@@ -107,7 +111,8 @@ class ChatHistoryRepositoryImpl(
         content = this.content,
         modelId = this.modelId,
         fileAttachment = parseAttachmentsJson(this.attachmentsJson),
-        timestamp = this.timestamp
+        timestamp = this.timestamp,
+        reasoning = this.reasoning,
     )
 
     private fun ChatMessage.toEntity(conversationId: String): MessageEntity = MessageEntity(
@@ -123,7 +128,8 @@ class ChatHistoryRepositoryImpl(
                 ""
             }
         } ?: "",
-        timestamp = this.timestamp
+        timestamp = this.timestamp,
+        reasoning = this.reasoning,
     )
 
     /**

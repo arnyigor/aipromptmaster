@@ -42,34 +42,38 @@ fun Prompt.toEntity(): PromptEntity = PromptEntity(
 )
 
 // Entity -> Domain
-fun PromptEntity.toDomain(): Prompt = Prompt(
-    variables = com.arny.promptcontract.PromptStorage.decode(variablesJson).variables,
-    wireDocument = com.arny.promptcontract.PromptStorage.decode(variablesJson).document,
-    id = id,
-    title = title,
-    content = PromptContent(
-        ru = contentRu,
-        en = contentEn
-    ),
-    description = description,
-    category = category,
-    status = status,
-    tags = if (tags.isNotBlank()) tags.split(",") else emptyList(),
-    isLocal = isLocal,
-    isFavorite = isFavorite,
-    rating = rating,
-    ratingVotes = ratingVotes,
-    compatibleModels = if (compatibleModels.isNotBlank()) compatibleModels.split(",") else emptyList(),
-    metadata = PromptMetadata(
-        author = Author(id = authorId, name = author),
-        source = source,
-        notes = notes
-    ),
-    version = version,
-    // Безопасно парсим строку в Instant?
-    createdAt = if (createdAt.isNotBlank()) Instant.parse(createdAt) else null,
-    modifiedAt = if (modifiedAt.isNotBlank()) Instant.parse(modifiedAt) else null,
-)
+fun PromptEntity.toDomain(): Prompt {
+    // Decode the storage envelope once per row: list rendering maps hundreds of rows per emission.
+    val stored = com.arny.promptcontract.PromptStorage.decode(variablesJson)
+    return Prompt(
+        variables = stored.variables,
+        wireDocument = stored.document,
+        id = id,
+        title = title,
+        content = PromptContent(
+            ru = contentRu,
+            en = contentEn
+        ),
+        description = description,
+        category = category,
+        status = status,
+        tags = if (tags.isNotBlank()) tags.split(",") else emptyList(),
+        isLocal = isLocal,
+        isFavorite = isFavorite,
+        rating = rating,
+        ratingVotes = ratingVotes,
+        compatibleModels = if (compatibleModels.isNotBlank()) compatibleModels.split(",") else emptyList(),
+        metadata = PromptMetadata(
+            author = Author(id = authorId, name = author),
+            source = source,
+            notes = notes
+        ),
+        version = version,
+        // Безопасно парсим строку в Instant?
+        createdAt = if (createdAt.isNotBlank()) Instant.parse(createdAt) else null,
+        modifiedAt = if (modifiedAt.isNotBlank()) Instant.parse(modifiedAt) else null,
+    )
+}
 
 // API -> Domain
 fun PromptJson.toDomain(): Prompt {

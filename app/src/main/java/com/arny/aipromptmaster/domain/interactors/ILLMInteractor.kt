@@ -118,7 +118,8 @@ interface ILLMInteractor {
         conversationId: String?,
         userMessageText: String,
         attachedFiles: List<FileAttachment> = emptyList(),
-        skipUserMessageCreation: Boolean = false
+        skipUserMessageCreation: Boolean = false,
+        onReasoning: (String) -> Unit = {}
     )
 
     fun observeStreamingBuffer(): StateFlow<Map<String, String>>

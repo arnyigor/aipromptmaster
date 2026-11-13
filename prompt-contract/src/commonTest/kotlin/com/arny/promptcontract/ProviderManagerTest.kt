@@ -5,6 +5,20 @@ import kotlin.test.*
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ProviderManagerTest {
+    @Test fun `free preset prefills a free model and keeps the provider id distinct`() = runTest {
+        val store = Store()
+        val manager = ProviderManager(store, object : ProviderProbe {
+            override suspend fun models(profile: ProviderProfile) = emptyList<String>()
+            override suspend fun checkModel(profile: ProviderProfile, modelId: String) = Unit
+        }, this)
+        manager.onAction(ProviderAction.Create(ProviderPreset.OPENROUTER_FREE))
+        val draft = manager.state.value.draft
+        assertEquals("openrouter/free", draft?.modelId)
+        assertEquals("https://openrouter.ai/api/v1", draft?.baseUrl)
+        assertEquals(true, draft?.requiresKey)
+        assertNotEquals("openrouter", draft?.id)
+    }
+
     @Test fun `model check uses unsaved profile form and leaves active provider unchanged`() = runTest {
         val store = Store()
         var checked: ProviderProfile? = null

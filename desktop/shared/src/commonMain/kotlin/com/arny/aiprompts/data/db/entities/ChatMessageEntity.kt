@@ -62,6 +62,10 @@ data class ChatMessageEntity(
     @ColumnInfo(name = "token_count")
     val tokenCount: Int? = null,
 
+    /** Размышления модели (reasoning_content): только отображение, в контекст не идут. */
+    @ColumnInfo(name = "reasoning")
+    val reasoning: String? = null,
+
     @ColumnInfo(name = "edited_at")
     val editedAt: Long? = null,
 

@@ -121,7 +121,10 @@ class ModelRepositoryImpl(
             val profile = config.active
             if (profile.id != "openrouter" || profile.modelId.isNotBlank()) {
                 if (profile.modelId.isBlank()) DataResult.Error(DomainError.Generic("No model selected"))
-                else DataResult.Success(if (entity?.id == profile.modelId && profile.id == "openrouter") entity.toDomain() else profileModel(profile.modelId))
+                else DataResult.Success(
+                    if (entity?.id == profile.modelId && entity.providerId == profile.id) entity.toDomain()
+                    else profileModel(profile.modelId)
+                )
             } else
             if (entity == null) {
                 DataResult.Error(DomainError.Generic("No model selected"))
@@ -133,36 +136,111 @@ class ModelRepositoryImpl(
     override suspend fun getSelectedModel(): LlmModel? = try {
            val profile = settingsRepository.loadProviders().active
            if (profile.id != "openrouter") profile.modelId.takeIf { it.isNotBlank() }?.let(::profileModel)
-           else if (profile.modelId.isNotBlank()) dao.getModelById(profile.modelId)?.toDomain() ?: profileModel(profile.modelId)
+           else if (profile.modelId.isNotBlank()) dao.getModelById(profile.id, profile.modelId)?.toDomain() ?: profileModel(profile.modelId, profile.id)
            else dao.getSelectedModel()?.toDomain()
        } catch (e: Exception) {
            null
        }
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    /**
+     * Список моделей для экрана выбора: читаем БД по всем провайдерам, чтобы можно было
+     * выбрать модель любого сохранённого профиля. Если для активного не-OpenRouter профиля
+     * записей ещё нет, подтягиваем их у провайдера.
+     */
     override fun getModels(filter: ModelsFilter): Flow<List<LlmModel>> =
         settingsRepository.observeProviders().flatMapLatest { config ->
-        if (config.active.id != "openrouter") kotlinx.coroutines.flow.flow {
-            val ids = providerGateway?.models(config.active.validated()).orEmpty()
-            emit(if (filter.isFreeOnly || filter.isFavoritesOnly || filter.isAvailableOnly) emptyList()
-                else ids.filter { it.contains(filter.query, ignoreCase = true) }.map { profileModel(it).copy(isSelected = it == config.active.modelId) })
-        } else
-        dao.getModels(
-            searchQuery = filter.query,
-            onlyFree = filter.isFreeOnly,
-            onlyFavorites = filter.isFavoritesOnly,
-            onlyAvailable = filter.isAvailableOnly,
-            sortBy = filter.sortType.name
-        ).map { entities -> entities.map { it.toDomain() } }
+            dao.getModels(
+                searchQuery = filter.query,
+                onlyFree = filter.isFreeOnly,
+                onlyFavorites = filter.isFavoritesOnly,
+                onlyAvailable = filter.isAvailableOnly,
+                sortBy = filter.sortType.name
+            ).map { entities ->
+                val names = providerDisplayNames(config)
+                entities.map { entity ->
+                    entity.toDomain().copy(providerName = names[entity.providerId] ?: entity.providerId)
+                }
+            }
+                .map { models ->
+                    filter.providerId?.let { wanted -> models.filter { it.providerId == wanted } } ?: models
+                }
+                .flatMapLatest { stored ->
+                    if (stored.isNotEmpty() || config.active.id == "openrouter") {
+                        kotlinx.coroutines.flow.flowOf(stored)
+                    } else kotlinx.coroutines.flow.flow {
+                        val ids = providerGateway?.models(config.active.validated()).orEmpty()
+                        emit(ids.filter { it.contains(filter.query, ignoreCase = true) }
+                            .map { profileModel(it, config.active.id).copy(isSelected = it == config.active.modelId) })
+                    }
+                }
         }
 
-    private fun profileModel(id: String) = LlmModel(id, id, "OpenAI-совместимая модель", 0, "", "unknown", "unknown", null, listOf("text"), listOf("text"), true)
+    /** Имена профилей с различающим суффиксом при совпадении, чтобы источники были различимы. */
+    private fun providerDisplayNames(config: com.arny.promptcontract.ProviderConfig): Map<String, String> {
+        val seen = mutableMapOf<String, Int>()
+        return config.profiles.associate { profile ->
+            val count = (seen[profile.name] ?: 0) + 1
+            seen[profile.name] = count
+            profile.id to if (count == 1) profile.name else "${profile.name} #$count"
+        }
+    }
+
+    /** Провайдеры, у которых есть сохранённые модели. */
+    override fun observeProviderOptions(): Flow<List<com.arny.aipromptmaster.domain.repositories.ProviderOption>> =
+        settingsRepository.observeProviders().flatMapLatest { config ->
+            dao.observeProviderIds().map { ids ->
+                val names = providerDisplayNames(config)
+                ids.map { id ->
+                    com.arny.aipromptmaster.domain.repositories.ProviderOption(
+                        id = id,
+                        name = names[id] ?: id.ifBlank { "OpenRouter" },
+                    )
+                }
+            }
+        }
+
+    private fun profileModel(id: String, providerId: String = "") = LlmModel(
+        id = id, providerId = providerId, name = id,
+        description = "OpenAI-совместимая модель", created = 0,
+        contextLength = "", pricingPrompt = "unknown", pricingCompletion = "unknown",
+        pricingImage = null, inputModalities = listOf("text"), outputModalities = listOf("text"),
+        isSelected = true,
+    )
 
     override suspend fun refreshModels(): Result<Unit> {
         if (settingsRepository.loadProviders().active.id != "openrouter") return try {
-            providerGateway?.models(settingsRepository.loadProviders().active.validated())
+            val active = settingsRepository.loadProviders().active.validated()
+            val ids = providerGateway?.models(active).orEmpty()
+            // Persist the provider list, otherwise the models screen stays empty for custom profiles.
+            val now = System.currentTimeMillis()
+            dao.deleteStaleProviderModels(active.id, ids)
+            dao.syncModels(ids.map { id ->
+                com.arny.aipromptmaster.data.db.entities.ModelEntity(
+                    id = id,
+                    providerId = active.id,
+                    name = id,
+                    description = "OpenAI-совместимая модель",
+                    contextLength = 0,
+                    pricingPrompt = "0",
+                    pricingCompletion = "0",
+                    pricingImage = null,
+                    inputModalities = "[\"text\"]",
+                    outputModalities = "[\"text\"]",
+                    isMultimodal = false,
+                    isFree = true,
+                    sortPriority = 0,
+                    lastUpdated = now,
+                )
+            })
+            syncMetadata.setLastSync(now)
             Result.success(Unit)
         } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+        catch (http: com.arny.promptcontract.ModelProbeHttpError) {
+            Result.failure(IllegalStateException(
+                com.arny.aipromptmaster.domain.models.errors.providerHttpMessage(http.status)
+            ))
+        }
         catch (error: Exception) { Result.failure(error) }
         val lastSync = syncMetadata.getLastSync()
         val hasModels = dao.getModelsCount() > 0
@@ -177,9 +255,17 @@ class ModelRepositoryImpl(
             val response = api.getModels()
             Timber.tag("ModelRepo")
                 .d("API response: ${response.code()}, body: ${response.body()?.models?.size}")
-            if (!response.isSuccessful) throw Exception("API ${response.code()}")
+            if (!response.isSuccessful) {
+                val body = runCatching { response.errorBody()?.string() }.getOrNull()
+                throw IllegalStateException(
+                    com.arny.aipromptmaster.domain.models.errors.providerHttpMessage(response.code(), body)
+                )
+            }
             val dtos = response.body()?.models ?: emptyList()
             val entities = dtos.map(ModelDTO::toEntity)
+            // '' — владелец у записей, созданных до появления providerId: это тоже OpenRouter.
+            dao.deleteStaleProviderModels("openrouter", entities.map { it.id })
+            dao.deleteStaleProviderModels("", entities.map { it.id })
             dao.syncModels(entities)
             syncMetadata.setLastSync(System.currentTimeMillis())
             Result.success(Unit)
@@ -191,17 +277,20 @@ class ModelRepositoryImpl(
     /**
      * Возвращает новое состояние isFavorite после переключения
      */
-    override suspend fun toggleFavorite(modelId: String): Boolean {
-        require(settingsRepository.loadProviders().activeId == "openrouter") { "Для этого провайдера выберите модель по умолчанию в его профиле" }
+    override suspend fun toggleFavorite(modelId: String): Boolean =
+        toggleFavorite(settingsRepository.loadProviders().activeId, modelId)
+
+    override suspend fun toggleFavorite(providerId: String, modelId: String): Boolean {
         return favoriteMutex.withLock {
+            val owner = providerId.ifBlank { "openrouter" }
             // Читаем текущее состояние
-            val currentModel = dao.getModelById(modelId)
+            val currentModel = dao.getModelById(owner, modelId)
                 ?: throw DomainError.Local(StringHolder.Text("Model $modelId not found"))
 
             val newState = !currentModel.isFavorite
 
             // Обновляем в БД
-            val rowsAffected = dao.updateFavoriteStatus(modelId, newState)
+            val rowsAffected = dao.updateFavoriteStatus(owner, modelId, newState)
             if (rowsAffected == 0) {
                 throw DomainError.Local(StringHolder.Text("Failed to update model $modelId"))
             }
@@ -210,10 +299,22 @@ class ModelRepositoryImpl(
         }
     }
 
-    override suspend fun selectModel(modelId: String) {
+    override suspend fun selectModel(modelId: String) = selectModel("", modelId)
+
+    /**
+     * Выбирает модель вместе с её провайдером: активным профилем становится владелец модели.
+     * Пустой [providerId] означает активный профиль (совместимость со старым вызовом).
+     */
+    override suspend fun selectModel(providerId: String, modelId: String) {
         val config = settingsRepository.loadProviders()
-        settingsRepository.saveProviders(config.copy(profiles = config.profiles.map { if (it.id == config.activeId) it.copy(modelId = modelId) else it }))
-        if (config.activeId == "openrouter") dao.selectModel(modelId)
+        val targetId = providerId.ifBlank { config.activeId }
+        val target = config.profiles.firstOrNull { it.id == targetId } ?: config.active
+        settingsRepository.saveProviders(
+            config
+                .copy(profiles = config.profiles.map { if (it.id == target.id) it.copy(modelId = modelId) else it })
+                .let { updated -> runCatching { updated.select(target.id) }.getOrDefault(updated) }
+        )
+        dao.selectModel(target.id, modelId)
     }
 
 /**
@@ -231,6 +332,7 @@ class ModelRepositoryImpl(
      */
     suspend fun checkModelAvailabilityWithTiming(modelId: String): AvailabilityResult {
         val isOpenRouter = settingsRepository.loadProviders().activeId == "openrouter"
+        val owner = settingsRepository.loadProviders().active.id
         return try {
             val startTime = System.currentTimeMillis()
             val request = ChatCompletionRequestDTO(
@@ -251,8 +353,8 @@ class ModelRepositoryImpl(
             val isSuccess = response?.isSuccessful == true
             if (!isOpenRouter) return AvailabilityResult(isSuccess, responseTimeMs)
 
-            // Получаем данные модели для расчёта рейтинга
-            val model = dao.getModelById(modelId)
+            // Получаем данные модели для расчёта рейтинга (учитывая провайдера)
+            val model = dao.getModelById(owner, modelId)
             val rating = if (model != null) {
                 calculateRating(
                     isAvailable = isSuccess,
@@ -265,6 +367,7 @@ class ModelRepositoryImpl(
 
             // Сохраняем с рейтингом
             dao.updateModelRating(
+                providerId = owner,
                 modelId = modelId,
                 isAvailable = isSuccess,
                 responseTimeMs = responseTimeMs,
@@ -281,6 +384,7 @@ class ModelRepositoryImpl(
             Timber.tag("ModelRepo").e(e, "Error checking model $modelId availability")
             // Сохраняем с рейтингом 0 при ошибке
             dao.updateModelRating(
+                providerId = owner,
                 modelId = modelId,
                 isAvailable = false,
                 responseTimeMs = 15000,

@@ -29,6 +29,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -52,6 +53,14 @@ sealed class ChatUiEvent {
     data class NavigateToSystem(val conversationId: String) : ChatUiEvent()
     data class ShowMessage(val message: String) : ChatUiEvent()
 }
+
+/** Метрики последнего ответа: полное время, символы и скорость генерации. */
+@Immutable
+data class ResponseMetrics(
+    val totalMs: Long,
+    val chars: Int,
+    val charsPerSecond: Int,
+)
 
 @Immutable
 data class ChatUiState(
@@ -78,12 +87,15 @@ class ChatViewModel(
 
     private val _isSending = MutableStateFlow(false)
     private val _isStreamingResponse = MutableStateFlow(false)
+    /** Накопленный reasoning текущего ответа (в БД не сохраняется). */
+    private val _thinking = MutableStateFlow("")
+    val thinking: kotlinx.coroutines.flow.StateFlow<String> get() = _thinking
     private val _uiEvents = MutableSharedFlow<ChatUiEvent>()
     val uiEvents: SharedFlow<ChatUiEvent> = _uiEvents.asSharedFlow()
 
-    // Переменные для отслеживания токенов
-    private val _estimatedTokens = MutableStateFlow(0)
-    val estimatedTokens: StateFlow<Int> = _estimatedTokens
+    /** Метрики последнего ответа (в БД не сохраняются). */
+    private val _responseMetrics = MutableStateFlow<ResponseMetrics?>(null)
+    val responseMetrics: StateFlow<ResponseMetrics?> = _responseMetrics
 
     private val _currentInputText = MutableStateFlow(savedState.get<String>("chat-input").orEmpty())
     val currentInputText: StateFlow<String> = _currentInputText
@@ -226,6 +238,14 @@ class ChatViewModel(
 
     init {
         viewModelScope.launch { _currentInputText.collect { savedState["chat-input"] = it } }
+        // Восстанавливаем размышления последнего ответа из БД (после перезапуска/смены чата).
+        viewModelScope.launch {
+            uiState.collect { state ->
+                if (state.isStreamingResponse || state.isSending) return@collect
+                val stored = state.messages.lastOrNull { it.role != ChatRole.USER }?.reasoning.orEmpty()
+                if (stored != _thinking.value && stored.isNotBlank()) _thinking.value = stored
+            }
+        }
         viewModelScope.launch {
             if (_currentConversationId.value == null) {
                 _currentConversationId.value = interactor.createNewConversation("Новый чат")
@@ -339,19 +359,52 @@ class ChatViewModel(
 
             try {
                 _isStreamingResponse.value = true
+                _responseMetrics.value = null
 
                 currentRequestJob = viewModelScope.launch {
+                    val startedAt = System.nanoTime()
+                    var firstActivityAt: Long? = null
+                    val reasoning = StringBuilder()
                     try {
+                        _thinking.value = ""
+                        var lastEmit = 0L
                         interactor.sendMessageWithFallback(
                             conversationId = convId,
                             userMessageText = userMessageText,
                             attachedFiles = filesToSend,
-                            skipUserMessageCreation = skipUserMessageCreation
+                            skipUserMessageCreation = skipUserMessageCreation,
+                            onReasoning = { chunk ->
+                                if (firstActivityAt == null) firstActivityAt = System.nanoTime()
+                                reasoning.append(chunk)
+                                val now = System.nanoTime()
+                                // Троттлинг: reasoning приходит мелкими чанками, UI обновляем ~5 раз в секунду.
+                                if (now - lastEmit > 200_000_000L) {
+                                    lastEmit = now
+                                    _thinking.value = reasoning.toString()
+                                }
+                            }
                         )
                     } catch (e: CancellationException) {   // propagate cancellation
                         throw e
                     } catch (e: Exception) {
                         _uiEvents.emit(ChatUiEvent.ShowError(e))
+                    } finally {
+                        // Досылаем хвост reasoning: иначе последний throttled-фрагмент теряется.
+                        _thinking.value = reasoning.toString()
+                        val endedAt = System.nanoTime()
+                        val totalMs = (endedAt - startedAt) / 1_000_000
+                        val generationMs = ((endedAt - (firstActivityAt ?: startedAt)) / 1_000_000).coerceAtLeast(1)
+                        val chars = runCatching {
+                            interactor.getChatHistoryFlow(convId).first()
+                                .lastOrNull { it.role != ChatRole.USER }?.content?.length ?: 0
+                        }.getOrDefault(0)
+                        if (totalMs > 0) {
+                            _responseMetrics.value = ResponseMetrics(
+                                totalMs = totalMs,
+                                chars = chars,
+                                charsPerSecond = if (chars > 0) (chars * 1000L / generationMs).toInt() else 0,
+                            )
+                        }
                     }
                 }
 
@@ -384,7 +437,6 @@ class ChatViewModel(
      */
     fun updateInputText(text: String) {
         _currentInputText.value = text
-        calculateEstimatedTokens()
     }
 
     /**
@@ -392,23 +444,8 @@ class ChatViewModel(
      */
     fun removeAttachedFile(fileId: String) {
         _attachedFiles.value = _attachedFiles.value.filter { it.id != fileId }
-        calculateEstimatedTokens()
     }
 
-    /**
-     * Рассчитать примерное количество токенов
-     * Примерно 4 символа на токен
-     */
-    private fun calculateEstimatedTokens() {
-        viewModelScope.launch {
-            _estimatedTokens.value = interactor.estimateTokens(
-                inputText = _currentInputText.value,
-                attachedFiles = _attachedFiles.value,
-                systemPrompt = uiState.value.systemPrompt,
-                recentMessages = uiState.value.messages.takeLast(10)
-            )
-        }
-    }
 
     /**
      * Копирование текста сообщения.
@@ -558,7 +595,6 @@ class ChatViewModel(
                         is FileProcessingResult.Complete -> {
                             // Добавляем файл в список прикрепленных
                             _attachedFiles.value = _attachedFiles.value + result.fileAttachment
-                            calculateEstimatedTokens()
                         }
 
                         is FileProcessingResult.Error -> {

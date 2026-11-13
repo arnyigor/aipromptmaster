@@ -474,7 +474,7 @@ fun PromptEditScreenDefaultPreview(
         validationState = PromptEditViewModel.ValidationState(
             isTitleValid = uiState.title.isNotBlank(),
             titleError = if (uiState.title.isBlank()) "Пусто" else null,
-            contentError = if (uiState.contentRu.isBlank()) "Контент RU обязателен" else null
+            contentError = if (uiState.contentRu.isBlank() && uiState.contentEn.isBlank()) "Заполните хотя бы один язык" else null
         ),
         onTitleChange = {},
         onCategoryChange = {},
@@ -505,7 +505,7 @@ fun PromptEditScreenDarkPreview(
             validationState = PromptEditViewModel.ValidationState(
                 isTitleValid = uiState.title.isNotBlank(),
                 titleError = if (uiState.title.isBlank()) "Пусто" else null,
-                contentError = if (uiState.contentRu.isBlank()) "Контент RU обязателен" else null
+                contentError = if (uiState.contentRu.isBlank() && uiState.contentEn.isBlank()) "Заполните хотя бы один язык" else null
             ),
             onTitleChange = {},
             onCategoryChange = {},
