@@ -57,9 +57,14 @@ interface ModelDao {
     @Query("SELECT COUNT(*) FROM models")
     suspend fun getModelsCount(): Int
 
-    @Query("SELECT id FROM models WHERE isFavorite = 1")
-    suspend fun getFavoriteIds(): List<String>
+    /** Ключи вида `providerId|id`: избранное нельзя переносить между провайдерами. */
+    @Query("SELECT providerId || '|' || id FROM models WHERE isFavorite = 1")
+    suspend fun getFavoriteKeys(): List<String>
 
+    @Query("SELECT providerId || '|' || id FROM models WHERE isSelected = 1 LIMIT 1")
+    suspend fun getSelectedModelKey(): String?
+
+    /** Для совместимости: id выбранной модели без владельца. */
     @Query("SELECT id FROM models WHERE isSelected = 1 LIMIT 1")
     suspend fun getSelectedModelId(): String?
 
@@ -104,13 +109,15 @@ interface ModelDao {
 
     @Transaction
     suspend fun syncModels(newModels: List<ModelEntity>) {
-        val favorites = getFavoriteIds().toSet()
-        val selectedId = getSelectedModelId()
+        // Составной ключ: иначе одинаковые id у разных провайдеров наследуют чужие флаги.
+        val favorites = getFavoriteKeys().toSet()
+        val selectedKey = getSelectedModelKey()
 
         val mergedModels = newModels.map { model ->
+            val key = model.providerId + "|" + model.id
             model.copy(
-                isFavorite = favorites.contains(model.id),
-                isSelected = model.id == selectedId
+                isFavorite = favorites.contains(key),
+                isSelected = key == selectedKey,
             )
         }
         insertModels(mergedModels)

@@ -28,6 +28,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.SharedFlow
@@ -74,6 +76,8 @@ data class ChatUiState(
     val lastUserInput: String = "",           // для retry (опционально)
     val attachedFiles: List<FileAttachment> = emptyList(), // для retry
 )
+
+private const val RETRY_REPLACE_TIMEOUT_MS = 120_000L
 
 class ChatViewModel(
     private val shareService: ShareService,
@@ -345,7 +349,12 @@ class ChatViewModel(
      *                                (используется для retry/regenerate).
      */
     fun sendMessage(userMessageText: String, skipUserMessageCreation: Boolean = false) {
-        if (userMessageText.isBlank()) return
+        // Текст может отсутствовать, если отправляют только вложение.
+        val hasAttachments = _attachedFiles.value.isNotEmpty()
+        if (userMessageText.isBlank() && !hasAttachments) return
+        val textToSend = userMessageText.ifBlank {
+            _attachedFiles.value.joinToString(", ") { it.fileName }.let { "📎 $it" }
+        }
 
         viewModelScope.launch {
             currentRequestJob?.cancel()
@@ -353,7 +362,7 @@ class ChatViewModel(
                 _isSending.value = true
                 val files = _attachedFiles.value.toList()
                 _attachedFiles.value = emptyList()
-                val id = ensureConversationExists(userMessageText)
+                val id = ensureConversationExists(textToSend)
                 Pair(id, files)
             }
 
@@ -370,7 +379,7 @@ class ChatViewModel(
                         var lastEmit = 0L
                         interactor.sendMessageWithFallback(
                             conversationId = convId,
-                            userMessageText = userMessageText,
+                            userMessageText = textToSend,
                             attachedFiles = filesToSend,
                             skipUserMessageCreation = skipUserMessageCreation,
                             onReasoning = { chunk ->
@@ -387,6 +396,10 @@ class ChatViewModel(
                     } catch (e: CancellationException) {   // propagate cancellation
                         throw e
                     } catch (e: Exception) {
+                        // Ошибка доставки: возвращаем текст и вложения в поле ввода,
+                        // чтобы пользователь не набирал сообщение заново.
+                        if (userMessageText.isNotBlank()) updateInputText(userMessageText)
+                        if (filesToSend.isNotEmpty()) _attachedFiles.value = filesToSend
                         _uiEvents.emit(ChatUiEvent.ShowError(e))
                     } finally {
                         // Досылаем хвост reasoning: иначе последний throttled-фрагмент теряется.
@@ -506,24 +519,32 @@ class ChatViewModel(
 
         viewModelScope.launch {
             // Сценарий 1: Последнее сообщение от ИИ (Regenerate)
-            // Мы хотим удалить этот ответ и заставить модель ответить заново на предыдущий вопрос.
             if (lastMessage.role != ChatRole.USER) {
-                // Находим последний запрос пользователя
                 val lastUserMessage = history.findLast { it.role == ChatRole.USER } ?: return@launch
+                val staleId = lastMessage.id
 
-                // Удаляем ответ модели из БД, чтобы не было дублей
-                try {
-                    interactor.deleteMessage(lastMessage.id)
-                } catch (e: Exception) {
-                    // Если удаление не сработало, логируем но продолжаем
-                    e.printStackTrace()
-                }
-
-                // Отправляем запрос заново, НО не создаем новое сообщение пользователя
                 sendMessage(
                     userMessageText = lastUserMessage.content,
                     skipUserMessageCreation = true
                 )
+
+                // Старый ответ удаляем только после успешной замены: при ошибке генерации
+                // пользователь не должен потерять уже полученный текст.
+                val replaced = withTimeoutOrNull(RETRY_REPLACE_TIMEOUT_MS) {
+                    uiState
+                        .map { state -> state.messages }
+                        .first { messages ->
+                            messages.any { it.role == ChatRole.ASSISTANT && it.id != staleId && it.content.isNotBlank() }
+                        }
+                    true
+                }
+                if (replaced == true) {
+                    runCatching { interactor.deleteMessage(staleId) }
+                } else {
+                    _uiEvents.emit(
+                        ChatUiEvent.ShowMessage("Прежний ответ сохранён: замена не удалась")
+                    )
+                }
             }
             // Сценарий 2: Последнее сообщение от User (Network Error / Retry)
             // Просто повторяем отправку последнего сообщения пользователя
@@ -569,8 +590,15 @@ class ChatViewModel(
     fun onEditUserMessage(messageId: String, currentContent: String) {
         viewModelScope.launch {
             try {
-                // Удаляем сообщение и все после него
-                onDeleteMessage(messageId)
+                // Удаление выполняем здесь и дожидаемся его: onDeleteMessage запускает свою
+                // корутину, из-за чего ввод мог оказаться в чате с ещё не удалённой историей.
+                val messages = uiState.value.messages
+                val index = messages.indexOfFirst { it.id == messageId }
+                if (index != -1) {
+                    messages.subList(index, messages.size).forEach { message ->
+                        interactor.deleteMessage(message.id)
+                    }
+                }
 
                 // Вставляем текст в поле ввода для редактирования
                 updateInputText(currentContent)

@@ -289,9 +289,18 @@ fun ModelsScreenContent(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Text("Модели не загружены", style = MaterialTheme.typography.titleMedium)
+                        val filtering = state.filter.query.isNotBlank() ||
+                            state.filter.isFavoritesOnly ||
+                            state.filter.isFreeOnly ||
+                            state.filter.isAvailableOnly ||
+                            state.filter.providerId != null
                         Text(
-                            "Проверьте профиль провайдера и обновите список моделей",
+                            if (filtering) "Ничего не найдено" else "Модели не загружены",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            if (filtering) "Измените запрос или сбросьте фильтры"
+                            else "Проверьте профиль провайдера и обновите список моделей",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         TextButton(onClick = { onEvent(ModelsEvent.Refresh) }) { Text("Обновить список") }
@@ -300,13 +309,25 @@ fun ModelsScreenContent(
             } else {
                 // Группируем по провайдеру: модели разных профилей идут одним списком,
                 // но с заголовками, чтобы было видно, откуда каждая модель.
-                val grouped = state.models.groupBy { it.providerName.ifBlank { it.providerId.ifBlank { "OpenRouter" } } }
+                // Избранные идут первой группой, затем модели по провайдерам.
+                val favorites = state.models.filter { it.isFavorite }
+                val rest = state.models.filterNot { it.isFavorite }
+                val grouped = rest.groupBy { it.providerName.ifBlank { it.providerId.ifBlank { "OpenRouter" } } }
+                val sections = buildList {
+                    if (favorites.isNotEmpty()) add("Избранные" to favorites)
+                    grouped.forEach { (provider, models) -> add(provider to models) }
+                }
                 LazyColumn(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    grouped.forEach { (provider, models) ->
+                    sections.forEach { header ->
+                        val provider = header.first
+                        val models = header.second
+                        // Заголовок дублирует чип, когда список уже отфильтрован этим провайдером.
+                        val hideHeader = provider != "Избранные" &&
+                            state.providers.firstOrNull { it.id == state.filter.providerId }?.name == provider
                         item(key = "header:$provider", contentType = "header") {
-                            Text(
+                            if (!hideHeader) Text(
                                 text = provider,
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.primary,
@@ -328,7 +349,7 @@ fun ModelsScreenContent(
                                     onEvent(ModelsEvent.ToggleModelFavorite(model.id, model.providerId))
                                 },
                                 onCheckAvailabilityClick = {
-                                    onEvent(ModelsEvent.CheckModelAvailability(model.id))
+                                    onEvent(ModelsEvent.CheckModelAvailability(model.id, model.providerId))
                                 }
                             )
                             HorizontalDivider(modifier = Modifier.padding(start = 16.dp))

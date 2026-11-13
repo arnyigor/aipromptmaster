@@ -40,7 +40,7 @@ fun ChatComposer(
                             onSend(); true
                         } else false
                     },
-                    enabled = !generating, minLines = if (expanded) 4 else 1, maxLines = if (expanded) 8 else 4,
+                    enabled = true, minLines = if (expanded) 4 else 1, maxLines = if (expanded) 8 else 4,
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent,
                         disabledContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent,
@@ -48,8 +48,8 @@ fun ChatComposer(
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 )
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                onAttach?.let { IconButton(onClick = it, enabled = !generating) { Icon(Icons.Default.AttachFile, "Прикрепить файл") } }
-                if (value.isNotBlank() && onClear != null) IconButton(onClick = onClear, enabled = !generating) {
+                onAttach?.let { IconButton(onClick = it) { Icon(Icons.Default.AttachFile, "Прикрепить файл") } }
+                if (value.isNotBlank() && onClear != null) IconButton(onClick = onClear) {
                     Icon(Icons.Default.Clear, "Очистить сообщение")
                 }
                 IconButton(onClick = { expanded = !expanded }) {

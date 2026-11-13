@@ -29,6 +29,9 @@ interface ModelRepository {
      * @return true если модель доступна, false если недоступна
      */
     suspend fun checkModelAvailability(modelId: String): Boolean
+
+    /** Проверка конкретной модели у её провайдера (свой URL/ключ, допустимый режим без ключа). */
+    suspend fun checkModelAvailability(providerId: String, modelId: String): Boolean
 /**
      * Проверяет доступность всех free моделей.
      * @param onProgress callback для отслеживания прогресса (текущая модель, количество проверенных, всего)

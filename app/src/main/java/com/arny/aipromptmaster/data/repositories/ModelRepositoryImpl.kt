@@ -222,13 +222,14 @@ class ModelRepositoryImpl(
                     name = id,
                     description = "OpenAI-совместимая модель",
                     contextLength = 0,
-                    pricingPrompt = "0",
-                    pricingCompletion = "0",
+                    // Тарификация стороннего сервера неизвестна: не выдаём её за нулевую.
+                    pricingPrompt = "unknown",
+                    pricingCompletion = "unknown",
                     pricingImage = null,
                     inputModalities = "[\"text\"]",
                     outputModalities = "[\"text\"]",
                     isMultimodal = false,
-                    isFree = true,
+                    isFree = false,
                     sortPriority = 0,
                     lastUpdated = now,
                 )
@@ -308,7 +309,9 @@ class ModelRepositoryImpl(
     override suspend fun selectModel(providerId: String, modelId: String) {
         val config = settingsRepository.loadProviders()
         val targetId = providerId.ifBlank { config.activeId }
-        val target = config.profiles.firstOrNull { it.id == targetId } ?: config.active
+        // Молча подменять провайдера нельзя: выбор меняет активный профиль и маршрут запросов.
+        val target = config.profiles.firstOrNull { it.id == targetId }
+            ?: throw DomainError.Generic("Профиль провайдера «$targetId» больше не настроен")
         settingsRepository.saveProviders(
             config
                 .copy(profiles = config.profiles.map { if (it.id == target.id) it.copy(modelId = modelId) else it })
@@ -323,7 +326,24 @@ class ModelRepositoryImpl(
      * Timeout: 15 секунд на модель.
      */
     override suspend fun checkModelAvailability(modelId: String): Boolean {
-        return checkModelAvailabilityWithTiming(modelId).isAvailable
+        return checkModelAvailability(modelId, settingsRepository.loadProviders().activeId)
+    }
+
+    override suspend fun checkModelAvailability(providerId: String, modelId: String): Boolean {
+        val config = settingsRepository.loadProviders()
+        val profile = config.profiles.firstOrNull { it.id == providerId }
+            ?: config.profiles.firstOrNull { it.id == "openrouter" }
+            ?: return false
+        if (profile.id == "openrouter") return checkModelAvailabilityWithTiming(modelId).isAvailable
+        // Локальные и сторонние профили проверяем их собственными реквизитами (ключ может отсутствовать).
+        return try {
+            withTimeoutOrNull(15_000) { providerGateway?.checkModel(profile.validated(), modelId) } != null
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Timber.tag("ModelRepo").w(error, "Model $modelId check failed for ${profile.id}")
+            false
+        }
     }
 
     /**

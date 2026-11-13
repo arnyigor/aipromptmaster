@@ -58,4 +58,33 @@ class ModelProviderFilterTest {
 
         assertEquals(listOf("qwen"), models.map { it.id })
     }
+
+    @Test
+    fun `unknown provider is rejected instead of silently switching`() = runTest {
+        every { settings.loadProviders() } returns ProviderConfig(listOf(openRouter, local), activeId = openRouter.id)
+        val saved = io.mockk.slot<ProviderConfig>()
+        every { settings.saveProviders(capture(saved)) } returns Unit
+
+        val error = runCatching { repository().selectModel("deleted-profile", "some-model") }.exceptionOrNull()
+
+        org.junit.Assert.assertNotNull(error)
+        org.junit.Assert.assertEquals("openRouter must stay active", openRouter.id, settings.loadProviders().activeId)
+    }
+
+    @Test
+    fun `custom provider models are not reported as free`() = runTest {
+        val gateway = io.mockk.mockk<com.arny.aipromptmaster.domain.ProviderGateway>(relaxed = true)
+        io.mockk.coEvery { gateway.models(any()) } returns listOf("model-x")
+        every { settings.loadProviders() } returns ProviderConfig(listOf(openRouter, local), activeId = local.id)
+        every { settings.observeProviders() } returns flowOf(ProviderConfig(listOf(openRouter, local), activeId = local.id))
+        every { dao.getModels(any(), any(), any(), any(), any()) } returns flowOf(emptyList())
+
+        val repo = ModelRepositoryImpl(service, dao, syncMetadata, settings, gateway)
+        repo.refreshModels()
+
+        val saved = io.mockk.slot<List<ModelEntity>>()
+        io.mockk.coVerify { dao.syncModels(capture(saved)) }
+        org.junit.Assert.assertFalse(saved.captured.first().isFree)
+        org.junit.Assert.assertEquals("unknown", saved.captured.first().pricingPrompt)
+    }
 }

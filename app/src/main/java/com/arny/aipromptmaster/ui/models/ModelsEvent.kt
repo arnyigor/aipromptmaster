@@ -84,7 +84,7 @@ sealed interface ModelsEvent {
      *
      * @property id Идентификатор модели.
      */
-    data class CheckModelAvailability(val id: String) : ModelsEvent
+    data class CheckModelAvailability(val id: String, val providerId: String = "") : ModelsEvent
 
     /**
      * Отмена проверки доступности моделей.

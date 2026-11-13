@@ -68,10 +68,27 @@ class ModelsViewModel(
     )
     val effects: Flow<ModelsEffect> = _effects.asSharedFlow()
 
+    // Буфер накапливает независимые клики: debounce(300) терял часть изменений.
     private val favoriteToggleFlow = MutableSharedFlow<Pair<String, String>>(
-        extraBufferCapacity = 1,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
+        extraBufferCapacity = 64,
+        onBufferOverflow = BufferOverflow.SUSPEND
     )
+
+    private val _providers = MutableStateFlow<List<com.arny.aipromptmaster.domain.repositories.ProviderOption>>(emptyList())
+
+    private data class RuntimeState(
+        val providers: List<com.arny.aipromptmaster.domain.repositories.ProviderOption> = emptyList(),
+        val checking: Boolean = false,
+        val progress: Float = 0f,
+        val checked: Int = 0,
+        val total: Int = 0,
+    )
+
+    private val runtimeState: kotlinx.coroutines.flow.Flow<RuntimeState> = combine(
+        _providers, _isChecking, _checkingProgress, _checkedCount, _totalToCheck,
+    ) { providers, checking, progress, checked, total ->
+        RuntimeState(providers, checking, progress, checked, total)
+    }
 
     // 4. Реактивный UI State
     @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
@@ -120,6 +137,16 @@ class ModelsViewModel(
         .combine(_filter) { result, inputFilter ->
             result.copy(filter = inputFilter, isLoading = result.isLoading || result.filter != inputFilter)
         }
+        // Провайдеры и прогресс проверки — отдельные источники: без combine они не обновляли UI.
+        .combine(runtimeState) { result, runtime ->
+            result.copy(
+                providers = runtime.providers,
+                isCheckingAvailability = runtime.checking,
+                checkingProgress = runtime.progress,
+                checkedCount = runtime.checked,
+                totalToCheck = runtime.total,
+            )
+        }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(
@@ -128,8 +155,6 @@ class ModelsViewModel(
             ),
             initialValue = ModelsUiState(isLoading = true)
         )
-
-    private val _providers = MutableStateFlow<List<com.arny.aipromptmaster.domain.repositories.ProviderOption>>(emptyList())
 
     init {
         viewModelScope.launch {
@@ -141,7 +166,8 @@ class ModelsViewModel(
 
     private fun setupFavoriteToggle() {
         favoriteToggleFlow
-            .debounce(300)
+            // Каждое событие обрабатывается последовательно; конфликты по одной модели
+            // сериализуются, а клики по разным моделям больше не схлопываются.
             .onEach { (providerId, modelId) ->
                 try {
                     val newState = repository.toggleFavorite(providerId, modelId)
@@ -177,7 +203,7 @@ class ModelsViewModel(
             is ModelsEvent.SelectModel -> selectModel(event.providerId, event.id)
             ModelsEvent.Refresh -> refreshModels()
             ModelsEvent.CheckFreeModelsAvailability -> checkFreeModelsAvailability()
-            is ModelsEvent.CheckModelAvailability -> checkModelAvailability(event.id)
+            is ModelsEvent.CheckModelAvailability -> checkModelAvailability(event.id, event.providerId)
             ModelsEvent.CancelAvailabilityCheck -> cancelAvailabilityCheck()
         }
     }
@@ -282,7 +308,6 @@ class ModelsViewModel(
 
                 if (!isCheckCancelled) {
                     // После проверки обновляем UI и получаем лучшую модель
-                    _filter.value = _filter.value.copy()
 
                     // Даем время UI обновиться
                     delay(200)
@@ -343,10 +368,13 @@ class ModelsViewModel(
     /**
      * Проверяет доступность конкретной модели.
      */
-    private fun checkModelAvailability(modelId: String) {
-        // Проверяем наличие API ключа перед началом проверки
+    private fun checkModelAvailability(modelId: String, providerId: String) {
+        // Ключ нужен только профилю, который его требует (локальные серверы работают без ключа).
+        val profile = settingsRepository.loadProviders().let { config ->
+            config.profiles.firstOrNull { it.id == providerId } ?: config.active
+        }
         val apiKey = settingsRepository.getApiKey()
-        if (apiKey.isNullOrBlank()) {
+        if (profile.requiresKey && apiKey.isNullOrBlank()) {
             viewModelScope.launch {
                 _effects.emit(
                     ModelsEffect.ShowMessage(
@@ -360,7 +388,7 @@ class ModelsViewModel(
         
         viewModelScope.launch {
             try {
-                val isAvailable = repository.checkModelAvailability(modelId)
+                val isAvailable = repository.checkModelAvailability(profile.id, modelId)
                 val message = if (isAvailable) "Модель доступна" else "Модель недоступна"
                 _effects.emit(
                     ModelsEffect.ShowMessage(
@@ -368,8 +396,6 @@ class ModelsViewModel(
                         isError = !isAvailable
                     )
                 )
-                // Принудительно обновляем UI перезапуском Flow
-                _filter.value = _filter.value.copy()
             } catch (e: Exception) {
                 _effects.emit(
                     ModelsEffect.ShowMessage(

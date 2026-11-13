@@ -112,6 +112,8 @@ private fun PromptBrowserFilters(
 ) {
     var sortOpen by remember { mutableStateOf(false) }
     var categoryOpen by remember { mutableStateOf(false) }
+    // Теги скрыты за кнопкой: постоянная лента тегов отнимала место у списка.
+    var tagsOpen by remember { mutableStateOf(false) }
     // Keep the typed text local: the host echoes it back asynchronously, and a stale echo must never
     // overwrite what was typed since (fast typing dropped and reordered characters). The only external
     // change is a reset, so only an empty host query clears the field.
@@ -147,7 +149,14 @@ private fun PromptBrowserFilters(
             if (onFavoritesOnly != null) item("favorite") {
                 FilterChip(selected = state.favoritesOnly, onClick = onFavoritesOnly, label = { Text("Избранное") })
             }
-            if (onTag != null) items(state.tags, key = { "tag:$it" }) { tag ->
+            if (onTag != null && state.tags.isNotEmpty()) item("tags-toggle") {
+                AssistChip(
+                    onClick = { tagsOpen = !tagsOpen },
+                    label = { Text(if (state.selectedTags.isEmpty()) "Теги" else "Теги: ${state.selectedTags.size}", maxLines = 1) },
+                    trailingIcon = { Icon(if (tagsOpen) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null) },
+                )
+            }
+            if (onTag != null && tagsOpen) items(state.tags, key = { "tag:$it" }) { tag ->
                 FilterChip(selected = tag in state.selectedTags, onClick = { onTag(tag) }, label = { Text(tag, maxLines = 1) })
             }
         }

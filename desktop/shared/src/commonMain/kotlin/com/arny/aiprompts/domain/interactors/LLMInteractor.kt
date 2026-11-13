@@ -425,10 +425,13 @@ class LLMInteractor(
         ensureProvider(session)
         val modelId = session.modelId ?: settingsRepository.getSelectedModelId().firstOrNull()
             ?: error("Выберите модель")
-        messages.drop(userIndex + 1).forEach { chatSessionRepository.deleteMessage(it.id) }
+        // Прежние ответы удаляем только после успешной замены: при ошибке генерации
+        // пользователь не должен потерять уже полученный текст.
+        val obsolete = messages.drop(userIndex + 1)
         flow<DataResult<ChatMessage>> { emitResponse(session, modelId) }.collect {
             if (it is DataResult.Error) throw it.exception ?: IllegalStateException("Ошибка генерации")
         }
+        obsolete.forEach { chatSessionRepository.deleteMessage(it.id) }
     }
 
     override suspend fun editMessage(messageId: String, newContent: String): Flow<DataResult<ChatMessage>> = flow {
@@ -455,11 +458,21 @@ class LLMInteractor(
         Logger.d("LLMInteractor", "Streaming cancelled")
     }
 
+    /**
+     * Чат привязан к провайдеру на момент создания. Если активный профиль другой,
+     * не подменяем его молча: сообщаем, какой профиль нужен и что сделать.
+     */
     private fun ensureProvider(session: ChatSession) {
-        val active = settingsRepository.loadProviders().active
-        require(session.providerId == null || session.providerId == active.id) {
-            "Провайдер этого чата изменён. Выберите модель текущего провайдера для продолжения."
-        }
+        val config = settingsRepository.loadProviders()
+        val active = config.active
+        val requiredId = session.providerId
+        if (requiredId == null || requiredId == active.id) return
+        val requiredName = config.profiles.firstOrNull { it.id == requiredId }?.name
+            ?: return  // профиль удалён: продолжаем с активным, ничего не ломая
+        throw IllegalStateException(
+            "Чат создан с провайдером «$requiredName», сейчас активен «${active.name}». " +
+                "Переключитесь на «$requiredName» в Настройки → Провайдеры, чтобы продолжить этот чат."
+        )
     }
 
     // ==================== Private Methods ====================

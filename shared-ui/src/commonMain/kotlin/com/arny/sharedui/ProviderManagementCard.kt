@@ -31,7 +31,12 @@ fun ProviderManagementCard(state: ProviderManagerState, onAction: (ProviderActio
                     border = if (selected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null) {
                 Column(Modifier.padding(12.dp)) {
                     Text(profile.name + if (profile.id == state.config.activeId) " • выбран" else "", style = MaterialTheme.typography.titleMedium)
-                    Text(profile.baseUrl, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        "Модель: " + shortModelName(profile.modelId).ifBlank { "не выбрана" },
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Text(profile.baseUrl, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                     FlowRow {
                         if (!selected) TextButton(onClick = { onAction(ProviderAction.Select(profile.id)) }) { Text("Использовать") }
                         TextButton(onClick = { onAction(ProviderAction.Edit(profile.id)) }) { Text("Настроить") }
@@ -40,15 +45,24 @@ fun ProviderManagementCard(state: ProviderManagerState, onAction: (ProviderActio
                 }
                 }
             }
-            Text("Добавить профиль")
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ProviderPreset.entries.forEach { preset -> OutlinedButton(onClick = { onAction(ProviderAction.Create(preset)) }) { Text(preset.title) } }
+            if (state.draft == null) {
+                Text("Добавить профиль")
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ProviderPreset.entries.forEach { preset -> OutlinedButton(onClick = { onAction(ProviderAction.Create(preset)) }) { Text(preset.title) } }
+                }
             }
             state.draft?.let { draft ->
                 HorizontalDivider()
                 OutlinedTextField(draft.name, { onAction(ProviderAction.Name(it)) }, label = { Text("Название") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(draft.baseUrl, { onAction(ProviderAction.Url(it)) }, label = { Text("Адрес API, включая /v1") }, enabled = draft.id != "openrouter", singleLine = true, modifier = Modifier.fillMaxWidth())
-                if (mobile && draft.id != "openrouter") Text("Для локального сервера укажите IP компьютера в вашей сети. localhost — адрес этого устройства.", style = MaterialTheme.typography.bodySmall)
+                if (mobile && draft.id != "openrouter") {
+                    Text(
+                        "Укажите IP компьютера в вашей сети; localhost — это само устройство. " +
+                            "LM Studio: http://192.168.x.x:1234/v1  Ollama: http://192.168.x.x:11434/v1  " +
+                            "эмулятор Android: http://10.0.2.2:1234/v1",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
                 if (!mobile && draft.id == "openrouter") {
                     Row(Modifier.fillMaxWidth().toggleable(draft.keySource == ProviderKeySource.ENVIRONMENT, role = Role.Checkbox, onValueChange = {
                             onAction(ProviderAction.KeySource(if (it) ProviderKeySource.ENVIRONMENT else ProviderKeySource.STORED))

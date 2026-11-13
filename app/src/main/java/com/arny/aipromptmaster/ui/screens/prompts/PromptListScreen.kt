@@ -227,6 +227,7 @@ fun PromptListScreenContent(
         state = com.arny.sharedui.PromptBrowserUi(
             prompts = cards, query = uiState.query, categories = uiState.availableCategories,
             category = uiState.selectedCategory, tags = uiState.availableTags, selectedTags = uiState.selectedTags,
+            favoritesOnly = uiState.favoritesOnly, sort = uiState.sortOrder, sortOptions = uiState.sortOptions,
         ),
         onQuery = { onIntent(PromptListIntent.SearchQueryChanged(it)) },
         onCategory = { onIntent(PromptListIntent.SelectCategory(it)) },
@@ -236,6 +237,8 @@ fun PromptListScreenContent(
         onCreate = { onNavigateToEdit(null) },
         onCopy = { onIntent(PromptListIntent.CopyText(it)) },
         onDelete = { onIntent(PromptListIntent.RemovePending(it)) },
+        onFavoritesOnly = { onIntent(PromptListIntent.ToggleFavoritesOnly) },
+        onSort = { onIntent(PromptListIntent.ChangeSort(it)) },
         status = { SyncStatusIndicator(state = uiState) },
     )
 }
