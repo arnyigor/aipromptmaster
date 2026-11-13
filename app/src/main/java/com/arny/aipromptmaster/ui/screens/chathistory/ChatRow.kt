@@ -67,55 +67,11 @@ fun ChatRow(
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            // Обработка кликов: и обычного, и долгого
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // === Левая часть: Имя и последнее сообщение ===
-            Column(
-                modifier = Modifier.weight(1f) // Занимает все доступное место
-            ) {
-                Text(
-                    text = chat.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = chat.lastMessage ?: "Нет сообщений", // Твой ресурс R.string.no_messages
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            // === Правая часть: Дата/Время ===
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                // В KMP форматирование даты лучше вынести в отдельную функцию
-                text = formatChatDate(chat.timestamp),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
+    com.arny.sharedui.ConversationRow(
+        title = chat.name, preview = chat.lastMessage ?: "Нет сообщений",
+        onClick = onClick, onLongClick = onLongClick,
+        metadata = { Text(formatChatDate(chat.timestamp), style = MaterialTheme.typography.labelSmall) },
+    )
 }
 
 /**

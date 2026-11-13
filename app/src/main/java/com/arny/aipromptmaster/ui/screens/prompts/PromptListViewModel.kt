@@ -28,6 +28,11 @@ data class PromptListUiState(
     val availableTags: List<String> = emptyList(),       // Список всех тегов из БД
     val selectedTags: Set<String> = emptySet(),          // Выбранные теги
     val isFiltersExpanded: Boolean = false,
+    /** Показывать только избранные промпты. */
+    val favoritesOnly: Boolean = false,
+    /** Текущий порядок сортировки (подпись из списка). */
+    val sortOrder: String = "По дате изменения",
+    val sortOptions: List<String> = listOf("По дате изменения", "По названию", "По категории"),
     val isSyncing: Boolean = false,
     val syncErrorMessage: StringHolder? = null
 )
@@ -37,6 +42,8 @@ sealed interface PromptListIntent {
     data class SearchQueryChanged(val query: String) : PromptListIntent
     data class SelectCategory(val category: String?) : PromptListIntent
     data class ToggleTag(val tag: String) : PromptListIntent
+    data object ToggleFavoritesOnly : PromptListIntent
+    data class ChangeSort(val order: String) : PromptListIntent
     data object ToggleFiltersVisibility : PromptListIntent
     data object ClearSearchAndFilters : PromptListIntent
     data object RetrySync : PromptListIntent
@@ -73,13 +80,20 @@ class PromptListViewModel(
         calculateState(filters, allPrompts, syncStatus)
     }.stateIn(viewModelScope, SharingStarted.Lazily, PromptListUiState())
 
-    private fun getSortedPrompts(filteredPrompts: List<Prompt>): List<Prompt> {
-        val sorted = filteredPrompts.sortedWith(
-            compareByDescending<Prompt> { it.isLocal }     // Сначала локальные
-                .thenByDescending { it.isFavorite }        // Потом избранные
-                .thenByDescending { it.modifiedAt }        // Потом свежие
-        )
-        return sorted
+    /**
+     * Приоритет: избранные → остальные личные → остальные публичные.
+     * Раньше первым шёл `isLocal`, из-за чего личные неубранные промпты стояли выше избранных.
+     */
+    private fun getSortedPrompts(filteredPrompts: List<Prompt>, sortOrder: String = "По дате изменения"): List<Prompt> {
+        val byPriority = compareByDescending<Prompt> { it.isFavorite }
+            .thenByDescending { it.isLocal }
+        val byOrder = when (sortOrder) {
+            "По названию" -> compareBy { it.title.lowercase() }
+            "По категории" -> compareBy({ it.category.lowercase() }, { it.title.lowercase() })
+            else -> compareByDescending<Prompt> { it.modifiedAt }
+        }
+        // Стабильный добор по id, чтобы порядок не «прыгал» при равных датах.
+        return filteredPrompts.sortedWith(byPriority.then(byOrder).thenBy { it.id })
     }
 
     private fun getFilteredPrompts(
@@ -87,6 +101,7 @@ class PromptListViewModel(
         filters: PromptListUiState
     ): List<Prompt> {
         val filteredPrompts = allPrompts.filter { prompt ->
+            if (filters.favoritesOnly && !prompt.isFavorite) return@filter false
             // Фильтр по строке поиска (title или description)
             val matchesQuery = filters.query.isBlank() ||
                     prompt.title.contains(filters.query, ignoreCase = true) ||
@@ -128,6 +143,12 @@ class PromptListViewModel(
                     state.copy(selectedCategory = newCategory)
                 }
             }
+
+            is PromptListIntent.ToggleFavoritesOnly ->
+                viewModelScope.launch { _filtersState.update { it.copy(favoritesOnly = !it.favoritesOnly) } }
+
+            is PromptListIntent.ChangeSort ->
+                viewModelScope.launch { _filtersState.update { it.copy(sortOrder = intent.order) } }
 
             is PromptListIntent.ToggleTag -> {
                 _filtersState.update { state ->
@@ -198,7 +219,7 @@ class PromptListViewModel(
                                     append("RU: $it\n")
                                 }
                                 content.en.takeIf { it.isNotBlank() }?.let {
-                                    append("RU: $it\n")
+                                    append("EN: $it\n")
                                 }
                             }
                             sendEffect(PromptListEffect.Copy(copy, "Скопировано"))
@@ -239,7 +260,7 @@ class PromptListViewModel(
         allPrompts: List<Prompt>,
         syncStatus: SyncStatus
     ): PromptListUiState = withContext(Dispatchers.Default) {
-        val sorted = getSortedPrompts(getFilteredPrompts(allPrompts, filters))
+        val sorted = getSortedPrompts(getFilteredPrompts(allPrompts, filters), filters.sortOrder)
         filters.copy(
             prompts = sorted,
             isSyncing = syncStatus is SyncStatus.InProgress,

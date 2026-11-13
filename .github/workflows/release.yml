@@ -1,0 +1,123 @@
+name: Android tagged release
+
+on:
+  push:
+    tags: ['v*']
+    branches: ['codex/unify-android-desktop']
+    paths: ['.github/workflows/release.yml']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag, e.g. v1.2.3
+        required: false
+        type: string
+      verify_only:
+        description: Build and verify current branch without publishing a release
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    env:
+      VERIFICATION_ONLY: ${{ inputs.verify_only || (github.event_name == 'push' && github.ref_type == 'branch') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Validate requested tag
+        id: version
+        if: ${{ env.VERIFICATION_ONLY != 'true' }}
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'Invalid release tag'; exit 1; }
+          IFS=. read -r major minor patch <<< "${RELEASE_TAG#v}"
+          [[ ${#major} -le 6 && ${#minor} -le 2 && ${#patch} -le 2 ]] || { echo 'Version exceeds versionCode component limits'; exit 1; }
+          (( 10#$major * 10000 + 10#$minor * 100 + 10#$patch <= 2100000000 )) || { echo 'versionCode exceeds Android limit'; exit 1; }
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "name=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
+      - name: Select verification source
+        if: ${{ env.VERIFICATION_ONLY == 'true' }}
+        run: echo 'Release verification only; no tag or publication'
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.VERIFICATION_ONLY == 'true' && github.sha || format('refs/tags/{0}', steps.version.outputs.tag) }}
+          fetch-depth: 0
+      - name: Record source commit
+        run: git rev-parse HEAD > source-commit.txt
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - run: chmod +x gradlew
+      - name: Quality gate on selected source
+        run: ./gradlew :prompt-contract:jvmTest :app:testDebugUnitTest :app:lintDebug :shared-ui:lintDebug --console=plain
+      - name: Restore existing signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SIGNING_KEY_STORE_BASE64 }}
+          SIGNING_KEY_STORE_PASSWORD: ${{ secrets.SIGNING_KEY_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          for name in KEYSTORE_BASE64 SIGNING_KEY_STORE_PASSWORD SIGNING_KEY_ALIAS SIGNING_KEY_PASSWORD; do
+            [[ -n "${!name}" ]] || { echo "Missing signing value: $name"; exit 1; }
+          done
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release-key.jks"
+      - name: Build signed APK
+        env:
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          SIGNING_KEY_STORE_PATH: ${{ runner.temp }}/release-key.jks
+          SIGNING_KEY_STORE_PASSWORD: ${{ secrets.SIGNING_KEY_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          if [[ -z "$VERSION_NAME" ]]; then unset VERSION_NAME; fi
+          ./gradlew :app:assembleRelease --console=plain
+      - name: Verify and collect APK
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.name }}
+        run: |
+          shopt -s nullglob
+          apks=(app/build/outputs/apk/release/*.apk)
+          [[ ${#apks[@]} -eq 1 ]] || { echo 'Expected one release APK'; exit 1; }
+          build_tools=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)
+          "$build_tools/apksigner" verify --verbose --print-certs "${apks[0]}" > signature-report.txt
+          cat signature-report.txt
+          # Certificate of the published 2.0.0 APK; preserve update compatibility.
+          grep -Eq '^Number of signers: 1$' signature-report.txt || { echo 'Expected one signer'; exit 1; }
+          grep -Eq 'certificate SHA-256 digest: f8485c5be4e36086dee1f3663dd3354189e395a9fd408378474a34f9474f26a8$' signature-report.txt || { echo 'Signing certificate changed'; exit 1; }
+          artifact="AiPromptMaster-v${RELEASE_VERSION:-verification}.apk"
+          cp "${apks[0]}" "$artifact"
+          sha256sum "$artifact" > checksums.txt
+      - uses: softprops/action-gh-release@v2
+        if: ${{ env.VERIFICATION_ONLY != 'true' }}
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            AiPromptMaster-v${{ steps.version.outputs.name }}.apk
+            checksums.txt
+            source-commit.txt
+            signature-report.txt
+          fail_on_unmatched_files: true
+      - uses: actions/upload-artifact@v4
+        if: ${{ env.VERIFICATION_ONLY == 'true' }}
+        with:
+          name: android-signed-verification
+          path: |
+            AiPromptMaster-vverification.apk
+            checksums.txt
+            source-commit.txt
+            signature-report.txt
+          if-no-files-found: error
+      - name: Clean signing file
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release-key.jks"

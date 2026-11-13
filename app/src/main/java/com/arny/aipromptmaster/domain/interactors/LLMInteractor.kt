@@ -40,6 +40,10 @@ class LLMInteractor(
     private val historyRepository: IChatHistoryRepository,
     private val fileRepository: IFileRepository
 ) : ILLMInteractor {
+    override fun getChatGeneration(conversationId: String) =
+        settingsRepository.getChatGeneration(conversationId) ?: com.arny.promptcontract.ChatGenerationConfig()
+    override fun saveChatGeneration(conversationId: String, settings: com.arny.promptcontract.ChatGenerationConfig) =
+        settingsRepository.saveChatGeneration(conversationId, settings.checked())
 
     var capturedError: DomainError? = null // 1. Переменная для ошибки
 
@@ -229,7 +233,8 @@ class LLMInteractor(
         conversationId: String?,
         userMessageText: String,
         attachedFiles: List<FileAttachment>,
-        skipUserMessageCreation: Boolean
+        skipUserMessageCreation: Boolean,
+        onReasoning: (String) -> Unit
     ) {
         val chatId = conversationId ?: throw DomainError.local(R.string.error_no_conversation_id)
 
@@ -247,8 +252,8 @@ class LLMInteractor(
         }
 
         // Получаем API ключ и модель ДО создания сообщения
-        val apiKey = settingsRepository.getApiKey().takeIf { !it.isNullOrBlank() }
-            ?: throw DomainError.local(R.string.api_key_not_found)
+        val apiKey = settingsRepository.getApiKey().orEmpty()
+        if (apiKey.isBlank() && settingsRepository.loadProviders().active.requiresKey) throw DomainError.local(R.string.api_key_not_found)
 
         // Получаем полный объект модели для проверки multimodal возможностей
         val selectedModel = modelRepository.getSelectedModel()
@@ -266,9 +271,24 @@ class LLMInteractor(
             )
         )
 
+        val partialResponse = StringBuilder()
+        // Размышления: для UI отдаём сразу через onReasoning, в БД пишем троттлингом,
+        // чтобы восстановить блок после перезапуска и не нагружать Room каждым чанком.
+        val reasoningBuffer = StringBuilder()
+        var lastReasoningWrite = 0L
         try {
 
+            val generation = getChatGeneration(chatId).checked()
+            val systemPrompt = historyRepository.getSystemPrompt(chatId).orEmpty()
             val history = historyRepository.getFullHistory(chatId)
+                .filter { it.id != assistantMsgId }
+                .let { messages ->
+                    val system = if (systemPrompt.isBlank()) emptyList() else listOf(ChatMessage(role = ChatRole.SYSTEM, content = systemPrompt))
+                    system + com.arny.promptcontract.fitContextHistory(
+                        messages.filter { it.role != ChatRole.SYSTEM }.takeLast(generation.contextWindow),
+                        systemPrompt, selectedModel?.contextLength?.toLongOrNull()?.coerceIn(1, Int.MAX_VALUE.toLong())?.toInt() ?: 8192,
+                        generation.maxTokens, text = { it.content })
+                }
             try {
                 // Получаем стрим от репозитория/API с прикрепленными файлами и моделью
                 val streamFlow: Flow<DataResult<StreamResult>> =
@@ -277,7 +297,8 @@ class LLMInteractor(
                         messages = history,
                         apiKey = apiKey,
                         attachedFiles = attachedFiles,
-                        llmModel = selectedModel
+                        llmModel = selectedModel,
+                        generation = generation
                     )
 
                 // Переменная для хранения актуальной модели из ответа
@@ -295,6 +316,16 @@ class LLMInteractor(
                                     actualModelId = modelId
                                 }
                             }
+                            result.data.reasoning?.takeIf { it.isNotEmpty() }?.let { chunk ->
+                                onReasoning(chunk)
+                                reasoningBuffer.append(chunk)
+                                val now = System.currentTimeMillis()
+                                if (now - lastReasoningWrite >= 400L) {
+                                    lastReasoningWrite = now
+                                    val snapshot = reasoningBuffer.toString()
+                                    historyRepository.updateMessageReasoning(assistantMsgId, snapshot, snapshot.length)
+                                }
+                            }
                             result.data
                         }
 
@@ -305,7 +336,7 @@ class LLMInteractor(
 
                 // 2. ЗАПУСК ТРОТТЛИНГА
                 val finalContent = contentFlow.collectWithThrottling(
-                    initialValue = StringBuilder(), // Используем StringBuilder как аккумулятор
+                    initialValue = partialResponse, // Retain partial output on interruption
                     periodMillis = 300L, // Обновляем БД ~3 раза в секунду
                     accumulator = { builder, newChunk ->
                         builder.append(newChunk.content) // Эффективное добавление без лишних аллокаций
@@ -336,6 +367,10 @@ class LLMInteractor(
                 } else {
                     // Обновляем контент финально (уже тримированный)
                     historyRepository.updateMessageContent(assistantMsgId, finalContentStr)
+                    if (reasoningBuffer.isNotEmpty()) {
+                        val snapshot = reasoningBuffer.toString()
+                        historyRepository.updateMessageReasoning(assistantMsgId, snapshot, snapshot.length)
+                    }
 
                     // Обновляем modelId если пришел отличный от запрошенного
                     actualModelId?.let { modelId ->
@@ -346,14 +381,14 @@ class LLMInteractor(
             } catch (e: Exception) {
                 // Обработка ошибок
                 Timber.e(e, "Streaming failed")
-                // Удаляем плейсхолдер при ошибке
-                historyRepository.deleteMessage(assistantMsgId)
-                throw e // Пробрасываем, чтобы ViewModel показала ошибку
+                throw e // The outer handler preserves partial output.
             }
 
         } catch (e: Exception) {
-            // Удаляем плейсхолдер при ошибке
-            historyRepository.deleteMessage(assistantMsgId)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                if (partialResponse.isBlank()) historyRepository.deleteMessage(assistantMsgId)
+                else historyRepository.updateMessageContent(assistantMsgId, partialResponse.toString().trim() + "\n\n_Ответ прерван._")
+            }
             throw e
         }
     }

@@ -1,0 +1,39 @@
+# Build Errors Summary
+
+All compilation errors have been fixed! The project now compiles successfully.
+
+## Fixed Issues:
+
+1. **PlatformFile** - Refactored from expect/actual class to interface + factory function pattern
+   - Common: `interface PlatformFile` + `createPlatformFile(path): PlatformFile`
+   - Desktop: Uses JVM `java.io.File` directly
+   - Android: Handles both file:// and content:// URIs
+
+2. **getPlatform()** - Refactored from expect/actual to single expect function
+   - Common: `expect fun getPlatform(): Platform`
+   - Desktop: Returns `Platform.Desktop`
+   - Android: Returns `Platform.Android`
+
+3. **FilePicker** - Implemented for both platforms
+   - Desktop: Uses AWT FileDialog
+   - Android: Helper function to create PlatformFile from content:// URIs
+
+4. **FlowUtils** - Created utility for Flow throttling/debouncing
+
+5. **DB Migrations** - Already existed and were correct (MIGRATION_1_2, MIGRATION_2_3)
+
+6. **Dependencies** - Already existed and were correct (markdown renderer, coil3)
+
+7. **ChatMessageEntity** - Already had required fields (modelId, tokenCount, editedAt, orderIndex)
+
+## Current Status:
+- ✅ shared module compiles (Desktop + Android)
+- ✅ desktopApp compiles
+- ✅ androidApp compiles
+
+## Build Commands:
+```bash
+./gradlew :shared:compileKotlinDesktop :shared:compileDebugKotlinAndroid
+./gradlew :desktopApp:compileKotlinDesktop
+./gradlew :androidApp:compileDebugKotlin
+```

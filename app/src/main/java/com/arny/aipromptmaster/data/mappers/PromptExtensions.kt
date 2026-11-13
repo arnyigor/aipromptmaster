@@ -26,6 +26,7 @@ fun Prompt.toEntity(): PromptEntity = PromptEntity(
     contentRu = content.ru,
     contentEn = content.en,
     description = description,
+    variablesJson = com.arny.promptcontract.PromptStorage.encode(variables, wireDocument),
     category = category,
     status = status,
     tags = tags.joinToString(","),
@@ -44,35 +45,41 @@ fun Prompt.toEntity(): PromptEntity = PromptEntity(
     modifiedAt = modifiedAt.toIsoString(),
 )
 
-fun PromptEntity.toDomain(): Prompt = Prompt(
-    id = id,
-    title = title,
-    content = PromptContent(
-        ru = contentRu,
-        en = contentEn
-    ),
-    description = description,
-    category = category,
-    status = status,
-    tags = tags.split(",").filter { it.isNotBlank() },
-    isLocal = isLocal,
-    isFavorite = isFavorite,
-    rating = rating,
-    ratingVotes = ratingVotes,
-    compatibleModels = compatibleModels.split(","),
-    metadata = PromptMetadata(
-        author = Author(
-            id = authorId,
-            name = author
+fun PromptEntity.toDomain(): Prompt {
+    // Decode the storage envelope once per row: list rendering maps hundreds of rows per emission.
+    val stored = com.arny.promptcontract.PromptStorage.decode(variablesJson)
+    return Prompt(
+        variables = stored.variables,
+        wireDocument = stored.document,
+        id = id,
+        title = title,
+        content = PromptContent(
+            ru = contentRu,
+            en = contentEn
         ),
-        source = source,
-        notes = notes
-    ),
-    version = version,
-    promptVariants = jsonParser.decodeFromString(promptVariantsJson),
-    createdAt = createdAt.toIsoDate(),
-    modifiedAt = modifiedAt.toIsoDate(),
-)
+        description = description,
+        category = category,
+        status = status,
+        tags = tags.split(",").filter { it.isNotBlank() },
+        isLocal = isLocal,
+        isFavorite = isFavorite,
+        rating = rating,
+        ratingVotes = ratingVotes,
+        compatibleModels = compatibleModels.split(","),
+        metadata = PromptMetadata(
+            author = Author(
+                id = authorId,
+                name = author
+            ),
+            source = source,
+            notes = notes
+        ),
+        version = version,
+        promptVariants = jsonParser.decodeFromString(promptVariantsJson),
+        createdAt = createdAt.toIsoDate(),
+        modifiedAt = modifiedAt.toIsoDate(),
+    )
+}
 
 fun PromptJson.toDomain(): Prompt {
     val variablesMap = variables.associate { it.name to it.defaultValue.orEmpty() }
@@ -80,6 +87,7 @@ fun PromptJson.toDomain(): Prompt {
     val domainVariants = promptVariants.map { it.toDomain() }
 
     return Prompt(
+        wireDocument = this,
         id = id ?: UUID.randomUUID().toString(),
         title = title.orEmpty(),
         description = description,
@@ -112,7 +120,7 @@ fun PromptVariantJson.toDomain(): DomainPromptVariant = DomainPromptVariant(
     variantId = DomainVariantId(
         type = this.variantId?.type.orEmpty(),
         id = this.variantId?.id.orEmpty(),
-        priority = this.variantId?.priority ?: 0
+        priority = this.priority ?: this.variantId?.priority ?: 0
     ),
     content = PromptContent.fromMap(this.content)
 )

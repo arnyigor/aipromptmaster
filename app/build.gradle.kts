@@ -5,7 +5,6 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    kotlin("kapt")
     id("com.google.devtools.ksp")
     alias(libs.plugins.android.room)
     alias(libs.plugins.kotlin.serialization)
@@ -132,18 +131,15 @@ android {
     }
 
     buildFeatures {
-        viewBinding = true
         buildConfig = true
     }
+
+    sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
 
     kotlinOptions {
         jvmTarget = "17"
     }
 
-    kapt {
-        correctErrorTypes = true
-        useBuildCache = true
-    }
 }
 
 room {
@@ -153,6 +149,9 @@ room {
 }
 
 dependencies {
+    implementation(project(":shared-ui"))
+    implementation("androidx.lifecycle:lifecycle-viewmodel-navigation3:2.10.0")
+    implementation(project(":prompt-contract"))
 
     // Koin core + Android support
     implementation(libs.koin.android)
@@ -194,8 +193,7 @@ implementation(libs.androidx.lifecycle.runtime.ktx)
     // Source: https://mvnrepository.com/artifact/com.jakewharton.timber/timber
     implementation(libs.timber)
 
-    // Serialization для Navigation 3
-    implementation(libs.kotlinx.serialization.json)
+    // Serialization для Navigation 3 is already declared above.
     implementation(libs.androidx.compose.animation)
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.compose.material3.adaptive.navigation.suite)
@@ -203,7 +201,9 @@ implementation(libs.androidx.lifecycle.runtime.ktx)
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockk)
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.11.0")
     androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.room.testing)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

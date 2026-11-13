@@ -16,5 +16,7 @@ data class ModelsUiState(
     // Статистика после проверки
     val availableCount: Int = 0,
     val totalCheckedCount: Int = 0,
-    val bestRatedModel: LlmModel? = null
+    val bestRatedModel: LlmModel? = null,
+    /** Доступные провайдеры для чипов-фильтров. */
+    val providers: List<com.arny.aipromptmaster.domain.repositories.ProviderOption> = emptyList(),
 )

@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
@@ -67,10 +68,27 @@ class ModelsViewModel(
     )
     val effects: Flow<ModelsEffect> = _effects.asSharedFlow()
 
-    private val favoriteToggleFlow = MutableSharedFlow<String>(
-        extraBufferCapacity = 1,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    // Буфер накапливает независимые клики: debounce(300) терял часть изменений.
+    private val favoriteToggleFlow = MutableSharedFlow<Pair<String, String>>(
+        extraBufferCapacity = 64,
+        onBufferOverflow = BufferOverflow.SUSPEND
     )
+
+    private val _providers = MutableStateFlow<List<com.arny.aipromptmaster.domain.repositories.ProviderOption>>(emptyList())
+
+    private data class RuntimeState(
+        val providers: List<com.arny.aipromptmaster.domain.repositories.ProviderOption> = emptyList(),
+        val checking: Boolean = false,
+        val progress: Float = 0f,
+        val checked: Int = 0,
+        val total: Int = 0,
+    )
+
+    private val runtimeState: kotlinx.coroutines.flow.Flow<RuntimeState> = combine(
+        _providers, _isChecking, _checkingProgress, _checkedCount, _totalToCheck,
+    ) { providers, checking, progress, checked, total ->
+        RuntimeState(providers, checking, progress, checked, total)
+    }
 
     // 4. Реактивный UI State
     @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
@@ -99,7 +117,8 @@ class ModelsViewModel(
                         totalToCheck = _totalToCheck.value,
                         availableCount = modelsWithRating.count { it.isAvailable == true },
                         totalCheckedCount = modelsWithRating.count { it.isAvailable != null },
-                        bestRatedModel = bestModel
+                        bestRatedModel = bestModel,
+                        providers = _providers.value,
                     )
                 }
                 .catch { exception ->
@@ -114,6 +133,20 @@ class ModelsViewModel(
                 }
                 .onStart { emit(ModelsUiState(isLoading = true, filter = currentFilter)) }
         }
+        // Debounce the results request, never the text displayed in the search field.
+        .combine(_filter) { result, inputFilter ->
+            result.copy(filter = inputFilter, isLoading = result.isLoading || result.filter != inputFilter)
+        }
+        // Провайдеры и прогресс проверки — отдельные источники: без combine они не обновляли UI.
+        .combine(runtimeState) { result, runtime ->
+            result.copy(
+                providers = runtime.providers,
+                isCheckingAvailability = runtime.checking,
+                checkingProgress = runtime.progress,
+                checkedCount = runtime.checked,
+                totalToCheck = runtime.total,
+            )
+        }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(
@@ -124,21 +157,25 @@ class ModelsViewModel(
         )
 
     init {
+        viewModelScope.launch {
+            repository.observeProviderOptions().collect { _providers.value = it }
+        }
         refreshModels()
         setupFavoriteToggle()
     }
 
     private fun setupFavoriteToggle() {
         favoriteToggleFlow
-            .debounce(300)
-            .onEach { modelId ->
+            // Каждое событие обрабатывается последовательно; конфликты по одной модели
+            // сериализуются, а клики по разным моделям больше не схлопываются.
+            .onEach { (providerId, modelId) ->
                 try {
-                    val newState = repository.toggleFavorite(modelId)
+                    val newState = repository.toggleFavorite(providerId, modelId)
                     _effects.emit(ModelsEffect.FavoriteToggled(modelId, newState))
                 } catch (e: Throwable) {
                     _effects.emit(
                         ModelsEffect.ShowMessage(
-                            StringHolder.Text(e.localizedMessage ?: "Unknown error"),
+                            StringHolder.Text(e.localizedMessage ?: "Не удалось загрузить модели"),
                             isError = true
                         )
                     )
@@ -150,28 +187,31 @@ class ModelsViewModel(
     fun onEvent(event: ModelsEvent) {
         when (event) {
             is ModelsEvent.Search -> _filter.update { it.copy(query = event.query) }
+            is ModelsEvent.SelectProvider -> _filter.update {
+                it.copy(providerId = if (it.providerId == event.providerId) null else event.providerId)
+            }
             is ModelsEvent.ToggleFree -> _filter.update { it.copy(isFreeOnly = !it.isFreeOnly) }
             is ModelsEvent.ToggleFavoritesOnly -> _filter.update { it.copy(isFavoritesOnly = !it.isFavoritesOnly) }
             is ModelsEvent.ToggleAvailableOnly -> _filter.update { it.copy(isAvailableOnly = !it.isAvailableOnly) }
             is ModelsEvent.ChangeSort -> _filter.update { it.copy(sortType = event.type) }
             is ModelsEvent.ToggleModelFavorite -> {
                 viewModelScope.launch {
-                    favoriteToggleFlow.emit(event.id)
+                    favoriteToggleFlow.emit(event.providerId to event.id)
                 }
             }
 
-            is ModelsEvent.SelectModel -> selectModel(event.id)
+            is ModelsEvent.SelectModel -> selectModel(event.providerId, event.id)
             ModelsEvent.Refresh -> refreshModels()
             ModelsEvent.CheckFreeModelsAvailability -> checkFreeModelsAvailability()
-            is ModelsEvent.CheckModelAvailability -> checkModelAvailability(event.id)
+            is ModelsEvent.CheckModelAvailability -> checkModelAvailability(event.id, event.providerId)
             ModelsEvent.CancelAvailabilityCheck -> cancelAvailabilityCheck()
         }
     }
 
-    private fun selectModel(modelId: String) {
+    private fun selectModel(providerId: String, modelId: String) {
         viewModelScope.launch {
             try {
-                repository.selectModel(modelId)
+                repository.selectModel(providerId, modelId)
                 _effects.emit(
                     ModelsEffect.ShowMessage(
                         StringHolder.Text("Модель выбрана"),
@@ -181,7 +221,7 @@ class ModelsViewModel(
             } catch (e: Exception) {
                 _effects.emit(
                     ModelsEffect.ShowMessage(
-                        StringHolder.Text(e.localizedMessage ?: "Unknown error"),
+                        StringHolder.Text(e.localizedMessage ?: "Не удалось загрузить модели"),
                         isError = true
                     )
                 )
@@ -196,7 +236,7 @@ class ModelsViewModel(
                 result.onFailure { e ->
                     _effects.emit(
                         ModelsEffect.ShowMessage(
-                            StringHolder.Text("Refresh failed: ${e.message}"),
+                            StringHolder.Text(e.message ?: "Не удалось загрузить модели"),
                             isError = true
                         )
                     )
@@ -204,7 +244,7 @@ class ModelsViewModel(
             } catch (e: Exception) {
                 _effects.emit(
                     ModelsEffect.ShowMessage(
-                        StringHolder.Text(e.localizedMessage ?: "Unknown error"),
+                        StringHolder.Text(e.localizedMessage ?: "Не удалось загрузить модели"),
                         isError = true
                     )
                 )
@@ -268,7 +308,6 @@ class ModelsViewModel(
 
                 if (!isCheckCancelled) {
                     // После проверки обновляем UI и получаем лучшую модель
-                    _filter.value = _filter.value.copy()
 
                     // Даем время UI обновиться
                     delay(200)
@@ -329,10 +368,13 @@ class ModelsViewModel(
     /**
      * Проверяет доступность конкретной модели.
      */
-    private fun checkModelAvailability(modelId: String) {
-        // Проверяем наличие API ключа перед началом проверки
+    private fun checkModelAvailability(modelId: String, providerId: String) {
+        // Ключ нужен только профилю, который его требует (локальные серверы работают без ключа).
+        val profile = settingsRepository.loadProviders().let { config ->
+            config.profiles.firstOrNull { it.id == providerId } ?: config.active
+        }
         val apiKey = settingsRepository.getApiKey()
-        if (apiKey.isNullOrBlank()) {
+        if (profile.requiresKey && apiKey.isNullOrBlank()) {
             viewModelScope.launch {
                 _effects.emit(
                     ModelsEffect.ShowMessage(
@@ -346,7 +388,7 @@ class ModelsViewModel(
         
         viewModelScope.launch {
             try {
-                val isAvailable = repository.checkModelAvailability(modelId)
+                val isAvailable = repository.checkModelAvailability(profile.id, modelId)
                 val message = if (isAvailable) "Модель доступна" else "Модель недоступна"
                 _effects.emit(
                     ModelsEffect.ShowMessage(
@@ -354,8 +396,6 @@ class ModelsViewModel(
                         isError = !isAvailable
                     )
                 )
-                // Принудительно обновляем UI перезапуском Flow
-                _filter.value = _filter.value.copy()
             } catch (e: Exception) {
                 _effects.emit(
                     ModelsEffect.ShowMessage(

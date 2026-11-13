@@ -1,6 +1,10 @@
 package com.arny.aipromptmaster.ui.screens.edit
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.SavedStateHandle
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import androidx.lifecycle.viewModelScope
 import com.arny.aipromptmaster.domain.interactors.IPromptsInteractor
 import com.arny.aipromptmaster.domain.models.DomainPromptVariant
@@ -24,16 +28,27 @@ import kotlin.coroutines.cancellation.CancellationException
 class PromptEditViewModel(
     promptId: String?,
     private val interactor: IPromptsInteractor,
+    improvePrompt: com.arny.aipromptmaster.domain.ImprovePromptUseCase? = null,
+    private val savedState: SavedStateHandle = SavedStateHandle(),
 ) : ViewModel() {
 
     /* ---------------------------------------------------------------------*
      *  Private mutable holders
      * ---------------------------------------------------------------------*/
-    private val _uiState = MutableStateFlow(EditUiState())
+    private val restoredDraft = savedState.get<String>("prompt-edit-draft")?.let { runCatching { Json.decodeFromString<EditUiState>(it) }.getOrNull() }
+    private val _uiState = MutableStateFlow(restoredDraft ?: EditUiState())
     private val _validation = MutableStateFlow(ValidationState())
     private val _saveResult = MutableStateFlow<SaveResult>(SaveResult.Idle)
     /** Holds the list of categories loaded from DB */
     private val _categories = MutableStateFlow<List<String>>(emptyList())
+    private val improvementController = improvePrompt?.let { useCase ->
+        PromptImprovementController(useCase, viewModelScope) { language, result ->
+            if (language == PromptLanguage.RU) updateContentRu(result) else updateContentEn(result)
+        }
+    }
+    val improvement: StateFlow<PromptImprovementState> = improvementController?.state ?: MutableStateFlow(PromptImprovementState())
+    fun openImprovement() { if (!_uiState.value.isLoading) improvementController?.open(_uiState.value.contentRu, _uiState.value.contentEn) }
+    fun onImprovementAction(action: PromptImprovementAction) { improvementController?.onAction(action) }
 
     /* ---------------------------------------------------------------------*
      *  Public state flows
@@ -54,11 +69,14 @@ class PromptEditViewModel(
     private val MAX_TITLE_LENGTH = 200
 
     init {
-        if (promptId != null) {
+        if (promptId != null && restoredDraft == null) {
             loadPrompt(promptId)
         }
         // Load categories from DB during initialization
         loadCategories()
+        viewModelScope.launch {
+            _uiState.collect { draft -> if (!draft.isLoading) savedState["prompt-edit-draft"] = Json.encodeToString(draft) }
+        }
     }
 
     /* ---------------------------------------------------------------------*
@@ -156,25 +174,29 @@ class PromptEditViewModel(
      *  Save logic
      * ---------------------------------------------------------------------*/
     fun onSaveClicked() {
+        if (_saveResult.value is SaveResult.Loading) return
         viewModelScope.launch {
             if (!validate()) return@launch
 
             _saveResult.value = SaveResult.Loading
             try {
                 val state = _uiState.value
+                val previous = state.id?.let { interactor.getPrompt(it) }
                 val prompt = Prompt(
                     id = state.id ?: UUID.randomUUID().toString(),
                     title = state.title.trim(),
                     description = state.description,
                     content = PromptContent(state.contentRu, state.contentEn),
-                    variables = emptyMap(),
+                    variables = previous?.variables.orEmpty(),
+                    wireDocument = previous?.wireDocument,
                     promptVariants = state.variants,
                     compatibleModels = state.compatibleModels,
                     category = state.category,
                     tags = state.tags,
                     isLocal = true,
-                    rating = 0f,
-                    ratingVotes = 0,
+                    isFavorite = previous?.isFavorite ?: false,
+                    rating = previous?.rating ?: 0f,
+                    ratingVotes = previous?.ratingVotes ?: 0,
                     metadata = state.metadata,
                     createdAt = if (state.isNew) {
                         Date()
@@ -192,6 +214,8 @@ class PromptEditViewModel(
                 } else {
                     SaveResult.Error("Не удалось сохранить промпт")
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _saveResult.value = SaveResult.Error(e.localizedMessage ?: "Ошибка при сохранении")
             }
@@ -350,6 +374,7 @@ class PromptEditViewModel(
     /* ---------------------------------------------------------------------*
      *  Immutable data classes
      * ---------------------------------------------------------------------*/
+    @Serializable
     data class EditUiState(
         val title: String = "",
         val description: String? = null,

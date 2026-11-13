@@ -46,10 +46,12 @@ Room.databaseBuilder(
             .addMigrations(AppDatabase.MIGRATION_1_2)
             .addMigrations(AppDatabase.MIGRATION_2_3)
             .addMigrations(AppDatabase.MIGRATION_3_4)
+            .addMigrations(AppDatabase.MIGRATION_4_5)
             .addMigrations(AppDatabase.MIGRATION_5_6)
             .addMigrations(AppDatabase.MIGRATION_6_7)
             .addMigrations(AppDatabase.MIGRATION_7_8)
-            .fallbackToDestructiveMigration()
+            .addMigrations(AppDatabase.MIGRATION_8_9)
+            .addMigrations(AppDatabase.MIGRATION_9_10)
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
@@ -57,6 +59,8 @@ Room.databaseBuilder(
                 }
             }).build()
     }
+
+    single<com.arny.promptcontract.PersonalVaultLocal> { com.arny.aipromptmaster.data.repositories.AndroidPersonalVaultLocal(get()) }
 
     // ---------- DAO‑ы ----------
     factory<PromptDao> { get<AppDatabase>().promptDao() }
@@ -82,8 +86,7 @@ Room.databaseBuilder(
     singleOf(::SettingsRepositoryImpl) { bind<ISettingsRepository>() }
     singleOf(::ChatHistoryRepositoryImpl) { bind<IChatHistoryRepository>() }
     // ModelRepositoryImpl depends on ISettingsRepository
-    single { ModelRepositoryImpl(get(), get(), get(), get()) } // api, dao, syncMetadata, settingsRepository
-    singleOf(::ModelRepositoryImpl) { bind<ModelRepository>() }
+    single<ModelRepository> { ModelRepositoryImpl(get(), get(), get(), get(), get()) }
     singleOf(::ShareServiceImpl) { bind<ShareService>() }
     // ---------- Диспатчер ----------
     single<CoroutineDispatcher> { Dispatchers.IO }   // можно вынести в отдельный модуль

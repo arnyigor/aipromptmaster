@@ -1,0 +1,20 @@
+{
+  "apk": "AiPromptMaster-release-v0.0.2.2.-2.apk",
+  "apkSha256": "d11c036682466b25f32c70f909b0528f44656fe1f163be6c0fcce6fe850fecb7",
+  "apkTag": "v0.1.0",
+  "sources": {
+    "1": {
+      "ref": "v0.1.0",
+      "databaseSourceSha256": "4d5f5ddb143718225724c011aa511518a0777a919b0c32165d2a17bdb3d2c69e"
+    },
+    "2": {
+      "ref": "29a6e60",
+      "databaseSourceSha256": "39eff2c9993b43898cb192ce0535c117a16a442dcbd2825e3e45ed3ca1c80ec8"
+    },
+    "3": {
+      "ref": "2a2672c",
+      "databaseSourceSha256": "9df27fd99e6c5290a6c5b8a3273af3843dd334131914f239bca99b315968a1d0"
+    }
+  },
+  "method": "Version 1 CREATE TABLE and indexes extracted from released DEX; versions 2/3 verified against historical entity definitions. No identity hashes invented."
+}

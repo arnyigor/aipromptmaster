@@ -72,31 +72,7 @@ override suspend fun getPromptById(promptId: String): Prompt? = withContext(disp
     }
 
     override suspend fun savePrompts(prompts: List<Prompt>) = withContext(dispatcher) {
-        // 1. Получаем все локальные промпты из базы ОДНИМ запросом.
-        val localPrompts = promptDao.getAllPrompts().associateBy { it.id }
-
-        // 2. Создаем "слитый" список.
-        val mergedPrompts = prompts.map { remotePrompt ->
-            // Ищем соответствующий локальный промпт.
-            val localPrompt = localPrompts[remotePrompt.id]
-
-            // Если локальный промпт существует и он избранный,
-            // то мы создаем копию удаленного промпта, но с флагом isFavorite = true.
-            if (localPrompt != null && localPrompt.isFavorite) {
-                remotePrompt.copy(isFavorite = true)
-            } else {
-                // Иначе просто берем промпт с сервера как есть.
-                remotePrompt
-            }
-        }
-
-        // 3. Сохраняем "слитый" список в базу.
-        // OnConflictStrategy.REPLACE теперь работает правильно: он заменяет данные,
-        // но флаг isFavorite мы уже сохранили.
-        val entitiesToSave = mergedPrompts.map { it.toEntity() }
-        entitiesToSave.forEach { entity ->
-            promptDao.insertPrompt(entity)
-        }
+        promptDao.syncPrompts(prompts.map { it.toEntity() }, emptyList())
     }
 
     override suspend fun getPrompts(
@@ -117,27 +93,7 @@ override suspend fun getPromptById(promptId: String): Prompt? = withContext(disp
         ).map { it.toDomain() }
     }
 
-override suspend fun syncPrompts(prompts: List<Prompt>, ids: List<String>) {
-        // Preserve favorite status from local data
-        val localPrompts = promptDao.getAllPrompts()
-        val favoriteIds = localPrompts.filter { it.isFavorite }.map { it.id }.toSet()
-
-        // Delete prompts that are removed on the server
-        if (ids.isNotEmpty()) {
-            promptDao.deletePromptsByIds(ids)
-        }
-
-        // Merge remote prompts with preserved favorite flags
-        val mergedPrompts = prompts.map { remote ->
-            if (favoriteIds.contains(remote.id)) {
-                remote.copy(isFavorite = true)
-            } else {
-                remote
-            }
-        }
-
-        // Insert or replace into DB, keeping new favorite status
-        val entitiesToInsert = mergedPrompts.map { it.toEntity() }
-        promptDao.insertPrompts(entitiesToInsert)
+    override suspend fun syncPrompts(prompts: List<Prompt>, ids: List<String>) = withContext(dispatcher) {
+        promptDao.syncPrompts(prompts.map { it.toEntity() }, ids)
     }
 }

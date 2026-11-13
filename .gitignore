@@ -2,6 +2,7 @@
 ### Android template
 # Gradle files
 .gradle/
+.kotlin/
 build/
 .idea/
 *.iml

@@ -70,6 +70,7 @@ fun ModelDTO.toEntity(): ModelEntity {
 
     return ModelEntity(
         id = dto.id,
+        providerId = "openrouter",
         name = dto.name,
         description = dto.description,
         contextLength = dto.contextLength,
@@ -100,6 +101,7 @@ fun ModelEntity.toDomain(): LlmModel = with(this) {
 
     LlmModel(
         id = id,
+        providerId = providerId,
         name = name,
         description = description,
         created = lastUpdated,

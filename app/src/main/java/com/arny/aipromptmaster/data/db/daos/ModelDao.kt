@@ -50,12 +50,21 @@ interface ModelDao {
         sortBy: String
     ): Flow<List<ModelEntity>>
 
+    /** Провайдеры, у которых есть сохранённые модели. */
+    @Query("SELECT DISTINCT providerId FROM models ORDER BY providerId")
+    fun observeProviderIds(): kotlinx.coroutines.flow.Flow<List<String>>
+
     @Query("SELECT COUNT(*) FROM models")
     suspend fun getModelsCount(): Int
 
-    @Query("SELECT id FROM models WHERE isFavorite = 1")
-    suspend fun getFavoriteIds(): List<String>
+    /** Ключи вида `providerId|id`: избранное нельзя переносить между провайдерами. */
+    @Query("SELECT providerId || '|' || id FROM models WHERE isFavorite = 1")
+    suspend fun getFavoriteKeys(): List<String>
 
+    @Query("SELECT providerId || '|' || id FROM models WHERE isSelected = 1 LIMIT 1")
+    suspend fun getSelectedModelKey(): String?
+
+    /** Для совместимости: id выбранной модели без владельца. */
     @Query("SELECT id FROM models WHERE isSelected = 1 LIMIT 1")
     suspend fun getSelectedModelId(): String?
 
@@ -70,33 +79,45 @@ interface ModelDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertModels(models: List<ModelEntity>)
 
+    /** Удаляет устаревшие модели провайдера, не затрагивая избранные и выбранную. */
+    @Query("""
+        DELETE FROM models
+        WHERE providerId = :providerId
+          AND id NOT IN (:keepIds)
+          AND isFavorite = 0
+          AND isSelected = 0
+    """)
+    suspend fun deleteStaleProviderModels(providerId: String, keepIds: List<String>): Int
+
     // --- Пакетные операции по флагам
-    @Query("UPDATE models SET isFavorite = :isFavorite WHERE id = :modelId")
-    suspend fun updateFavoriteStatus(modelId: String, isFavorite: Boolean): Int
+    @Query("UPDATE models SET isFavorite = :isFavorite WHERE providerId = :providerId AND id = :modelId")
+    suspend fun updateFavoriteStatus(providerId: String, modelId: String, isFavorite: Boolean): Int
 
     @Query("UPDATE models SET isSelected = 0")
     suspend fun clearSelection()
 
-    @Query("UPDATE models SET isSelected = 1 WHERE id = :modelId")
-    suspend fun setSelection(modelId: String)
+    @Query("UPDATE models SET isSelected = 1 WHERE providerId = :providerId AND id = :modelId")
+    suspend fun setSelection(providerId: String, modelId: String)
 
     /* ----------------- Транзакции ----------------------------------- */
 
     @Transaction
-    suspend fun selectModel(modelId: String) {
+    suspend fun selectModel(providerId: String, modelId: String) {
         clearSelection()
-        setSelection(modelId)
+        setSelection(providerId, modelId)
     }
 
     @Transaction
     suspend fun syncModels(newModels: List<ModelEntity>) {
-        val favorites = getFavoriteIds().toSet()
-        val selectedId = getSelectedModelId()
+        // Составной ключ: иначе одинаковые id у разных провайдеров наследуют чужие флаги.
+        val favorites = getFavoriteKeys().toSet()
+        val selectedKey = getSelectedModelKey()
 
         val mergedModels = newModels.map { model ->
+            val key = model.providerId + "|" + model.id
             model.copy(
-                isFavorite = favorites.contains(model.id),
-                isSelected = model.id == selectedId
+                isFavorite = favorites.contains(key),
+                isSelected = key == selectedKey,
             )
         }
         insertModels(mergedModels)
@@ -109,8 +130,8 @@ interface ModelDao {
      *
      * @return ModelEntity? – если запись с таким id отсутствует, возвращаем null.
      */
-    @Query("SELECT * FROM models WHERE id = :modelId LIMIT 1")
-    suspend fun getModelById(modelId: String): ModelEntity?
+    @Query("SELECT * FROM models WHERE providerId = :providerId AND id = :modelId LIMIT 1")
+    suspend fun getModelById(providerId: String, modelId: String): ModelEntity?
 
     /**
      * Возвращает все free модели.
@@ -121,8 +142,8 @@ interface ModelDao {
     /**
      * Обновляет статус доступности модели.
      */
-    @Query("UPDATE models SET isAvailable = :isAvailable WHERE id = :modelId")
-    suspend fun updateModelAvailability(modelId: String, isAvailable: Boolean): Int
+    @Query("UPDATE models SET isAvailable = :isAvailable WHERE providerId = :providerId AND id = :modelId")
+    suspend fun updateModelAvailability(providerId: String, modelId: String, isAvailable: Boolean): Int
 
     /**
      * Обновляет статус доступности, время отклика и рейтинг модели.
@@ -133,9 +154,10 @@ interface ModelDao {
             availabilityResponseTimeMs = :responseTimeMs,
             rating = :rating,
             lastAvailabilityCheck = :checkTime
-        WHERE id = :modelId
+        WHERE providerId = :providerId AND id = :modelId
     """)
     suspend fun updateModelRating(
+        providerId: String,
         modelId: String,
         isAvailable: Boolean,
         responseTimeMs: Long,

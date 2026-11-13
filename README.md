@@ -1,5 +1,7 @@
 # AI Prompt Master
 
+> Android и Desktop теперь находятся в этом репозитории: `app/` — Android, `desktop/` — Desktop, `prompt-contract/` — общий KMP-контракт. Публичный каталог живёт отдельно в `arnyigor/aiprompts`. Порядок сборки и состояние миграции: [docs/UNIFICATION_STATUS.ru.md](docs/UNIFICATION_STATUS.ru.md).
+
 [![Latest Release](https://img.shields.io/github/v/release/arnyigor/aipromptmaster?style=for-the-badge)](https://github.com/arnyigor/aipromptmaster/releases)
 [![Issues](https://img.shields.io/github/issues/arnyigor/aipromptmaster?style=for-the-badge)](https://github.com/arnyigor/aipromptmaster/issues)
 [![License](https://img.shields.io/github/license/arnyigor/aipromptmaster?style=for-the-badge)](LICENSE)

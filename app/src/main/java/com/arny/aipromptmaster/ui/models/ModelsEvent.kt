@@ -20,6 +20,9 @@ sealed interface ModelsEvent {
      * При каждом вызове флаг `onlyFree` меняется с `false` на `true`
      * и наоборот. Состояние сохраняется в ViewState.
      */
+    /** Фильтр по провайдеру; null — показать модели всех провайдеров. */
+    data class SelectProvider(val providerId: String?) : ModelsEvent
+
     data object ToggleFree : ModelsEvent
 
     /**
@@ -51,6 +54,7 @@ sealed interface ModelsEvent {
      */
     data class ToggleModelFavorite(
         val id: String,
+        val providerId: String = "",
     ) : ModelsEvent
 
     /**
@@ -68,7 +72,7 @@ sealed interface ModelsEvent {
      *
      * @property id Идентификатор выбранной модели.
      */
-    data class SelectModel(val id: String) : ModelsEvent
+    data class SelectModel(val id: String, val providerId: String = "") : ModelsEvent
 
     /**
      * Проверка доступности всех free моделей.
@@ -80,7 +84,7 @@ sealed interface ModelsEvent {
      *
      * @property id Идентификатор модели.
      */
-    data class CheckModelAvailability(val id: String) : ModelsEvent
+    data class CheckModelAvailability(val id: String, val providerId: String = "") : ModelsEvent
 
     /**
      * Отмена проверки доступности моделей.

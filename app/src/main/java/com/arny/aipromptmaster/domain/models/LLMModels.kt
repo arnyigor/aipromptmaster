@@ -18,7 +18,9 @@ data class ChatMessage(
     val modelId: String? = null, // ID модели, которая сгенерировала ответ (только для AI)
     val state: MessageState = MessageState.PENDING,
     val fileAttachment: FileAttachmentMetadata? = null,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    /** Размышления модели: только отображение, в контекст запроса не попадают. */
+    val reasoning: String? = null,
 )
 
 enum class MessageState{
@@ -121,6 +123,10 @@ data class Usage(
 
 data class LlmModel(
     val id: String,
+    /** Профиль провайдера-владельца модели ('' — OpenRouter по умолчанию). */
+    val providerId: String = "",
+    /** Человекочитаемое имя профиля для списка моделей. */
+    val providerName: String = "",
     val name: String,
     val description: String,
     val created: Long,
@@ -171,5 +177,6 @@ data class FileReference(
  */
 data class StreamResult(
     val content: String,
-    val modelId: String? = null
+    val modelId: String? = null,
+    val reasoning: String? = null
 )

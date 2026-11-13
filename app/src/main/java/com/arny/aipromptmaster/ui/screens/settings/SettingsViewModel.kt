@@ -3,6 +3,7 @@ package com.arny.aipromptmaster.ui.screens.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.arny.aipromptmaster.domain.interactors.ISettingsInteractor
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,11 +23,18 @@ data class SettingsUiState(
     val isSendingFeedback: Boolean = false,
 
     // Общий пользовательский вывод (успех/ошибка)
-    val message: String? = null
+    val message: String? = null,
+
+    // Синхронизация каталога (отдельный раздел настроек)
+    val syncRunning: Boolean = false,
+    val syncSummary: String? = null,
+    val syncStage: String? = null,
+    val syncProgress: Float = 0f,
 )
 
 class SettingsViewModel constructor(
     private val interactor: ISettingsInteractor,
+    private val synchronizer: com.arny.aipromptmaster.domain.repositories.IPromptSynchronizer? = null,
 ) : ViewModel() {
 
     // ---------- StateFlow ----------
@@ -96,6 +104,55 @@ class SettingsViewModel constructor(
     private fun loadSavedApiKey() = viewModelScope.launch {
         interactor.getApiKey()?.let { key ->
             _state.update { it.copy(apiKey = key) }
+        }
+    }
+
+    /* ----------------------- Синхронизация каталога ------------------------ */
+
+    /** Запускает синхронизацию каталога и отражает прогресс/результат в состоянии. */
+    fun syncCatalog() {
+        val sync = synchronizer ?: return
+        if (_state.value.syncRunning) return
+        viewModelScope.launch {
+            _state.update { it.copy(syncRunning = true, syncSummary = null, syncStage = null) }
+            val stageWatcher = launch {
+                sync.stage.collect { stage ->
+                    val label = when (stage) {
+                        com.arny.aipromptmaster.domain.models.SyncStage.IDLE -> null
+                        com.arny.aipromptmaster.domain.models.SyncStage.CHECKING -> "Проверка…"
+                        com.arny.aipromptmaster.domain.models.SyncStage.DOWNLOADING -> "Загрузка каталога…"
+                        com.arny.aipromptmaster.domain.models.SyncStage.VALIDATING -> "Проверка контрольных сумм…"
+                        com.arny.aipromptmaster.domain.models.SyncStage.IMPORTING -> "Импорт…"
+                        com.arny.aipromptmaster.domain.models.SyncStage.DONE -> null
+                    }
+                    _state.update { it.copy(syncStage = label) }
+                }
+            }
+            val progressWatcher = launch {
+                sync.progress.collect { p -> _state.update { it.copy(syncProgress = p) } }
+            }
+            val result = try {
+                sync.synchronize()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                "Ошибка синхронизации: ${error.localizedMessage}"
+            }
+            stageWatcher.cancel()
+            progressWatcher.cancel()
+            val summary = when (result) {
+                is String -> result
+                else -> when (val status = sync.status.value) {
+                    is com.arny.aipromptmaster.domain.models.SyncStatus.Success ->
+                        "Каталог обновлён: ${status.updatedCount} промптов"
+                    is com.arny.aipromptmaster.domain.models.SyncStatus.Cooldown ->
+                        "Недавно синхронизировано, попробуйте позже"
+                    is com.arny.aipromptmaster.domain.models.SyncStatus.Error ->
+                        "Ошибка: ${status.error.localizedMessage}"
+                    else -> "Синхронизация завершена"
+                }
+            }
+            _state.update { it.copy(syncRunning = false, syncSummary = summary, syncStage = null, syncProgress = 0f) }
         }
     }
 }

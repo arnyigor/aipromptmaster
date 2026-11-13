@@ -21,7 +21,7 @@ import androidx.compose.runtime.State
 @Composable
 fun TypingIndicator(
     modifier: Modifier = Modifier,
-    dotSize: Dp = 8.dp,
+    dotSize: Dp = 6.dp,
     dotColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
     containerColor: Color = MaterialTheme.colorScheme.secondaryContainer
 ) {
@@ -36,7 +36,7 @@ fun TypingIndicator(
     Surface(
         shape = RoundedCornerShape(topStart = 4.dp, topEnd = 18.dp, bottomEnd = 18.dp, bottomStart = 18.dp),
         color = containerColor,
-        modifier = modifier.padding(vertical = 8.dp)
+        modifier = modifier.padding(vertical = 4.dp)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),

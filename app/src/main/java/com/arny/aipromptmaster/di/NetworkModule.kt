@@ -63,11 +63,20 @@ val networkModule = module {
     }
 
     // 5. OpenRouter Retrofit (Uses Default Client)
+    single(named("ProviderOkHttp")) {
+        OkHttpClient.Builder().connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+            .followRedirects(false).followSslRedirects(false).build()
+    }
+    single<com.arny.aipromptmaster.domain.ProviderGateway> {
+        com.arny.aipromptmaster.data.ProviderHttpSource(get(named("ProviderOkHttp")), get())
+    }
     single(named("OpenRouterRetrofit")) {
         val contentType = "application/json".toMediaType()
         Retrofit.Builder()
             .baseUrl(OPEN_ROUTER_BASE_URL)
-            .client(get(named("DefaultOkHttp"))) // 👈 Инъекция по имени
+            .client(get<OkHttpClient>(named("ProviderOkHttp")).newBuilder()
+                .addInterceptor(com.arny.aipromptmaster.data.ProviderRoutingInterceptor(get())).build())
             .addConverterFactory(get<Json>().asConverterFactory(contentType))
             .build()
     }
